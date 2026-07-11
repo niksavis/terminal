@@ -48,6 +48,7 @@ def main() -> int:
             ".scripts",
         ),
         ("markdownlint", "node_modules/.bin/markdownlint-cli2.cmd"),
+        ("cheat-sheet-html", "python", ".scripts/render-cheat-sheet.py", "--check"),
     ]
 
     total_start = time.perf_counter()

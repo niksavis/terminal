@@ -28,8 +28,14 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".basicly"]
+pythonpath = [".basicly", ".scripts"]
 addopts = ["--import-mode=importlib"]
+
+[tool.pyright]
+extraPaths = [".basicly", ".scripts"]
+
+[project.scripts]
+terminal-setup = "terminal_setup.cli:main"
 
 [tool.bandit]
 exclude_dirs = [".basicly/tests", "tests"]

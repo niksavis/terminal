@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta
+    name="description"
+    content="Terminal cheat sheet: Linux commands, shell shortcuts, tmux and WezTerm controls."
+  >
+  <meta name="keywords" content="terminal, linux, commands, cheat sheet, wezterm, tmux, zsh">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjE4IiBmaWxsPSIjMWUxZTJlIi8+PHRleHQgeD0iNTAiIHk9IjY4IiBmb250LXNpemU9IjU4IiBmb250LWZhbWlseT0ic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iNzAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjODliNGZhIj5UPC90ZXh0Pjwvc3ZnPg==">
+  <title>Terminal Cheat Sheet</title>
+  <style>
+:root {
+  --bg: #1e1e2e;
+  --fg: #cdd6f4;
+  --muted: #a6adc8;
+  --accent: #89b4fa;
+  --danger: #f38ba8;
+  --code-bg: #313244;
+  --border: #45475a;
+  --row-alt: #262636;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.6;
+}
+
+header {
+  position: sticky;
+  top: 0;
+  background: rgba(30, 30, 46, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 1.5rem;
+  z-index: 10;
+}
+
+.header-content {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+#search {
+  flex: 0 1 480px;
+  min-width: 0;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--code-bg);
+  color: var(--fg);
+  font-size: 1rem;
+  text-align: center;
+}
+
+#search::placeholder { color: var(--muted); }
+
+#search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.controls {
+  display: flex;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  background: var(--code-bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.controls button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.controls button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+section {
+  margin-bottom: 2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+section.collapsed .section-body {
+  display: none;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--code-bg);
+  cursor: pointer;
+  user-select: none;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: var(--accent);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.toggle svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+section:not(.collapsed) .toggle {
+  transform: rotate(90deg);
+}
+
+.section-header[title] {
+  cursor: pointer;
+}
+
+.section-body {
+  padding: 0.5rem 1rem 1rem;
+}
+
+p {
+  margin: 0.75rem 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  word-break: break-word;
+}
+
+th {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--row-alt);
+}
+
+tr:nth-child(even) { background: var(--row-alt); }
+
+tbody tr.hidden { display: none; }
+
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  background: var(--code-bg);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-size: 0.9em;
+}
+
+.danger { color: var(--danger); }
+
+ul {
+  padding-left: 1.25rem;
+}
+
+li {
+  margin: 0.375rem 0;
+}
+
+.hidden { display: none; }
+
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: var(--fg);
+}
+
+footer svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  header {
+    padding: 1rem;
+  }
+
+  .header-content {
+    text-align: left;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .search-row {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  #search {
+    flex: 1 1 auto;
+    min-width: 240px;
+    font-size: 1rem;
+  }
+
+  .controls {
+    justify-content: center;
+  }
+
+  main {
+    padding: 1rem;
+  }
+
+  section {
+    margin-bottom: 1rem;
+  }
+
+  .section-header h2 {
+    font-size: 1rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+    font-size: 0.9375rem;
+  }
+
+  code {
+    word-break: break-word;
+  }
+}
+</style>
+</head>
+<body>
+  <header>
+    <div class="header-content">
+      <h1>Terminal Cheat Sheet</h1>
+      <div class="search-row">
+        <input
+          id="search"
+          type="search"
+          placeholder="Search commands and shortcuts..."
+          autocomplete="off"
+        >
+        <div class="controls">
+          <button id="expand-all" type="button" title="Expand all sections">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5 a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
+          </button>
+          <button id="collapse-all" type="button" title="Collapse all sections">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-dash-lg" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M2 8a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11A.5.5 0 0 1 2 8"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Navigation</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>pwd</code></td>
+<td>Print working directory (show current location)</td>
+</tr>
+<tr>
+<td><code>cd &lt;dir&gt;</code></td>
+<td>Change directory</td>
+</tr>
+<tr>
+<td><code>cd -</code></td>
+<td>Go back to the previous directory</td>
+</tr>
+<tr>
+<td><code>cd ~</code> or <code>cd</code></td>
+<td>Go to home directory</td>
+</tr>
+<tr>
+<td><code>cd ..</code></td>
+<td>Go up one directory</td>
+</tr>
+<tr>
+<td><code>pushd &lt;dir&gt;</code></td>
+<td>Push directory onto stack</td>
+</tr>
+<tr>
+<td><code>popd</code></td>
+<td>Pop directory from stack</td>
+</tr>
+<tr>
+<td><code>ls</code></td>
+<td>List directory contents</td>
+</tr>
+<tr>
+<td><code>ls -la</code></td>
+<td>List all files with details</td>
+</tr>
+<tr>
+<td><code>ls -lh</code></td>
+<td>List with human-readable file sizes</td>
+</tr>
+<tr>
+<td><code>ls -R</code></td>
+<td>List recursively</td>
+</tr>
+<tr>
+<td><code>ls --color=auto</code></td>
+<td>Colorize output</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>File Operations</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>touch &lt;file&gt;</code></td>
+<td>Create a new file or update timestamp</td>
+</tr>
+<tr>
+<td><code>mkdir &lt;dir&gt;</code></td>
+<td>Create a new directory</td>
+</tr>
+<tr>
+<td><code>mkdir -p a/b/c</code></td>
+<td>Create nested directories</td>
+</tr>
+<tr>
+<td><code>cp &lt;src&gt; &lt;dst&gt;</code></td>
+<td>Copy a file</td>
+</tr>
+<tr>
+<td><code>cp -r &lt;src&gt; &lt;dst&gt;</code></td>
+<td>Copy a directory recursively</td>
+</tr>
+<tr>
+<td><code>mv &lt;src&gt; &lt;dst&gt;</code></td>
+<td>Move or rename a file</td>
+</tr>
+<tr>
+<td><code>rm &lt;file&gt;</code></td>
+<td>Remove a file</td>
+</tr>
+<tr>
+<td><code>rm -i &lt;file&gt;</code></td>
+<td>Remove with confirmation</td>
+</tr>
+<tr>
+<td><code>rm -r &lt;dir&gt;</code></td>
+<td><span class="danger">(!) Remove a directory recursively</span></td>
+</tr>
+<tr>
+<td><code>rm -rf &lt;dir&gt;</code></td>
+<td><span class="danger">(!) Force-remove recursively - use with extreme caution</span></td>
+</tr>
+<tr>
+<td><code>rmdir &lt;dir&gt;</code></td>
+<td>Remove an empty directory</td>
+</tr>
+<tr>
+<td><code>ln -s &lt;target&gt; &lt;link&gt;</code></td>
+<td>Create a symbolic link</td>
+</tr>
+<tr>
+<td><code>cmp &lt;file1&gt; &lt;file2&gt;</code></td>
+<td>Compare two files byte by byte</td>
+</tr>
+<tr>
+<td><code>diff &lt;file1&gt; &lt;file2&gt;</code></td>
+<td>Show differences between two files</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>File Viewing</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cat &lt;file&gt;</code></td>
+<td>Display file contents</td>
+</tr>
+<tr>
+<td><code>less &lt;file&gt;</code></td>
+<td>View file with a pager (<code>j</code>/<code>k</code> scroll, <code>f</code>/<code>b</code> page, <code>/</code> search, <code>q</code> quit)</td>
+</tr>
+<tr>
+<td><code>head &lt;file&gt;</code></td>
+<td>Show first 10 lines</td>
+</tr>
+<tr>
+<td><code>head -n 20 &lt;file&gt;</code></td>
+<td>Show first 20 lines</td>
+</tr>
+<tr>
+<td><code>tail &lt;file&gt;</code></td>
+<td>Show last 10 lines</td>
+</tr>
+<tr>
+<td><code>tail -f &lt;file&gt;</code></td>
+<td>Follow file changes in real time</td>
+</tr>
+<tr>
+<td><code>nano &lt;file&gt;</code></td>
+<td>Edit file with nano</td>
+</tr>
+<tr>
+<td><code>vim &lt;file&gt;</code></td>
+<td>Edit file with Vim (<code>i</code> insert, <code>Esc</code> normal, <code>:wq</code> save and quit)</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Text &amp; Output</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>echo "text"</code></td>
+<td>Print text to terminal</td>
+</tr>
+<tr>
+<td><code>echo "text" &gt; file</code></td>
+<td>Overwrite file with text</td>
+</tr>
+<tr>
+<td><code>echo "text" &gt;&gt; file</code></td>
+<td>Append text to file</td>
+</tr>
+<tr>
+<td><code>grep &lt;pattern&gt;</code></td>
+<td>Search for a pattern in text or piped output</td>
+</tr>
+<tr>
+<td><code>grep -r "text" &lt;dir&gt;</code></td>
+<td>Search recursively in directory</td>
+</tr>
+<tr>
+<td><code>grep -i "text"</code></td>
+<td>Case-insensitive search</td>
+</tr>
+<tr>
+<td><code>grep -n "text"</code></td>
+<td>Show line numbers</td>
+</tr>
+<tr>
+<td><code>grep -v "text"</code></td>
+<td>Invert match</td>
+</tr>
+<tr>
+<td><code>awk '{print $5, $9}'</code></td>
+<td>Print specific columns from output</td>
+</tr>
+<tr>
+<td><code>sed 's/old/new/g' &lt;file&gt;</code></td>
+<td>Replace text in output</td>
+</tr>
+<tr>
+<td><code>sed -i 's/old/new/g' &lt;file&gt;</code></td>
+<td>Replace text in place</td>
+</tr>
+<tr>
+<td><code>sort &lt;file&gt;</code></td>
+<td>Sort lines</td>
+</tr>
+<tr>
+<td><code>uniq &lt;file&gt;</code></td>
+<td>Remove duplicate lines</td>
+</tr>
+<tr>
+<td><code>wc &lt;file&gt;</code></td>
+<td>Count lines, words, and bytes</td>
+</tr>
+<tr>
+<td><code>cut -d: -f1 &lt;file&gt;</code></td>
+<td>Cut columns by delimiter</td>
+</tr>
+<tr>
+<td><code>tr 'a-z' 'A-Z'</code></td>
+<td>Translate characters</td>
+</tr>
+<tr>
+<td><code>jq</code></td>
+<td>Pretty-print and query JSON</td>
+</tr>
+<tr>
+<td><code>curl &lt;url&gt;</code></td>
+<td>Download or interact with URLs/APIs</td>
+</tr>
+<tr>
+<td><code>wget &lt;url&gt;</code></td>
+<td>Download a file from the internet</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Permissions &amp; Execution</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>chmod +x &lt;file&gt;</code></td>
+<td>Make a file executable</td>
+</tr>
+<tr>
+<td><code>chmod 755 &lt;file&gt;</code></td>
+<td>Set permissions to rwxr-xr-x</td>
+</tr>
+<tr>
+<td><code>chown &lt;user&gt;:&lt;group&gt; &lt;file&gt;</code></td>
+<td>Change file owner and group</td>
+</tr>
+<tr>
+<td><code>which &lt;command&gt;</code></td>
+<td>Show path to a command executable</td>
+</tr>
+<tr>
+<td><code>whereis &lt;command&gt;</code></td>
+<td>Show executable, source, and man page locations</td>
+</tr>
+<tr>
+<td><code>file &lt;file&gt;</code></td>
+<td>Determine file type</td>
+</tr>
+<tr>
+<td><code>stat &lt;file&gt;</code></td>
+<td>Display file status</td>
+</tr>
+<tr>
+<td><code>man &lt;command&gt;</code></td>
+<td>Open manual page for a command</td>
+</tr>
+<tr>
+<td><code>whatis &lt;command&gt;</code></td>
+<td>Show a short summary of a command</td>
+</tr>
+<tr>
+<td><code>alias name='command'</code></td>
+<td>Create a command shortcut</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Users &amp; System</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>whoami</code></td>
+<td>Show current username</td>
+</tr>
+<tr>
+<td><code>id</code></td>
+<td>Show user ID and groups</td>
+</tr>
+<tr>
+<td><code>sudo &lt;command&gt;</code></td>
+<td>Run command with superuser privileges</td>
+</tr>
+<tr>
+<td><code>adduser &lt;username&gt;</code></td>
+<td>Add a new user</td>
+</tr>
+<tr>
+<td><code>useradd &lt;username&gt;</code></td>
+<td>Add a new user (low-level)</td>
+</tr>
+<tr>
+<td><code>su &lt;username&gt;</code></td>
+<td>Switch to another user</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td>Exit current shell or user session</td>
+</tr>
+<tr>
+<td><code>sudo userdel -r &lt;username&gt;</code></td>
+<td><span class="danger">(!) Remove a user and home directory</span></td>
+</tr>
+<tr>
+<td><code>passwd</code></td>
+<td>Change your password</td>
+</tr>
+<tr>
+<td><code>uname -a</code></td>
+<td>Show system information</td>
+</tr>
+<tr>
+<td><code>hostname</code></td>
+<td>Show hostname</td>
+</tr>
+<tr>
+<td><code>uptime</code></td>
+<td>Show system uptime</td>
+</tr>
+<tr>
+<td><code>neofetch</code></td>
+<td>Show system info in a nice format</td>
+</tr>
+<tr>
+<td><code>ip addr show</code></td>
+<td>Show network/IP addresses (WSL/Linux; use <code>ipconfig</code> in Windows PowerShell)</td>
+</tr>
+<tr>
+<td><code>ping &lt;host&gt;</code></td>
+<td>Check if a host is reachable</td>
+</tr>
+<tr>
+<td><code>free -h</code></td>
+<td>Show memory usage (human-readable)</td>
+</tr>
+<tr>
+<td><code>df -h</code></td>
+<td>Show disk usage (human-readable)</td>
+</tr>
+<tr>
+<td><code>du -h --max-depth=1</code></td>
+<td>Show subdirectory sizes</td>
+</tr>
+<tr>
+<td><code>ps aux</code></td>
+<td>Show all running processes</td>
+</tr>
+<tr>
+<td><code>pgrep &lt;name&gt;</code></td>
+<td>Find process ID by name</td>
+</tr>
+<tr>
+<td><code>kill -9 &lt;pid&gt;</code></td>
+<td><span class="danger">(!) Force kill a process by ID</span></td>
+</tr>
+<tr>
+<td><code>pkill -f &lt;name&gt;</code></td>
+<td><span class="danger">(!) Kill processes by name</span></td>
+</tr>
+<tr>
+<td><code>killall &lt;name&gt;</code></td>
+<td><span class="danger">(!) Kill all processes by name</span></td>
+</tr>
+<tr>
+<td><code>top</code></td>
+<td>Dynamic process viewer</td>
+</tr>
+<tr>
+<td><code>htop</code></td>
+<td>Interactive process viewer</td>
+</tr>
+<tr>
+<td><code>systemctl status &lt;service&gt;</code></td>
+<td>Check service status</td>
+</tr>
+<tr>
+<td><code>systemctl start &lt;service&gt;</code></td>
+<td>Start a service</td>
+</tr>
+<tr>
+<td><code>systemctl stop &lt;service&gt;</code></td>
+<td>Stop a service</td>
+</tr>
+<tr>
+<td><code>systemctl restart &lt;service&gt;</code></td>
+<td>Restart a service</td>
+</tr>
+<tr>
+<td><code>systemctl list-units --type=service --state=running</code></td>
+<td>List running services</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Package Management (Debian/Ubuntu)</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>sudo apt update</code></td>
+<td>Update package lists</td>
+</tr>
+<tr>
+<td><code>sudo apt install &lt;package&gt;</code></td>
+<td>Install a package</td>
+</tr>
+<tr>
+<td><code>sudo apt remove &lt;package&gt;</code></td>
+<td>Remove a package</td>
+</tr>
+<tr>
+<td><code>sudo apt upgrade</code></td>
+<td>Upgrade installed packages</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Archives &amp; Search</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>zip -r &lt;archive&gt;.zip &lt;dir&gt;</code></td>
+<td>Compress a directory into a zip</td>
+</tr>
+<tr>
+<td><code>unzip &lt;archive&gt;.zip</code></td>
+<td>Extract a zip file</td>
+</tr>
+<tr>
+<td><code>unzip &lt;archive&gt;.zip -d &lt;dir&gt;</code></td>
+<td>Extract to a specific directory</td>
+</tr>
+<tr>
+<td><code>tar -czvf &lt;archive&gt;.tar.gz &lt;dir&gt;</code></td>
+<td>Create a tar.gz archive</td>
+</tr>
+<tr>
+<td><code>tar -xzvf &lt;archive&gt;.tar.gz</code></td>
+<td>Extract a tar.gz archive</td>
+</tr>
+<tr>
+<td><code>find &lt;path&gt; -name "*.jpg"</code></td>
+<td>Find files by name</td>
+</tr>
+<tr>
+<td><code>find &lt;path&gt; -type d -name "dev"</code></td>
+<td>Find directories by name</td>
+</tr>
+<tr>
+<td><code>locate &lt;name&gt;</code></td>
+<td>Quick file search (uses prebuilt database)</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Network &amp; Remote</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>curl &lt;url&gt;</code></td>
+<td>Transfer data from/to a URL</td>
+</tr>
+<tr>
+<td><code>wget &lt;url&gt;</code></td>
+<td>Download a file</td>
+</tr>
+<tr>
+<td><code>ping &lt;host&gt;</code></td>
+<td>Test connectivity</td>
+</tr>
+<tr>
+<td><code>dig &lt;domain&gt;</code></td>
+<td>DNS lookup</td>
+</tr>
+<tr>
+<td><code>ssh user@host</code></td>
+<td>Connect to remote host via SSH</td>
+</tr>
+<tr>
+<td><code>scp &lt;file&gt; user@host:/path</code></td>
+<td>Secure copy to remote host</td>
+</tr>
+<tr>
+<td><code>rsync -avz &lt;src&gt; &lt;dst&gt;</code></td>
+<td>Sync files efficiently</td>
+</tr>
+<tr>
+<td><code>ss -tulpn</code></td>
+<td>Show listening ports</td>
+</tr>
+<tr>
+<td><code>lsof -i :80</code></td>
+<td>Show what is using port 80</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Background Jobs</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>cmd &amp;</code></td>
+<td>Run command in background</td>
+</tr>
+<tr>
+<td><code>bg</code></td>
+<td>Resume suspended job in background</td>
+</tr>
+<tr>
+<td><code>fg</code></td>
+<td>Bring background job to foreground</td>
+</tr>
+<tr>
+<td><code>jobs</code></td>
+<td>List background jobs</td>
+</tr>
+<tr>
+<td><code>nohup cmd &amp;</code></td>
+<td>Run command immune to hangups</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>History &amp; Shortcuts</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Shortcut</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>Ctrl + L</code></td>
+<td>Clear screen</td>
+</tr>
+<tr>
+<td><code>Ctrl + A</code></td>
+<td>Move cursor to start of line</td>
+</tr>
+<tr>
+<td><code>Ctrl + E</code></td>
+<td>Move cursor to end of line</td>
+</tr>
+<tr>
+<td><code>Ctrl + C</code></td>
+<td>Interrupt current command</td>
+</tr>
+<tr>
+<td><code>Ctrl + D</code></td>
+<td>Exit shell (send EOF)</td>
+</tr>
+<tr>
+<td><code>↑</code> / <code>↓</code></td>
+<td>Cycle through previous/next command</td>
+</tr>
+<tr>
+<td><code>Tab</code></td>
+<td>Autocomplete file or directory names</td>
+</tr>
+<tr>
+<td><code>history</code></td>
+<td>Show command history</td>
+</tr>
+<tr>
+<td><code>history 1</code></td>
+<td>Show full command history (in zsh)</td>
+</tr>
+<tr>
+<td><code>exit</code></td>
+<td>Close the terminal</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Pipes &amp; Redirection</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Operator</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>\|</code></td>
+<td>Pipe output of one command into another</td>
+</tr>
+<tr>
+<td><code>&gt;</code></td>
+<td>Redirect output to a file (overwrite)</td>
+</tr>
+<tr>
+<td><code>&gt;&gt;</code></td>
+<td>Redirect output to a file (append)</td>
+</tr>
+<tr>
+<td><code>2&gt;&amp;1</code></td>
+<td>Redirect stderr to stdout</td>
+</tr>
+<tr>
+<td><code>tee &lt;file&gt;</code></td>
+<td>Write output to file and stdout</td>
+</tr>
+<tr>
+<td><code>xargs</code></td>
+<td>Build arguments from stdin</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Hardware &amp; Disk Info</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>lscpu</code></td>
+<td>Show CPU information</td>
+</tr>
+<tr>
+<td><code>lsblk</code></td>
+<td>List block devices</td>
+</tr>
+<tr>
+<td><code>lspci -tv</code></td>
+<td>Show PCI devices in a tree</td>
+</tr>
+<tr>
+<td><code>lsusb -tv</code></td>
+<td>Show USB devices in a tree</td>
+</tr>
+<tr>
+<td><code>lshw</code></td>
+<td>List hardware configuration</td>
+</tr>
+<tr>
+<td><code>cat /proc/cpuinfo</code></td>
+<td>Detailed CPU info</td>
+</tr>
+<tr>
+<td><code>cat /proc/meminfo</code></td>
+<td>Detailed memory info</td>
+</tr>
+<tr>
+<td><code>free -h</code></td>
+<td>Show free and used memory</td>
+</tr>
+<tr>
+<td><code>df -h</code></td>
+<td>Show disk space usage</td>
+</tr>
+<tr>
+<td><code>df -i</code></td>
+<td>Show free inodes</td>
+</tr>
+<tr>
+<td><code>du -sh</code></td>
+<td>Show total size of current directory</td>
+</tr>
+<tr>
+<td><code>du -ah</code></td>
+<td>Show sizes of all files and directories</td>
+</tr>
+<tr>
+<td><code>fdisk -l</code></td>
+<td>List disk partitions</td>
+</tr>
+<tr>
+<td><code>mount</code></td>
+<td>Show mounted file systems</td>
+</tr>
+<tr>
+<td><code>findmnt</code></td>
+<td>Show target mount points</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>File Compression</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>tar cf archive.tar &lt;file/dir&gt;</code></td>
+<td>Create an uncompressed archive</td>
+</tr>
+<tr>
+<td><code>tar xf archive.tar</code></td>
+<td>Extract a tar archive</td>
+</tr>
+<tr>
+<td><code>tar czf archive.tar.gz &lt;file/dir&gt;</code></td>
+<td>Create a gzip-compressed archive</td>
+</tr>
+<tr>
+<td><code>tar xzf archive.tar.gz</code></td>
+<td>Extract a .tar.gz archive</td>
+</tr>
+<tr>
+<td><code>gzip &lt;file&gt;</code></td>
+<td>Compress a file with gzip</td>
+</tr>
+<tr>
+<td><code>gunzip &lt;file.gz&gt;</code></td>
+<td>Decompress a gzip file</td>
+</tr>
+<tr>
+<td><code>bzip2 &lt;file&gt;</code></td>
+<td>Compress a file with bzip2</td>
+</tr>
+<tr>
+<td><code>bunzip2 &lt;file.bz2&gt;</code></td>
+<td>Decompress a bzip2 file</td>
+</tr>
+<tr>
+<td><code>zip -r archive.zip &lt;dir&gt;</code></td>
+<td>Create a zip archive</td>
+</tr>
+<tr>
+<td><code>unzip archive.zip</code></td>
+<td>Extract a zip archive</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Shell Variables</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>export VAR=value</code></td>
+<td>Set an environment variable</td>
+</tr>
+<tr>
+<td><code>declare VAR=value</code></td>
+<td>Declare a shell variable</td>
+</tr>
+<tr>
+<td><code>let "VAR=1+2"</code></td>
+<td>Assign an integer value</td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td>List all shell variables/functions</td>
+</tr>
+<tr>
+<td><code>unset VAR</code></td>
+<td>Remove a variable</td>
+</tr>
+<tr>
+<td><code>echo $VAR</code></td>
+<td>Display a variable value</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Shell Command Management</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Command</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>alias name='command'</code></td>
+<td>Create a command shortcut</td>
+</tr>
+<tr>
+<td><code>unalias name</code></td>
+<td>Remove an alias</td>
+</tr>
+<tr>
+<td><code>watch -n 2 &lt;command&gt;</code></td>
+<td>Run a command repeatedly every N seconds</td>
+</tr>
+<tr>
+<td><code>sleep 5 &amp;&amp; &lt;command&gt;</code></td>
+<td>Delay a command</td>
+</tr>
+<tr>
+<td><code>at &lt;time&gt;</code></td>
+<td>Schedule a one-time job (Ctrl+D to finish)</td>
+</tr>
+<tr>
+<td><code>man &lt;command&gt;</code></td>
+<td>Open the manual page</td>
+</tr>
+<tr>
+<td><code>whatis &lt;command&gt;</code></td>
+<td>Show a short summary</td>
+</tr>
+<tr>
+<td><code>history</code></td>
+<td>Show command history</td>
+</tr>
+<tr>
+<td><code>source &lt;file&gt;</code></td>
+<td>Execute a file in the current shell</td>
+</tr>
+<tr>
+<td><code>clear</code></td>
+<td>Clear the terminal screen</td>
+</tr>
+<tr>
+<td><code>!!</code></td>
+<td>Run the last command again</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>More Keyboard Shortcuts</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Shortcut</th>
+<th>Description</th>
+</tr></thead><tbody>
+<tr>
+<td><code>Ctrl + W</code></td>
+<td>Cut the word before the cursor</td>
+</tr>
+<tr>
+<td><code>Ctrl + U</code></td>
+<td>Cut the line before the cursor</td>
+</tr>
+<tr>
+<td><code>Ctrl + K</code></td>
+<td>Cut the line after the cursor</td>
+</tr>
+<tr>
+<td><code>Ctrl + Y</code></td>
+<td>Paste the cut text</td>
+</tr>
+<tr>
+<td><code>Ctrl + R</code></td>
+<td>Search command history interactively</td>
+</tr>
+<tr>
+<td><code>Ctrl + O</code></td>
+<td>Run the recalled history command</td>
+</tr>
+<tr>
+<td><code>Ctrl + G</code></td>
+<td>Exit history search without running</td>
+</tr>
+<tr>
+<td><code>Ctrl + Z</code></td>
+<td>Suspend the current process</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Safety Notes</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<p>- ⚠️ <code>rm -rf</code> can destroy your system. Double-check paths before running.</p>
+<p>- ⚠️ <code>kill -9</code>, <code>pkill -f</code>, and <code>killall</code> terminate processes immediately without cleanup.</p>
+<p>- ⚠️ <code>sudo userdel -r</code> permanently deletes a user and their home directory.</p>
+<p>- Always use <code>rm -i</code> or review commands with <code>--dry-run</code> equivalents when available.</p>
+</div></section>
+  </main>
+  <footer>
+    <a href="https://github.com/niksavis/terminal" target="_blank" rel="noopener noreferrer">
+      <svg height="20" width="20" viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          fill="currentColor"
+          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+             0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+             -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+             .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+             -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0
+             1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82
+             1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01
+             1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+        />
+      </svg>
+      View source on GitHub
+    </a>
+  </footer>
+  <script>
+(function () {
+  const search = document.getElementById('search');
+  const sections = Array.from(document.querySelectorAll('section'));
+
+  const chevronRight = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-chevron-right\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708\"/></svg>";
+  const chevronDown = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-chevron-down\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647 a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708\"/></svg>";
+
+  function updateToggleIcon(section) {
+    const toggle = section.querySelector('.toggle');
+    if (!toggle) return;
+    toggle.innerHTML = section.classList.contains('collapsed')
+      ? chevronRight
+      : chevronDown;
+  }
+
+  document.querySelectorAll('.section-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const section = header.parentElement;
+      section.classList.toggle('collapsed');
+      updateToggleIcon(section);
+    });
+  });
+
+  function setAllCollapsed(collapsed) {
+    sections.forEach(section => {
+      if (section.classList.contains('hidden')) return;
+      section.classList.toggle('collapsed', collapsed);
+      updateToggleIcon(section);
+    });
+  }
+
+  document.getElementById('expand-all').addEventListener('click', () => setAllCollapsed(false));
+  document.getElementById('collapse-all').addEventListener('click', () => setAllCollapsed(true));
+
+  function updateSearch() {
+    const query = search.value.trim().toLowerCase();
+    sections.forEach(section => {
+      const rows = Array.from(section.querySelectorAll('tbody tr'));
+      let sectionMatch = false;
+      rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const match = !query || text.includes(query);
+        row.classList.toggle('hidden', !match);
+        if (match) sectionMatch = true;
+      });
+      section.classList.toggle('hidden', !sectionMatch);
+      if (sectionMatch && query) {
+        section.classList.remove('collapsed');
+        updateToggleIcon(section);
+      }
+    });
+  }
+
+  search.addEventListener('input', updateSearch);
+})();
+</script>
+</body>
+</html>
