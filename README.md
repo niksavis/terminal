@@ -6,7 +6,7 @@ Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling,
 
 - **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
 - **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), and [`starship.toml`](terminal_setup/templates/starship.toml).
-- **Cheat sheet** — [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
+- **Cheat sheet** — [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts. GitHub Actions also publishes an HTML version to GitHub Pages.
 - **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
 - **Tests** — workspace and setup tests in [`tests/`](tests/).
 
@@ -17,6 +17,9 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.14+.
 ```bash
 # Install dependencies and dev tools
 uv sync
+
+# Verify prerequisites only (no changes)
+uv run python setup-terminal.py --check
 
 # Preview what the setup will do
 uv run python setup-terminal.py --dry-run
@@ -60,7 +63,7 @@ WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, 
 
 The default Starship prompt is intentionally single-line for readability: path, git, and status segments are shown before the prompt symbol on the same line.
 
-Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + a` (leader) then `|` (vertical) or `-` (horizontal). To close a pane, press `Ctrl + a` then `x`.
+Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + a` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + a` then `x`.
 
 ### WSL2 Ubuntu
 
@@ -173,7 +176,6 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 - `.tmux.conf` -> WSL `~/.tmux.conf`
 - `.zshrc` -> WSL `~/.zshrc`
 - `starship.toml` -> WSL `~/.config/starship.toml`
-- `terminal-cheat-sheet.md` -> `%USERPROFILE%\terminal-cheat-sheet.md` and WSL `~/terminal-cheat-sheet.md`
 
 ### On Linux / macOS / WSL Ubuntu terminal
 
@@ -190,7 +192,13 @@ The setup installs tools directly on the host.
 - `.tmux.conf` -> `~/.tmux.conf`
 - `.zshrc` -> `~/.zshrc`
 - `starship.toml` -> `~/.config/starship.toml`
-- `terminal-cheat-sheet.md` -> `~/terminal-cheat-sheet.md`
+
+## Cheat Sheet Publishing
+
+- Source: [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md)
+- Build: [`.scripts/render-cheat-sheet.py`](.scripts/render-cheat-sheet.py) renders `terminal-cheat-sheet.html`
+- CI/CD: [`.github/workflows/cheat-sheet.yml`](.github/workflows/cheat-sheet.yml) renders on each change to the cheat-sheet source and deploys the generated HTML to GitHub Pages on pushes to `main`
+- One-time repo setting: enable **Settings > Pages > Source: GitHub Actions**
 
 ## CLI options
 
