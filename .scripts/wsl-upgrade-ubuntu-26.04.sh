@@ -145,8 +145,8 @@ main() {
     run ls -lh "$BACKUP_TAR_UNIX"
 
     log "Step 3: Pre-upgrade package prep inside distro"
-    run wsl -d "$DISTRO" -- bash -lc "sudo apt update && sudo apt full-upgrade -y && sudo apt install -y update-manager-core ubuntu-release-upgrader-core"
-    run wsl -d "$DISTRO" -- bash -lc "sudo sed -i 's/^Prompt=.*/Prompt=lts/' /etc/update-manager/release-upgrades; grep '^Prompt=' /etc/update-manager/release-upgrades"
+    run wsl -u root -d "$DISTRO" -- bash -lc "apt update && apt full-upgrade -y && apt install -y update-manager-core ubuntu-release-upgrader-core"
+    run wsl -u root -d "$DISTRO" -- bash -lc "sed -i 's/^Prompt=.*/Prompt=lts/' /etc/update-manager/release-upgrades; grep '^Prompt=' /etc/update-manager/release-upgrades"
 
     local from_release
     from_release="$(run_capture wsl -d "$DISTRO" -- bash -lc "cat /etc/os-release | egrep '^(PRETTY_NAME|VERSION=|VERSION_ID=)'")"
@@ -162,12 +162,12 @@ main() {
     log "Step 4: In-place upgrade"
     UPGRADE_LOG="/tmp/${DISTRO}-upgrade-${timestamp}.log"
 
-    if run_with_tee "$UPGRADE_LOG" wsl -d "$DISTRO" -- bash -lc "sudo do-release-upgrade -f DistUpgradeViewNonInteractive"; then
+    if run_with_tee "$UPGRADE_LOG" wsl -u root -d "$DISTRO" -- bash -lc "do-release-upgrade -f DistUpgradeViewNonInteractive"; then
         log "Primary release upgrade command completed."
     else
         if should_retry_with_dev_channel "$UPGRADE_LOG"; then
             warn "Primary release detection did not find target release. Retrying with -d."
-            if ! run_with_tee "$UPGRADE_LOG" wsl -d "$DISTRO" -- bash -lc "sudo do-release-upgrade -d -f DistUpgradeViewNonInteractive"; then
+            if ! run_with_tee "$UPGRADE_LOG" wsl -u root -d "$DISTRO" -- bash -lc "do-release-upgrade -d -f DistUpgradeViewNonInteractive"; then
                 die "Release upgrade retry with -d failed. See log: ${UPGRADE_LOG}"
             fi
         else
@@ -176,7 +176,7 @@ main() {
     fi
 
     log "Step 5: Post-upgrade cleanup and verification"
-    run wsl -d "$DISTRO" -- bash -lc "sudo apt autoremove -y && sudo apt clean"
+    run wsl -u root -d "$DISTRO" -- bash -lc "apt autoremove -y && apt clean"
     local to_release
     to_release="$(run_capture wsl -d "$DISTRO" -- bash -lc "cat /etc/os-release | egrep '^(PRETTY_NAME|VERSION=|VERSION_ID=)'")"
     run wsl --shutdown
