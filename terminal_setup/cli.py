@@ -128,13 +128,6 @@ def print_setup_report(
                 wezterm_path.exists(),
                 str(wezterm_path),
             )
-        cheat_sheet = platform_info.home / "terminal-cheat-sheet.html"
-        _report_status(
-            runner,
-            "windows:terminal-cheat-sheet.html",
-            cheat_sheet.exists(),
-            str(cheat_sheet),
-        )
 
         for command in ["zsh", "tmux", "fzf", "fdfind", "batcat", "eza", "zoxide", "rg"]:
             ok, detail = _wsl_command_present(runner, platform_info, command)
@@ -148,7 +141,6 @@ def print_setup_report(
             "~/.tmux.conf",
             "~/.zshrc",
             "~/.config/starship.toml",
-            "~/terminal-cheat-sheet.html",
         ]:
             ok, detail = _wsl_file_exists(runner, platform_info, path)
             _report_status(runner, f"wsl:{path}", ok, detail)

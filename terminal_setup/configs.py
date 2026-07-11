@@ -1,4 +1,4 @@
-"""Configuration file deployment for WezTerm, tmux, zsh, starship, and docs."""
+"""Configuration file deployment for WezTerm, tmux, zsh, and starship."""
 
 from __future__ import annotations
 
@@ -77,15 +77,6 @@ def deploy_starship_config(runner: Runner, platform: PlatformInfo) -> None:
     runner.copy(template_path("starship.toml"), destination)
 
 
-def deploy_cheat_sheet(runner: Runner, platform: PlatformInfo) -> None:
-    """Deploy the terminal cheat sheet to the home directory."""
-    if not CHEAT_SHEET_PATH.exists():
-        runner.reporter.warn(f"cheat sheet not found at {CHEAT_SHEET_PATH}")
-        return
-    destination = platform.home / "terminal-cheat-sheet.html"
-    runner.copy(CHEAT_SHEET_PATH, destination)
-
-
 def _wsl_distro(platform: PlatformInfo) -> str:
     """Return the WSL distribution to use, falling back to Ubuntu."""
     return platform.wsl_distribution or "Ubuntu"
@@ -132,7 +123,6 @@ def deploy_all(
 ) -> None:
     """Deploy all configuration files and set the default shell."""
     deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
-    deploy_cheat_sheet(runner, platform)
     if platform.os == OperatingSystem.WINDOWS:
         deploy_wsl_configs(runner, platform)
         set_wsl_default_shell(runner, platform)
@@ -172,11 +162,6 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
         runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", destination.rsplit("/", 1)[0]])
         wsl_source = _to_wsl_path(runner, distro, source)
         runner.run(["wsl", "-d", distro, "--", "cp", wsl_source, destination])
-    if CHEAT_SHEET_PATH.exists():
-        cheat_destination = f"{wsl_home}/terminal-cheat-sheet.html"
-        runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", cheat_destination.rsplit("/", 1)[0]])
-        wsl_cheat_source = _to_wsl_path(runner, distro, CHEAT_SHEET_PATH)
-        runner.run(["wsl", "-d", distro, "--", "cp", wsl_cheat_source, cheat_destination])
 
 
 def _configure_vscode_terminal_windows(

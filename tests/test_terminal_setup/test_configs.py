@@ -9,7 +9,6 @@ from terminal_setup.configs import (
     CHEAT_SHEET_PATH,
     TEMPLATE_DIR,
     configure_vscode_terminal,
-    deploy_cheat_sheet,
     deploy_tmux_config,
     deploy_wezterm_config,
     deploy_zsh_config,
@@ -252,14 +251,3 @@ def test_configure_vscode_terminal_windows_uses_optional_wsl_cwd(tmp_path: Path)
     settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
     profiles = settings.get("terminal.integrated.profiles.windows", {})
     assert profiles["Ubuntu (WSL)"]["args"] == ["-d", "Ubuntu", "--cd", "$HOME/workspace"]
-
-
-def test_deploy_cheat_sheet(tmp_path: Path) -> None:
-    """deploy_cheat_sheet must copy the cheat sheet to the home directory."""
-    platform = make_platform(OperatingSystem.LINUX, tmp_path)
-    runner = Runner(dry_run=False)
-    deploy_cheat_sheet(runner, platform)
-
-    destination = tmp_path / "terminal-cheat-sheet.html"
-    assert destination.exists()
-    assert "pwd" in destination.read_text(encoding="utf-8")
