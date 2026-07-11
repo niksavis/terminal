@@ -33,6 +33,7 @@ addopts = ["--import-mode=importlib"]
 
 [tool.pyright]
 extraPaths = [".basicly", "."]
+typeCheckingMode = "basic"
 
 [project.scripts]
 terminal-setup = "terminal_setup.cli:main"
