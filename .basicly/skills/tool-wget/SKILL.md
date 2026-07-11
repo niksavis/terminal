@@ -1,0 +1,55 @@
+---
+name: tool-wget
+description: Use wget for robust non-interactive downloads, retries, and mirror-style fetch operations. Trigger when reliable file retrieval or resumable downloads are needed.
+---
+
+# tool-wget
+
+## When To Use
+
+- Retrieve files reliably in non-interactive scripts.
+- Resume large downloads and handle retries cleanly.
+- Check URL reachability without full payload download.
+
+## Trusted Commands
+
+```bash
+wget -O output.bin https://example.com/file.bin
+wget -c https://example.com/large-file.iso
+wget --spider https://example.com/health
+wget --tries=3 --timeout=20 https://example.com/archive.tgz
+wget -qO- https://example.com/version.txt
+```
+
+## Safe Defaults
+
+- Use `-O` for deterministic output paths.
+- Use `-c` for resumable transfers.
+- Use `--spider` when only availability checks are needed.
+
+## Common Pitfalls
+
+- Destination files can be overwritten unexpectedly.
+- Redirect and auth behavior may differ from curl/xh assumptions.
+- Recursive options can cause excessive downloads if scope is not constrained.
+
+## Output Interpretation
+
+- `--spider` exit status indicates URL reachability.
+- Progress lines show throughput and transfer completion.
+
+## Why It Matters For Agents
+
+- Reliable unattended download behavior is critical in setup automation.
+- Resume and retry controls reduce flaky install workflows.
+
+## Repo Conventions
+
+- Prefer idempotent download steps in setup scripts.
+- Keep destination paths portable and user-agnostic.
+
+## Trigger Examples
+
+- Should trigger: "Fetch this release tarball with resume support."
+- Should trigger: "Verify a URL is reachable in CI without downloading it."
+- Should not trigger: "Pretty-print this JSON document."

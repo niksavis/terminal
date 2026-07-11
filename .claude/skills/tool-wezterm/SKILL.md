@@ -1,0 +1,55 @@
+---
+name: tool-wezterm
+description: Use WezTerm for terminal emulator configuration, keybindings, and cross-platform shell launch behavior. Trigger when terminal UI shortcuts or startup profiles need adjustment.
+---
+
+# tool-wezterm
+
+## When To Use
+
+- Configure tabs, panes, keybindings, and launcher behavior.
+- Troubleshoot startup target shells across Windows, WSL, Linux, and macOS.
+- Validate terminal UX consistency with project shortcuts.
+
+## Trusted Commands
+
+```bash
+wezterm
+wezterm --version
+wezterm start --always-new-process
+wezterm ls-fonts
+wezterm cli list
+```
+
+## Safe Defaults
+
+- Keep keybinding changes aligned with documented shortcuts.
+- Use portable font fallbacks that exist on fresh systems.
+- Validate startup behavior after config updates.
+
+## Common Pitfalls
+
+- Docs and actual keybindings can drift if both are not updated.
+- Hardcoded distro aliases or local paths reduce portability.
+- Config changes may require restart to be visible.
+
+## Output Interpretation
+
+- `wezterm --version` confirms binary availability.
+- Startup/runtime failures usually indicate Lua config issues.
+
+## Why It Matters For Agents
+
+- Terminal UX directly affects daily developer efficiency.
+- Predictable startup behavior reduces environment confusion.
+
+## Repo Conventions
+
+- Preserve project-defined leader and split shortcuts.
+- Keep defaults generic and avoid user-path leakage.
+
+## Trigger Examples
+
+- Should trigger: "Adjust WezTerm to open WSL Ubuntu by default."
+- Should trigger: "Update pane split shortcuts and docs together."
+- Should not trigger: "Rename an API field across JSON files."

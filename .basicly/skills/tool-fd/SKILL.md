@@ -1,0 +1,57 @@
+---
+name: tool-fd
+description: Use fd or fd-find for fast filename and path discovery with sane defaults. Trigger when file enumeration by pattern is needed without complex find syntax.
+---
+
+# tool-fd
+
+## When To Use
+
+- Locate files by name pattern, extension, or type.
+- Replace verbose find commands for common file discovery tasks.
+- Feed clean path lists into tools like fzf, xargs, and sd.
+
+## Trusted Commands
+
+```bash
+fd "pattern"
+fd -e py
+fd -g "pyproject.toml"
+fd --hidden "pattern"
+fd -t f "pattern"
+fd -t d "pattern"
+fd -e md -x wc -l {}
+```
+
+## Safe Defaults
+
+- Use `-t f` or `-t d` to constrain result type.
+- Use `-g` for glob semantics and plain expectations.
+- Prefer `fd` and fallback to `fdfind` on Debian/Ubuntu.
+
+## Common Pitfalls
+
+- fd uses regex by default, not shell glob patterns.
+- Ignored files are skipped unless explicitly included.
+- Distro binary naming differences (`fd` vs `fdfind`) can break scripts.
+
+## Output Interpretation
+
+- One path per line, relative to the search root.
+- Empty output with exit 0 can be valid for narrow patterns.
+
+## Why It Matters For Agents
+
+- `-x` enables safe per-file batch actions without manual loops.
+- It is a high-signal way to enumerate candidate files quickly.
+
+## Repo Conventions
+
+- Prefer fd over recursive listing for path discovery.
+- Respect ignore rules unless task scope says otherwise.
+
+## Trigger Examples
+
+- Should trigger: "Find all markdown files under docs quickly."
+- Should trigger: "List only directories matching `test` recursively."
+- Should not trigger: "Transform JSON output from an API."

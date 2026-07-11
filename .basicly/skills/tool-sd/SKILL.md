@@ -1,0 +1,55 @@
+---
+name: tool-sd
+description: Use sd for fast, readable search-and-replace in files with safer defaults than sed. Trigger when batch textual replacements are needed across files.
+---
+
+# tool-sd
+
+## When To Use
+
+- Apply straightforward search-and-replace updates in files.
+- Replace fragile sed one-liners with readable syntax.
+- Pair with fd or rg to run controlled batch edits.
+
+## Trusted Commands
+
+```bash
+sd 'old' 'new' file.ts
+sd -p 'old' 'new' file.ts
+sd 'v(\\d+)' 'version-$1' file.txt
+fd -e ts -x sd 'old' 'new' {}
+rg -l 'old_api' | xargs sd 'old_api' 'new_api'
+```
+
+## Safe Defaults
+
+- Use `-p` preview mode before in-place bulk replacements.
+- Scope candidate files first with `fd` or `rg -l`.
+- Use `-F` for literal matching when regex should be disabled.
+
+## Common Pitfalls
+
+- sd uses regex by default and may over-match literal text.
+- In-place edits can change many files quickly without warning.
+- Large batch replacements are risky without diff review.
+
+## Output Interpretation
+
+- Standard mode edits files in place and prints minimal output.
+- Preview mode (`-p`) shows what would change without writing.
+
+## Why It Matters For Agents
+
+- Faster and safer than sed for common multi-file text migrations.
+- Integrates cleanly with fd/rg-driven candidate selection.
+
+## Repo Conventions
+
+- Prefer sd over brittle sed expressions for cross-platform replacement.
+- Keep bulk edits tightly scoped to task-relevant files.
+
+## Trigger Examples
+
+- Should trigger: "Replace this deprecated flag name in all docs files."
+- Should trigger: "Batch-update import path strings safely."
+- Should not trigger: "Analyze AST-level method call patterns."
