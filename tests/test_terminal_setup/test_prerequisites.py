@@ -131,17 +131,18 @@ def test_check_all_returns_list() -> None:
 
 
 def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
-    """WSL tool install script should include the curated agent-first package set."""
+    """WSL tool install should batch apt packages in one install script."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
     ensure_wsl_tools(cast(Runner, runner), platform)
 
-    assert len(runner.commands) == 1
-    command = runner.commands[0]
-    assert command[:5] == ["wsl", "-d", "Ubuntu", "--", "sh"]
-    script = command[-1]
-    for package in [
+    expected_packages = [
+        "zsh",
+        "tmux",
+        "git",
+        "curl",
+        "wget",
         "fzf",
         "fd-find",
         "bat",
@@ -150,15 +151,24 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
         "yq",
         "shellcheck",
         "tree",
+        "xh",
         "ast-grep",
         "sd",
         "git-delta",
         "typos",
         "uv",
-    ]:
+    ]
+
+    install_script_commands = [
+        command
+        for command in runner.commands
+        if command[:5] == ["wsl", "-d", "Ubuntu", "--", "sh"]
+        and "apt-get install -y" in command[-1]
+    ]
+    assert len(install_script_commands) == 1
+    script = install_script_commands[0][-1]
+    for package in expected_packages:
         assert package in script
-    for removed in ["eza", "zoxide", "micro", "htop"]:
-        assert removed not in script
 
 
 def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
@@ -173,6 +183,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -188,6 +199,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -203,6 +215,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -218,6 +231,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",

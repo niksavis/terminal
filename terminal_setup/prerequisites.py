@@ -210,28 +210,34 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
     }
     if package in rust_fallback:
         crate, command = rust_fallback[package]
-        if _command_available(runner, command, wsl_distro=wsl_distro):
-            return True
-        _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
-        _run_shell_command(
-            runner,
-            (
-                'CARGO_BIN="$HOME/.cargo/bin/cargo"; '
-                'if [ ! -x "$CARGO_BIN" ]; then CARGO_BIN="$(command -v cargo)"; fi; '
-                f'"$CARGO_BIN" install --locked --root ~/.local {crate}'
-            ),
-            wsl_distro=wsl_distro,
-        )
+        if not _command_available(runner, command, wsl_distro=wsl_distro):
+            _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
+            _run_shell_command(
+                runner,
+                (
+                    'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; '
+                    f"cargo install --locked --root ~/.local {crate}"
+                ),
+                wsl_distro=wsl_distro,
+            )
+        return True
+
+    if package == "xh":
+        if not _command_available(runner, "xh", wsl_distro=wsl_distro):
+            _run_shell_command(
+                runner,
+                "curl -sfL https://raw.githubusercontent.com/ducaale/xh/master/install.sh | sh",
+                wsl_distro=wsl_distro,
+            )
         return True
 
     if package == "uv":
-        if _command_available(runner, "uv", wsl_distro=wsl_distro):
-            return True
-        _run_shell_command(
-            runner,
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
-            wsl_distro=wsl_distro,
-        )
+        if not _command_available(runner, "uv", wsl_distro=wsl_distro):
+            _run_shell_command(
+                runner,
+                "curl -LsSf https://astral.sh/uv/install.sh | sh",
+                wsl_distro=wsl_distro,
+            )
         return True
 
     return False
@@ -300,14 +306,28 @@ def ensure_wsl_tools(runner: Runner, platform: PlatformInfo) -> None:
         "yq",
         "shellcheck",
         "tree",
+        "xh",
         "ast-grep",
         "sd",
         "git-delta",
         "typos",
         "uv",
     ]
-    script = _wsl_apt_install_script(packages)
-    runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
+    apt_packages: list[str] = []
+    fallback_packages: list[str] = []
+    for package in packages:
+        if _apt_package_available(runner, package, wsl_distro=distro):
+            apt_packages.append(package)
+        else:
+            fallback_packages.append(package)
+
+    if apt_packages:
+        script = _wsl_apt_install_script(apt_packages)
+        runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
+
+    for package in fallback_packages:
+        if not _install_apt_fallback(runner, package, wsl_distro=distro):
+            raise RuntimeError(f"Package '{package}' is not available via apt")
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
@@ -398,6 +418,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -413,6 +434,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -428,6 +450,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -443,6 +466,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
+            "xh",
             "ast-grep",
             "sd",
             "git-delta",
