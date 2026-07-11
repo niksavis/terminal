@@ -64,7 +64,7 @@ def _build_manifest(
         existing_outputs = dict(existing_manifest["outputs"])
 
     new_outputs = {
-        str(path.relative_to(_repo_root())): {
+        path.relative_to(_repo_root()).as_posix(): {
             "hash": sha256_of_text(content),
             "source_fragments": [f.id for f in planned_by_path[path].fragments],
         }
@@ -170,7 +170,7 @@ def cmd_check(_args: argparse.Namespace) -> int:
 
     for item in planned:
         content = _render_planned(repo_root, item)
-        rel_path = str(item.output_path.relative_to(repo_root))
+        rel_path = item.output_path.relative_to(repo_root).as_posix()
         expected_hash = sha256_of_text(content)
         expected_manifest_outputs[rel_path] = {
             "hash": expected_hash,
