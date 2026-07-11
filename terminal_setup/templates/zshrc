@@ -58,7 +58,11 @@ fi
 
 # Use bat if available (josean-dev style)
 if command -v bat >/dev/null 2>&1; then
-  export BAT_THEME=tokyonight_night
+  if bat --list-themes 2>/dev/null | grep -qx "tokyonight_night"; then
+    export BAT_THEME=tokyonight_night
+  else
+    unset BAT_THEME
+  fi
   alias cat="bat"
 fi
 
