@@ -177,6 +177,15 @@ p {
   margin: 0.75rem 0;
 }
 
+ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -309,6 +318,9 @@ footer svg {
           autocomplete="off"
         >
         <div class="controls">
+          <button id="clear-search" type="button" title="Clear search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.146 2.146a.5.5 0 0 1 .708 0L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854a.5.5 0 0 1 0-.708"/></svg>
+          </button>
           <button id="expand-all" type="button" title="Expand all sections">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5 a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
           </button>
@@ -326,17 +338,19 @@ footer svg {
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
     </div>
 <div class="section-body">
-<p>- New tab: <code>Ctrl + Shift + T</code></p>
-<p>- Close tab: <code>Ctrl + Shift + W</code></p>
-<p>- Close window: <code>Ctrl + Shift + Q</code></p>
-<p>- Copy selection: <code>Ctrl + Shift + C</code></p>
-<p>- Paste: <code>Ctrl + Shift + V</code></p>
-<p>- Split horizontal (direct): <code>Ctrl + Alt + backslash</code></p>
-<p>- Split vertical (direct): <code>Ctrl + Alt + -</code></p>
-<p>- Close pane (direct): <code>Ctrl + Alt + X</code></p>
-<p>- Split vertical: <code>Ctrl + A</code> then <code>-</code> or <code>s</code></p>
-<p>- Split horizontal: <code>Ctrl + A</code> then <code>backslash</code>, <code>pipe</code>, or <code>v</code></p>
-<p>- Close pane: <code>Ctrl + A</code> then <code>x</code></p>
+<ul>
+<li>New tab: <code>Ctrl + Shift + T</code></li>
+<li>Close tab: <code>Ctrl + Shift + W</code></li>
+<li>Close window: <code>Ctrl + Shift + Q</code></li>
+<li>Copy selection: <code>Ctrl + Shift + C</code></li>
+<li>Paste: <code>Ctrl + Shift + V</code></li>
+<li>Split horizontal (direct): <code>Ctrl + Alt + backslash</code></li>
+<li>Split vertical (direct): <code>Ctrl + Alt + -</code></li>
+<li>Close pane (direct): <code>Ctrl + Alt + X</code></li>
+<li>Split vertical: <code>Ctrl + A</code> then <code>-</code> or <code>s</code></li>
+<li>Split horizontal: <code>Ctrl + A</code> then <code>backslash</code>, <code>pipe</code>, or <code>v</code></li>
+<li>Close pane: <code>Ctrl + A</code> then <code>x</code></li>
+</ul>
 <p><code>Ctrl + A</code> is a leader key with a 3-second timeout: press and release it, then press the second key.</p>
 </div></section>
 <section class="collapsed">
@@ -1306,10 +1320,12 @@ footer svg {
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
     </div>
 <div class="section-body">
-<p>- ⚠️ <code>rm -rf</code> can destroy your system. Double-check paths before running.</p>
-<p>- ⚠️ <code>kill -9</code>, <code>pkill -f</code>, and <code>killall</code> terminate processes immediately without cleanup.</p>
-<p>- ⚠️ <code>sudo userdel -r</code> permanently deletes a user and their home directory.</p>
-<p>- Always use <code>rm -i</code> or review commands with <code>--dry-run</code> equivalents when available.</p>
+<ul>
+<li>⚠️ <code>rm -rf</code> can destroy your system. Double-check paths before running.</li>
+<li>⚠️ <code>kill -9</code>, <code>pkill -f</code>, and <code>killall</code> terminate processes immediately without cleanup.</li>
+<li>⚠️ <code>sudo userdel -r</code> permanently deletes a user and their home directory.</li>
+<li>Always use <code>rm -i</code> or review commands with <code>--dry-run</code> equivalents when available.</li>
+</ul>
 </div></section>
   </main>
   <footer>
@@ -1333,6 +1349,7 @@ footer svg {
   <script>
 (function () {
   const search = document.getElementById('search');
+  const clearSearch = document.getElementById('clear-search');
   const sections = Array.from(document.querySelectorAll('section'));
 
   const chevronRight = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" fill=\"currentColor\" class=\"bi bi-chevron-right\" viewBox=\"0 0 16 16\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708\"/></svg>";
@@ -1365,17 +1382,32 @@ footer svg {
   document.getElementById('expand-all').addEventListener('click', () => setAllCollapsed(false));
   document.getElementById('collapse-all').addEventListener('click', () => setAllCollapsed(true));
 
+  clearSearch.addEventListener('click', () => {
+    search.value = '';
+    updateSearch();
+    search.focus();
+  });
+
   function updateSearch() {
     const query = search.value.trim().toLowerCase();
     sections.forEach(section => {
       const rows = Array.from(section.querySelectorAll('tbody tr'));
-      let sectionMatch = false;
-      rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const match = !query || text.includes(query);
-        row.classList.toggle('hidden', !match);
-        if (match) sectionMatch = true;
-      });
+      let sectionMatch = !query;
+
+      if (rows.length > 0) {
+        sectionMatch = false;
+        rows.forEach(row => {
+          const text = row.innerText.toLowerCase();
+          const match = !query || text.includes(query);
+          row.classList.toggle('hidden', !match);
+          if (match) sectionMatch = true;
+        });
+      } else {
+        const body = section.querySelector('.section-body');
+        const text = body ? body.innerText.toLowerCase() : '';
+        sectionMatch = !query || text.includes(query);
+      }
+
       section.classList.toggle('hidden', !sectionMatch);
       if (sectionMatch && query) {
         section.classList.remove('collapsed');

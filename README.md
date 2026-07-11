@@ -152,6 +152,8 @@ wezterm
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
+WezTerm and tmux shortcuts in this README are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
+
 ## What gets installed
 
 ### On Windows (PowerShell / Git Bash)
@@ -196,7 +198,6 @@ The setup installs tools directly on the host.
 ## Cheat Sheet Publishing
 
 - Live page: [https://niksavis.github.io/terminal/](https://niksavis.github.io/terminal/)
-- Markdown source (GitHub): [https://github.com/niksavis/terminal/blob/main/terminal-cheat-sheet.md](https://github.com/niksavis/terminal/blob/main/terminal-cheat-sheet.md)
 - Source: [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md)
 - Build: [`.scripts/render-cheat-sheet.py`](.scripts/render-cheat-sheet.py) renders `terminal-cheat-sheet.html`
 - CI/CD: [`.github/workflows/cheat-sheet.yml`](.github/workflows/cheat-sheet.yml) renders on each change to the cheat-sheet source and deploys the generated HTML to GitHub Pages on pushes to `main`

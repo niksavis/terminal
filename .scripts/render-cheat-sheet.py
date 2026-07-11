@@ -26,6 +26,12 @@ def _bi(name: str, path: str) -> str:
 
 
 ICONS = {
+    "x-lg": _bi(
+        "x-lg",
+        '<path d="M2.146 2.146a.5.5 0 0 1 .708 0L8 7.293l5.146-5.147a.5.5 0 0 1 '
+        ".708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 "
+        '5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854a.5.5 0 0 1 0-.708"/>',
+    ),
     "plus-lg": _bi(
         "plus-lg",
         '<path fill-rule="evenodd" '
@@ -229,6 +235,15 @@ p {
   margin: 0.75rem 0;
 }
 
+ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+}
+
+li {
+  margin: 0.35rem 0;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -352,6 +367,7 @@ footer svg {
 JS = """
 (function () {
   const search = document.getElementById('search');
+  const clearSearch = document.getElementById('clear-search');
   const sections = Array.from(document.querySelectorAll('section'));
 
   const chevronRight = __CHEVRON_RIGHT_SVG__;
@@ -384,17 +400,32 @@ JS = """
   document.getElementById('expand-all').addEventListener('click', () => setAllCollapsed(false));
   document.getElementById('collapse-all').addEventListener('click', () => setAllCollapsed(true));
 
+  clearSearch.addEventListener('click', () => {
+    search.value = '';
+    updateSearch();
+    search.focus();
+  });
+
   function updateSearch() {
     const query = search.value.trim().toLowerCase();
     sections.forEach(section => {
       const rows = Array.from(section.querySelectorAll('tbody tr'));
-      let sectionMatch = false;
-      rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        const match = !query || text.includes(query);
-        row.classList.toggle('hidden', !match);
-        if (match) sectionMatch = true;
-      });
+      let sectionMatch = !query;
+
+      if (rows.length > 0) {
+        sectionMatch = false;
+        rows.forEach(row => {
+          const text = row.innerText.toLowerCase();
+          const match = !query || text.includes(query);
+          row.classList.toggle('hidden', !match);
+          if (match) sectionMatch = true;
+        });
+      } else {
+        const body = section.querySelector('.section-body');
+        const text = body ? body.innerText.toLowerCase() : '';
+        sectionMatch = !query || text.includes(query);
+      }
+
       section.classList.toggle('hidden', !sectionMatch);
       if (sectionMatch && query) {
         section.classList.remove('collapsed');
@@ -408,8 +439,46 @@ JS = """
 """
 
 
+def _parse_table_block(lines: list[str], start: int) -> tuple[dict | None, int]:
+    """Parse a markdown table block and return parsed block + next index."""
+    rows: list[list[str]] = []
+    i = start
+    while i < len(lines) and lines[i].startswith("|"):
+        # Split on pipes, treating `|` inside backticks as cell content.
+        row_text = lines[i][1:-1]
+        cells: list[str] = []
+        current_cell = ""
+        in_backticks = False
+        for char in row_text:
+            if char == "`":
+                in_backticks = not in_backticks
+                current_cell += char
+            elif char == "|" and not in_backticks:
+                cells.append(current_cell.strip())
+                current_cell = ""
+            else:
+                current_cell += char
+        cells.append(current_cell.strip())
+        rows.append(cells)
+        i += 1
+
+    if len(rows) >= 2 and all(set(cell) <= {"-", ":", " "} for cell in rows[1]):
+        return {"type": "table", "header": rows[0], "rows": rows[2:]}, i
+    return None, i
+
+
+def _parse_list_block(lines: list[str], start: int) -> tuple[dict, int]:
+    """Parse a markdown bullet-list block and return parsed block + next index."""
+    items: list[str] = []
+    i = start
+    while i < len(lines) and lines[i].startswith("- "):
+        items.append(lines[i][2:].strip())
+        i += 1
+    return {"type": "list", "items": items}, i
+
+
 def parse_markdown(md: str) -> list[dict]:
-    """Parse markdown into sections with headings, paragraphs, and tables."""
+    """Parse markdown into sections with headings, paragraphs, lists, and tables."""
     sections: list[dict] = []
     current: dict | None = None
     lines = md.splitlines()
@@ -428,27 +497,13 @@ def parse_markdown(md: str) -> list[dict]:
             i += 1
             continue
         if line.startswith("|"):
-            rows: list[list[str]] = []
-            while i < len(lines) and lines[i].startswith("|"):
-                # Split on pipes, treating `|` inside backticks as cell content.
-                row_text = lines[i][1:-1]
-                cells: list[str] = []
-                current_cell = ""
-                in_backticks = False
-                for char in row_text:
-                    if char == "`":
-                        in_backticks = not in_backticks
-                        current_cell += char
-                    elif char == "|" and not in_backticks:
-                        cells.append(current_cell.strip())
-                        current_cell = ""
-                    else:
-                        current_cell += char
-                cells.append(current_cell.strip())
-                rows.append(cells)
-                i += 1
-            if len(rows) >= 2 and all(set(cell) <= {"-", ":", " "} for cell in rows[1]):
-                current["body"].append({"type": "table", "header": rows[0], "rows": rows[2:]})
+            block, i = _parse_table_block(lines, i)
+            if block is not None:
+                current["body"].append(block)
+                continue
+        if line.startswith("- "):
+            block, i = _parse_list_block(lines, i)
+            current["body"].append(block)
             continue
         if line.strip():
             current["body"].append({"type": "paragraph", "text": line.strip()})
@@ -488,6 +543,11 @@ def render_sections(sections: list[dict]) -> str:
         for block in section["body"]:
             if block["type"] == "paragraph":
                 parts.append(f"<p>{render_cell(block['text'])}</p>")
+            elif block["type"] == "list":
+                parts.append("<ul>")
+                for item in block["items"]:
+                    parts.append(f"<li>{render_cell(item)}</li>")
+                parts.append("</ul>")
             elif block["type"] == "table":
                 parts.append("<table>")
                 parts.append("<thead><tr>")
@@ -536,6 +596,9 @@ def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
           autocomplete="off"
         >
         <div class="controls">
+          <button id="clear-search" type="button" title="Clear search">
+            {ICONS["x-lg"]}
+          </button>
           <button id="expand-all" type="button" title="Expand all sections">
             {ICONS["plus-lg"]}
           </button>
