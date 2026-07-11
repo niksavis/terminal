@@ -21,6 +21,10 @@
   "python.defaultInterpreterPath": "${workspaceFolder}/.venv",
   "python.analysis.autoImportCompletions": true,
   "ruff.nativeServer": "on",
+  "ruff.path": [
+    "${workspaceFolder}/.venv/Scripts/ruff.exe",
+    "${workspaceFolder}/.venv/bin/ruff"
+  ],
   "ruff.configuration": "${workspaceFolder}/.ruff.toml",
   "ruff.organizeImports": true,
   "ruff.fixAll": true,
