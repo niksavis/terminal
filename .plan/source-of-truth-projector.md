@@ -1,5 +1,13 @@
 # Source-of-Truth Projector Plan (Implementation-Ready)
 
+> **Plan status** (2026-07-11): Phase 1 (basic implementation) is complete and passing
+> quality gates. Codex target was corrected during implementation: Codex uses `AGENTS.md`
+> plus `.codex/rules/*.rules`, so basicly emits only the shared `AGENTS.md` baseline for
+> Codex and defers `.codex/rules/` to a future phase. Phase 2 (user customization
+> extension mechanism) is planned in [source-of-truth-projector-extensions.md](source-of-truth-projector-extensions.md);
+> the basic schema and directory layout are being prepared to support it without
+> breaking current behavior.
+
 ## 1) Research Summary (Adopt / Adapt / Discard)
 
 1. Adopt: Fowler's three-layer priority model (training data < conversation context < explicit priming) as the core reason to keep generated instructions explicit, short, and high-signal.
@@ -15,18 +23,26 @@
 11. Discard (for now): any DB/server/daemon model; deterministic file-in/file-out generation is enough.
 12. Gap noted: Lattice centers Claude/Cursor (and plugin packaging for Codex), while this project must support idiomatic multi-target projection including Copilot and AGENTS baseline patterns.
 
-## 2) Scope for First Implementation
+## 2) Scope
 
-- Build a small CLI (Python 3.14+ with `uv`) to read source fragments and project deterministic outputs.
-- Support these initial targets end-to-end:
-  - **Claude Code**: root `AGENTS.md` baseline, `.claude/CLAUDE.md` wrapper, and one path-scoped rule under `.claude/rules/`.
-  - **GitHub Copilot**: `.github/copilot-instructions.md` baseline and one path-scoped instruction under `.github/instructions/`.
-  - **Codex (OpenAI)**: `AGENTS.md` baseline (shared with Claude) and `.codex/rules/*.md` for path-scoped rules, following Codex's documented `AGENTS.md` + `.codex/rules/` convention.
-- Provide commands: `list`, `build`, `build --target <name>`, `check`.
-- Add a GitHub Actions CI check that fails when generated outputs are stale.
-- Provide a README with add-fragment and add-target instructions.
-- **Deferred to phase 2**: Cursor, skills/hooks as first-class generated artifacts, molecule workflows.
-- **First build goal**: reproduce the existing `AGENTS.md`, `.claude/CLAUDE.md`, and `.github/copilot-instructions.md` files with minimal diff, then add the generated header and stable ordering.
+### 2.1 Phase 1 — Completed
+
+- [x] Build a small CLI (Python 3.14+ with `uv`) to read source fragments and project deterministic outputs.
+- [x] Support these initial targets end-to-end:
+  - **Claude Code**: root `AGENTS.md` baseline, `.claude/CLAUDE.md` wrapper, and path-scoped rules under `.claude/rules/`.
+  - **GitHub Copilot**: `.github/copilot-instructions.md` baseline and path-scoped instructions under `.github/instructions/`.
+  - **Codex (OpenAI)**: shared `AGENTS.md` baseline only (Codex's `.codex/rules/*.rules` format is deferred).
+- [x] Provide commands: `list`, `build`, `build --target <name>`, `check`.
+- [x] Add a GitHub Actions CI check that fails when generated outputs are stale.
+- [x] Provide a README with add-fragment and add-target instructions.
+- [x] Reproduce the existing `AGENTS.md`, `.claude/CLAUDE.md`, and `.github/copilot-instructions.md` files with minimal diff, then add the generated header and stable ordering.
+
+### 2.2 Phase 2 — Planned
+
+- **User customization extension mechanism**: allow users to add fragments that survive
+  updates to core agent configs, with verification, conflict detection, and explicit
+  override semantics. Detailed in [source-of-truth-projector-extensions.md](source-of-truth-projector-extensions.md).
+- **Deferred**: Cursor target, skills/hooks as first-class generated artifacts, molecule workflows, Codex `.codex/rules/*.rules` scoped rules.
 
 ## 3) Design Note (Architecture for Reviewers)
 
@@ -124,19 +140,22 @@ Because the directory lives next to `.claude/`, `.github/`, and `.scripts/`, a d
 ```text
 .basicly/
   fragments/
-    boundaries/
-      require-explicit-confirmation.fragment.md
-    code-style/
-      python-style.fragment.md
-    commands/
-      basicly-check.fragment.md
-    project/
-      project-defaults.fragment.md
-      core-rules.fragment.md
-      quality-gate.fragment.md
-      if-stuck.fragment.md
-    security/
-      no-secrets.fragment.md
+    core/                       # shipped with basicly (phase 2)
+      boundaries/
+        require-explicit-confirmation.fragment.md
+      code-style/
+        python-style.fragment.md
+      commands/
+        basicly-check.fragment.md
+      project/
+        project-defaults.fragment.md
+        core-rules.fragment.md
+        quality-gate.fragment.md
+        if-stuck.fragment.md
+      security/
+        no-secrets.fragment.md
+    user/                       # user customizations (phase 2)
+      # user-created fragments
     targets/
       claude.yaml
       copilot.yaml
@@ -151,8 +170,6 @@ Because the directory lives next to `.claude/`, `.github/`, and `.scripts/`, a d
       instruction_md.j2
     codex/
       agents_md.j2
-      codex_md.j2
-      rule_md.j2
   basicly/
     __init__.py
     cli.py
@@ -173,6 +190,11 @@ Because the directory lives next to `.claude/`, `.github/`, and `.scripts/`, a d
   generated-manifest.json
   README.md
 ```
+
+**Phase 1 note**: fragments currently live directly under `.basicly/fragments/<category>/`
+without the `core/` prefix. The `core/` and `user/` split is a preparatory layout for
+phase 2; moving existing fragments into `core/` will happen as part of implementing the
+extension mechanism.
 
 **Naming decision**: the source root folder is `.basicly/`. It is the self-contained, extractable subsystem described in section 3.5. The Python package inside it is `.basicly/basicly/` (underscores for valid imports). Scripts and CI add `.basicly/` to `PYTHONPATH` and invoke the CLI as `python -m basicly.cli`.
 
@@ -435,27 +457,18 @@ Copilot does not support `@`-style imports. Therefore the Copilot baseline **inl
 #### Codex outputs
 
 1. `AGENTS.md` — cross-tool baseline from `applies_to: [all]` fragments (shared with Claude).
-2. `.codex/CODEX.md` — Codex-specific wrapper that references `AGENTS.md`, plus `applies_to: [codex]` fragments.
-3. `.codex/rules/{fragment_id}.md` — one file per path-scoped fragment with `applies_to: [codex]`.
 
 #### Codex activation mapping
 
-- Always-on content goes into `AGENTS.md` and `.codex/CODEX.md`.
-- Path-scoped rules use Codex's `paths:` front matter (same convention as Claude Code):
-
-```markdown
----
-description: <fragment description>
-paths:
-  - "**/*.py"
----
-```
+Codex's documented convention is `AGENTS.md` plus `.codex/rules/*.rules` files. During
+implementation we confirmed there is no `.codex/CODEX.md` wrapper. Basicly therefore
+emits only the shared `AGENTS.md` baseline in phase 1. Path-scoped `.codex/rules/*.rules`
+files are deferred to phase 2 so the correct front-matter format can be researched and
+verified.
 
 #### Codex tone/density
 
 - `AGENTS.md`: directive, sectioned by category (shared baseline).
-- `CODEX.md`: concise wrapper; defers to `AGENTS.md` for shared rules.
-- Scoped rules: narrow, imperative, no cross-agent noise.
 
 #### Codex size guidance
 
@@ -604,13 +617,14 @@ Tests live in `.basicly/tests/` and run with `uv run pytest .basicly/tests/`.
 
 ## 12) Validation Plan
 
-- [ ] Edit `project/core-rules.fragment.md` and run `build`; only `AGENTS.md` and `.github/copilot-instructions.md` change.
-- [ ] Edit `project/claude-defaults.fragment.md` and run `build`; only `.claude/CLAUDE.md` changes.
-- [ ] Edit `code-style/python-style.fragment.md` and run `build`; `AGENTS.md`, `.claude/rules/python-style.md`, and `.github/instructions/python-style.instructions.md` change.
-- [ ] Run `build` twice with no source changes; `git diff` is empty.
-- [ ] Run `check` after `build`; exits `0`.
-- [ ] Manually edit a generated file; run `check`; exits `1` with a clear diff summary.
-- [ ] Review generated Claude and Copilot files with a native user of each tool; confirm they look idiomatic.
+- [x] Edit `project/core-rules.fragment.md` and run `build`; only `AGENTS.md` and `.github/copilot-instructions.md` change.
+- [x] Edit `project/claude-defaults.fragment.md` and run `build`; only `.claude/CLAUDE.md` changes.
+- [x] Edit `code-style/python-style.fragment.md` and run `build`; `AGENTS.md`, `.claude/rules/python-style.md`, and `.github/instructions/python-style.instructions.md` change.
+- [x] Run `build` twice with no source changes; `git diff` is empty.
+- [x] Run `check` after `build`; exits `0`.
+- [x] Manually edit a generated file; run `check`; exits `1` with a clear diff summary.
+- [x] Review generated Claude and Copilot files with official docs; confirm they look idiomatic.
+- [ ] Review generated files with a native user of each tool in a real session (deferred).
 
 ## 13) Known Risks and Mitigations
 
@@ -624,6 +638,8 @@ Tests live in `.basicly/tests/` and run with `uv run pytest .basicly/tests/`.
   - *Mitigation*: soft warnings only in phase 1; tune after measuring real outputs.
 - **Risk**: migration diff is noisy.
   - *Mitigation*: iterate fragments/templates until the diff is just the generated header and stable sort.
+- **Risk**: user customizations in phase 2 silently conflict with core fragments.
+  - *Mitigation*: add explicit `override`/`replaces` fields and a `verify` step that reports conflicts before writing outputs.
 
 ## 14) Decisions Made (Confirm in Review)
 
@@ -635,6 +651,39 @@ Tests live in `.basicly/tests/` and run with `uv run pytest .basicly/tests/`.
 6. **Check mode**: byte-for-byte exactness.
 7. **CI target**: GitHub Actions workflow `.github/workflows/basicly.yml`.
 8. **Dependencies**: `pyyaml`, `jinja2` (runtime); `pytest` (dev).
+9. **Codex correction**: basicly emits only the shared `AGENTS.md` baseline for Codex; `.codex/CODEX.md` is not a real Codex file and `.codex/rules/*.rules` is deferred.
+10. **Phase 2 preparation**: fragment schema will gain `source`, `override`, `replaces`, and `extends` fields with safe defaults so user customizations can be layered on core fragments later.
+
+## 15) Preparation for Phase 2: User Customizations
+
+Phase 2 will let users add their own fragments that survive updates to the core agent
+configs shipped with basicly. The basic implementation is being prepared with these
+hooks:
+
+- **Schema fields** (added with phase-1-safe defaults):
+  - `source`: `"core"` | `"user"`. Defaults to `"core"` for backward compatibility.
+  - `override`: `bool`. Defaults to `false`. When `true`, the fragment can replace
+    conflicting core fragments in the generated output.
+  - `replaces`: list of fragment ids. Explicit list of core fragments to remove when
+    this fragment is active.
+  - `extends`: list of fragment ids. Explicit list of core fragments this fragment
+    augments (for documentation and conflict detection).
+
+- **Directory layout**: `.basicly/fragments/core/` and `.basicly/fragments/user/` are
+  reserved. Phase 1 keeps the flat `.basicly/fragments/<category>/` layout; phase 2
+  will move core fragments under `core/` and load user fragments from `user/`.
+
+- **Verification hook**: the planner will later accept a `verify` step that runs before
+  writing outputs: detect duplicate guidance, contradictory statements, ambiguous rules,
+  and scope overlaps between core and user fragments. Conflicts will be reported with
+  file paths and suggested resolutions.
+
+- **Override workflow**: when a conflict is detected, the user can either edit the user
+  fragment to avoid the conflict or mark it with `override: true` (and optionally
+  `replaces: [core-id]`). The build then omits the replaced core fragments from the
+  generated files.
+
+The full design is documented in [source-of-truth-projector-extensions.md](source-of-truth-projector-extensions.md).
 
 ## References
 

@@ -1,0 +1,8 @@
+{{ header }}# Codex Defaults
+
+See `AGENTS.md` for shared rules. Keep this file Codex-specific.
+
+{% for fragment in fragments %}## {{ fragment.title }}
+
+{{ fragment.body }}
+{% endfor %}

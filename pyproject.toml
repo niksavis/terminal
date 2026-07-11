@@ -7,7 +7,9 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.14",
 ]
-dependencies = []
+dependencies = [
+  "pyyaml>=6.0",
+]
 
 [dependency-groups]
 dev = [
@@ -24,6 +26,14 @@ dev = [
   "ruff>=0.15.21",
   "vulture>=2.16",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = [".basicly"]
+addopts = ["--import-mode=importlib"]
+
+[tool.bandit]
+exclude_dirs = [".basicly/tests", "tests"]
+skips = ["B101"]
 
 [tool.uv]
 package = false

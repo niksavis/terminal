@@ -1,0 +1,8 @@
+{{ header }}# Claude Defaults
+
+See `AGENTS.md` for shared rules. Keep this file Claude-specific.
+
+{% for fragment in fragments %}## {{ fragment.title }}
+
+{{ fragment.body }}
+{% endfor %}

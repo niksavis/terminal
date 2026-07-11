@@ -1,0 +1,16 @@
+name: copilot
+enabled: true
+tone: concise_checklist
+max_size_warning: 6000
+outputs:
+  copilot_baseline:
+    path: .github/copilot-instructions.md
+    template: copilot/copilot_instructions_md.j2
+    filter:
+      applies_to: [all, copilot]
+  scoped_instructions:
+    path_template: .github/instructions/{fragment_id}.instructions.md
+    template: copilot/instruction_md.j2
+    filter:
+      applies_to: [all, copilot]
+      has_scope: true

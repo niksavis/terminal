@@ -1,0 +1,10 @@
+name: codex
+enabled: true
+tone: terse_directive
+max_size_warning: 8000
+outputs:
+  agents_baseline:
+    path: AGENTS.md
+    template: codex/agents_md.j2
+    filter:
+      applies_to: [all]
