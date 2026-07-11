@@ -4,10 +4,48 @@
 
 local wezterm = require("wezterm")
 local config = wezterm.config_builder and wezterm.config_builder() or {}
+local is_windows = wezterm.target_triple:find("windows") ~= nil
 
 -- Default to WSL Ubuntu on Windows, otherwise the native shell.
-if wezterm.target_triple:find("windows") then
-  config.default_domain = "WSL:Ubuntu"
+if is_windows then
+  local function pick_wsl_domain()
+    local ok, domains = pcall(function()
+      return wezterm.default_wsl_domains()
+    end)
+    if not ok or type(domains) ~= "table" then
+      return nil
+    end
+    config.wsl_domains = domains
+
+    local preferred = {
+      "WSL:Ubuntu-24.04",
+      "WSL:Ubuntu",
+    }
+    for _, candidate in ipairs(preferred) do
+      for _, domain in ipairs(domains) do
+        if domain.name == candidate then
+          return candidate
+        end
+      end
+    end
+
+    for _, domain in ipairs(domains) do
+      local name = domain.name
+      if type(name) == "string" and name:lower():find("wsl:ubuntu", 1, true) then
+        return name
+      end
+    end
+
+    if #domains > 0 and type(domains[1].name) == "string" then
+      return domains[1].name
+    end
+    return nil
+  end
+
+  local domain = pick_wsl_domain()
+  if domain then
+    config.default_domain = domain
+  end
 end
 
 config.default_prog = nil
@@ -32,26 +70,42 @@ config.colors = {
   brights = { "#214969", "#E52E2E", "#44FFB1", "#FFE073", "#A277FF", "#a277ff", "#24EAF7", "#24EAF7" },
 }
 
--- Font: MesloLGS Nerd Font Mono for icons and glyphs.
-config.font = wezterm.font_with_fallback({
-  "MesloLGS Nerd Font Mono",
-  "JetBrains Mono",
-  "Fira Code",
-  "Consolas",
-  "Noto Color Emoji",
-})
+-- Put broadly available fonts first to avoid startup warnings on fresh machines.
+if is_windows then
+  config.font = wezterm.font_with_fallback({
+    "Consolas",
+    "Cascadia Mono",
+    "MesloLGS Nerd Font Mono",
+    "Noto Color Emoji",
+  })
+else
+  config.font = wezterm.font_with_fallback({
+    "DejaVu Sans Mono",
+    "Noto Sans Mono",
+    "MesloLGS Nerd Font Mono",
+    "JetBrains Mono",
+    "Noto Color Emoji",
+  })
+end
 config.font_size = 13.0
 
 -- Window appearance.
 config.enable_tab_bar = true
-config.hide_tab_bar_if_only_one_tab = true
-config.use_fancy_tab_bar = false
-config.tab_bar_at_bottom = true
-config.window_decorations = "RESIZE"
+config.hide_tab_bar_if_only_one_tab = false
+config.use_fancy_tab_bar = true
+config.tab_bar_at_bottom = false
+config.window_decorations = "TITLE | RESIZE"
 
 -- Key bindings.
 config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
 config.keys = {
+  { key = "t", mods = "CTRL", action = wezterm.action.SpawnTab("DefaultDomain") },
+  { key = "w", mods = "CTRL", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
+  { key = "q", mods = "CTRL|SHIFT", action = wezterm.action.QuitApplication },
+  { key = "=", mods = "CTRL|SHIFT", action = wezterm.action.IncreaseFontSize },
+  { key = "-", mods = "CTRL|SHIFT", action = wezterm.action.DecreaseFontSize },
+  { key = "0", mods = "CTRL", action = wezterm.action.ResetFontSize },
+  { key = "Enter", mods = "ALT", action = wezterm.action.ToggleFullScreen },
   { key = "c", mods = "LEADER", action = wezterm.action.SpawnTab("DefaultDomain") },
   { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = false }) },
   { key = "|", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
@@ -62,8 +116,5 @@ config.keys = {
   { key = "l", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Right") },
   { key = "z", mods = "LEADER", action = wezterm.action.TogglePaneZoomState },
 }
-
--- Mouse support.
-config.enable_mouse = true
 
 return config

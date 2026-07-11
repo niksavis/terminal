@@ -21,6 +21,9 @@ setopt AUTO_PUSHD
 setopt PUSHD_IGNORE_DUPS
 setopt EXTENDED_GLOB
 
+# Ensure user-local binaries are available (starship, fd, bat shims).
+export PATH="$HOME/.local/bin:$PATH"
+
 # Completion
 autoload -Uz compinit
 compinit -d ~/.zcompdump
@@ -67,7 +70,13 @@ fi
 
 # fzf integration (josean-dev style)
 if command -v fzf >/dev/null 2>&1; then
-  eval "$(fzf --zsh)"
+  # Newer fzf versions support `fzf --zsh`; older distro builds expose scripts only.
+  if fzf --zsh >/dev/null 2>&1; then
+    eval "$(fzf --zsh)"
+  else
+    [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
+    [[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
+  fi
 
   fg="#CBE0F0"
   bg="#011628"

@@ -67,6 +67,13 @@ def set_wsl_default_shell(
 ) -> None:
     """Set the default shell inside WSL Ubuntu."""
     distro = _wsl_distro(platform)
+    current_shell = runner.run(
+        ["wsl", "-d", distro, "--", "sh", "-c", "getent passwd $(whoami) | cut -d: -f7"],
+        check=False,
+        dry_run_safe=True,
+    ).stdout.strip()
+    if current_shell == shell:
+        return
     # chsh may prompt for the user's password.
     runner.run(["wsl", "-d", distro, "--", "chsh", "-s", shell], interactive=True)
 
@@ -77,6 +84,11 @@ def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = 
         return
     shell_path = runner.which(shell)
     if shell_path is None:
+        return
+    current_shell = runner.run(
+        ["sh", "-c", "getent passwd $(whoami) | cut -d: -f7"], check=False
+    ).stdout.strip()
+    if current_shell == shell_path:
         return
     # chsh may prompt for the user's password.
     runner.run(["chsh", "-s", shell_path], interactive=True)
@@ -109,7 +121,7 @@ def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
         rest = str(windows_path)[len(windows_path.drive) :].replace("\\", "/")
         return f"/mnt/{drive}{rest}"
     result = runner.run(
-        ["wsl", "-d", distro, "--", "wslpath", "-u", str(windows_path)],
+        ["wsl", "-d", distro, "--", "wslpath", "-u", str(windows_path).replace("\\", "/")],
         check=True,
     )
     return result.stdout.strip()
@@ -147,17 +159,34 @@ def configure_vscode_terminal(runner: Runner, platform: PlatformInfo) -> None:
         try:
             settings = json.loads(settings_path.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            settings = {}
+            runner.reporter.warn(
+                "VS Code settings.json is not strict JSON; skipping terminal profile update "
+                "to avoid overwriting existing settings."
+            )
+            return
 
     if platform.os == OperatingSystem.WINDOWS:
-        settings["terminal.integrated.defaultProfile.windows"] = "Ubuntu (WSL)"
-        settings["terminal.integrated.profiles.windows"] = {
-            "Ubuntu (WSL)": {
-                "path": "C:\\Windows\\System32\\wsl.exe",
-                "args": ["-d", "Ubuntu"],
-                "icon": "terminal-ubuntu",
-            }
+        distro = _wsl_distro(platform)
+        profiles = settings.get("terminal.integrated.profiles.windows", {})
+        if not isinstance(profiles, dict):
+            profiles = {}
+
+        # Remove synthetic profile from older setup versions.
+        profiles.pop("WSL (Default)", None)
+
+        # Remove stale Ubuntu profile when the active distro is a different Ubuntu variant.
+        if distro.lower() != "ubuntu":
+            profiles.pop("Ubuntu (WSL)", None)
+
+        profile_name = f"{distro} (WSL)"
+        profiles[profile_name] = {
+            "path": "C:\\Windows\\System32\\wsl.exe",
+            "args": ["-d", distro],
+            "icon": "terminal-ubuntu",
         }
+
+        settings["terminal.integrated.defaultProfile.windows"] = profile_name
+        settings["terminal.integrated.profiles.windows"] = profiles
     elif platform.os == OperatingSystem.LINUX:
         settings["terminal.integrated.defaultProfile.linux"] = "zsh"
     elif platform.os == OperatingSystem.MACOS:
@@ -169,9 +198,13 @@ def configure_vscode_terminal(runner: Runner, platform: PlatformInfo) -> None:
 
 def ensure_vscode_extension(runner: Runner, extension_id: str) -> None:
     """Install a VS Code extension if code is available."""
-    if runner.which("code") is None:
+    code_path = runner.which("code")
+    if code_path is None:
         return
-    runner.run(["code", "--install-extension", extension_id])
+    if code_path.lower().endswith((".cmd", ".bat")):
+        runner.run(["cmd", "/c", code_path, "--install-extension", extension_id])
+        return
+    runner.run([code_path, "--install-extension", extension_id])
 
 
 def install_vscode_wsl_extension(runner: Runner, platform: PlatformInfo) -> None:

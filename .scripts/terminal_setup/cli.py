@@ -45,7 +45,117 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Install tools into user-writable locations without admin rights (Windows only).",
     )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Print a post-setup verification report for tools and deployed configs.",
+    )
     return parser
+
+
+def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> None:
+    """Print a single report status line."""
+    suffix = f" ({detail})" if detail else ""
+    if ok:
+        runner.reporter.info(f"[REPORT][OK] {label}{suffix}")
+        return
+    runner.reporter.warn(f"[REPORT][MISSING] {label}{suffix}")
+
+
+def _wsl_command_present(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> tuple[bool, str]:
+    """Return whether a command exists inside the configured WSL distro."""
+    distro = platform_info.wsl_distribution or "Ubuntu"
+    script = (
+        f"command -v {command} || (test -x ~/.local/bin/{command} && echo ~/.local/bin/{command})"
+    )
+    result = runner.run(
+        ["wsl", "-d", distro, "--", "sh", "-c", script],
+        check=False,
+        dry_run_safe=True,
+    )
+    output = result.stdout.strip()
+    return result.returncode == 0 and bool(output), output
+
+
+def _wsl_file_exists(
+    runner: Runner, platform_info: platform.PlatformInfo, path: str
+) -> tuple[bool, str]:
+    """Return whether a file exists inside the configured WSL distro."""
+    distro = platform_info.wsl_distribution or "Ubuntu"
+    result = runner.run(
+        ["wsl", "-d", distro, "--", "sh", "-c", f"test -f {path}"],
+        check=False,
+        dry_run_safe=True,
+    )
+    return result.returncode == 0, path
+
+
+def print_setup_report(
+    runner: Runner,
+    platform_info: platform.PlatformInfo,
+    *,
+    include_starship: bool,
+    include_vscode: bool,
+) -> None:
+    """Print a concise post-setup report of tools and deployed configs."""
+    runner.reporter.info("[REPORT] Setup verification summary")
+
+    if platform_info.os == platform.OperatingSystem.WINDOWS:
+        for command in ["wezterm", "starship"]:
+            if command == "starship" and not include_starship:
+                continue
+            path = runner.which(command)
+            _report_status(runner, f"windows:{command}", path is not None, path or "")
+
+        if platform_info.wezterm_config_dir is not None:
+            wezterm_path = platform_info.wezterm_config_dir / "wezterm.lua"
+            _report_status(
+                runner,
+                "windows:wezterm.lua",
+                wezterm_path.exists(),
+                str(wezterm_path),
+            )
+        cheat_sheet = platform_info.home / "terminal-cheat-sheet.html"
+        _report_status(
+            runner,
+            "windows:terminal-cheat-sheet.html",
+            cheat_sheet.exists(),
+            str(cheat_sheet),
+        )
+
+        for command in ["zsh", "tmux", "fzf", "fdfind", "batcat", "eza", "zoxide", "rg"]:
+            ok, detail = _wsl_command_present(runner, platform_info, command)
+            _report_status(runner, f"wsl:{command}", ok, detail)
+        if include_starship:
+            ok, detail = _wsl_command_present(runner, platform_info, "starship")
+            _report_status(runner, "wsl:starship", ok, detail)
+        for path in [
+            "~/.local/bin/fd",
+            "~/.local/bin/bat",
+            "~/.tmux.conf",
+            "~/.zshrc",
+            "~/.config/starship.toml",
+            "~/terminal-cheat-sheet.html",
+        ]:
+            ok, detail = _wsl_file_exists(runner, platform_info, path)
+            _report_status(runner, f"wsl:{path}", ok, detail)
+    else:
+        for command in ["wezterm", "zsh", "tmux", "fzf", "eza", "zoxide", "rg"]:
+            path = runner.which(command)
+            _report_status(runner, f"host:{command}", path is not None, path or "")
+        if include_starship:
+            path = runner.which("starship")
+            _report_status(runner, "host:starship", path is not None, path or "")
+
+    if include_vscode and platform_info.vscode_settings_path is not None:
+        _report_status(
+            runner,
+            "vscode:settings.json",
+            platform_info.vscode_settings_path.exists(),
+            str(platform_info.vscode_settings_path),
+        )
 
 
 def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
@@ -65,13 +175,14 @@ def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
     return 0
 
 
-def run_setup(
+def run_setup(  # noqa: PLR0913
     platform_info: platform.PlatformInfo,
     runner: Runner,
     *,
     skip_vscode: bool,
     skip_starship: bool,
     user_install: bool,
+    report: bool,
 ) -> int:
     """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
@@ -103,6 +214,14 @@ def run_setup(
         configs.install_vscode_wsl_extension(runner, platform_info)
         configs.configure_vscode_terminal(runner, platform_info)
 
+    if report:
+        print_setup_report(
+            runner,
+            platform_info,
+            include_starship=not skip_starship,
+            include_vscode=not skip_vscode,
+        )
+
     runner.reporter.info("Setup complete.")
     if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
         runner.reporter.info("Restart your terminal for the updated PATH to take effect.")
@@ -133,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_vscode=args.skip_vscode,
         skip_starship=args.skip_starship,
         user_install=args.user_install,
+        report=args.report,
     )
 
 

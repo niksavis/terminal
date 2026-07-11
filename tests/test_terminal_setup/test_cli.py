@@ -27,6 +27,13 @@ def test_parser_skip_flags() -> None:
     assert args.skip_starship is True
 
 
+def test_parser_report_flag() -> None:
+    """The parser must accept --report."""
+    parser = build_parser()
+    args = parser.parse_args(["--report"])
+    assert args.report is True
+
+
 def test_main_check_mode() -> None:
     """Main with --check must return 0 or 1 without side effects."""
     result = main(["--check", "--dry-run"])

@@ -111,6 +111,73 @@ def test_configure_vscode_terminal_windows(tmp_path: Path) -> None:
     assert settings.get("terminal.integrated.defaultProfile.windows") == "Ubuntu (WSL)"
     profiles = settings.get("terminal.integrated.profiles.windows", {})
     assert "Ubuntu (WSL)" in profiles
+    assert profiles["Ubuntu (WSL)"]["args"] == ["-d", "Ubuntu"]
+
+
+def test_configure_vscode_terminal_windows_uses_detected_distro(tmp_path: Path) -> None:
+    """Windows profile should follow the detected WSL distro name."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    platform = PlatformInfo(
+        os=platform.os,
+        package_manager=platform.package_manager,
+        is_wsl_available=platform.is_wsl_available,
+        is_wsl_default_ubuntu=platform.is_wsl_default_ubuntu,
+        wsl_distribution="Ubuntu-24.04",
+        shell=platform.shell,
+        home=platform.home,
+        wezterm_config_dir=platform.wezterm_config_dir,
+        vscode_settings_path=platform.vscode_settings_path,
+    )
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform)
+
+    assert platform.vscode_settings_path is not None
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    assert settings.get("terminal.integrated.defaultProfile.windows") == "Ubuntu-24.04 (WSL)"
+    profiles = settings.get("terminal.integrated.profiles.windows", {})
+    assert "Ubuntu-24.04 (WSL)" in profiles
+    assert profiles["Ubuntu-24.04 (WSL)"]["args"] == ["-d", "Ubuntu-24.04"]
+    assert "Ubuntu (WSL)" not in profiles
+
+
+def test_configure_vscode_terminal_windows_removes_stale_ubuntu_profile(tmp_path: Path) -> None:
+    """Stale Ubuntu profile should be removed when detected distro is Ubuntu-24.04."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    platform = PlatformInfo(
+        os=platform.os,
+        package_manager=platform.package_manager,
+        is_wsl_available=platform.is_wsl_available,
+        is_wsl_default_ubuntu=platform.is_wsl_default_ubuntu,
+        wsl_distribution="Ubuntu-24.04",
+        shell=platform.shell,
+        home=platform.home,
+        wezterm_config_dir=platform.wezterm_config_dir,
+        vscode_settings_path=platform.vscode_settings_path,
+    )
+    assert platform.vscode_settings_path is not None
+    stale = {
+        "terminal.integrated.profiles.windows": {
+            "WSL (Default)": {
+                "path": "C:\\Windows\\System32\\wsl.exe",
+                "icon": "terminal-ubuntu",
+            },
+            "Ubuntu (WSL)": {
+                "path": "C:\\Windows\\System32\\wsl.exe",
+                "args": ["-d", "Ubuntu"],
+                "icon": "terminal-ubuntu",
+            },
+        }
+    }
+    platform.vscode_settings_path.write_text(json.dumps(stale, indent=2) + "\n", encoding="utf-8")
+
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform)
+
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    profiles = settings.get("terminal.integrated.profiles.windows", {})
+    assert "WSL (Default)" not in profiles
+    assert "Ubuntu (WSL)" not in profiles
+    assert "Ubuntu-24.04 (WSL)" in profiles
 
 
 def test_deploy_cheat_sheet(tmp_path: Path) -> None:

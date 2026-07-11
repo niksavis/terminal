@@ -58,6 +58,8 @@ wezterm
 
 WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, fzf, and the extra CLI tools ready.
 
+The default Starship prompt is intentionally single-line for readability: path, git, and status segments are shown before the prompt symbol on the same line.
+
 To open a new tab, press `Ctrl + t`. To split a pane, press `Ctrl + a` (leader) then `|` (vertical) or `-` (horizontal). To close a pane, press `Ctrl + a` then `x`.
 
 ### WSL2 Ubuntu
@@ -72,6 +74,23 @@ This installs the same tools and configs directly on the WSL host. Then start a 
 
 ```bash
 zsh
+```
+
+Create a development workspace directory and clone a repository:
+
+```bash
+mkdir -p ~/development
+cd ~/development
+git clone https://github.com/niksavis/beads-blueprint.git
+cd beads-blueprint
+```
+
+If you want to work on this repository after it is published:
+
+```bash
+cd ~/development
+git clone https://github.com/niksavis/terminal.git
+cd terminal
 ```
 
 ### Linux / macOS
@@ -96,12 +115,17 @@ wezterm
 | ------------------ | ----------------------------------------------- |
 | New tab            | `Ctrl + t`                                      |
 | Close tab          | `Ctrl + w`                                      |
+| Close window       | `Ctrl + Shift + q`                              |
 | Next tab           | `Ctrl + Tab`                                    |
 | Previous tab       | `Ctrl + Shift + Tab`                            |
 | Split vertical     | `Ctrl + a` then `\|`                            |
 | Split horizontal   | `Ctrl + a` then `-`                             |
 | Move between panes | `Shift + Ctrl + arrow` or `Ctrl + a` then arrow |
 | Rename tab         | `Ctrl + a` then `,`                             |
+| Toggle fullscreen  | `Alt + Enter`                                   |
+| Increase font size | `Ctrl + Shift + =`                              |
+| Decrease font size | `Ctrl + Shift + -`                              |
+| Reset font size    | `Ctrl + 0`                                      |
 | Open config        | `Ctrl + a` then `.`                             |
 
 ### tmux
@@ -169,6 +193,7 @@ uv run python .scripts/setup-terminal.py --check      # verify prerequisites onl
 uv run python .scripts/setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python .scripts/setup-terminal.py --skip-starship # skip starship prompt
 uv run python .scripts/setup-terminal.py --user-install # install without admin rights (Windows)
+uv run python .scripts/setup-terminal.py --report     # print a post-setup verification summary
 ```
 
 > **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
