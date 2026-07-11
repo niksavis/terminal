@@ -73,6 +73,18 @@ PYTHONPATH=.basicly uv run python -m basicly.cli build --target claude
 
 # Check generated files are up to date (CI gate)
 PYTHONPATH=.basicly uv run python -m basicly.cli check
+
+# List source skill collection entries
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-list
+
+# Project skills into .claude/skills (default)
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-build
+
+# Project skills into all default roots
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-build --all-default-roots
+
+# Check projected skills are synchronized
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-check
 ```
 
 ## CI
@@ -91,6 +103,16 @@ The `.github/workflows/basicly.yml` workflow runs `check` on every push and pull
 2. Add templates under `.basicly/templates/<name>/`.
 3. Add a registry file at `.basicly/targets/<name>.yaml`.
 4. Run `build` and commit.
+
+## Skill collection
+
+`basicly` also supports a repository-controlled skill catalog:
+
+- Source of truth: `.basicly/skills/<skill-name>/SKILL.md`
+- Projection roots (optional): `.claude/skills`, `.github/skills`, `.agents/skills`
+- Default behavior: `skills-build` syncs source skills into `.claude/skills`
+
+This keeps skills shippable when extracting the `basicly` engine into a standalone repository while still allowing downstream repos to consume projected skill files.
 
 ## User customizations (phase 2 preview)
 

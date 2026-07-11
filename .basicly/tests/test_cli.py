@@ -83,3 +83,54 @@ def test_cli_unknown_target() -> None:
     result = run_basicly("build", "--target", "unknown")
     assert result.returncode == 1
     assert "Unknown target" in result.stderr
+
+
+def test_cli_skills_build_idempotent() -> None:
+    """Two skills-build runs with no source changes should produce no diff."""
+    result1 = run_basicly("skills-build")
+    assert result1.returncode == 0
+    result2 = run_basicly("skills-build")
+    assert result2.returncode == 0
+    assert "No skill files changed" in result2.stdout
+
+
+def test_cli_skills_check_passes_after_build() -> None:
+    """skills-check should pass immediately after a skills-build run."""
+    run_basicly("skills-build")
+    result = run_basicly("skills-check")
+    assert result.returncode == 0
+    assert "up to date" in result.stdout
+
+
+def test_cli_skills_check_fails_after_manual_edit(tmp_path: Path) -> None:
+    """skills-check should fail after an edited projected skill file."""
+    work = tmp_path / "repo"
+    shutil.copytree(REPO_ROOT, work, ignore=shutil.ignore_patterns(".git", ".venv"))
+    env = {"PYTHONPATH": str(work / ".basicly")}
+
+    subprocess.run(
+        [sys.executable, "-m", "basicly.cli", "skills-build"],
+        cwd=work,
+        env=env,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    projected_skill = work / ".claude" / "skills" / "tool-ripgrep" / "SKILL.md"
+    projected_skill.write_text(
+        projected_skill.read_text(encoding="utf-8") + "\n",
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, "-m", "basicly.cli", "skills-check"],
+        cwd=work,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "Stale skill projection detected" in result.stderr

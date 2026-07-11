@@ -15,6 +15,12 @@ from .loader import load_fragments, load_targets
 from .planner import plan_outputs
 from .renderers.common import sha256_of_text
 from .schema import PlannedOutput, ValidationError
+from .skills import (
+    check_synced_skills,
+    discover_skills,
+    resolve_skill_roots,
+    sync_skills,
+)
 
 BASICLY_DIR = Path(".basicly")
 FRAGMENTS_DIR = BASICLY_DIR / "fragments"
@@ -25,6 +31,13 @@ MANIFEST_PATH = BASICLY_DIR / "generated-manifest.json"
 
 def _repo_root() -> Path:
     return Path.cwd()
+
+
+def _format_path(path: Path, repo_root: Path) -> str:
+    try:
+        return path.relative_to(repo_root).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def _load_context(repo_root: Path) -> tuple[list[Any], list[Any]]:
@@ -212,6 +225,83 @@ def cmd_check(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _resolve_skill_output_roots(args: argparse.Namespace, repo_root: Path) -> list[Path]:
+    roots_arg = getattr(args, "roots", None)
+    use_default_roots = bool(getattr(args, "all_default_roots", False))
+    return resolve_skill_roots(
+        repo_root=repo_root,
+        roots=roots_arg,
+        use_default_roots=use_default_roots,
+    )
+
+
+def cmd_skills_list(_args: argparse.Namespace) -> int:
+    """List skills available in the source collection."""
+    repo_root = _repo_root()
+    skills = discover_skills(repo_root)
+    if not skills:
+        print("No skills found in .basicly/skills")
+        return 0
+
+    print(f"{'slug':<24} {'name':<24} description")
+    print("-" * 96)
+    for skill in skills:
+        print(f"{skill.slug:<24} {skill.name:<24} {skill.description}")
+    return 0
+
+
+def cmd_skills_build(args: argparse.Namespace) -> int:
+    """Project skills from .basicly/skills into one or more destination roots."""
+    repo_root = _repo_root()
+    roots = _resolve_skill_output_roots(args, repo_root)
+    result = sync_skills(repo_root, roots)
+
+    for path in result.written:
+        print(f"Wrote {_format_path(path, repo_root)}")
+
+    if not result.written:
+        print("No skill files changed.")
+
+    print(
+        "Skill projection complete: "
+        f"{len(result.written)} written, {len(result.unchanged)} unchanged"
+    )
+    return 0
+
+
+def cmd_skills_check(args: argparse.Namespace) -> int:
+    """Check that projected skill roots are synchronized with source skills."""
+    repo_root = _repo_root()
+    roots = _resolve_skill_output_roots(args, repo_root)
+    mismatches = check_synced_skills(repo_root, roots)
+
+    if mismatches:
+        print(
+            "Stale skill projection detected. Run `basicly skills-build` to sync skill files.",
+            file=sys.stderr,
+        )
+        for path, reason in mismatches:
+            print(f"  {_format_path(path, repo_root)}: {reason}", file=sys.stderr)
+        return 1
+
+    print("Projected skills are up to date.")
+    return 0
+
+
+def _add_skill_root_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--root",
+        action="append",
+        dest="roots",
+        help="Destination skills root. Repeat for multiple roots.",
+    )
+    parser.add_argument(
+        "--all-default-roots",
+        action="store_true",
+        help="Use .claude/skills, .github/skills, and .agents/skills.",
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Parse arguments and dispatch to the requested command."""
     parser = argparse.ArgumentParser(prog="basicly")
@@ -225,23 +315,41 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("check", help="Check generated files are up to date")
 
+    subparsers.add_parser("skills-list", help="List skills in .basicly/skills")
+
+    skills_build_parser = subparsers.add_parser(
+        "skills-build",
+        help="Project skills from .basicly/skills",
+    )
+    _add_skill_root_args(skills_build_parser)
+
+    skills_check_parser = subparsers.add_parser(
+        "skills-check",
+        help="Check projected skills are up to date",
+    )
+    _add_skill_root_args(skills_check_parser)
+
     args = parser.parse_args(argv)
+    handlers = {
+        "list": cmd_list,
+        "build": cmd_build,
+        "check": cmd_check,
+        "skills-list": cmd_skills_list,
+        "skills-build": cmd_skills_build,
+        "skills-check": cmd_skills_check,
+    }
 
     try:
-        if args.command == "list":
-            return cmd_list(args)
-        if args.command == "build":
-            return cmd_build(args)
-        if args.command == "check":
-            return cmd_check(args)
+        handler = handlers.get(args.command)
+        if handler is None:
+            return 0
+        return handler(args)
     except ValidationError as exc:
         print(f"Validation error: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 1
-
-    return 0
 
 
 if __name__ == "__main__":

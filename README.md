@@ -8,6 +8,7 @@ Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling,
 - **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), [`starship.toml`](terminal_setup/templates/starship.toml), and [`micro-settings.json`](terminal_setup/templates/micro-settings.json).
 - **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
 - **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
+- **Skill catalog** — basicly-managed tool skills in [`.basicly/skills/`](.basicly/skills/) projected to [`.claude/skills/`](.claude/skills/).
 - **Tests** — workspace and setup tests in [`tests/`](tests/).
 
 ## Install guide
@@ -234,6 +235,10 @@ Run the test suite and pre-commit checks manually:
 ```bash
 uv run pytest tests/
 uv run python .scripts/git-hooks/pre-commit.py
+
+# Project and verify tool skills
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-build
+PYTHONPATH=.basicly uv run python -m basicly.cli skills-check
 ```
 
 ## VS Code
