@@ -13,6 +13,17 @@ Create practical, reusable skills for this repository with a consistent structur
 - Make trigger descriptions explicit so skills are used when needed.
 - Keep instructions concise, actionable, and safe.
 - Keep all skills repository-controlled.
+- Keep generated guidance portable and privacy-safe (no user-specific paths, usernames, or secrets).
+
+## Scope and Non-Goals
+
+This skill is for creating and improving skill documentation and trigger quality.
+
+It is not for:
+
+- Runtime debugging of unrelated project code.
+- Broad refactors outside the requested skill scope.
+- Changing CI, dependencies, or infra as part of skill wording edits.
 
 ## Skill Locations
 
@@ -32,52 +43,32 @@ If the user asks for projection or install into a custom location, create/update
 
 Each skill must include:
 
-1. YAML frontmatter with:
+- Part 1: YAML frontmatter with:
+  - `name`
+  - `description` (must include both what the skill does and when to use it)
+- Part 2: A markdown body with:
+  - Purpose and scope
+  - Inputs/outputs
+  - Step-by-step workflow
+  - Guardrails and non-goals
+  - Examples or command snippets when useful
 
-- `name`
-- `description` (must include both what the skill does and when to use it)
+## Output Contract
 
-1. A markdown body with:
+When this skill is used, produce:
 
-- Purpose and scope
-- Inputs/outputs
-- Step-by-step workflow
-- Guardrails and non-goals
-- Examples or command snippets when useful
+1. A revised or new `SKILL.md` with complete frontmatter and trigger-focused description.
+2. A short summary of what changed and why.
+3. A validation note confirming lint/format checks relevant to the edited file.
 
 ## Authoring Workflow
 
-1. Capture intent.
-
-- What should this skill enable?
-- When should it trigger?
-- What output should it produce?
-
-1. Define boundaries.
-
-- What this skill does
-- What this skill does not do
-
-1. Draft the skill.
-
-- Write a strong trigger-focused description.
-- Use imperative, concrete instructions.
-- Keep it short enough to load quickly.
-
-1. Add practical examples.
-
-- Include realistic prompt examples.
-- Include command examples when relevant.
-
-1. Validate trigger quality.
-
-- Create 2-3 should-trigger prompts.
-- Create 2-3 should-not-trigger prompts.
-- Refine `description` until behavior is precise.
-
-1. Integrate with repo automation.
-
-- If this repo needs projection to multiple skill roots, implement that through repo scripts/config (not manual copy-paste workflows).
+1. Capture intent: what should this skill enable, when should it trigger, and what output should it produce.
+2. Define boundaries: what this skill does and what this skill does not do.
+3. Draft the skill: write a strong trigger-focused description, use imperative concrete instructions, and keep it short enough to load quickly.
+4. Add practical examples: include realistic prompt examples and command examples when relevant.
+5. Validate trigger quality: create 2-3 should-trigger prompts, create 2-3 should-not-trigger prompts, and refine `description` until behavior is precise.
+6. Integrate with repo automation: if this repo needs projection to multiple skill roots, implement that through repo scripts/config (not manual copy-paste workflows).
 
 ## Writing Standards
 
@@ -86,6 +77,8 @@ Each skill must include:
 - Avoid over-constraining language unless safety requires it.
 - Avoid tool- or platform-lock-in unless explicitly required.
 - Never include malicious, deceptive, or unsafe guidance.
+- Avoid user-specific machine details (home directories, usernames, hostnames, tokens, private URLs).
+- Prefer repo-relative paths and generic placeholders in examples.
 
 ## Tool-Specific Skill Pattern
 
@@ -107,3 +100,12 @@ A new/updated skill is complete when:
 - Instructions are actionable and tested against realistic prompts.
 - Scope and guardrails are explicit.
 - The user confirms the behavior matches intent.
+
+## Validation Checklist
+
+Before finishing a skill update:
+
+1. Confirm should-trigger prompts clearly map to the skill description.
+2. Confirm should-not-trigger prompts are excluded by scope language.
+3. Verify markdown lint passes for edited skill docs.
+4. Verify examples do not leak user-specific or machine-local information.
