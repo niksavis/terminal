@@ -2,10 +2,8 @@
 <!-- Source fragments: require-explicit-confirmation, project-defaults, core-rules, quality-gate, use, python-style, copilot-defaults, if-stuck -->
 # Copilot Defaults
 
-See `AGENTS.md` for shared rules. Keep this file Copilot-specific.
-
-Copilot does not support `@`-style imports. If AGENTS context import fails,
-temporarily mirror critical rules here and keep both files in sync.
+Canonical rules for GitHub Copilot in this repo. This file is self-contained; it does
+not rely on `AGENTS.md` being present.
 
 ## Require Explicit Confirmation
 
@@ -60,7 +58,6 @@ temporarily mirror critical rules here and keep both files in sync.
 
 ## Copilot-specific notes
 
-- Keep cross-agent policy in `AGENTS.md`; avoid duplication.
 - Put path-scoped instructions in `.github/instructions/*.instructions.md`.
 - Put prompts in `.github/prompts/*.prompt.md`.
 - Put custom agents in `.github/agents/*.agent.md`.

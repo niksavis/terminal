@@ -2,7 +2,8 @@
 <!-- Source fragments: require-explicit-confirmation, project-defaults, core-rules, quality-gate, use, python-style, if-stuck -->
 # Agent Baseline
 
-Canonical, tool-agnostic rules for this repo.
+Canonical, tool-agnostic rules for this repo. This file is self-contained; it does
+not rely on other agent config files being present.
 
 ## Require Explicit Confirmation
 

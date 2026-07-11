@@ -9,7 +9,6 @@ status: active
 title: Claude-specific notes
 ---
 
-- Keep cross-agent policy in `AGENTS.md`; avoid duplication.
 - Put reusable skills in `.claude/skills/`.
 - Put Claude-only prompts/commands/runbooks in `.claude/*.md`.
 - Prefer cross-platform commands.

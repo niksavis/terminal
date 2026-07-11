@@ -9,7 +9,6 @@ status: active
 title: Copilot-specific notes
 ---
 
-- Keep cross-agent policy in `AGENTS.md`; avoid duplication.
 - Put path-scoped instructions in `.github/instructions/*.instructions.md`.
 - Put prompts in `.github/prompts/*.prompt.md`.
 - Put custom agents in `.github/agents/*.agent.md`.

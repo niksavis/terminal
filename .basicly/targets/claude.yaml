@@ -3,16 +3,11 @@ enabled: true
 tone: terse_directive
 max_size_warning: 8000
 outputs:
-  agents_baseline:
-    path: AGENTS.md
-    template: claude/agents_md.j2
-    filter:
-      applies_to: [all]
   claude_wrapper:
     path: .claude/CLAUDE.md
     template: claude/claude_md.j2
     filter:
-      applies_to: [claude]
+      applies_to: [all, claude]
   scoped_rules:
     path_template: .claude/rules/{fragment_id}.md
     template: claude/rule_md.j2

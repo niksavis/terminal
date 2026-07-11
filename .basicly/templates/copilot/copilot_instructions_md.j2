@@ -1,11 +1,10 @@
 {{ header }}# Copilot Defaults
 
-See `AGENTS.md` for shared rules. Keep this file Copilot-specific.
+Canonical rules for GitHub Copilot in this repo. This file is self-contained; it does
+not rely on `AGENTS.md` being present.
 
-Copilot does not support `@`-style imports. If AGENTS context import fails,
-temporarily mirror critical rules here and keep both files in sync.
-{% for fragment in fragments %}
-## {{ fragment.title }}
+{% for fragment in fragments %}## {{ fragment.title }}
 
 {{ fragment.body }}
+
 {% endfor %}

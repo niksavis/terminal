@@ -1,8 +1,10 @@
 {{ header }}# Claude Defaults
 
-See `AGENTS.md` for shared rules. Keep this file Claude-specific.
+Canonical rules for Claude Code in this repo. This file is self-contained; it does
+not rely on `AGENTS.md` being present.
 
 {% for fragment in fragments %}## {{ fragment.title }}
 
 {{ fragment.body }}
+
 {% endfor %}

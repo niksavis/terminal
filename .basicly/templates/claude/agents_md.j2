@@ -1,8 +1,9 @@
 {{ header }}# Agent Baseline
 
-Canonical, tool-agnostic rules for this repo.
-{% for fragment in fragments %}
-## {{ fragment.title }}
+Canonical, tool-agnostic rules for this repo. This file is self-contained; it does
+not rely on other agent config files being present.
+{% for fragment in fragments %}## {{ fragment.title }}
 
 {{ fragment.body }}
+
 {% endfor %}
