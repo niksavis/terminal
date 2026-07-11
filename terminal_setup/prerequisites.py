@@ -205,7 +205,6 @@ def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> No
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
     """Install unsupported apt packages via a supported fallback path."""
     rust_fallback = {
-        "xh": ("xh", "xh"),
         "ast-grep": ("ast-grep", "sg"),
         "typos": ("typos-cli", "typos"),
     }
@@ -301,7 +300,6 @@ def ensure_wsl_tools(runner: Runner, platform: PlatformInfo) -> None:
         "yq",
         "shellcheck",
         "tree",
-        "xh",
         "ast-grep",
         "sd",
         "git-delta",
@@ -400,7 +398,6 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
-            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -416,7 +413,6 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
-            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -432,7 +428,6 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
-            "xh",
             "ast-grep",
             "sd",
             "git-delta",
@@ -448,7 +443,6 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "yq",
             "shellcheck",
             "tree",
-            "xh",
             "ast-grep",
             "sd",
             "git-delta",
