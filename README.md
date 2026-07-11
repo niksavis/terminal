@@ -1,0 +1,68 @@
+# terminal
+
+Cross-platform terminal tooling, automation, and AI agent configuration workspace.
+
+## What's here
+
+- **Agent configuration** — shared baseline rules in [`AGENTS.md`](AGENTS.md), plus tool-specific instructions for [Claude Code](.claude/CLAUDE.md) and [GitHub Copilot](.github/copilot-instructions.md).
+- **basicly** (planned) — a source-of-truth projector that generates agent config files from small Markdown fragments. See [`.plan/source-of-truth-projector.md`](.plan/source-of-truth-projector.md).
+- **WezTerm + WSL2 setup** — a no-admin terminal environment plan in [`.plan/wezterm-setup.md`](.plan/wezterm-setup.md).
+- **Scripts** — cross-platform helpers in [`.scripts/`](.scripts/).
+- **Tests** — workspace smoke tests in [`tests/`](tests/).
+
+## Quick start
+
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.14+.
+
+```bash
+# Install dependencies and dev tools
+uv sync
+
+# Run tests
+uv run pytest tests/
+
+# Run all pre-commit checks
+uv run python .scripts/git-hooks/pre-commit.py
+```
+
+## Git hooks
+
+This repo uses [pre-commit](https://pre-commit.com/) with portable Python scripts so the same logic can be reused by lefthook later.
+
+| Hook         | Script                                                                 | Purpose                             |
+| ------------ | ---------------------------------------------------------------------- | ----------------------------------- |
+| `pre-commit` | [`.scripts/git-hooks/pre-commit.py`](.scripts/git-hooks/pre-commit.py) | ruff, pyright, bandit, markdownlint |
+| `commit-msg` | [`.scripts/git-hooks/commit-msg.py`](.scripts/git-hooks/commit-msg.py) | Conventional commit format check    |
+| `pre-push`   | [`.scripts/git-hooks/pre-push.py`](.scripts/git-hooks/pre-push.py)     | pytest                              |
+
+Install hooks:
+
+```bash
+uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+```
+
+## Conventional commits
+
+Commit messages must follow the format:
+
+```text
+type(scope): description
+```
+
+Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+
+Examples:
+
+```text
+feat(basicly): add fragment loader
+fix: correct sorting order in planner
+docs: update architecture decision record
+```
+
+## VS Code
+
+Workspace settings, recommended extensions, tasks, and launch configs are committed in [`.vscode/`](.vscode/). Open the repo in VS Code and install the recommended extensions when prompted.
+
+## License
+
+[MIT](LICENSE)

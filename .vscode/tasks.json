@@ -1,0 +1,99 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "lint: ruff",
+      "type": "shell",
+      "command": "uv run ruff check .",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "format: ruff",
+      "type": "shell",
+      "command": "uv run ruff format .",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "typecheck: pyright",
+      "type": "shell",
+      "command": "uv run pyright .",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "test: pytest",
+      "type": "shell",
+      "command": "uv run pytest tests/",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "security: bandit",
+      "type": "shell",
+      "command": "uv run bandit -c pyproject.toml -r .",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "security: pip-audit",
+      "type": "shell",
+      "command": "uv run pip-audit --desc",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "pre-commit: all",
+      "type": "shell",
+      "command": "uv run pre-commit run --all-files",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "basicly: build",
+      "type": "shell",
+      "command": "uv run --python-path .basicly python -m basicly.cli build",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "basicly: check",
+      "type": "shell",
+      "command": "uv run --python-path .basicly python -m basicly.cli check",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

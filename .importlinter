@@ -1,0 +1,11 @@
+[importlinter]
+root_package = basicly
+
+[importlinter:contract:engine-independence]
+name = Engine does not depend on project-specific fragments or targets
+type = forbidden
+source_modules =
+    basicly
+forbidden_modules =
+    basicly.fragments
+    basicly.targets

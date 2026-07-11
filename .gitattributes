@@ -1,0 +1,24 @@
+# Normalize line endings to LF on checkout.
+* text=auto eol=lf
+
+# Explicitly treat common source files as text.
+*.md text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.j2 text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=lf
+
+# Treat binary files as binary (no line-ending conversion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary

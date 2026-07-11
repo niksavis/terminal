@@ -1,0 +1,29 @@
+repos:
+  - repo: local
+    hooks:
+      - id: pre-commit-script
+        name: pre-commit-script
+        entry: uv run python .scripts/git-hooks/pre-commit.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+
+  - repo: local
+    hooks:
+      - id: commit-msg-script
+        name: commit-msg-script
+        entry: uv run python .scripts/git-hooks/commit-msg.py
+        language: system
+        stages: [commit-msg]
+        pass_filenames: true
+
+  - repo: local
+    hooks:
+      - id: pre-push-script
+        name: pre-push-script
+        entry: uv run python .scripts/git-hooks/pre-push.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-push]

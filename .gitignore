@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+
+# uv
+.uv/
+
+# IDEs
+# .vscode/ is intentionally tracked in this repo so workspace settings are shared.
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff
+.ruff_cache/
+
+# Local environment
+.env
+.env.local
+
+# Node.js
+node_modules/
+# package.json and package-lock.json are tracked to pin markdownlint-cli2.
