@@ -4,10 +4,10 @@ Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling,
 
 ## What's here
 
-- **Terminal setup** — Python package in [`.scripts/terminal_setup/`](.scripts/terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
-- **Config templates** — [`wezterm.lua`](.scripts/terminal_setup/templates/wezterm.lua), [`.tmux.conf`](.scripts/terminal_setup/templates/tmux.conf), [`.zshrc`](.scripts/terminal_setup/templates/zshrc), and [`starship.toml`](.scripts/terminal_setup/templates/starship.toml).
+- **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
+- **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), and [`starship.toml`](terminal_setup/templates/starship.toml).
 - **Cheat sheet** — [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
-- **Scripts** — cross-platform helpers in [`.scripts/`](.scripts/).
+- **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
 - **Tests** — workspace and setup tests in [`tests/`](tests/).
 
 ## Install guide
@@ -19,10 +19,10 @@ Requires [uv](https://docs.astral.sh/uv/) and Python 3.14+.
 uv sync
 
 # Preview what the setup will do
-uv run python .scripts/setup-terminal.py --dry-run
+uv run python setup-terminal.py --dry-run
 
 # Run the full setup
-uv run python .scripts/setup-terminal.py
+uv run python setup-terminal.py
 ```
 
 The setup is idempotent: running it again will only install missing tools and update configs.
@@ -38,8 +38,8 @@ Prerequisites: ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are avail
 
 Run the setup idempotently:
 1. Run `uv sync` to install dependencies.
-2. Run `uv run python .scripts/setup-terminal.py --dry-run` and show me the planned changes.
-3. If the dry-run looks correct, run `uv run python .scripts/setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python .scripts/setup-terminal.py --user-install` instead.
+2. Run `uv run python setup-terminal.py --dry-run` and show me the planned changes.
+3. If the dry-run looks correct, run `uv run python setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python setup-terminal.py --user-install` instead.
 4. After the setup completes, verify that WezTerm, zsh, tmux, starship, fzf, fd, bat, eza, zoxide, and ripgrep are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
 5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
 
@@ -60,14 +60,14 @@ WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, 
 
 The default Starship prompt is intentionally single-line for readability: path, git, and status segments are shown before the prompt symbol on the same line.
 
-To open a new tab, press `Ctrl + t`. To split a pane, press `Ctrl + a` (leader) then `|` (vertical) or `-` (horizontal). To close a pane, press `Ctrl + a` then `x`.
+Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + a` (leader) then `|` (vertical) or `-` (horizontal). To close a pane, press `Ctrl + a` then `x`.
 
 ### WSL2 Ubuntu
 
 If you prefer to work inside an existing WSL terminal, run the setup there too:
 
 ```bash
-uv run python .scripts/setup-terminal.py
+uv run python setup-terminal.py
 ```
 
 This installs the same tools and configs directly on the WSL host. Then start a new zsh shell:
@@ -76,11 +76,11 @@ This installs the same tools and configs directly on the WSL host. Then start a 
 zsh
 ```
 
-Create a development workspace directory and clone a repository:
+Create a workspace directory and clone a repository (choose your own path):
 
 ```bash
-mkdir -p ~/development
-cd ~/development
+mkdir -p <workspace-dir>
+cd <workspace-dir>
 git clone https://github.com/niksavis/beads-blueprint.git
 cd beads-blueprint
 ```
@@ -88,7 +88,7 @@ cd beads-blueprint
 If you want to work on this repository after it is published:
 
 ```bash
-cd ~/development
+cd <workspace-dir>
 git clone https://github.com/niksavis/terminal.git
 cd terminal
 ```
@@ -98,7 +98,7 @@ cd terminal
 Run the setup directly on the host:
 
 ```bash
-uv run python .scripts/setup-terminal.py
+uv run python setup-terminal.py
 ```
 
 Then start WezTerm from your application launcher or run:
@@ -111,22 +111,29 @@ wezterm
 
 ### WezTerm
 
-| Action             | Shortcut                                        |
-| ------------------ | ----------------------------------------------- |
-| New tab            | `Ctrl + t`                                      |
-| Close tab          | `Ctrl + w`                                      |
-| Close window       | `Ctrl + Shift + q`                              |
-| Next tab           | `Ctrl + Tab`                                    |
-| Previous tab       | `Ctrl + Shift + Tab`                            |
-| Split vertical     | `Ctrl + a` then `\|`                            |
-| Split horizontal   | `Ctrl + a` then `-`                             |
-| Move between panes | `Shift + Ctrl + arrow` or `Ctrl + a` then arrow |
-| Rename tab         | `Ctrl + a` then `,`                             |
-| Toggle fullscreen  | `Alt + Enter`                                   |
-| Increase font size | `Ctrl + Shift + =`                              |
-| Decrease font size | `Ctrl + Shift + -`                              |
-| Reset font size    | `Ctrl + 0`                                      |
-| Open config        | `Ctrl + a` then `.`                             |
+| Action                    | Shortcut                                        |
+| ------------------------- | ----------------------------------------------- |
+| New tab                   | `Ctrl + Shift + t`                              |
+| Close tab                 | `Ctrl + Shift + w`                              |
+| Close window              | `Ctrl + Shift + q`                              |
+| Copy selection            | `Ctrl + Shift + c`                              |
+| Paste                     | `Ctrl + Shift + v`                              |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                        |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                |
+| Close pane (direct)       | `Ctrl + Alt + x`                                |
+| Next tab                  | `Ctrl + Tab`                                    |
+| Previous tab              | `Ctrl + Shift + Tab`                            |
+| Split vertical            | `Ctrl + a` then `-` or `s`                      |
+| Split horizontal          | `Ctrl + a` then `backslash`, `pipe`, or `v`     |
+| Move between panes        | `Shift + Ctrl + arrow` or `Ctrl + a` then arrow |
+| Rename tab                | `Ctrl + a` then `,`                             |
+| Toggle fullscreen         | `Alt + Enter`                                   |
+| Increase font size        | `Ctrl + Shift + =`                              |
+| Decrease font size        | `Ctrl + Shift + -`                              |
+| Reset font size           | `Ctrl + 0`                                      |
+| Open config               | `Ctrl + a` then `.`                             |
+
+`Ctrl + a` is a WezTerm leader key with a 3-second timeout. Press and release `Ctrl + a`, then press the second key.
 
 ### tmux
 
@@ -136,9 +143,9 @@ wezterm
 | New window       | `Ctrl + a` then `c`  |
 | Next window      | `Ctrl + a` then `n`  |
 | Previous window  | `Ctrl + a` then `p`  |
+| Reload config    | `Ctrl + a` then `r`  |
 | Split vertical   | `Ctrl + a` then `\|` |
 | Split horizontal | `Ctrl + a` then `-`  |
-| Reload config    | `Ctrl + a` then `r`  |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
@@ -188,13 +195,16 @@ The setup installs tools directly on the host.
 ## CLI options
 
 ```bash
-uv run python .scripts/setup-terminal.py --dry-run    # preview changes
-uv run python .scripts/setup-terminal.py --check      # verify prerequisites only
-uv run python .scripts/setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
-uv run python .scripts/setup-terminal.py --skip-starship # skip starship prompt
-uv run python .scripts/setup-terminal.py --user-install # install without admin rights (Windows)
-uv run python .scripts/setup-terminal.py --report     # print a post-setup verification summary
+uv run python setup-terminal.py --dry-run    # preview changes
+uv run python setup-terminal.py --check      # verify prerequisites only
+uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
+uv run python setup-terminal.py --skip-starship # skip starship prompt
+uv run python setup-terminal.py --user-install # install without admin rights (Windows)
+uv run python setup-terminal.py --report     # print a post-setup verification summary
+uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
+
+`--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
 > **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
 

@@ -64,7 +64,22 @@ def test_deploy_wezterm_config(tmp_path: Path) -> None:
     assert platform.wezterm_config_dir is not None
     destination = platform.wezterm_config_dir / "wezterm.lua"
     assert destination.exists()
-    assert "WezTerm" in destination.read_text(encoding="utf-8")
+    content = destination.read_text(encoding="utf-8")
+    assert "WezTerm" in content
+    assert "__WSL_START_DIR__" not in content
+
+
+def test_deploy_wezterm_config_supports_optional_wsl_start_dir(tmp_path: Path) -> None:
+    """Optional install input should be rendered into the deployed WezTerm config."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False)
+    deploy_wezterm_config(runner, platform, wsl_start_dir="$HOME/workspace")
+
+    assert platform.wezterm_config_dir is not None
+    destination = platform.wezterm_config_dir / "wezterm.lua"
+    content = destination.read_text(encoding="utf-8")
+    assert "$HOME/workspace" in content
+    assert "__WSL_START_DIR__" not in content
 
 
 def test_deploy_tmux_config(tmp_path: Path) -> None:
@@ -178,6 +193,65 @@ def test_configure_vscode_terminal_windows_removes_stale_ubuntu_profile(tmp_path
     assert "WSL (Default)" not in profiles
     assert "Ubuntu (WSL)" not in profiles
     assert "Ubuntu-24.04 (WSL)" in profiles
+
+
+def test_configure_vscode_terminal_windows_sets_optional_cwd(tmp_path: Path) -> None:
+    """Windows settings should use an optional user-provided cwd when provided."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform, windows_terminal_cwd="D:\\Workspace")
+
+    assert platform.vscode_settings_path is not None
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    assert settings.get("terminal.integrated.cwd") == "D:\\Workspace"
+
+
+def test_configure_vscode_terminal_windows_preserves_existing_cwd_when_unset(
+    tmp_path: Path,
+) -> None:
+    """Without optional input, custom user cwd should be preserved."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    assert platform.vscode_settings_path is not None
+    platform.vscode_settings_path.write_text(
+        json.dumps({"terminal.integrated.cwd": "E:\\Workspace"}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform)
+
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    assert settings.get("terminal.integrated.cwd") == "E:\\Workspace"
+
+
+def test_configure_vscode_terminal_windows_removes_stale_existing_cwd_when_unset(
+    tmp_path: Path,
+) -> None:
+    """Without optional input, stale hardcoded cwd from older versions should be removed."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    assert platform.vscode_settings_path is not None
+    platform.vscode_settings_path.write_text(
+        json.dumps({"terminal.integrated.cwd": "D:\\Development"}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform)
+
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    assert "terminal.integrated.cwd" not in settings
+
+
+def test_configure_vscode_terminal_windows_uses_optional_wsl_cwd(tmp_path: Path) -> None:
+    """WSL profile cwd should respect optional install input."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False)
+    configure_vscode_terminal(runner, platform, wsl_terminal_cwd="$HOME/workspace")
+
+    assert platform.vscode_settings_path is not None
+    settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
+    profiles = settings.get("terminal.integrated.profiles.windows", {})
+    assert profiles["Ubuntu (WSL)"]["args"] == ["-d", "Ubuntu", "--cd", "$HOME/workspace"]
 
 
 def test_deploy_cheat_sheet(tmp_path: Path) -> None:

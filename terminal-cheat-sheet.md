@@ -2,6 +2,22 @@
 
 Practical Linux/Unix commands and shortcuts organized by use case. These work in WSL Ubuntu, macOS, and most Linux terminals. Windows-native shells (PowerShell/CMD) differ; use WSL in WezTerm for the commands below. Risky commands are marked with ⚠️.
 
+## WezTerm Shortcuts (Linux-style)
+
+- New tab: `Ctrl + Shift + T`
+- Close tab: `Ctrl + Shift + W`
+- Close window: `Ctrl + Shift + Q`
+- Copy selection: `Ctrl + Shift + C`
+- Paste: `Ctrl + Shift + V`
+- Split horizontal (direct): `Ctrl + Alt + backslash`
+- Split vertical (direct): `Ctrl + Alt + -`
+- Close pane (direct): `Ctrl + Alt + X`
+- Split vertical: `Ctrl + A` then `-` or `s`
+- Split horizontal: `Ctrl + A` then `backslash`, `pipe`, or `v`
+- Close pane: `Ctrl + A` then `x`
+
+`Ctrl + A` is a leader key with a 3-second timeout: press and release it, then press the second key.
+
 ## Navigation
 
 | Command           | Description                                     |

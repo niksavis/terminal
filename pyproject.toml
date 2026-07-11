@@ -28,11 +28,11 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".basicly", ".scripts"]
+pythonpath = [".basicly", "."]
 addopts = ["--import-mode=importlib"]
 
 [tool.pyright]
-extraPaths = [".basicly", ".scripts"]
+extraPaths = [".basicly", "."]
 
 [project.scripts]
 terminal-setup = "terminal_setup.cli:main"

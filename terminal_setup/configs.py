@@ -8,9 +8,10 @@ from pathlib import Path
 from .platform import OperatingSystem, PlatformInfo
 from .runner import Runner
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-TEMPLATE_DIR = _REPO_ROOT / ".scripts" / "terminal_setup" / "templates"
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+TEMPLATE_DIR = _REPO_ROOT / "terminal_setup" / "templates"
 CHEAT_SHEET_PATH = _REPO_ROOT / "terminal-cheat-sheet.html"
+_WSL_START_DIR_PLACEHOLDER = "__WSL_START_DIR__"
 
 
 def template_path(name: str) -> Path:
@@ -18,14 +19,42 @@ def template_path(name: str) -> Path:
     return TEMPLATE_DIR / name
 
 
-def deploy_wezterm_config(runner: Runner, platform: PlatformInfo) -> None:
+def _escape_for_lua_string(value: str) -> str:
+    """Escape characters that are special in Lua double-quoted strings."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _resolve_wsl_start_dir(wsl_start_dir: str | None) -> str:
+    """Return the WSL start directory placeholder value for WezTerm template rendering."""
+    if wsl_start_dir is None:
+        return "$HOME"
+    normalized = wsl_start_dir.strip()
+    return normalized or "$HOME"
+
+
+def _is_stale_windows_terminal_cwd(value: str) -> bool:
+    """Return True when the value matches an older hardcoded workspace root."""
+    normalized = value.strip().replace("/", "\\").rstrip("\\").lower()
+    return normalized == "d:\\development"
+
+
+def deploy_wezterm_config(
+    runner: Runner,
+    platform: PlatformInfo,
+    *,
+    wsl_start_dir: str | None = None,
+) -> None:
     """Deploy the WezTerm configuration file."""
     if platform.wezterm_config_dir is None:
         return
     runner.ensure_dir(platform.wezterm_config_dir)
     source = template_path("wezterm.lua")
     destination = platform.wezterm_config_dir / "wezterm.lua"
-    runner.copy(source, destination)
+    rendered = source.read_text(encoding="utf-8").replace(
+        _WSL_START_DIR_PLACEHOLDER,
+        _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
+    )
+    runner.write_text(destination, rendered)
 
 
 def deploy_tmux_config(runner: Runner, platform: PlatformInfo) -> None:
@@ -99,9 +128,10 @@ def deploy_all(
     platform: PlatformInfo,
     *,
     include_starship: bool = True,
+    wsl_start_dir: str | None = None,
 ) -> None:
     """Deploy all configuration files and set the default shell."""
-    deploy_wezterm_config(runner, platform)
+    deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
     deploy_cheat_sheet(runner, platform)
     if platform.os == OperatingSystem.WINDOWS:
         deploy_wsl_configs(runner, platform)
@@ -149,8 +179,64 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
         runner.run(["wsl", "-d", distro, "--", "cp", wsl_cheat_source, cheat_destination])
 
 
-def configure_vscode_terminal(runner: Runner, platform: PlatformInfo) -> None:
-    """Update VS Code settings to use the configured terminal."""
+def _configure_vscode_terminal_windows(
+    settings: dict[str, object],
+    platform: PlatformInfo,
+    windows_terminal_cwd: str | None,
+    wsl_terminal_cwd: str | None,
+) -> None:
+    """Configure Windows terminal settings for the detected WSL distro."""
+    distro = _wsl_distro(platform)
+    profiles = settings.get("terminal.integrated.profiles.windows", {})
+    if not isinstance(profiles, dict):
+        profiles = {}
+
+    if windows_terminal_cwd is not None:
+        normalized_windows_cwd = windows_terminal_cwd.strip()
+        if normalized_windows_cwd:
+            settings["terminal.integrated.cwd"] = normalized_windows_cwd
+        else:
+            settings.pop("terminal.integrated.cwd", None)
+    else:
+        existing_cwd = settings.get("terminal.integrated.cwd")
+        if isinstance(existing_cwd, str) and _is_stale_windows_terminal_cwd(existing_cwd):
+            settings.pop("terminal.integrated.cwd", None)
+
+    # Remove synthetic profile from older setup versions.
+    profiles.pop("WSL (Default)", None)
+
+    # Remove stale Ubuntu profile when the active distro is a different Ubuntu variant.
+    if distro.lower() != "ubuntu":
+        profiles.pop("Ubuntu (WSL)", None)
+
+    profile_name = f"{distro} (WSL)"
+    profile_args = ["-d", distro]
+    if wsl_terminal_cwd is not None:
+        normalized_wsl_cwd = wsl_terminal_cwd.strip()
+        if normalized_wsl_cwd:
+            profile_args.extend(["--cd", normalized_wsl_cwd])
+
+    profiles[profile_name] = {
+        "path": "C:\\Windows\\System32\\wsl.exe",
+        "args": profile_args,
+        "icon": "terminal-ubuntu",
+    }
+
+    settings["terminal.integrated.defaultProfile.windows"] = profile_name
+    settings["terminal.integrated.profiles.windows"] = profiles
+
+
+def configure_vscode_terminal(
+    runner: Runner,
+    platform: PlatformInfo,
+    *,
+    windows_terminal_cwd: str | None = None,
+    wsl_terminal_cwd: str | None = None,
+) -> None:
+    """Update VS Code settings to use the configured terminal.
+
+    Pass optional cwd values via CLI flags when user-specific defaults are desired.
+    """
     if platform.vscode_settings_path is None:
         return
     settings_path = platform.vscode_settings_path
@@ -166,27 +252,12 @@ def configure_vscode_terminal(runner: Runner, platform: PlatformInfo) -> None:
             return
 
     if platform.os == OperatingSystem.WINDOWS:
-        distro = _wsl_distro(platform)
-        profiles = settings.get("terminal.integrated.profiles.windows", {})
-        if not isinstance(profiles, dict):
-            profiles = {}
-
-        # Remove synthetic profile from older setup versions.
-        profiles.pop("WSL (Default)", None)
-
-        # Remove stale Ubuntu profile when the active distro is a different Ubuntu variant.
-        if distro.lower() != "ubuntu":
-            profiles.pop("Ubuntu (WSL)", None)
-
-        profile_name = f"{distro} (WSL)"
-        profiles[profile_name] = {
-            "path": "C:\\Windows\\System32\\wsl.exe",
-            "args": ["-d", distro],
-            "icon": "terminal-ubuntu",
-        }
-
-        settings["terminal.integrated.defaultProfile.windows"] = profile_name
-        settings["terminal.integrated.profiles.windows"] = profiles
+        _configure_vscode_terminal_windows(
+            settings,
+            platform,
+            windows_terminal_cwd,
+            wsl_terminal_cwd,
+        )
     elif platform.os == OperatingSystem.LINUX:
         settings["terminal.integrated.defaultProfile.linux"] = "zsh"
     elif platform.os == OperatingSystem.MACOS:

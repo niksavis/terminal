@@ -5,6 +5,12 @@
 local wezterm = require("wezterm")
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 local is_windows = wezterm.target_triple:find("windows") ~= nil
+local wsl_default_domain = nil
+local wsl_startup_args = {
+  "zsh",
+  "-lc",
+  'cd "__WSL_START_DIR__" 2>/dev/null || cd "$HOME"; exec zsh -l',
+}
 
 -- Default to WSL Ubuntu on Windows, otherwise the native shell.
 if is_windows then
@@ -42,13 +48,23 @@ if is_windows then
     return nil
   end
 
-  local domain = pick_wsl_domain()
-  if domain then
-    config.default_domain = domain
+  wsl_default_domain = pick_wsl_domain()
+  if wsl_default_domain then
+    config.default_domain = wsl_default_domain
+    config.default_prog = wsl_startup_args
+    for _, domain in ipairs(config.wsl_domains or {}) do
+      if domain.name == wsl_default_domain then
+        domain.default_prog = wsl_startup_args
+        domain.default_cwd = "~"
+      end
+    end
   end
 end
 
-config.default_prog = nil
+if not (is_windows and wsl_default_domain) then
+  config.default_prog = nil
+end
+config.default_cwd = "~"
 
 -- Performance and stability defaults.
 config.scrollback_lines = 100000
@@ -56,6 +72,14 @@ config.enable_scroll_bar = true
 config.check_for_updates = false
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
+config.skip_close_confirmation_for_processes_named = {
+  "bash",
+  "zsh",
+  "tmux",
+  "pwsh.exe",
+  "powershell.exe",
+  "cmd.exe",
+}
 
 -- Color scheme (tokyonight night inspired by josean-dev).
 config.colors = {
@@ -88,6 +112,8 @@ else
   })
 end
 config.font_size = 13.0
+config.initial_cols = 120
+config.initial_rows = 30
 
 -- Window appearance.
 config.enable_tab_bar = true
@@ -96,20 +122,40 @@ config.use_fancy_tab_bar = true
 config.tab_bar_at_bottom = false
 config.window_decorations = "TITLE | RESIZE"
 
+local new_tab_action = wezterm.action.SpawnTab("DefaultDomain")
+if is_windows and wsl_default_domain then
+  new_tab_action = wezterm.action.SpawnCommandInNewTab({
+    domain = { DomainName = wsl_default_domain },
+    cwd = "~",
+    args = wsl_startup_args,
+  })
+end
+
 -- Key bindings.
-config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 1000 }
+config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 3000 }
 config.keys = {
-  { key = "t", mods = "CTRL", action = wezterm.action.SpawnTab("DefaultDomain") },
-  { key = "w", mods = "CTRL", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
+  { key = "t", mods = "CTRL|SHIFT", action = new_tab_action },
+  { key = "w", mods = "CTRL|SHIFT", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
+  { key = "c", mods = "CTRL", action = wezterm.action.SendKey({ key = "c", mods = "CTRL" }) },
+  { key = "c", mods = "CTRL|SHIFT", action = wezterm.action.CopyTo("ClipboardAndPrimarySelection") },
+  { key = "v", mods = "CTRL|SHIFT", action = wezterm.action.PasteFrom("Clipboard") },
   { key = "q", mods = "CTRL|SHIFT", action = wezterm.action.QuitApplication },
   { key = "=", mods = "CTRL|SHIFT", action = wezterm.action.IncreaseFontSize },
   { key = "-", mods = "CTRL|SHIFT", action = wezterm.action.DecreaseFontSize },
   { key = "0", mods = "CTRL", action = wezterm.action.ResetFontSize },
   { key = "Enter", mods = "ALT", action = wezterm.action.ToggleFullScreen },
-  { key = "c", mods = "LEADER", action = wezterm.action.SpawnTab("DefaultDomain") },
+  { key = "c", mods = "LEADER", action = new_tab_action },
   { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = false }) },
+  { key = "x", mods = "CTRL|ALT", action = wezterm.action.CloseCurrentPane({ confirm = false }) },
+  { key = "\\", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "\\", mods = "CTRL|ALT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "phys:Backslash", mods = "CTRL|ALT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "phys:Backslash", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "v", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "s", mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
   { key = "|", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
   { key = "-", mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
+  { key = "-", mods = "CTRL|ALT", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
   { key = "h", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Left") },
   { key = "j", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Down") },
   { key = "k", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Up") },

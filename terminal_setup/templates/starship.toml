@@ -18,13 +18,14 @@ magenta = "#bb9af7"
 grey = "#565f89"
 
 [character]
-success_symbol = "[❯](green)"
-error_symbol = "[❯](red)"
-vimcmd_symbol = "[❮](blue)"
+success_symbol = "[>](green)"
+error_symbol = "[>](red)"
+vimcmd_symbol = "[<](blue)"
 
 [directory]
 truncation_length = 3
 truncate_to_repo = true
+home_symbol = "~"
 style = "bold blue"
 
 [cmd_duration]

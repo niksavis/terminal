@@ -50,6 +50,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print a post-setup verification report for tools and deployed configs.",
     )
+    parser.add_argument(
+        "--windows-terminal-cwd",
+        help=("Optional Windows terminal cwd for VS Code (user-specific). Example: D:\\Workspace"),
+    )
+    parser.add_argument(
+        "--wsl-terminal-cwd",
+        help=(
+            "Optional WSL startup cwd for terminal profiles and WezTerm config "
+            "(user-specific). Example: $HOME/workspace"
+        ),
+    )
     return parser
 
 
@@ -183,6 +194,8 @@ def run_setup(  # noqa: PLR0913
     skip_starship: bool,
     user_install: bool,
     report: bool,
+    windows_terminal_cwd: str | None,
+    wsl_terminal_cwd: str | None,
 ) -> int:
     """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
@@ -208,11 +221,21 @@ def run_setup(  # noqa: PLR0913
     if not skip_starship:
         prerequisites.ensure_starship(runner, platform_info, user_install=user_install)
 
-    configs.deploy_all(runner, platform_info, include_starship=not skip_starship)
+    configs.deploy_all(
+        runner,
+        platform_info,
+        include_starship=not skip_starship,
+        wsl_start_dir=wsl_terminal_cwd,
+    )
 
     if not skip_vscode:
         configs.install_vscode_wsl_extension(runner, platform_info)
-        configs.configure_vscode_terminal(runner, platform_info)
+        configs.configure_vscode_terminal(
+            runner,
+            platform_info,
+            windows_terminal_cwd=windows_terminal_cwd,
+            wsl_terminal_cwd=wsl_terminal_cwd,
+        )
 
     if report:
         print_setup_report(
@@ -253,6 +276,8 @@ def main(argv: list[str] | None = None) -> int:
         skip_starship=args.skip_starship,
         user_install=args.user_install,
         report=args.report,
+        windows_terminal_cwd=args.windows_terminal_cwd,
+        wsl_terminal_cwd=args.wsl_terminal_cwd,
     )
 
 

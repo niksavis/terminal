@@ -34,6 +34,19 @@ def test_parser_report_flag() -> None:
     assert args.report is True
 
 
+def test_parser_optional_terminal_cwd_flags() -> None:
+    """The parser must accept optional user-specific terminal cwd values."""
+    parser = build_parser()
+    args = parser.parse_args([
+        "--windows-terminal-cwd",
+        "D:\\Workspace",
+        "--wsl-terminal-cwd",
+        "$HOME/workspace",
+    ])
+    assert args.windows_terminal_cwd == "D:\\Workspace"
+    assert args.wsl_terminal_cwd == "$HOME/workspace"
+
+
 def test_main_check_mode() -> None:
     """Main with --check must return 0 or 1 without side effects."""
     result = main(["--check", "--dry-run"])
