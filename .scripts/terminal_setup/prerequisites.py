@@ -37,7 +37,12 @@ def check_wsl_command(
 ) -> PrerequisiteStatus:
     """Check whether a command is available inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
-    result = runner.run(["wsl", "-d", distro, "--", "command", "-v", command], check=False)
+    # Prerequisite checks are read-only and should reflect reality even in dry-run.
+    result = runner.run(
+        ["wsl", "-d", distro, "--", "command", "-v", command],
+        check=False,
+        dry_run_safe=True,
+    )
     if result.returncode == 0 and result.stdout.strip():
         return PrerequisiteStatus(name=name, present=True, message=result.stdout.strip())
     return PrerequisiteStatus(
@@ -135,7 +140,13 @@ def install_package(
     if wsl_distro:
         command = ["wsl", "-d", wsl_distro, "--", *command]
 
-    runner.run(command)
+    # apt/pacman/dnf run under sudo and may prompt for a password.
+    interactive = package_manager in {
+        PackageManager.APT,
+        PackageManager.PACMAN,
+        PackageManager.DNF,
+    }
+    runner.run(command, interactive=interactive)
 
 
 def update_packages(
@@ -160,7 +171,9 @@ def update_packages(
     if wsl_distro:
         command = ["wsl", "-d", wsl_distro, "--", *command]
 
-    runner.run(command, check=False)
+    # apt/pacman may prompt for a password via sudo.
+    interactive = package_manager in {PackageManager.APT, PackageManager.PACMAN}
+    runner.run(command, check=False, interactive=interactive)
 
 
 def install_wsl_ubuntu(runner: Runner) -> None:
@@ -168,20 +181,31 @@ def install_wsl_ubuntu(runner: Runner) -> None:
     runner.run(["wsl", "--install", "-d", "Ubuntu"])
 
 
+def _wsl_apt_install_script(packages: list[str]) -> str:
+    """Return a shell script that updates apt and installs packages in one session."""
+    package_list = " ".join(packages)
+    return (
+        "set -e; "
+        "export DEBIAN_FRONTEND=noninteractive; "
+        "sudo apt-get update; "
+        f"sudo apt-get install -y {package_list}"
+    )
+
+
 def ensure_wsl_tools(runner: Runner, platform: PlatformInfo) -> None:
     """Install core tools inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
-    update_packages(runner, PackageManager.APT, wsl_distro=distro)
-    for package in ["zsh", "tmux", "git", "curl", "wget"]:
-        install_package(runner, PackageManager.APT, package, wsl_distro=distro)
+    packages = ["zsh", "tmux", "git", "curl", "wget"]
+    script = _wsl_apt_install_script(packages)
+    runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
     """Install extra CLI tools inside the WSL Ubuntu guest (josean-dev style)."""
     distro = _wsl_distro(platform)
     extras = ["fzf", "fd-find", "bat", "eza", "zoxide", "ripgrep"]
-    for package in extras:
-        install_package(runner, PackageManager.APT, package, wsl_distro=distro)
+    script = _wsl_apt_install_script(extras)
+    runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
     # Create common binary aliases for Debian/Ubuntu package names.
     fd_alias = "command -v fdfind >/dev/null && ln -sf $(command -v fdfind) ~/.local/bin/fd || true"
     bat_alias = (
@@ -220,11 +244,33 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
         install_package(runner, platform.package_manager, package)
 
 
-def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
+def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
+    """Install starship into the user's programs directory without admin rights."""
+    install_dir = platform.user_programs_dir / "starship"
+    runner.ensure_dir(install_dir)
+    install_dir_str = str(install_dir).replace("\\", "/")
+    script_url = "https://starship.rs/install.sh"
+    runner.run(
+        [
+            "powershell",
+            "-Command",
+            f"& {{ $ErrorActionPreference = 'Stop; "
+            f"Invoke-WebRequest -Uri {script_url} -UseBasicParsing | "
+            f"Invoke-Expression; install -y -b '{install_dir_str}' }}",
+        ],
+        interactive=True,
+    )
+    _add_to_user_path(runner, install_dir)
+
+
+def ensure_starship(runner: Runner, platform: PlatformInfo, *, user_install: bool = False) -> None:
     """Install the starship prompt if possible."""
     if runner.which("starship"):
         return
     if platform.os == OperatingSystem.WINDOWS:
+        if user_install:
+            _ensure_starship_user_install(runner, platform)
+            return
         if runner.which("winget"):
             runner.run(
                 [
@@ -234,7 +280,10 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
                     "Starship.Starship",
                     "--accept-source-agreements",
                     "--accept-package-agreements",
-                ]
+                    "--scope",
+                    "user",
+                ],
+                interactive=True,
             )
         return
     if platform.os == OperatingSystem.LINUX:
@@ -245,21 +294,62 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
         install_package(runner, PackageManager.HOMEBREW, "starship")
 
 
-def ensure_wezterm(runner: Runner, platform: PlatformInfo) -> None:
+def _add_to_user_path(runner: Runner, directory: Path) -> None:
+    """Add a directory to the user's PATH persistently on Windows."""
+    if runner.dry_run:
+        return
+    directory_str = str(directory).replace("\\", "/")
+    script = (
+        f"$target = [Environment]::GetEnvironmentVariable('PATH', 'User'); "
+        f"if ($target -notlike '*{directory_str}*') {{ "
+        f"[Environment]::SetEnvironmentVariable("
+        f"'PATH', $target + ';{directory_str}', 'User') }}"
+    )
+    runner.run(["powershell", "-Command", script], interactive=True)
+
+
+def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None:
+    """Download and extract WezTerm to the user's programs directory."""
+    install_dir = platform.user_programs_dir / "WezTerm"
+    runner.ensure_dir(install_dir)
+    install_dir_str = str(install_dir).replace("\\", "/")
+    api_url = "https://api.github.com/repos/wez/wezterm/releases/latest"
+    base_url = "https://github.com/wez/wezterm/releases/download"
+    script = (
+        f"$ErrorActionPreference = 'Stop'; "
+        f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
+        f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
+        f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
+        f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
+        f"Remove-Item $zip"
+    )
+    runner.run(["powershell", "-Command", script], interactive=True)
+    _add_to_user_path(runner, install_dir)
+
+
+def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, user_install: bool = False) -> None:
     """Install WezTerm using the platform package manager."""
     if runner.which("wezterm"):
         return
-    if platform.os == OperatingSystem.WINDOWS and platform.package_manager == PackageManager.WINGET:
-        runner.run(
-            [
-                "winget",
-                "install",
-                "--id",
-                "wez.wezterm",
-                "--accept-source-agreements",
-                "--accept-package-agreements",
-            ]
-        )
+    if platform.os == OperatingSystem.WINDOWS:
+        if user_install:
+            _ensure_wezterm_user_install(runner, platform)
+            return
+        if platform.package_manager == PackageManager.WINGET:
+            runner.run(
+                [
+                    "winget",
+                    "install",
+                    "--id",
+                    "wez.wezterm",
+                    "--accept-source-agreements",
+                    "--accept-package-agreements",
+                    "--scope",
+                    "user",
+                ],
+                interactive=True,
+            )
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         install_package(runner, PackageManager.HOMEBREW, "--cask", "wezterm")
@@ -278,17 +368,21 @@ def _ensure_wezterm_apt(runner: Runner) -> None:
     keyring_dir = Path("/usr/share/keyrings")
     keyring_path = keyring_dir / "wezterm-fury.gpg"
     if not runner.dry_run and not keyring_path.exists():
-        runner.run(["sudo", "mkdir", "-p", str(keyring_dir)])
+        runner.run(["sudo", "mkdir", "-p", str(keyring_dir)], interactive=True)
         runner.run(
             [
                 "bash",
                 "-c",
                 f"curl -fsSL https://fury.wez.dev/key.gpg | sudo gpg --dearmor -o {keyring_path}",
-            ]
+            ],
+            interactive=True,
         )
     sources_line = f"deb [signed-by={keyring_path}] https://fury.wez.dev/apt/ * *"
     sources_path = Path("/etc/apt/sources.list.d/wezterm.list")
     if not runner.dry_run and not sources_path.exists():
-        runner.run(["bash", "-c", f"echo '{sources_line}' | sudo tee {sources_path}"])
+        runner.run(
+            ["bash", "-c", f"echo '{sources_line}' | sudo tee {sources_path}"],
+            interactive=True,
+        )
     update_packages(runner, PackageManager.APT)
     install_package(runner, PackageManager.APT, "wezterm")

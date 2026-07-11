@@ -27,6 +27,25 @@ uv run python .scripts/setup-terminal.py
 
 The setup is idempotent: running it again will only install missing tools and update configs.
 
+### Install with an AI coding agent
+
+Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude Code, etc.) after cloning this repo. The agent will run the setup for you and report what it changed.
+
+```text
+I want to install the terminal environment defined in this repository.
+
+Prerequisites: ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available, and that WSL2 Ubuntu is installed if you are on Windows.
+
+Run the setup idempotently:
+1. Run `uv sync` to install dependencies.
+2. Run `uv run python .scripts/setup-terminal.py --dry-run` and show me the planned changes.
+3. If the dry-run looks correct, run `uv run python .scripts/setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python .scripts/setup-terminal.py --user-install` instead.
+4. After the setup completes, verify that WezTerm, zsh, tmux, starship, fzf, fd, bat, eza, zoxide, and ripgrep are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
+5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
+
+Do not run destructive commands without explaining them first. If a prerequisite is missing, stop and tell me how to install it.
+```
+
 ## Quick start
 
 ### Windows
@@ -73,29 +92,29 @@ wezterm
 
 ### WezTerm
 
-| Action | Shortcut |
-| ------ | -------- |
-| New tab | `Ctrl + t` |
-| Close tab | `Ctrl + w` |
-| Next tab | `Ctrl + Tab` |
-| Previous tab | `Ctrl + Shift + Tab` |
-| Split vertical | `Ctrl + a` then `\|` |
-| Split horizontal | `Ctrl + a` then `-` |
+| Action             | Shortcut                                        |
+| ------------------ | ----------------------------------------------- |
+| New tab            | `Ctrl + t`                                      |
+| Close tab          | `Ctrl + w`                                      |
+| Next tab           | `Ctrl + Tab`                                    |
+| Previous tab       | `Ctrl + Shift + Tab`                            |
+| Split vertical     | `Ctrl + a` then `\|`                            |
+| Split horizontal   | `Ctrl + a` then `-`                             |
 | Move between panes | `Shift + Ctrl + arrow` or `Ctrl + a` then arrow |
-| Rename tab | `Ctrl + a` then `,` |
-| Open config | `Ctrl + a` then `.` |
+| Rename tab         | `Ctrl + a` then `,`                             |
+| Open config        | `Ctrl + a` then `.`                             |
 
 ### tmux
 
-| Action | Shortcut |
-| ------ | -------- |
-| Prefix key | `Ctrl + a` |
-| New window | `Ctrl + a` then `c` |
-| Next window | `Ctrl + a` then `n` |
-| Previous window | `Ctrl + a` then `p` |
-| Split vertical | `Ctrl + a` then `\|` |
-| Split horizontal | `Ctrl + a` then `-` |
-| Reload config | `Ctrl + a` then `r` |
+| Action           | Shortcut             |
+| ---------------- | -------------------- |
+| Prefix key       | `Ctrl + a`           |
+| New window       | `Ctrl + a` then `c`  |
+| Next window      | `Ctrl + a` then `n`  |
+| Previous window  | `Ctrl + a` then `p`  |
+| Split vertical   | `Ctrl + a` then `\|` |
+| Split horizontal | `Ctrl + a` then `-`  |
+| Reload config    | `Ctrl + a` then `r`  |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
@@ -149,7 +168,10 @@ uv run python .scripts/setup-terminal.py --dry-run    # preview changes
 uv run python .scripts/setup-terminal.py --check      # verify prerequisites only
 uv run python .scripts/setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python .scripts/setup-terminal.py --skip-starship # skip starship prompt
+uv run python .scripts/setup-terminal.py --user-install # install without admin rights (Windows)
 ```
+
+> **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
 
 ## Development
 

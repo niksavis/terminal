@@ -56,22 +56,45 @@ class Runner:
     dry_run: bool = False
     reporter: Reporter = field(default_factory=ConsoleReporter)
 
-    def run(
+    def run(  # noqa: PLR0913
         self,
         command: list[str],
         *,
         check: bool = True,
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
+        interactive: bool = False,
+        dry_run_safe: bool = False,
     ) -> subprocess.CompletedProcess[str]:
-        """Run a command or simulate it when in dry-run mode."""
+        """Run a command or simulate it when in dry-run mode.
+
+        Set ``interactive=True`` for commands that may prompt for input
+        (e.g. ``sudo`` or ``chsh`` asking for a password). In interactive
+        mode the terminal's stdin/stdout/stderr are connected directly to
+        the child process so the user can respond to prompts.
+
+        Set ``dry_run_safe=True`` for read-only commands (such as
+        prerequisite checks) that should always execute so dry-run output
+        reflects the real system state.
+        """
         self.reporter.command(command)
-        if self.dry_run:
+        if self.dry_run and not dry_run_safe:
             return subprocess.CompletedProcess(
                 args=command,
                 returncode=0,
                 stdout="",
                 stderr="",
+            )
+        if interactive:
+            return subprocess.run(  # nosec B603
+                command,
+                check=check,
+                cwd=cwd,
+                env=env,
+                stdin=None,
+                stdout=None,
+                stderr=None,
+                text=True,
             )
         return subprocess.run(  # nosec B603
             command,

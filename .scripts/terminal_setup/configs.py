@@ -67,7 +67,8 @@ def set_wsl_default_shell(
 ) -> None:
     """Set the default shell inside WSL Ubuntu."""
     distro = _wsl_distro(platform)
-    runner.run(["wsl", "-d", distro, "--", "chsh", "-s", shell])
+    # chsh may prompt for the user's password.
+    runner.run(["wsl", "-d", distro, "--", "chsh", "-s", shell], interactive=True)
 
 
 def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = "zsh") -> None:
@@ -77,7 +78,8 @@ def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = 
     shell_path = runner.which(shell)
     if shell_path is None:
         return
-    runner.run(["chsh", "-s", shell_path])
+    # chsh may prompt for the user's password.
+    runner.run(["chsh", "-s", shell_path], interactive=True)
 
 
 def deploy_all(
@@ -100,6 +102,19 @@ def deploy_all(
         set_host_default_shell(runner, platform)
 
 
+def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
+    """Convert a Windows path to a WSL path using wslpath."""
+    if runner.dry_run:
+        drive = windows_path.drive.lower().rstrip(":")
+        rest = str(windows_path)[len(windows_path.drive) :].replace("\\", "/")
+        return f"/mnt/{drive}{rest}"
+    result = runner.run(
+        ["wsl", "-d", distro, "--", "wslpath", "-u", str(windows_path)],
+        check=True,
+    )
+    return result.stdout.strip()
+
+
 def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
     """Copy host config templates into the WSL Ubuntu home directory."""
     distro = _wsl_distro(platform)
@@ -113,10 +128,13 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
         source = template_path(template)
         destination = f"{wsl_home}/{target_name}"
         runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", destination.rsplit("/", 1)[0]])
-        runner.run(["wsl", "-d", distro, "--", "cp", str(source), destination])
+        wsl_source = _to_wsl_path(runner, distro, source)
+        runner.run(["wsl", "-d", distro, "--", "cp", wsl_source, destination])
     if CHEAT_SHEET_PATH.exists():
         cheat_destination = f"{wsl_home}/terminal-cheat-sheet.html"
-        runner.run(["wsl", "-d", distro, "--", "cp", str(CHEAT_SHEET_PATH), cheat_destination])
+        runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", cheat_destination.rsplit("/", 1)[0]])
+        wsl_cheat_source = _to_wsl_path(runner, distro, CHEAT_SHEET_PATH)
+        runner.run(["wsl", "-d", distro, "--", "cp", wsl_cheat_source, cheat_destination])
 
 
 def configure_vscode_terminal(runner: Runner, platform: PlatformInfo) -> None:

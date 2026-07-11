@@ -43,6 +43,12 @@ class PlatformInfo:
     home: Path
     wezterm_config_dir: Path | None
     vscode_settings_path: Path | None
+    user_install: bool = False
+
+    @property
+    def user_programs_dir(self) -> Path:
+        """Return the per-user programs directory used for non-admin installs."""
+        return self.home / "AppData" / "Local" / "Programs"
 
 
 def detect_os() -> OperatingSystem:
@@ -160,7 +166,7 @@ def get_vscode_settings_path() -> Path | None:
     return candidates[0] if candidates else None
 
 
-def detect_platform() -> PlatformInfo:
+def detect_platform(user_install: bool = False) -> PlatformInfo:
     """Build a complete platform snapshot."""
     os = detect_os()
     wsl_available = is_wsl_available()
@@ -175,4 +181,5 @@ def detect_platform() -> PlatformInfo:
         home=get_home_directory(),
         wezterm_config_dir=get_wezterm_config_dir(),
         vscode_settings_path=get_vscode_settings_path(),
+        user_install=user_install,
     )

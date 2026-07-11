@@ -40,6 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print additional diagnostic output.",
     )
+    parser.add_argument(
+        "--user-install",
+        action="store_true",
+        help="Install tools into user-writable locations without admin rights (Windows only).",
+    )
     return parser
 
 
@@ -66,10 +71,13 @@ def run_setup(
     *,
     skip_vscode: bool,
     skip_starship: bool,
+    user_install: bool,
 ) -> int:
     """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
     runner.reporter.info(f"Package manager: {platform_info.package_manager.name.lower()}")
+    if user_install:
+        runner.reporter.info("User-install mode: tools will be installed without admin rights")
 
     if platform_info.os == platform.OperatingSystem.WINDOWS:
         if not platform_info.is_wsl_available:
@@ -84,10 +92,10 @@ def run_setup(
         prerequisites.ensure_shell_tools(runner, platform_info)
         prerequisites.ensure_host_cli_extras(runner, platform_info)
 
-    prerequisites.ensure_wezterm(runner, platform_info)
+    prerequisites.ensure_wezterm(runner, platform_info, user_install=user_install)
 
     if not skip_starship:
-        prerequisites.ensure_starship(runner, platform_info)
+        prerequisites.ensure_starship(runner, platform_info, user_install=user_install)
 
     configs.deploy_all(runner, platform_info, include_starship=not skip_starship)
 
@@ -96,6 +104,8 @@ def run_setup(
         configs.configure_vscode_terminal(runner, platform_info)
 
     runner.reporter.info("Setup complete.")
+    if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
+        runner.reporter.info("Restart your terminal for the updated PATH to take effect.")
     return 0
 
 
@@ -105,20 +115,24 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()
     runner = Runner(dry_run=args.dry_run, reporter=reporter)
-    platform_info = platform.detect_platform()
+    platform_info = platform.detect_platform(user_install=args.user_install)
 
     if args.check:
         return run_check(platform_info, runner)
 
     status = run_check(platform_info, runner)
-    if status != 0 and not args.dry_run:
-        return status
+    if status != 0:
+        if args.dry_run:
+            runner.reporter.info("Dry-run continues; missing prerequisites would be installed.")
+        else:
+            return status
 
     return run_setup(
         platform_info,
         runner,
         skip_vscode=args.skip_vscode,
         skip_starship=args.skip_starship,
+        user_install=args.user_install,
     )
 
 
