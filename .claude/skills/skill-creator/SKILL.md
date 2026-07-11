@@ -33,10 +33,12 @@ If the user asks for projection or install into a custom location, create/update
 Each skill must include:
 
 1. YAML frontmatter with:
+
 - `name`
 - `description` (must include both what the skill does and when to use it)
 
-2. A markdown body with:
+1. A markdown body with:
+
 - Purpose and scope
 - Inputs/outputs
 - Step-by-step workflow
@@ -46,29 +48,35 @@ Each skill must include:
 ## Authoring Workflow
 
 1. Capture intent.
+
 - What should this skill enable?
 - When should it trigger?
 - What output should it produce?
 
-2. Define boundaries.
+1. Define boundaries.
+
 - What this skill does
 - What this skill does not do
 
-3. Draft the skill.
+1. Draft the skill.
+
 - Write a strong trigger-focused description.
 - Use imperative, concrete instructions.
 - Keep it short enough to load quickly.
 
-4. Add practical examples.
+1. Add practical examples.
+
 - Include realistic prompt examples.
 - Include command examples when relevant.
 
-5. Validate trigger quality.
+1. Validate trigger quality.
+
 - Create 2-3 should-trigger prompts.
 - Create 2-3 should-not-trigger prompts.
 - Refine `description` until behavior is precise.
 
-6. Integrate with repo automation.
+1. Integrate with repo automation.
+
 - If this repo needs projection to multiple skill roots, implement that through repo scripts/config (not manual copy-paste workflows).
 
 ## Writing Standards

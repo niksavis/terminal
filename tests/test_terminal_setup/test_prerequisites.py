@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
+from typing import cast
 
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, detect_os
 from terminal_setup.prerequisites import (
@@ -134,7 +135,7 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
-    ensure_wsl_tools(runner, platform)
+    ensure_wsl_tools(cast(Runner, runner), platform)
 
     assert len(runner.commands) == 1
     command = runner.commands[0]
@@ -234,7 +235,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
         platform = make_platform(OperatingSystem.LINUX, manager)
         runner = SpyRunner()
 
-        ensure_host_cli_extras(runner, platform)
+        ensure_host_cli_extras(cast(Runner, runner), platform)
 
         assert _installed_packages(runner.commands, manager) == expected_packages
 
@@ -244,6 +245,6 @@ def test_ensure_host_cli_extras_noop_on_windows() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
-    ensure_host_cli_extras(runner, platform)
+    ensure_host_cli_extras(cast(Runner, runner), platform)
 
     assert runner.commands == []
