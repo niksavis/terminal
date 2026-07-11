@@ -208,22 +208,24 @@ def ensure_wsl_tools(runner: Runner, platform: PlatformInfo) -> None:
         "fzf",
         "fd-find",
         "bat",
-        "eza",
-        "zoxide",
         "ripgrep",
-        "micro",
         "jq",
         "yq",
         "shellcheck",
         "tree",
-        "htop",
+        "xh",
+        "ast-grep",
+        "sd",
+        "git-delta",
+        "typos",
+        "uv",
     ]
     script = _wsl_apt_install_script(packages)
     runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
-    """Install extra CLI tools inside the WSL Ubuntu guest (josean-dev style)."""
+    """Install post-package CLI extras inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
     runner.run(["wsl", "-d", distro, "--", "sh", "-c", "mkdir -p ~/.local/bin"])
     starship_install = (
@@ -297,7 +299,7 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
 
 
 def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
-    """Install extra CLI tools on the host (josean-dev style)."""
+    """Install agent-first CLI tools on the host."""
     if platform.os == OperatingSystem.WINDOWS:
         return
     extras = {
@@ -305,57 +307,65 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "fzf",
             "fd-find",
             "bat",
-            "eza",
-            "zoxide",
             "ripgrep",
-            "micro",
             "jq",
             "yq",
             "shellcheck",
             "tree",
-            "htop",
+            "xh",
+            "ast-grep",
+            "sd",
+            "git-delta",
+            "typos",
+            "uv",
         ],
         PackageManager.HOMEBREW: [
             "fzf",
             "fd",
             "bat",
-            "eza",
-            "zoxide",
             "ripgrep",
-            "micro",
             "jq",
             "yq",
             "shellcheck",
             "tree",
-            "htop",
+            "xh",
+            "ast-grep",
+            "sd",
+            "git-delta",
+            "typos-cli",
+            "uv",
         ],
         PackageManager.PACMAN: [
             "fzf",
             "fd",
             "bat",
-            "eza",
-            "zoxide",
             "ripgrep",
-            "micro",
             "jq",
             "yq",
             "shellcheck",
             "tree",
-            "htop",
+            "xh",
+            "ast-grep",
+            "sd",
+            "git-delta",
+            "typos",
+            "uv",
         ],
         PackageManager.DNF: [
             "fzf",
             "fd-find",
             "bat",
-            "eza",
-            "zoxide",
             "ripgrep",
-            "micro",
             "jq",
             "yq",
             "shellcheck",
             "tree",
-            "htop",
+            "xh",
+            "ast-grep",
+            "sd",
+            "git-delta",
+            "typos",
+            "uv",
         ],
     }
     for package in extras.get(platform.package_manager, []):
