@@ -6,7 +6,7 @@ Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling,
 
 - **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
 - **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), and [`starship.toml`](terminal_setup/templates/starship.toml).
-- **Cheat sheet** — [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts. GitHub Actions also publishes an HTML version to GitHub Pages.
+- **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
 - **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
 - **Tests** — workspace and setup tests in [`tests/`](tests/).
 
@@ -195,6 +195,8 @@ The setup installs tools directly on the host.
 
 ## Cheat Sheet Publishing
 
+- Live page: [https://niksavis.github.io/terminal/](https://niksavis.github.io/terminal/)
+- Markdown source (GitHub): [https://github.com/niksavis/terminal/blob/main/terminal-cheat-sheet.md](https://github.com/niksavis/terminal/blob/main/terminal-cheat-sheet.md)
 - Source: [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md)
 - Build: [`.scripts/render-cheat-sheet.py`](.scripts/render-cheat-sheet.py) renders `terminal-cheat-sheet.html`
 - CI/CD: [`.github/workflows/cheat-sheet.yml`](.github/workflows/cheat-sheet.yml) renders on each change to the cheat-sheet source and deploys the generated HTML to GitHub Pages on pushes to `main`
