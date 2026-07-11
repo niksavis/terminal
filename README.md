@@ -43,7 +43,7 @@ Run the setup idempotently:
 1. Run `uv sync` to install dependencies.
 2. Run `uv run python setup-terminal.py --dry-run` and show me the planned changes.
 3. If the dry-run looks correct, run `uv run python setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python setup-terminal.py --user-install` instead.
-4. After the setup completes, verify that WezTerm, zsh, tmux, starship, micro, fzf, fd, bat, eza, zoxide, ripgrep, jq, tree, and htop are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
+4. After the setup completes, verify that WezTerm, zsh, tmux, starship, micro, fzf, fd, bat, eza, zoxide, ripgrep, jq, yq, shellcheck, tree, and htop are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
 5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
 
 Do not run destructive commands without explaining them first. If a prerequisite is missing, stop and tell me how to install it.
@@ -169,7 +169,7 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 #### Inside WSL2 Ubuntu
 
 - Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Extra CLI tools: `fzf`, `fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `tree`, `htop`
+- Extra CLI tools: `fzf`, `fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `yq`, `shellcheck`, `tree`, `htop`
 - Aliases: `fd` -> `fdfind`, `bat` -> `batcat`
 
 #### Configs deployed
@@ -185,7 +185,7 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 The setup installs tools directly on the host.
 
 - Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Extra CLI tools: `fzf`, `fd`/`fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `tree`, `htop`
+- Extra CLI tools: `fzf`, `fd`/`fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `yq`, `shellcheck`, `tree`, `htop`
 - WezTerm via `apt` repository, `pacman`, `dnf`, or Homebrew cask
 - Starship prompt via install script (Linux) or Homebrew (macOS)
 

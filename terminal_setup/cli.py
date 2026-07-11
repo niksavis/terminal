@@ -140,6 +140,8 @@ def print_setup_report(
             "rg",
             "micro",
             "jq",
+            "yq",
+            "shellcheck",
             "tree",
             "htop",
         ]:
@@ -169,6 +171,8 @@ def print_setup_report(
             "rg",
             "micro",
             "jq",
+            "yq",
+            "shellcheck",
             "tree",
             "htop",
         ]:

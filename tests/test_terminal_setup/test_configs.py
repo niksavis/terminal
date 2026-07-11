@@ -113,7 +113,8 @@ def test_deploy_micro_config(tmp_path: Path) -> None:
     destination = tmp_path / ".config" / "micro" / "settings.json"
     assert destination.exists()
     content = destination.read_text(encoding="utf-8")
-    assert '"colorscheme": "monokai"' in content
+    expected = template_path("micro-settings.json").read_text(encoding="utf-8")
+    assert content == expected
 
 
 def test_configure_vscode_terminal_linux(tmp_path: Path) -> None:
