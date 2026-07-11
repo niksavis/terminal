@@ -8,6 +8,7 @@ This directory is the source-of-truth skill catalog for terminal tooling.
 
 ## Included skills
 
+- `skill-creator`: workflow skill for creating and refining reusable `SKILL.md` files.
 - `tool-zsh`: shell startup and profile troubleshooting.
 - `tool-tmux`: terminal multiplexing and persistent session workflows.
 - `tool-git`: repository state, diffs, and safe version-control operations.

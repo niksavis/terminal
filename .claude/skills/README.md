@@ -2,13 +2,7 @@
 
 Place reusable workflow skills under this directory.
 
-Most tool skills are projected from `.basicly/skills/` via:
-
-```bash
-PYTHONPATH=.basicly uv run python -m basicly.cli skills-build
-```
-
-The `skill-creator` skill may still be maintained directly in this folder.
+Skills in this folder are intended to be reusable and discoverable across agent workflows.
 
 ## Structure
 
