@@ -128,6 +128,10 @@ def install_package(
             "--accept-package-agreements",
         ]
     elif package_manager == PackageManager.APT:
+        if not _apt_package_available(runner, package, wsl_distro=wsl_distro):
+            if _install_apt_fallback(runner, package, wsl_distro=wsl_distro):
+                return
+            raise RuntimeError(f"Package '{package}' is not available via apt")
         command = ["sudo", "apt-get", "install", "-y", package]
     elif package_manager == PackageManager.HOMEBREW:
         command = ["brew", "install", package]
@@ -148,6 +152,90 @@ def install_package(
         PackageManager.DNF,
     }
     runner.run(command, interactive=interactive)
+
+
+def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
+    """Return whether a package exists in apt metadata."""
+    command = ["apt-cache", "show", package]
+    if wsl_distro:
+        command = ["wsl", "-d", wsl_distro, "--", *command]
+    result = runner.run(command, check=False, dry_run_safe=True)
+    return result.returncode == 0
+
+
+def _command_available(runner: Runner, command: str, *, wsl_distro: str | None = None) -> bool:
+    """Return whether a command is available on host or in WSL."""
+    if wsl_distro is None:
+        return runner.which(command) is not None
+    result = runner.run(
+        ["wsl", "-d", wsl_distro, "--", "sh", "-c", f"command -v {command}"],
+        check=False,
+        dry_run_safe=True,
+    )
+    return result.returncode == 0
+
+
+def _run_shell_command(runner: Runner, script: str, *, wsl_distro: str | None = None) -> None:
+    """Run a shell command on host or in WSL."""
+    command = ["sh", "-c", script]
+    if wsl_distro:
+        command = ["wsl", "-d", wsl_distro, "--", *command]
+    runner.run(command, interactive=True)
+
+
+def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> None:
+    """Ensure a modern cargo toolchain is available for Rust fallback installs."""
+    if wsl_distro is None and (Path.home() / ".cargo" / "bin" / "cargo").exists():
+        return
+    if wsl_distro is not None:
+        result = runner.run(
+            ["wsl", "-d", wsl_distro, "--", "sh", "-c", "test -x ~/.cargo/bin/cargo"],
+            check=False,
+            dry_run_safe=True,
+        )
+        if result.returncode == 0:
+            return
+    _run_shell_command(
+        runner,
+        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+        wsl_distro=wsl_distro,
+    )
+
+
+def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
+    """Install unsupported apt packages via a supported fallback path."""
+    rust_fallback = {
+        "xh": ("xh", "xh"),
+        "ast-grep": ("ast-grep", "sg"),
+        "typos": ("typos-cli", "typos"),
+    }
+    if package in rust_fallback:
+        crate, command = rust_fallback[package]
+        if _command_available(runner, command, wsl_distro=wsl_distro):
+            return True
+        _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
+        _run_shell_command(
+            runner,
+            (
+                'CARGO_BIN="$HOME/.cargo/bin/cargo"; '
+                'if [ ! -x "$CARGO_BIN" ]; then CARGO_BIN="$(command -v cargo)"; fi; '
+                f'"$CARGO_BIN" install --locked --root ~/.local {crate}'
+            ),
+            wsl_distro=wsl_distro,
+        )
+        return True
+
+    if package == "uv":
+        if _command_available(runner, "uv", wsl_distro=wsl_distro):
+            return True
+        _run_shell_command(
+            runner,
+            "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            wsl_distro=wsl_distro,
+        )
+        return True
+
+    return False
 
 
 def update_packages(
