@@ -1,11 +1,11 @@
 # terminal
 
-Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling, zsh, tmux, starship, and a consistent set of CLI tools on every developer machine.
+Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling, zsh, tmux, starship, micro, and a consistent set of CLI tools on every developer machine.
 
 ## What's here
 
 - **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
-- **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), and [`starship.toml`](terminal_setup/templates/starship.toml).
+- **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), [`starship.toml`](terminal_setup/templates/starship.toml), and [`micro-settings.json`](terminal_setup/templates/micro-settings.json).
 - **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
 - **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
 - **Tests** — workspace and setup tests in [`tests/`](tests/).
@@ -43,7 +43,7 @@ Run the setup idempotently:
 1. Run `uv sync` to install dependencies.
 2. Run `uv run python setup-terminal.py --dry-run` and show me the planned changes.
 3. If the dry-run looks correct, run `uv run python setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python setup-terminal.py --user-install` instead.
-4. After the setup completes, verify that WezTerm, zsh, tmux, starship, fzf, fd, bat, eza, zoxide, and ripgrep are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
+4. After the setup completes, verify that WezTerm, zsh, tmux, starship, micro, fzf, fd, bat, eza, zoxide, ripgrep, jq, tree, and htop are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
 5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
 
 Do not run destructive commands without explaining them first. If a prerequisite is missing, stop and tell me how to install it.
@@ -169,7 +169,7 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 #### Inside WSL2 Ubuntu
 
 - Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Extra CLI tools: `fzf`, `fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`
+- Extra CLI tools: `fzf`, `fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `tree`, `htop`
 - Aliases: `fd` -> `fdfind`, `bat` -> `batcat`
 
 #### Configs deployed
@@ -178,13 +178,14 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 - `.tmux.conf` -> WSL `~/.tmux.conf`
 - `.zshrc` -> WSL `~/.zshrc`
 - `starship.toml` -> WSL `~/.config/starship.toml`
+- `settings.json` -> WSL `~/.config/micro/settings.json`
 
 ### On Linux / macOS / WSL Ubuntu terminal
 
 The setup installs tools directly on the host.
 
 - Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Extra CLI tools: `fzf`, `fd`/`fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`
+- Extra CLI tools: `fzf`, `fd`/`fd-find`, `bat`, `eza`, `zoxide`, `ripgrep`, `micro`, `jq`, `tree`, `htop`
 - WezTerm via `apt` repository, `pacman`, `dnf`, or Homebrew cask
 - Starship prompt via install script (Linux) or Homebrew (macOS)
 
@@ -194,6 +195,7 @@ The setup installs tools directly on the host.
 - `.tmux.conf` -> `~/.tmux.conf`
 - `.zshrc` -> `~/.zshrc`
 - `starship.toml` -> `~/.config/starship.toml`
+- `settings.json` -> `~/.config/micro/settings.json`
 
 ## Cheat Sheet Publishing
 

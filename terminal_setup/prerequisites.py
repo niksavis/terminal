@@ -211,6 +211,10 @@ def ensure_wsl_tools(runner: Runner, platform: PlatformInfo) -> None:
         "eza",
         "zoxide",
         "ripgrep",
+        "micro",
+        "jq",
+        "tree",
+        "htop",
     ]
     script = _wsl_apt_install_script(packages)
     runner.run(["wsl", "-d", distro, "--", "sh", "-c", script], interactive=True)
@@ -295,10 +299,54 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
     if platform.os == OperatingSystem.WINDOWS:
         return
     extras = {
-        PackageManager.APT: ["fzf", "fd-find", "bat", "eza", "zoxide", "ripgrep"],
-        PackageManager.HOMEBREW: ["fzf", "fd", "bat", "eza", "zoxide", "ripgrep"],
-        PackageManager.PACMAN: ["fzf", "fd", "bat", "eza", "zoxide", "ripgrep"],
-        PackageManager.DNF: ["fzf", "fd-find", "bat", "eza", "zoxide", "ripgrep"],
+        PackageManager.APT: [
+            "fzf",
+            "fd-find",
+            "bat",
+            "eza",
+            "zoxide",
+            "ripgrep",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ],
+        PackageManager.HOMEBREW: [
+            "fzf",
+            "fd",
+            "bat",
+            "eza",
+            "zoxide",
+            "ripgrep",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ],
+        PackageManager.PACMAN: [
+            "fzf",
+            "fd",
+            "bat",
+            "eza",
+            "zoxide",
+            "ripgrep",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ],
+        PackageManager.DNF: [
+            "fzf",
+            "fd-find",
+            "bat",
+            "eza",
+            "zoxide",
+            "ripgrep",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ],
     }
     for package in extras.get(platform.package_manager, []):
         install_package(runner, platform.package_manager, package)

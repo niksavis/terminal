@@ -129,7 +129,20 @@ def print_setup_report(
                 str(wezterm_path),
             )
 
-        for command in ["zsh", "tmux", "fzf", "fdfind", "batcat", "eza", "zoxide", "rg"]:
+        for command in [
+            "zsh",
+            "tmux",
+            "fzf",
+            "fdfind",
+            "batcat",
+            "eza",
+            "zoxide",
+            "rg",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ]:
             ok, detail = _wsl_command_present(runner, platform_info, command)
             _report_status(runner, f"wsl:{command}", ok, detail)
         if include_starship:
@@ -141,11 +154,24 @@ def print_setup_report(
             "~/.tmux.conf",
             "~/.zshrc",
             "~/.config/starship.toml",
+            "~/.config/micro/settings.json",
         ]:
             ok, detail = _wsl_file_exists(runner, platform_info, path)
             _report_status(runner, f"wsl:{path}", ok, detail)
     else:
-        for command in ["wezterm", "zsh", "tmux", "fzf", "eza", "zoxide", "rg"]:
+        for command in [
+            "wezterm",
+            "zsh",
+            "tmux",
+            "fzf",
+            "eza",
+            "zoxide",
+            "rg",
+            "micro",
+            "jq",
+            "tree",
+            "htop",
+        ]:
             path = runner.which(command)
             _report_status(runner, f"host:{command}", path is not None, path or "")
         if include_starship:

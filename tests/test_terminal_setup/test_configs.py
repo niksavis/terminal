@@ -9,6 +9,7 @@ from terminal_setup.configs import (
     CHEAT_SHEET_PATH,
     TEMPLATE_DIR,
     configure_vscode_terminal,
+    deploy_micro_config,
     deploy_tmux_config,
     deploy_wezterm_config,
     deploy_zsh_config,
@@ -39,14 +40,14 @@ def make_platform(
 
 def test_template_path_points_to_existing_files() -> None:
     """All referenced templates must exist."""
-    for name in ["wezterm.lua", "tmux.conf", "zshrc", "starship.toml"]:
+    for name in ["wezterm.lua", "tmux.conf", "zshrc", "starship.toml", "micro-settings.json"]:
         assert template_path(name).exists(), f"template {name} is missing"
 
 
 def test_template_dir_exists() -> None:
     """TEMPLATE_DIR must exist and contain templates."""
     assert TEMPLATE_DIR.is_dir()
-    assert len(list(TEMPLATE_DIR.iterdir())) >= 4
+    assert len(list(TEMPLATE_DIR.iterdir())) >= 5
 
 
 def test_cheat_sheet_exists() -> None:
@@ -101,6 +102,18 @@ def test_deploy_zsh_config(tmp_path: Path) -> None:
     destination = tmp_path / ".zshrc"
     assert destination.exists()
     assert "HISTFILE" in destination.read_text(encoding="utf-8")
+
+
+def test_deploy_micro_config(tmp_path: Path) -> None:
+    """deploy_micro_config must copy micro settings to ~/.config/micro/settings.json."""
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    runner = Runner(dry_run=False)
+    deploy_micro_config(runner, platform)
+
+    destination = tmp_path / ".config" / "micro" / "settings.json"
+    assert destination.exists()
+    content = destination.read_text(encoding="utf-8")
+    assert '"colorscheme": "monokai"' in content
 
 
 def test_configure_vscode_terminal_linux(tmp_path: Path) -> None:

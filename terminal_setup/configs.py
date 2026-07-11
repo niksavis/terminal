@@ -1,4 +1,4 @@
-"""Configuration file deployment for WezTerm, tmux, zsh, and starship."""
+"""Configuration file deployment for WezTerm, tmux, zsh, starship, and micro."""
 
 from __future__ import annotations
 
@@ -77,6 +77,14 @@ def deploy_starship_config(runner: Runner, platform: PlatformInfo) -> None:
     runner.copy(template_path("starship.toml"), destination)
 
 
+def deploy_micro_config(runner: Runner, platform: PlatformInfo) -> None:
+    """Deploy the micro editor settings file."""
+    config_dir = platform.home / ".config" / "micro"
+    runner.ensure_dir(config_dir)
+    destination = config_dir / "settings.json"
+    runner.copy(template_path("micro-settings.json"), destination)
+
+
 def _wsl_distro(platform: PlatformInfo) -> str:
     """Return the WSL distribution to use, falling back to Ubuntu."""
     return platform.wsl_distribution or "Ubuntu"
@@ -129,6 +137,7 @@ def deploy_all(
     else:
         deploy_tmux_config(runner, platform)
         deploy_zsh_config(runner, platform)
+        deploy_micro_config(runner, platform)
         if include_starship:
             deploy_starship_config(runner, platform)
         set_host_default_shell(runner, platform)
@@ -156,6 +165,7 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
         ("tmux.conf", ".tmux.conf"),
         ("zshrc", ".zshrc"),
         ("starship.toml", ".config/starship.toml"),
+        ("micro-settings.json", ".config/micro/settings.json"),
     ]:
         source = template_path(template)
         destination = f"{wsl_home}/{target_name}"
