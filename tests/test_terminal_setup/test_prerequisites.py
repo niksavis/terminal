@@ -258,7 +258,7 @@ def test_wsl_apt_install_script_removes_legacy_wezterm_repo() -> None:
     assert "apt\\\\.fury\\\\.io/wez" in script
     assert "/etc/apt/sources.list.d/*" in script
     assert 'rm -f "$file"' in script
-    assert "sed -i '/fury\\\\.wez\\\\.dev/d;/apt\\\\.fury\\\\.io\\\\/wez/d'" in script
+    assert 'sed -i "/fury\\\\.wez\\\\.dev/d;/apt\\\\.fury\\\\.io\\\\/wez/d"' in script
     assert "apt-get update" in script
     assert "apt-get install -y zsh tmux" in script
 
