@@ -868,7 +868,7 @@ def _installed_lazygit_version(runner: Runner, *, wsl_distro: str | None = None)
     script = (
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
-        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+        "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
     )
     result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
     if result.returncode != 0:

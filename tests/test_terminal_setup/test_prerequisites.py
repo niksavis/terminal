@@ -461,7 +461,7 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
     installed_query = (
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
-        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+        "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
     )
     runner = FakeRunner(
         outputs={
@@ -475,6 +475,37 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
     assert any("releases/latest" in command[-1] for command in runner.commands)
     assert any("lazygit --version" in command[-1] for command in runner.commands)
     assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+
+
+def test_install_lazygit_release_uses_first_version_token() -> None:
+    """Lazygit installed-version parsing must use the first version token."""
+    latest_query = (
+        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
+    )
+    installed_query = (
+        "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
+        "lazygit --version 2>/dev/null "
+        "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
+    )
+    runner = FakeRunner(
+        outputs={
+            ("sh", "-c", latest_query): (0, "0.63.0\n"),
+            (
+                "sh",
+                "-c",
+                installed_query,
+            ): (
+                0,
+                "0.43.0\n",
+            ),
+        }
+    )
+    runner.confirm_answer = False
+
+    install_lazygit_release(cast(Runner, runner), no_sudo=False)
+
+    assert runner.confirm_prompts == ["Update lazygit from 0.43.0 to 0.63.0?"]
 
 
 def test_install_package_apt_skips_when_up_to_date() -> None:
@@ -553,7 +584,7 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
     installed_query = (
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
-        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+        "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
     )
     runner = FakeRunner(
         outputs={
