@@ -17,6 +17,7 @@ from terminal_setup.prerequisites import (
     check_wsl,
     ensure_host_cli_extras,
     ensure_wsl_tools,
+    install_package,
 )
 from terminal_setup.prerequisites import (
     _command_available as command_available,
@@ -26,6 +27,9 @@ from terminal_setup.prerequisites import (
 )
 from terminal_setup.prerequisites import (
     _find_system_command_path as find_system_command_path,
+)
+from terminal_setup.prerequisites import (
+    _install_lazygit_release as install_lazygit_release,
 )
 from terminal_setup.prerequisites import (
     _system_version_policy as system_version_policy,
@@ -60,6 +64,7 @@ class SpyRunner:
     def __init__(self) -> None:
         """Initialize the recorded command list."""
         self.commands: list[list[str]] = []
+        self.reporter = FakeReporter()
 
     def run(  # noqa: PLR0913
         self,
@@ -74,6 +79,16 @@ class SpyRunner:
         """Record a command and return a successful completed process."""
         del check, dry_run_safe, interactive, cwd, env
         self.commands.append(command)
+        script = command[-1] if len(command) >= 3 and command[0] in {"sh", "wsl"} else ""
+        if "jesseduffield/lazygit/releases/latest" in script:
+            return subprocess.CompletedProcess(
+                args=command,
+                returncode=0,
+                stdout="0.49.0\n",
+                stderr="",
+            )
+        if "lazygit --version" in script:
+            return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
         return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
 
 
@@ -437,6 +452,123 @@ def test_ensure_wsl_tools_runs_directly_when_inside_wsl() -> None:
     assert "wsl" not in install_script_commands[0]
 
 
+def test_install_lazygit_release_skips_when_up_to_date() -> None:
+    """Release install should skip when installed lazygit matches latest version."""
+    latest_query = (
+        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+    )
+    installed_query = (
+        "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
+        "lazygit --version 2>/dev/null "
+        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+    )
+    runner = FakeRunner(
+        outputs={
+            ("sh", "-c", latest_query): (0, "0.49.0\n"),
+            ("sh", "-c", installed_query): (0, "0.49.0\n"),
+        }
+    )
+
+    install_lazygit_release(cast(Runner, runner), no_sudo=False)
+
+    assert any("releases/latest" in command[-1] for command in runner.commands)
+    assert any("lazygit --version" in command[-1] for command in runner.commands)
+    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+
+
+def test_install_package_apt_skips_when_up_to_date() -> None:
+    """Apt installs should be skipped when installed and candidate versions match."""
+    runner = FakeRunner(
+        outputs={
+            ("apt-cache", "show", "ripgrep"): (0, ""),
+            (
+                "apt-cache",
+                "policy",
+                "ripgrep",
+            ): (
+                0,
+                "Installed: 14.0.3-1\nCandidate: 14.0.3-1\n",
+            ),
+        }
+    )
+
+    install_package(cast(Runner, runner), PackageManager.APT, "ripgrep")
+
+    assert ["sudo", "apt-get", "install", "-y", "ripgrep"] not in runner.commands
+
+
+def test_install_package_apt_prompts_on_update_and_installs_when_yes() -> None:
+    """Apt installs should prompt on updates and proceed when the user confirms."""
+    runner = FakeRunner(
+        outputs={
+            ("apt-cache", "show", "ripgrep"): (0, ""),
+            (
+                "apt-cache",
+                "policy",
+                "ripgrep",
+            ): (
+                0,
+                "Installed: 13.0.0-1\nCandidate: 14.0.3-1\n",
+            ),
+        }
+    )
+    runner.confirm_answer = True
+
+    install_package(cast(Runner, runner), PackageManager.APT, "ripgrep")
+
+    assert ["sudo", "apt-get", "install", "-y", "ripgrep"] in runner.commands
+    assert runner.confirm_prompts == ["Update ripgrep from 13.0.0-1 to 14.0.3-1?"]
+
+
+def test_install_package_apt_prompts_on_update_and_skips_when_no() -> None:
+    """Apt installs should prompt on updates and skip when the user declines."""
+    runner = FakeRunner(
+        outputs={
+            ("apt-cache", "show", "ripgrep"): (0, ""),
+            (
+                "apt-cache",
+                "policy",
+                "ripgrep",
+            ): (
+                0,
+                "Installed: 13.0.0-1\nCandidate: 14.0.3-1\n",
+            ),
+        }
+    )
+    runner.confirm_answer = False
+
+    install_package(cast(Runner, runner), PackageManager.APT, "ripgrep")
+
+    assert ["sudo", "apt-get", "install", "-y", "ripgrep"] not in runner.commands
+    assert runner.confirm_prompts == ["Update ripgrep from 13.0.0-1 to 14.0.3-1?"]
+
+
+def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
+    """Lazygit update should ask for consent and skip when user declines."""
+    latest_query = (
+        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+    )
+    installed_query = (
+        "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
+        "lazygit --version 2>/dev/null "
+        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+    )
+    runner = FakeRunner(
+        outputs={
+            ("sh", "-c", latest_query): (0, "0.49.0\n"),
+            ("sh", "-c", installed_query): (0, "0.48.0\n"),
+        }
+    )
+    runner.confirm_answer = False
+
+    install_lazygit_release(cast(Runner, runner), no_sudo=False)
+
+    assert runner.confirm_prompts == ["Update lazygit from 0.48.0 to 0.49.0?"]
+    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+
+
 def test_system_version_policy_defaults() -> None:
     """The default policy must neither uninstall nor keep system versions."""
     policy = system_version_policy()
@@ -584,13 +716,11 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
             return_value=True,
         ) as available,
         mock.patch(
-            "terminal_setup.prerequisites._is_user_local_command_available",
-            return_value=True,
-        ) as user_local,
+            "terminal_setup.prerequisites._install_lazygit_release",
+            return_value=None,
+        ),
     ):
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True)
 
     assert available.call_count >= 1
     assert all(call.kwargs.get("wsl_distro") == "Ubuntu" for call in available.call_args_list)
-    assert user_local.call_count >= 1
-    assert all(call.kwargs.get("wsl_distro") == "Ubuntu" for call in user_local.call_args_list)

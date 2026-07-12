@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess  # nosec B404
 from dataclasses import dataclass
@@ -144,30 +145,31 @@ def install_package(
     wsl_distro: str | None = None,
 ) -> None:
     """Install a package using the detected package manager."""
-    command: list[str]
     if package_manager == PackageManager.WINGET:
-        command = [
-            "winget",
-            "install",
-            "--id",
-            package,
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-        ]
-    elif package_manager == PackageManager.APT:
-        if not _apt_package_available(runner, package, wsl_distro=wsl_distro):
-            if _install_apt_fallback(runner, package, wsl_distro=wsl_distro):
-                return
-            raise RuntimeError(f"Package '{package}' is not available via apt")
-        command = ["sudo", "apt-get", "install", "-y", package]
-    elif package_manager == PackageManager.HOMEBREW:
-        command = ["brew", "install", package]
-    elif package_manager == PackageManager.PACMAN:
-        command = ["sudo", "pacman", "-S", "--noconfirm", package]
-    elif package_manager == PackageManager.DNF:
-        command = ["sudo", "dnf", "install", "-y", package]
-    else:
-        raise RuntimeError(f"Unsupported package manager for installing {package}")
+        if _is_winget_package_installed(runner, package):
+            runner.reporter.info(f"{package} is already installed; skipping")
+            return
+    elif package_manager == PackageManager.APT and not _apt_package_available(
+        runner, package, wsl_distro=wsl_distro
+    ):
+        if _install_apt_fallback(runner, package, wsl_distro=wsl_distro):
+            return
+        raise RuntimeError(f"Package '{package}' is not available via apt")
+
+    if package_manager in {
+        PackageManager.APT,
+        PackageManager.HOMEBREW,
+        PackageManager.PACMAN,
+        PackageManager.DNF,
+    } and not _should_install_package_update(
+        runner,
+        package_manager,
+        package,
+        wsl_distro=wsl_distro,
+    ):
+        return
+
+    command = _package_install_command(package_manager, package)
 
     if wsl_distro and not is_running_in_wsl():
         command = ["wsl", "-d", wsl_distro, "--", *command]
@@ -181,6 +183,28 @@ def install_package(
     runner.run(command, interactive=interactive)
 
 
+def _package_install_command(package_manager: PackageManager, package: str) -> list[str]:
+    """Return the install command for a package manager and package."""
+    if package_manager == PackageManager.WINGET:
+        return [
+            "winget",
+            "install",
+            "--id",
+            package,
+            "--accept-source-agreements",
+            "--accept-package-agreements",
+        ]
+    if package_manager == PackageManager.APT:
+        return ["sudo", "apt-get", "install", "-y", package]
+    if package_manager == PackageManager.HOMEBREW:
+        return ["brew", "install", package]
+    if package_manager == PackageManager.PACMAN:
+        return ["sudo", "pacman", "-S", "--noconfirm", package]
+    if package_manager == PackageManager.DNF:
+        return ["sudo", "dnf", "install", "-y", package]
+    raise RuntimeError(f"Unsupported package manager for installing {package}")
+
+
 def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
     """Return whether a package exists in apt metadata."""
     command = ["apt-cache", "show", package]
@@ -188,6 +212,156 @@ def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | No
         command = ["wsl", "-d", wsl_distro, "--", *command]
     result = runner.run(command, check=False, dry_run_safe=True)
     return result.returncode == 0
+
+
+def _parse_field(output: str, field: str) -> str | None:
+    """Return a value from `<Field>: <value>` lines in command output."""
+    prefix = f"{field}:"
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.startswith(prefix):
+            value = stripped.split(":", 1)[1].strip()
+            return value or None
+    return None
+
+
+def _package_versions(
+    runner: Runner,
+    package_manager: PackageManager,
+    package: str,
+    *,
+    wsl_distro: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Return `(installed, latest)` versions for a package manager package."""
+    if package_manager == PackageManager.APT:
+        return _apt_package_versions(runner, package, wsl_distro=wsl_distro)
+
+    if package_manager == PackageManager.HOMEBREW:
+        return _brew_package_versions(runner, package)
+
+    if package_manager == PackageManager.PACMAN:
+        return _pacman_package_versions(runner, package)
+
+    if package_manager == PackageManager.DNF:
+        return _dnf_package_versions(runner, package)
+
+    return None, None
+
+
+def _apt_package_versions(
+    runner: Runner,
+    package: str,
+    *,
+    wsl_distro: str | None = None,
+) -> tuple[str | None, str | None]:
+    """Return `(installed, latest)` versions for apt packages."""
+    command = ["apt-cache", "policy", package]
+    if wsl_distro and not is_running_in_wsl():
+        command = ["wsl", "-d", wsl_distro, "--", *command]
+    result = runner.run(command, check=False, dry_run_safe=True)
+    if result.returncode != 0:
+        return None, None
+    installed = _parse_field(result.stdout, "Installed")
+    latest = _parse_field(result.stdout, "Candidate")
+    if installed == "(none)":
+        installed = None
+    if latest == "(none)":
+        latest = None
+    return installed, latest
+
+
+def _brew_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
+    """Return `(installed, latest)` versions for Homebrew packages."""
+    installed_command = ["brew", "list", "--versions", package]
+    installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
+    installed = None
+    if installed_result.returncode == 0 and installed_result.stdout.strip():
+        parts = installed_result.stdout.strip().split()
+        installed = parts[1] if len(parts) > 1 else None
+
+    info_command = ["brew", "info", "--json=v2", package]
+    info_result = runner.run(info_command, check=False, dry_run_safe=True)
+    latest = None
+    if info_result.returncode == 0 and info_result.stdout.strip():
+        try:
+            payload = json.loads(info_result.stdout)
+            formulae = payload.get("formulae", [])
+            if formulae:
+                latest = formulae[0].get("versions", {}).get("stable")
+            casks = payload.get("casks", [])
+            if latest is None and casks:
+                cask_version = casks[0].get("version")
+                latest = cask_version if cask_version != "latest" else None
+        except json.JSONDecodeError:
+            latest = None
+    return installed, latest
+
+
+def _pacman_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
+    """Return `(installed, latest)` versions for pacman packages."""
+    installed_command = ["pacman", "-Qi", package]
+    latest_command = ["pacman", "-Si", package]
+    installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
+    latest_result = runner.run(latest_command, check=False, dry_run_safe=True)
+    installed = _parse_field(installed_result.stdout, "Version")
+    latest = _parse_field(latest_result.stdout, "Version")
+    return installed, latest
+
+
+def _dnf_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
+    """Return `(installed, latest)` versions for dnf packages."""
+    installed_command = ["rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}\\n", package]
+    installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
+    installed = installed_result.stdout.strip() if installed_result.returncode == 0 else None
+    if installed == "":
+        installed = None
+
+    latest_command = ["dnf", "--showduplicates", "list", package]
+    latest_result = runner.run(latest_command, check=False, dry_run_safe=True)
+    latest = None
+    if latest_result.returncode in {0, 100}:
+        versions: list[str] = []
+        for line in latest_result.stdout.splitlines():
+            columns = line.split()
+            if len(columns) < 2:
+                continue
+            name = columns[0]
+            if name == package or name.startswith(f"{package}."):
+                versions.append(columns[1])
+        if versions:
+            latest = versions[-1]
+    return installed, latest
+
+
+def _should_install_package_update(
+    runner: Runner,
+    package_manager: PackageManager,
+    package: str,
+    *,
+    wsl_distro: str | None = None,
+) -> bool:
+    """Return whether a package install/update should run."""
+    installed, latest = _package_versions(
+        runner,
+        package_manager,
+        package,
+        wsl_distro=wsl_distro,
+    )
+    if installed is None:
+        return True
+
+    if latest is None or latest == installed:
+        runner.reporter.info(f"{package} is up to date ({installed}); skipping")
+        return False
+
+    prompt = f"Update {package} from {installed} to {latest}?"
+    if runner.dry_run:
+        runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+        return False
+    if runner.confirm(prompt):
+        return True
+    runner.reporter.info(f"Skipping {package} update")
+    return False
 
 
 def _command_available(runner: Runner, command: str, *, wsl_distro: str | None = None) -> bool:
@@ -235,6 +409,19 @@ def _run_shell_command(runner: Runner, script: str, *, wsl_distro: str | None = 
     if wsl_distro and not is_running_in_wsl():
         command = ["wsl", "-d", wsl_distro, "--", *command]
     runner.run(command, interactive=True)
+
+
+def _run_shell_read(
+    runner: Runner,
+    script: str,
+    *,
+    wsl_distro: str | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a read-only shell command on host or in WSL and capture output."""
+    command = ["sh", "-c", script]
+    if wsl_distro and not is_running_in_wsl():
+        command = ["wsl", "-d", wsl_distro, "--", *command]
+    return runner.run(command, check=False, dry_run_safe=True)
 
 
 def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> None:
@@ -635,6 +822,61 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
 
+def _parse_version_tuple(version: str) -> tuple[int, ...]:
+    """Convert a version string into an integer tuple for comparison."""
+    core = version.split("-", 1)[0].split("+", 1)[0]
+    values: list[int] = []
+    for chunk in core.split("."):
+        if chunk.isdigit():
+            values.append(int(chunk))
+            continue
+        digits = "".join(char for char in chunk if char.isdigit())
+        if digits:
+            values.append(int(digits))
+        else:
+            break
+    return tuple(values)
+
+
+def _is_version_at_least(current: str, latest: str) -> bool:
+    """Return True when current version is greater than or equal to latest."""
+    current_tuple = _parse_version_tuple(current)
+    latest_tuple = _parse_version_tuple(latest)
+    if not current_tuple or not latest_tuple:
+        return False
+    width = max(len(current_tuple), len(latest_tuple))
+    padded_current = current_tuple + (0,) * (width - len(current_tuple))
+    padded_latest = latest_tuple + (0,) * (width - len(latest_tuple))
+    return padded_current >= padded_latest
+
+
+def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
+    """Return the latest tagged lazygit version from upstream releases."""
+    script = (
+        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+    )
+    result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
+    if result.returncode != 0:
+        return None
+    version = result.stdout.strip()
+    return version or None
+
+
+def _installed_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
+    """Return the installed lazygit version, or None when unavailable."""
+    script = (
+        "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
+        "lazygit --version 2>/dev/null "
+        "| sed -n 's/.*version=\\([0-9][0-9.]*\\).*/\\1/p' | head -n 1"
+    )
+    result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
+    if result.returncode != 0:
+        return None
+    version = result.stdout.strip()
+    return version or None
+
+
 def _install_lazygit_release(
     runner: Runner,
     *,
@@ -642,9 +884,35 @@ def _install_lazygit_release(
     no_sudo: bool,
 ) -> None:
     """Install the latest lazygit binary from upstream releases."""
-    install_command = "mkdir -p ~/.local/bin; install -m 0755 $tmp/lazygit ~/.local/bin/lazygit"
+    latest_version = _latest_lazygit_version(runner, wsl_distro=wsl_distro)
+    if latest_version is None:
+        raise RuntimeError("Unable to resolve latest lazygit version")
+
+    installed_version = _installed_lazygit_version(runner, wsl_distro=wsl_distro)
+    if installed_version and _is_version_at_least(installed_version, latest_version):
+        message = (
+            "lazygit is already up to date "
+            f"(installed: {installed_version}, latest: {latest_version})"
+        )
+        runner.reporter.info(message)
+        return
+
+    if installed_version:
+        prompt = f"Update lazygit from {installed_version} to {latest_version}?"
+        if runner.dry_run:
+            runner.reporter.info(
+                f"Would ask: {prompt} (answer 'no' by default in dry-run mode)"
+            )
+            return
+        if not runner.confirm(prompt):
+            runner.reporter.info("Skipping lazygit update")
+            return
+
+    install_command = (
+        'mkdir -p ~/.local/bin; install -m 0755 "$tmp/lazygit" ~/.local/bin/lazygit'
+    )
     if not no_sudo:
-        install_command = "sudo install -m 0755 $tmp/lazygit /usr/local/bin/lazygit"
+        install_command = 'sudo install -m 0755 "$tmp/lazygit" /usr/local/bin/lazygit'
 
     script = (
         "set -e; "
@@ -657,16 +925,13 @@ def _install_lazygit_release(
         'elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then arch="arm64"; '
         'else echo "Unsupported arch for lazygit: $arch" >&2; exit 1; fi; '
         "tmp=$(mktemp -d); "
-        "version=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1); '
-        'if [ -z "$version" ]; then echo "Unable to resolve latest lazygit version" >&2; '
-        "exit 1; fi; "
-        "curl -fLo $tmp/lazygit.tar.gz "
-        '"https://github.com/jesseduffield/lazygit/releases/download/v${version}/'
-        'lazygit_${version}_${os}_${arch}.tar.gz"; '
-        "tar -xf $tmp/lazygit.tar.gz -C $tmp lazygit; "
+        f'version="{latest_version}"; '
+        'curl -fLo "$tmp/lazygit.tar.gz" '
+        '"https://github.com/jesseduffield/lazygit/releases/download/'
+        'v${version}/lazygit_${version}_${os}_${arch}.tar.gz"; '
+        'tar -xf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit; '
         f"{install_command}; "
-        "rm -rf $tmp"
+        'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
@@ -829,7 +1094,7 @@ def ensure_wsl_tools(
                         "skipping."
                     )
                 continue
-            if _is_user_local_command_available(runner, command, wsl_distro=distro):
+            if package != "lazygit" and _command_available(runner, command, wsl_distro=distro):
                 continue
             if not _install_user_local_tool(runner, package, platform, policy=policy):
                 runner.reporter.warn(f"No user-local install path known for {package}; skipping.")

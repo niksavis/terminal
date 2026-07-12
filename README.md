@@ -29,7 +29,7 @@ uv run python setup-terminal.py --dry-run
 uv run python setup-terminal.py
 ```
 
-The setup is idempotent: running it again will only install missing tools and update configs.
+The setup is idempotent: running it again installs missing tools, skips already up-to-date tools, and prompts before applying available tool updates.
 
 ### Install with an AI coding agent
 
