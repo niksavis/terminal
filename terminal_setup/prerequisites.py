@@ -339,12 +339,16 @@ def _wsl_apt_install_script(packages: list[str]) -> str:
         "sudo sh -c '"
         "set -e; "
         "export DEBIAN_FRONTEND=noninteractive; "
-        "for file in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do "
-        "[ -f \"$file\" ] || continue; "
-        "if grep -q \"fury\\\\.wez\\\\.dev\" \"$file\"; then "
-        "sed -i \"/fury\\\\.wez\\\\.dev/d\" \"$file\"; "
+        "for file in /etc/apt/sources.list.d/*; do "
+        '[ -f "$file" ] || continue; '
+        'if grep -Eq "fury\\\\.wez\\\\.dev" "$file"; then '
+        'rm -f "$file"; '
         "fi; "
         "done; "
+        "if [ -f /etc/apt/sources.list ] && "
+        "grep -Eq \"fury\\\\.wez\\\\.dev\" /etc/apt/sources.list; then "
+        "sed -i '/fury\\\\.wez\\\\.dev/d' /etc/apt/sources.list; "
+        "fi; "
         "apt-get update; "
         f"apt-get install -y {package_list}"
         "'"

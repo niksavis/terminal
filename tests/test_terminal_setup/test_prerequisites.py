@@ -254,6 +254,9 @@ def test_wsl_apt_install_script_removes_legacy_wezterm_repo() -> None:
     """WSL apt install script should remove legacy fury.wez.dev source entries."""
     script = wsl_apt_install_script(["zsh", "tmux"])
     assert "fury\\\\.wez\\\\.dev" in script
+    assert "/etc/apt/sources.list.d/*" in script
+    assert 'rm -f "$file"' in script
+    assert "sed -i '/fury\\\\.wez\\\\.dev/d' /etc/apt/sources.list" in script
     assert "apt-get update" in script
     assert "apt-get install -y zsh tmux" in script
 
