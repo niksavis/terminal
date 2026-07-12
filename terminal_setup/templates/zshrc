@@ -38,6 +38,23 @@ bindkey "^[[3~" delete-char
 bindkey '^[[A' history-search-backward
 bindkey '^[[B' history-search-forward
 
+# Windows-style line selection: Shift+Home/End select from the cursor to the
+# start/end of the line. Once a region is active, Backspace and Delete remove
+# the selected text. These sequences are what WezTerm sends for Shift+Home/End.
+select-to-beginning-of-line() {
+  ((REGION_ACTIVE)) || zle set-mark-command
+  zle beginning-of-line
+}
+zle -N select-to-beginning-of-line
+bindkey "\e[1;2H" select-to-beginning-of-line
+
+select-to-end-of-line() {
+  ((REGION_ACTIVE)) || zle set-mark-command
+  zle end-of-line
+}
+zle -N select-to-end-of-line
+bindkey "\e[1;2F" select-to-end-of-line
+
 # Aliases
 alias reload-zsh="source ~/.zshrc"
 alias edit-zsh="${EDITOR:-nano} ~/.zshrc"

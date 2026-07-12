@@ -347,11 +347,11 @@ footer svg {
 <li>Split horizontal (direct): <code>Ctrl + Alt + backslash</code></li>
 <li>Split vertical (direct): <code>Ctrl + Alt + -</code></li>
 <li>Close pane (direct): <code>Ctrl + Alt + X</code></li>
-<li>Split vertical: <code>Ctrl + A</code> then <code>-</code> or <code>s</code></li>
-<li>Split horizontal: <code>Ctrl + A</code> then <code>backslash</code>, <code>pipe</code>, or <code>v</code></li>
-<li>Close pane: <code>Ctrl + A</code> then <code>x</code></li>
+<li>Split vertical: <code>Ctrl + Space</code> then <code>-</code> or <code>s</code></li>
+<li>Split horizontal: <code>Ctrl + Space</code> then <code>backslash</code>, <code>pipe</code>, or <code>v</code></li>
+<li>Close pane: <code>Ctrl + Space</code> then <code>x</code></li>
 </ul>
-<p><code>Ctrl + A</code> is a leader key with a 3-second timeout: press and release it, then press the second key.</p>
+<p><code>Ctrl + Space</code> is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over <code>Ctrl + A</code> so the standard shell shortcuts <code>Ctrl + A</code> (beginning-of-line) and <code>Ctrl + E</code> (end-of-line) keep working.</p>
 </div></section>
 <section class="collapsed">
 <div class="section-header" title="Click to expand/collapse">
@@ -983,6 +983,14 @@ footer svg {
 <td>Move cursor to end of line</td>
 </tr>
 <tr>
+<td><code>Shift + Home</code></td>
+<td>Select from cursor to start of line</td>
+</tr>
+<tr>
+<td><code>Shift + End</code></td>
+<td>Select from cursor to end of line</td>
+</tr>
+<tr>
 <td><code>Ctrl + C</code></td>
 <td>Interrupt current command</td>
 </tr>
@@ -1009,6 +1017,108 @@ footer svg {
 <tr>
 <td><code>exit</code></td>
 <td>Close the terminal</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Command-line Editing</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<table>
+<thead><tr>
+<th>Shortcut</th>
+<th>Action</th>
+</tr></thead><tbody>
+<tr>
+<td><code>Ctrl + A</code></td>
+<td>Move cursor to start of line</td>
+</tr>
+<tr>
+<td><code>Ctrl + E</code></td>
+<td>Move cursor to end of line</td>
+</tr>
+<tr>
+<td><code>Shift + Home</code></td>
+<td>Select from cursor to start of line</td>
+</tr>
+<tr>
+<td><code>Shift + End</code></td>
+<td>Select from cursor to end of line</td>
+</tr>
+<tr>
+<td><code>Backspace</code></td>
+<td>Delete selection or character before cursor</td>
+</tr>
+<tr>
+<td><code>Delete</code></td>
+<td>Delete selection or character under cursor</td>
+</tr>
+<tr>
+<td><code>Ctrl + U</code></td>
+<td>Delete from cursor to start of line</td>
+</tr>
+<tr>
+<td><code>Ctrl + K</code></td>
+<td>Delete from cursor to end of line</td>
+</tr>
+<tr>
+<td><code>Ctrl + W</code></td>
+<td>Delete previous word</td>
+</tr>
+<tr>
+<td><code>Alt + D</code></td>
+<td>Delete next word</td>
+</tr>
+<tr>
+<td><code>Ctrl + Y</code></td>
+<td>Paste the last deleted text</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Starship Prompt</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<p>Single-line prompt configured in <code>~/.config/starship.toml</code>.</p>
+<table>
+<thead><tr>
+<th>Segment</th>
+<th>Example</th>
+<th>Meaning</th>
+</tr></thead><tbody>
+<tr>
+<td>Directory</td>
+<td><code>~/projects/terminal</code></td>
+<td>Current directory, truncated to repo root</td>
+</tr>
+<tr>
+<td>Git branch</td>
+<td><code> main</code></td>
+<td>Current Git branch</td>
+</tr>
+<tr>
+<td>Git status</td>
+<td><code>!?</code></td>
+<td><code>!</code> modified, <code>?</code> untracked, <code>+</code> staged, <code>⇡</code> ahead, <code>⇣</code> behind, etc.</td>
+</tr>
+<tr>
+<td>Duration</td>
+<td><code>took 30s</code></td>
+<td>Last command duration (shown when over 500 ms)</td>
+</tr>
+<tr>
+<td>Character</td>
+<td><code>&gt;</code> or <code>&gt;</code> in red</td>
+<td>Prompt; red means last command failed</td>
+</tr>
+<tr>
+<td>Jobs</td>
+<td><code>✦1</code></td>
+<td>Background jobs (only shown when present)</td>
 </tr>
 </tbody></table>
 </div></section>

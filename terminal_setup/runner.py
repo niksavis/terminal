@@ -28,6 +28,10 @@ class Reporter(Protocol):
         """Report a command that is about to run."""
         ...
 
+    def confirm(self, message: str) -> bool:
+        """Ask the user a yes/no question and return the answer."""
+        ...
+
 
 class ConsoleReporter:
     """Default reporter that prints to stdout/stderr."""
@@ -47,6 +51,14 @@ class ConsoleReporter:
     def command(self, command: list[str]) -> None:
         """Print a command that is about to run."""
         print(f"RUN: {' '.join(command)}")
+
+    def confirm(self, message: str) -> bool:
+        """Prompt the user for a yes/no answer."""
+        try:
+            answer = input(f"{message} [y/N]: ")
+        except EOFError, OSError:
+            return False
+        return answer.strip().lower() in {"y", "yes"}
 
 
 @dataclass
@@ -128,6 +140,10 @@ class Runner:
         if not self.dry_run:
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+
+    def confirm(self, prompt: str) -> bool:
+        """Ask the user a yes/no question via the reporter."""
+        return self.reporter.confirm(prompt)
 
     def symlink(self, source: Path, destination: Path) -> None:
         """Create a symlink, replacing an existing file if necessary.

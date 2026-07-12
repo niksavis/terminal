@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .platform import OperatingSystem, PlatformInfo
+from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -95,6 +95,16 @@ def set_wsl_default_shell(
 ) -> None:
     """Set the default shell inside WSL Ubuntu."""
     distro = _wsl_distro(platform)
+    if is_running_in_wsl():
+        current_shell = runner.run(
+            ["sh", "-c", "getent passwd $(whoami) | cut -d: -f7"],
+            check=False,
+            dry_run_safe=True,
+        ).stdout.strip()
+        if current_shell == shell:
+            return
+        runner.run(["chsh", "-s", shell], interactive=True)
+        return
     current_shell = runner.run(
         ["wsl", "-d", distro, "--", "sh", "-c", "getent passwd $(whoami) | cut -d: -f7"],
         check=False,
@@ -122,25 +132,37 @@ def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = 
     runner.run(["chsh", "-s", shell_path], interactive=True)
 
 
+def _is_wsl_target(platform: PlatformInfo) -> bool:
+    """Return True when configs should be deployed into a WSL distro."""
+    return is_running_in_wsl() or platform.os == OperatingSystem.WINDOWS
+
+
 def deploy_all(
     runner: Runner,
     platform: PlatformInfo,
     *,
     include_starship: bool = True,
+    no_sudo: bool = False,
     wsl_start_dir: str | None = None,
 ) -> None:
     """Deploy all configuration files and set the default shell."""
     deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
-    if platform.os == OperatingSystem.WINDOWS:
+    if _is_wsl_target(platform):
         deploy_wsl_configs(runner, platform)
-        set_wsl_default_shell(runner, platform)
+        if not no_sudo:
+            set_wsl_default_shell(runner, platform)
+        else:
+            runner.reporter.info("Skipping default shell change because --no-sudo was requested.")
     else:
         deploy_tmux_config(runner, platform)
         deploy_zsh_config(runner, platform)
         deploy_micro_config(runner, platform)
         if include_starship:
             deploy_starship_config(runner, platform)
-        set_host_default_shell(runner, platform)
+        if not no_sudo:
+            set_host_default_shell(runner, platform)
+        else:
+            runner.reporter.info("Skipping default shell change because --no-sudo was requested.")
 
 
 def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
@@ -169,9 +191,13 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
     ]:
         source = template_path(template)
         destination = f"{wsl_home}/{target_name}"
-        runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", destination.rsplit("/", 1)[0]])
-        wsl_source = _to_wsl_path(runner, distro, source)
-        runner.run(["wsl", "-d", distro, "--", "cp", wsl_source, destination])
+        if is_running_in_wsl():
+            runner.ensure_dir(Path(destination).parent)
+            runner.copy(source, Path(destination))
+        else:
+            runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", destination.rsplit("/", 1)[0]])
+            wsl_source = _to_wsl_path(runner, distro, source)
+            runner.run(["wsl", "-d", distro, "--", "cp", wsl_source, destination])
 
 
 def _configure_vscode_terminal_windows(

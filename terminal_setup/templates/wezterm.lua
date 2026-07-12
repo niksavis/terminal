@@ -5,6 +5,8 @@
 local wezterm = require("wezterm")
 local config = wezterm.config_builder and wezterm.config_builder() or {}
 local is_windows = wezterm.target_triple:find("windows") ~= nil
+local home_dir = wezterm.home_dir
+local is_wsl = os.getenv("WSL_DISTRO_NAME") ~= nil or os.getenv("WSL_INTEROP") ~= nil
 local wsl_default_domain = nil
 local wsl_startup_args = {
   "zsh",
@@ -55,7 +57,7 @@ if is_windows then
     for _, domain in ipairs(config.wsl_domains or {}) do
       if domain.name == wsl_default_domain then
         domain.default_prog = wsl_startup_args
-        domain.default_cwd = "~"
+        domain.default_cwd = home_dir
       end
     end
   end
@@ -64,7 +66,7 @@ end
 if not (is_windows and wsl_default_domain) then
   config.default_prog = nil
 end
-config.default_cwd = "~"
+config.default_cwd = home_dir
 
 -- Performance and stability defaults.
 config.scrollback_lines = 100000
@@ -72,6 +74,18 @@ config.enable_scroll_bar = true
 config.check_for_updates = false
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
+
+-- WSL / cross-platform display stability: prefer X11 over Wayland. When
+-- running inside WSL use software rendering to avoid MESA/ZINK/DRI warnings
+-- caused by incomplete GPU drivers in WSLg; native hosts keep WebGPU.
+config.enable_wayland = false
+config.front_end = is_wsl and "Software" or "WebGpu"
+
+-- Always use the dark color scheme; do not query the desktop environment
+-- for the system theme. This avoids xdg-desktop-portal warnings under WSLg
+-- and keeps the appearance consistent across Windows, WSL, and Linux.
+config.color_scheme = "Tokyo Night"
+config.window_background_opacity = 1.0
 config.skip_close_confirmation_for_processes_named = {
   "bash",
   "zsh",
@@ -126,13 +140,41 @@ local new_tab_action = wezterm.action.SpawnTab("DefaultDomain")
 if is_windows and wsl_default_domain then
   new_tab_action = wezterm.action.SpawnCommandInNewTab({
     domain = { DomainName = wsl_default_domain },
-    cwd = "~",
+    cwd = home_dir,
     args = wsl_startup_args,
   })
 end
 
--- Key bindings.
-config.leader = { key = "a", mods = "CTRL", timeout_milliseconds = 3000 }
+-- Mouse selection behavior: selecting text with the left mouse button copies it
+-- to the clipboard on release (Windows Terminal style). Right-click pastes the
+-- clipboard. Middle-click pastes the primary selection on all platforms.
+config.mouse_bindings = {
+  {
+    event = { Down = { streak = 1, button = "Right" } },
+    mods = "NONE",
+    action = wezterm.action.PasteFrom("Clipboard"),
+  },
+  {
+    event = { Down = { streak = 1, button = "Middle" } },
+    mods = "NONE",
+    action = wezterm.action.PasteFrom("PrimarySelection"),
+  },
+}
+
+-- Copy to clipboard when the selection is completed with the mouse.
+config.selection_word_boundary = " \t\n{}[]()\"'"
+config.mouse_bindings = config.mouse_bindings or {}
+table.insert(config.mouse_bindings, {
+  event = { Up = { streak = 1, button = "Left" } },
+  mods = "NONE",
+  action = wezterm.action.CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection"),
+})
+
+-- Key bindings. Use Ctrl+Space as the leader so standard readline shortcuts
+-- such as Ctrl+A (beginning-of-line) and Ctrl+E (end-of-line) keep working in
+-- the shell. Ctrl+Space has no default binding in WezTerm, zsh, tmux, or most
+-- terminal editors, so it avoids the conflict caused by Ctrl+A.
+config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 3000 }
 config.keys = {
   { key = "t", mods = "CTRL|SHIFT", action = new_tab_action },
   { key = "w", mods = "CTRL|SHIFT", action = wezterm.action.CloseCurrentTab({ confirm = false }) },

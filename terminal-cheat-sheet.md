@@ -12,11 +12,11 @@ Practical Linux/Unix commands and shortcuts organized by use case. These work in
 - Split horizontal (direct): `Ctrl + Alt + backslash`
 - Split vertical (direct): `Ctrl + Alt + -`
 - Close pane (direct): `Ctrl + Alt + X`
-- Split vertical: `Ctrl + A` then `-` or `s`
-- Split horizontal: `Ctrl + A` then `backslash`, `pipe`, or `v`
-- Close pane: `Ctrl + A` then `x`
+- Split vertical: `Ctrl + Space` then `-` or `s`
+- Split horizontal: `Ctrl + Space` then `backslash`, `pipe`, or `v`
+- Close pane: `Ctrl + Space` then `x`
 
-`Ctrl + A` is a leader key with a 3-second timeout: press and release it, then press the second key.
+`Ctrl + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
 
 ## Navigation
 
@@ -194,6 +194,8 @@ Practical Linux/Unix commands and shortcuts organized by use case. These work in
 | `Ctrl + L`  | Clear screen                         |
 | `Ctrl + A`  | Move cursor to start of line         |
 | `Ctrl + E`  | Move cursor to end of line           |
+| `Shift + Home` | Select from cursor to start of line |
+| `Shift + End`  | Select from cursor to end of line   |
 | `Ctrl + C`  | Interrupt current command            |
 | `Ctrl + D`  | Exit shell (send EOF)                |
 | `↑` / `↓`   | Cycle through previous/next command  |
@@ -201,6 +203,35 @@ Practical Linux/Unix commands and shortcuts organized by use case. These work in
 | `history`   | Show command history                 |
 | `history 1` | Show full command history (in zsh)   |
 | `exit`      | Close the terminal                   |
+
+## Command-line Editing
+
+| Shortcut     | Action                                      |
+| ------------ | ------------------------------------------- |
+| `Ctrl + A`   | Move cursor to start of line                |
+| `Ctrl + E`   | Move cursor to end of line                  |
+| `Shift + Home` | Select from cursor to start of line       |
+| `Shift + End`  | Select from cursor to end of line         |
+| `Backspace`  | Delete selection or character before cursor |
+| `Delete`     | Delete selection or character under cursor  |
+| `Ctrl + U`   | Delete from cursor to start of line         |
+| `Ctrl + K`   | Delete from cursor to end of line           |
+| `Ctrl + W`   | Delete previous word                        |
+| `Alt + D`    | Delete next word                            |
+| `Ctrl + Y`   | Paste the last deleted text                 |
+
+## Starship Prompt
+
+Single-line prompt configured in `~/.config/starship.toml`.
+
+| Segment | Example | Meaning |
+| ------- | ------- | ------- |
+| Directory | `~/projects/terminal` | Current directory, truncated to repo root |
+| Git branch | ` main` | Current Git branch |
+| Git status | `!?` | `!` modified, `?` untracked, `+` staged, `⇡` ahead, `⇣` behind, etc. |
+| Duration | `took 30s` | Last command duration (shown when over 500 ms) |
+| Character | `>` or `>` in red | Prompt; red means last command failed |
+| Jobs | `✦1` | Background jobs (only shown when present) |
 
 ## Pipes & Redirection
 

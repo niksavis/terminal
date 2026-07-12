@@ -27,15 +27,37 @@ truncation_length = 3
 truncate_to_repo = true
 home_symbol = "~"
 style = "bold blue"
+# Explicit format avoids a trailing space that the default directory format
+# adds in some Starship versions, which would create double spacing before
+# the git branch segment.
+format = "[$path]($style)[$read_only]($read_only_style)"
 
 [cmd_duration]
 min_time = 500
-format = "[took $duration](yellow)"
+format = "[ took $duration](yellow)"
 
 [git_branch]
-symbol = ""
-format = "[[$branch](magenta)]($style)"
+symbol = ""
+format = " [$symbol $branch]($style)"
 style = "fg:magenta"
 
 [git_status]
-format = "[($all_status$ahead_behind)](fg:grey)"
+format = " [$all_status$ahead_behind]($style)"
+style = "fg:grey"
+conflicted = "="
+ahead = "⇡"
+behind = "⇣"
+diverged = "⇕"
+up_to_date = ""
+untracked = "?"
+stashed = "$"
+modified = "!"
+staged = "+"
+renamed = "»"
+deleted = "✘"
+
+[jobs]
+symbol = "✦"
+format = " [$symbol$number]($style)"
+style = "bold red"
+threshold = 1

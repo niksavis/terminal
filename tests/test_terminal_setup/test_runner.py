@@ -31,6 +31,11 @@ class CapturingReporter:
         """Record a command that would run."""
         self.messages.append(("command", " ".join(command)))
 
+    def confirm(self, message: str) -> bool:
+        """Record a confirmation prompt and answer no by default."""
+        self.messages.append(("confirm", message))
+        return False
+
 
 def test_runner_dry_run_does_not_execute(tmp_path: Path) -> None:
     """Dry-run mode must not create files or run real commands."""

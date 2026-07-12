@@ -64,7 +64,7 @@ WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, 
 
 The default Starship prompt is intentionally single-line for readability: path, git, and status segments are shown before the prompt symbol on the same line.
 
-Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + a` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + a` then `x`.
+Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Space` then `x`.
 
 ### WSL2 Ubuntu
 
@@ -122,38 +122,61 @@ wezterm
 | Close window              | `Ctrl + Shift + q`                              |
 | Copy selection            | `Ctrl + Shift + c`                              |
 | Paste                     | `Ctrl + Shift + v`                              |
+| Copy with mouse           | Select text and release left button             |
+| Paste with mouse          | Right-click                                     |
 | Split horizontal (direct) | `Ctrl + Alt + backslash`                        |
 | Split vertical (direct)   | `Ctrl + Alt + -`                                |
 | Close pane (direct)       | `Ctrl + Alt + x`                                |
 | Next tab                  | `Ctrl + Tab`                                    |
 | Previous tab              | `Ctrl + Shift + Tab`                            |
-| Split vertical            | `Ctrl + a` then `-` or `s`                      |
-| Split horizontal          | `Ctrl + a` then `backslash`, `pipe`, or `v`     |
-| Move between panes        | `Shift + Ctrl + arrow` or `Ctrl + a` then arrow |
-| Rename tab                | `Ctrl + a` then `,`                             |
+| Split vertical            | `Ctrl + Space` then `-` or `s`                  |
+| Split horizontal          | `Ctrl + Space` then `backslash`, `pipe`, or `v` |
+| Move between panes        | `Shift + Ctrl + arrow` or `Ctrl + Space` then arrow |
+| Rename tab                | `Ctrl + Space` then `,`                         |
 | Toggle fullscreen         | `Alt + Enter`                                   |
 | Increase font size        | `Ctrl + Shift + =`                              |
 | Decrease font size        | `Ctrl + Shift + -`                              |
 | Reset font size           | `Ctrl + 0`                                      |
-| Open config               | `Ctrl + a` then `.`                             |
+| Open config               | `Ctrl + Space` then `.`                         |
 
-`Ctrl + a` is a WezTerm leader key with a 3-second timeout. Press and release `Ctrl + a`, then press the second key.
+`Ctrl + Space` is a WezTerm leader key with a 3-second timeout. Press and release `Ctrl + Space`, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
 
 ### tmux
 
 | Action           | Shortcut             |
 | ---------------- | -------------------- |
-| Prefix key       | `Ctrl + a`           |
-| New window       | `Ctrl + a` then `c`  |
-| Next window      | `Ctrl + a` then `n`  |
-| Previous window  | `Ctrl + a` then `p`  |
-| Reload config    | `Ctrl + a` then `r`  |
-| Split vertical   | `Ctrl + a` then `\|` |
-| Split horizontal | `Ctrl + a` then `-`  |
+| Prefix key       | `Ctrl + Space`       |
+| New window       | `Ctrl + Space` then `c` |
+| Next window      | `Ctrl + Space` then `n` |
+| Previous window  | `Ctrl + Space` then `p` |
+| Reload config    | `Ctrl + Space` then `r` |
+| Split vertical   | `Ctrl + Space` then `\|` |
+| Split horizontal | `Ctrl + Space` then `-` |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
 WezTerm and tmux shortcuts in this README are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
+
+## Starship prompt
+
+The prompt is intentionally single-line and minimal. It is configured in [`terminal_setup/templates/starship.toml`](terminal_setup/templates/starship.toml) and deployed to `~/.config/starship.toml`.
+
+A typical prompt looks like:
+
+```text
+~/projects/terminal  main !? took 30s >
+```
+
+| Segment | Meaning |
+| ------- | ------- |
+| `~/projects/terminal` | Current directory (truncated to repo root) |
+| ` main` | Git branch |
+| `!?` | Git status (`!` modified, `?` untracked, etc.) |
+| `took 30s` | Duration of the last command (shown when over 500 ms) |
+| `>` | Prompt character (red if the last command failed) |
+| `✦1` | Number of background jobs (only shown when present) |
+
+The prompt uses the Tokyo Night color palette and keeps all segments on one line for readability.
 
 ## What gets installed
 
@@ -221,6 +244,41 @@ uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-ter
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
 > **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
+
+## Command-line editing
+
+The zsh configuration uses Emacs-style readline shortcuts. These work in any terminal and are the fastest way to edit long commands without reaching for the mouse:
+
+| Shortcut        | Action                                      |
+| --------------- | ------------------------------------------- |
+| `Ctrl + A`      | Move cursor to start of line                |
+| `Ctrl + E`      | Move cursor to end of line                  |
+| `Shift + Home`  | Select from cursor to start of line         |
+| `Shift + End`   | Select from cursor to end of line           |
+| `Backspace`     | Delete selection or character before cursor |
+| `Delete`        | Delete selection or character under cursor  |
+| `Ctrl + U`      | Delete from cursor to start of line         |
+| `Ctrl + K`      | Delete from cursor to end of line           |
+| `Ctrl + W`      | Delete previous word                        |
+| `Alt + D`       | Delete next word                            |
+| `Ctrl + Y`      | Paste the last deleted text                 |
+| `Ctrl + L`      | Clear screen                                |
+
+`Shift + Home` and `Shift + End` are bound in zsh to create a selection region; once text is selected, `Backspace` or `Delete` removes it just like on Windows.
+
+## Troubleshooting
+
+### `xdg-desktop-portal` warning when starting WezTerm in WSL
+
+You may see a warning like this on WSL2 Ubuntu:
+
+```text
+WARN window::os::x11::connection > Unable to resolve appearance using xdg-desktop-portal:
+org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.portal.Desktop was not
+provided by any .service files
+```
+
+This is **harmless and expected**. The setup is intentionally lightweight: it targets a minimal WSL2 environment used as a virtual Linux machine inside Windows, not a full Linux desktop distribution. WezTerm hard-codes a dark color scheme so it does not need to query the desktop environment, but the underlying X11 connection still logs the missing portal service. Installing `xdg-desktop-portal` and its GTK/KDE backend would pull in GUI dependencies and a D-Bus session manager, which conflicts with the goal of keeping WSL lean. The warning does not affect WezTerm functionality.
 
 ## Development
 

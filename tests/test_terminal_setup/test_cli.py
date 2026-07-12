@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from unittest import mock
+
 from terminal_setup.cli import build_parser, main
+from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
 
 
 def test_parser_dry_run_flag() -> None:
@@ -34,6 +38,20 @@ def test_parser_report_flag() -> None:
     assert args.report is True
 
 
+def test_parser_uninstall_system_versions_flag() -> None:
+    """The parser must accept --uninstall-system-versions."""
+    parser = build_parser()
+    args = parser.parse_args(["--uninstall-system-versions"])
+    assert args.uninstall_system_versions is True
+
+
+def test_parser_keep_system_versions_flag() -> None:
+    """The parser must accept --keep-system-versions."""
+    parser = build_parser()
+    args = parser.parse_args(["--keep-system-versions"])
+    assert args.keep_system_versions is True
+
+
 def test_parser_optional_terminal_cwd_flags() -> None:
     """The parser must accept optional user-specific terminal cwd values."""
     parser = build_parser()
@@ -49,5 +67,40 @@ def test_parser_optional_terminal_cwd_flags() -> None:
 
 def test_main_check_mode() -> None:
     """Main with --check must return 0 or 1 without side effects."""
-    result = main(["--check", "--dry-run"])
+    with mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False):
+        result = main(["--check", "--dry-run"])
     assert result in (0, 1)
+
+
+def test_main_runs_wsl_setup_when_inside_wsl() -> None:
+    """Main should run the WSL setup path when executed from inside WSL."""
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
+        mock.patch("terminal_setup.cli.platform.detect_platform") as mock_detect,
+        mock.patch("terminal_setup.prerequisites._apt_package_available", return_value=True),
+    ):
+        mock_detect.return_value = PlatformInfo(
+            os=OperatingSystem.LINUX,
+            package_manager=PackageManager.APT,
+            is_wsl_available=True,
+            is_wsl_default_ubuntu=True,
+            wsl_distribution="Ubuntu",
+            shell="/bin/zsh",
+            home=Path.home(),
+            wezterm_config_dir=Path.home() / ".config" / "wezterm",
+            vscode_settings_path=None,
+        )
+        result = main(["--dry-run", "--report"])
+    assert result == 0
+
+
+def test_main_rejects_conflicting_system_version_flags() -> None:
+    """Main must exit with an error when both system-version flags are given."""
+    with mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False):
+        result = main([
+            "--check",
+            "--dry-run",
+            "--uninstall-system-versions",
+            "--keep-system-versions",
+        ])
+    assert result == 2

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import platform
 import shutil
 import subprocess  # nosec B404
@@ -44,6 +45,7 @@ class PlatformInfo:
     wezterm_config_dir: Path | None
     vscode_settings_path: Path | None
     user_install: bool = False
+    no_sudo: bool = False
 
     @property
     def user_programs_dir(self) -> Path:
@@ -61,6 +63,17 @@ def detect_os() -> OperatingSystem:
     if system == "Darwin":
         return OperatingSystem.MACOS
     return OperatingSystem.UNKNOWN
+
+
+def is_running_in_wsl() -> bool:
+    """Return True when the current Linux process is inside a WSL environment."""
+    if detect_os() != OperatingSystem.LINUX:
+        return False
+    try:
+        osrelease = Path("/proc/sys/kernel/osrelease").read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return "microsoft" in osrelease.lower() or "wsl" in osrelease.lower()
 
 
 def detect_package_manager(os: OperatingSystem) -> PackageManager:
@@ -166,20 +179,47 @@ def get_vscode_settings_path() -> Path | None:
     return candidates[0] if candidates else None
 
 
-def detect_platform(user_install: bool = False) -> PlatformInfo:
+def detect_platform(user_install: bool = False, no_sudo: bool = False) -> PlatformInfo:
     """Build a complete platform snapshot."""
     os = detect_os()
-    wsl_available = is_wsl_available()
+    in_wsl = is_running_in_wsl()
+    wsl_available = is_wsl_available() or in_wsl
     default_distro = get_wsl_default_distribution() if wsl_available else None
+    if default_distro is None and in_wsl:
+        default_distro = _detect_wsl_distro_from_command() or _detect_wsl_distro_from_proc()
     return PlatformInfo(
         os=os,
         package_manager=detect_package_manager(os),
         is_wsl_available=wsl_available,
-        is_wsl_default_ubuntu=is_wsl_default_ubuntu(),
+        is_wsl_default_ubuntu=is_wsl_default_ubuntu()
+        if not in_wsl
+        else default_distro is not None and "ubuntu" in default_distro.lower(),
         wsl_distribution=default_distro,
         shell=detect_shell(),  # nosec B604
         home=get_home_directory(),
         wezterm_config_dir=get_wezterm_config_dir(),
         vscode_settings_path=get_vscode_settings_path(),
         user_install=user_install,
+        no_sudo=no_sudo,
     )
+
+
+def _detect_wsl_distro_from_proc() -> str | None:
+    """Return the WSL distribution name from /proc/sys/kernel/osrelease, if present."""
+    try:
+        osrelease = Path("/proc/sys/kernel/osrelease").read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    # Common values look like "5.15.146.1-microsoft-standard-WSL2".
+    parts = osrelease.split("-")
+    if len(parts) >= 2 and parts[-1].lower().startswith("wsl"):
+        return parts[-2]
+    return None
+
+
+def _detect_wsl_distro_from_command() -> str | None:
+    """Return the current WSL distribution name from the WSLENV variable."""
+    distro = os.environ.get("WSL_DISTRO_NAME")
+    if distro:
+        return distro
+    return None
