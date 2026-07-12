@@ -83,6 +83,7 @@ def test_main_runs_wsl_setup_when_inside_wsl() -> None:
     """Main should run the WSL setup path when executed from inside WSL."""
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True),
         mock.patch("terminal_setup.cli.platform.detect_platform") as mock_detect,
         mock.patch("terminal_setup.prerequisites._apt_package_available", return_value=True),
     ):

@@ -283,7 +283,8 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
-    ensure_wsl_tools(cast(Runner, runner), platform)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
+        ensure_wsl_tools(cast(Runner, runner), platform)
 
     expected_packages = [
         "zsh",
