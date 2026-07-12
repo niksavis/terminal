@@ -1,7 +1,7 @@
 """Validate conventional commit message format.
 
 Installed as a commit-msg hook via pre-commit.
-Usage: python .scripts/commit_msg_format.py <commit-msg-file>
+Usage: python .scripts/git-hooks/commit-msg.py <commit-msg-file>
 """
 
 from __future__ import annotations
@@ -29,15 +29,23 @@ ALLOWED_TYPES = (
 
 # type(scope): description
 # Scope is optional and lowercase-kebab-case.
-# Description starts with lowercase and is at least 3 chars.
-_MIN_DESC = MIN_DESCRIPTION_LENGTH - 1
-PATTERN = re.compile(
-    r"^(" + "|".join(ALLOWED_TYPES) + r")(\([a-z0-9-]+\))?: [a-z].{" + str(_MIN_DESC) + r",}$"
+# Description starts with lowercase, allows lowercase alnum/space/hyphen,
+# has at least MIN_DESCRIPTION_LENGTH chars, and must not end with punctuation.
+HEADER_PATTERN = re.compile(
+    r"^(" + "|".join(ALLOWED_TYPES) + r")(\([a-z0-9]+(?:-[a-z0-9]+)*\))?: " + r"(.+)$"
 )
+DESCRIPTION_PATTERN = re.compile(r"^[a-z][a-z0-9 -]*[a-z0-9]$")
 
 ERROR_MESSAGE = """ERROR: Commit message does not follow conventional commit format.
 
 Expected format: type(scope): description
+
+Rules:
+    - type must be one of the allowed types below
+    - scope is optional and must be lowercase-kebab-case
+    - description must start with lowercase
+    - description must be at least 3 characters
+    - description cannot end with punctuation
 
 Allowed types:
   feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
@@ -46,6 +54,11 @@ Examples:
   feat(basicly): add fragment loader
   fix: correct sorting order in planner
   docs: update architecture decision record
+
+Invalid examples:
+    chote(word description): message;
+    chore(word description): message
+    chore(scope): Message
 """
 
 
@@ -55,7 +68,16 @@ def validate(message: str) -> bool:
     # Ignore merge commits and revert commits with long auto-generated bodies.
     if first_line.startswith(("Merge ", 'Revert "')):
         return True
-    return bool(PATTERN.match(first_line))
+
+    header_match = HEADER_PATTERN.match(first_line)
+    if not header_match:
+        return False
+
+    description = header_match.group(3)
+    if len(description) < MIN_DESCRIPTION_LENGTH:
+        return False
+
+    return bool(DESCRIPTION_PATTERN.fullmatch(description))
 
 
 def main() -> int:
