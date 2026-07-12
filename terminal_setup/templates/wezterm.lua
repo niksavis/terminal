@@ -4,6 +4,7 @@
 
 local wezterm = require("wezterm")
 local config = wezterm.config_builder and wezterm.config_builder() or {}
+local act = wezterm.action
 local is_windows = wezterm.target_triple:find("windows") ~= nil
 local home_dir = wezterm.home_dir
 local is_wsl = os.getenv("WSL_DISTRO_NAME") ~= nil or os.getenv("WSL_INTEROP") ~= nil
@@ -13,6 +14,30 @@ local wsl_startup_args = {
   "-lc",
   'cd "__WSL_START_DIR__" 2>/dev/null || cd "$HOME"; exec zsh -l',
 }
+
+local function basename(path)
+  if not path or path == "" then
+    return ""
+  end
+  return path:gsub("^.*[\\/]", "")
+end
+
+local function pane_cwd_basename(pane)
+  local cwd_uri = pane and pane:get_current_working_dir() or nil
+  if not cwd_uri then
+    return ""
+  end
+  local cwd_path = cwd_uri.file_path or tostring(cwd_uri)
+  return basename(cwd_path)
+end
+
+local function pane_process_name(pane)
+  local process = pane and pane:get_foreground_process_name() or nil
+  if not process or process == "" then
+    return "shell"
+  end
+  return basename(process)
+end
 
 -- Default to WSL Ubuntu on Windows, otherwise the native shell.
 if is_windows then
@@ -67,6 +92,35 @@ if not (is_windows and wsl_default_domain) then
   config.default_prog = nil
 end
 config.default_cwd = home_dir
+
+-- Launcher profiles for fast context switches between WSL and Windows shells.
+config.launch_menu = {}
+if is_windows then
+  if wsl_default_domain then
+    table.insert(config.launch_menu, {
+      label = "Ubuntu (WSL)",
+      domain = { DomainName = wsl_default_domain },
+      args = wsl_startup_args,
+    })
+  end
+  table.insert(config.launch_menu, {
+    label = "PowerShell",
+    args = { "pwsh.exe", "-NoLogo" },
+  })
+  table.insert(config.launch_menu, {
+    label = "Command Prompt",
+    args = { "cmd.exe" },
+  })
+else
+  table.insert(config.launch_menu, {
+    label = "zsh",
+    args = { "zsh", "-l" },
+  })
+  table.insert(config.launch_menu, {
+    label = "bash",
+    args = { "bash", "-l" },
+  })
+end
 
 -- Performance and stability defaults.
 config.scrollback_lines = 100000
@@ -135,15 +189,72 @@ config.hide_tab_bar_if_only_one_tab = false
 config.use_fancy_tab_bar = true
 config.tab_bar_at_bottom = false
 config.window_decorations = "TITLE | RESIZE"
+config.status_update_interval = 1000
 
-local new_tab_action = wezterm.action.SpawnTab("DefaultDomain")
+local new_tab_action = act.SpawnTab("DefaultDomain")
 if is_windows and wsl_default_domain then
-  new_tab_action = wezterm.action.SpawnCommandInNewTab({
+  new_tab_action = act.SpawnCommandInNewTab({
     domain = { DomainName = wsl_default_domain },
     cwd = home_dir,
     args = wsl_startup_args,
   })
 end
+
+local workspace_launcher_action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" })
+local rename_tab_action = act.PromptInputLine({
+  description = "Rename tab",
+  action = wezterm.action_callback(function(window, _, line)
+    if line and line ~= "" then
+      window:active_tab():set_title(line)
+    end
+  end),
+})
+
+local open_config_action
+if is_windows then
+  open_config_action = act.SpawnCommandInNewTab({
+    args = { "notepad.exe", wezterm.config_file },
+  })
+else
+  local open_config_command = {
+    args = { "zsh", "-lc", '${EDITOR:-nano} "' .. wezterm.config_file .. '"' },
+  }
+  open_config_action = act.SpawnCommandInNewTab(open_config_command)
+end
+
+wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
+  local pane = tab.active_pane
+  local process = pane and basename(pane.foreground_process_name) or "shell"
+  if process == "" then
+    process = "shell"
+  end
+  local cwd = ""
+  if pane and pane.current_working_dir then
+    local cwd_path = pane.current_working_dir.file_path or tostring(pane.current_working_dir)
+    cwd = basename(cwd_path)
+  end
+
+  local title = tab.tab_title
+  if not title or title == "" then
+    title = cwd ~= "" and (cwd .. " | " .. process) or process
+  end
+  return wezterm.truncate_right(" " .. title .. " ", max_width)
+end)
+
+wezterm.on("update-right-status", function(window, pane)
+  local workspace = window:active_workspace()
+  local cwd = pane_cwd_basename(pane)
+  local process = pane_process_name(pane)
+  local cwd_text = cwd ~= "" and cwd or "~"
+  window:set_right_status(wezterm.format({
+    { Foreground = { Color = "#565f89" } },
+    { Text = " " .. workspace .. " " },
+    { Foreground = { Color = "#7dcfff" } },
+    { Text = cwd_text .. " " },
+    { Foreground = { Color = "#bb9af7" } },
+    { Text = process .. " " },
+  }))
+end)
 
 -- Mouse selection behavior: selecting text with the left mouse button copies it
 -- to the clipboard on release (Windows Terminal style). Right-click pastes the
@@ -152,12 +263,12 @@ config.mouse_bindings = {
   {
     event = { Down = { streak = 1, button = "Right" } },
     mods = "NONE",
-    action = wezterm.action.PasteFrom("Clipboard"),
+    action = act.PasteFrom("Clipboard"),
   },
   {
     event = { Down = { streak = 1, button = "Middle" } },
     mods = "NONE",
-    action = wezterm.action.PasteFrom("PrimarySelection"),
+    action = act.PasteFrom("PrimarySelection"),
   },
 }
 
@@ -167,7 +278,7 @@ config.mouse_bindings = config.mouse_bindings or {}
 table.insert(config.mouse_bindings, {
   event = { Up = { streak = 1, button = "Left" } },
   mods = "NONE",
-  action = wezterm.action.CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection"),
+  action = act.CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection"),
 })
 
 -- Key bindings. Use Ctrl+Space as the leader so standard readline shortcuts
@@ -177,32 +288,38 @@ table.insert(config.mouse_bindings, {
 config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 3000 }
 config.keys = {
   { key = "t", mods = "CTRL|SHIFT", action = new_tab_action },
-  { key = "w", mods = "CTRL|SHIFT", action = wezterm.action.CloseCurrentTab({ confirm = false }) },
-  { key = "c", mods = "CTRL", action = wezterm.action.SendKey({ key = "c", mods = "CTRL" }) },
-  { key = "c", mods = "CTRL|SHIFT", action = wezterm.action.CopyTo("ClipboardAndPrimarySelection") },
-  { key = "v", mods = "CTRL|SHIFT", action = wezterm.action.PasteFrom("Clipboard") },
-  { key = "q", mods = "CTRL|SHIFT", action = wezterm.action.QuitApplication },
-  { key = "=", mods = "CTRL|SHIFT", action = wezterm.action.IncreaseFontSize },
-  { key = "-", mods = "CTRL|SHIFT", action = wezterm.action.DecreaseFontSize },
-  { key = "0", mods = "CTRL", action = wezterm.action.ResetFontSize },
-  { key = "Enter", mods = "ALT", action = wezterm.action.ToggleFullScreen },
+  { key = "w", mods = "CTRL|SHIFT", action = act.CloseCurrentTab({ confirm = false }) },
+  { key = "c", mods = "CTRL", action = act.SendKey({ key = "c", mods = "CTRL" }) },
+  { key = "c", mods = "CTRL|SHIFT", action = act.CopyTo("ClipboardAndPrimarySelection") },
+  { key = "v", mods = "CTRL|SHIFT", action = act.PasteFrom("Clipboard") },
+  { key = "f", mods = "CTRL|SHIFT", action = act.Search("CurrentSelectionOrEmptyString") },
+  { key = "p", mods = "CTRL|SHIFT", action = act.QuickSelect },
+  { key = "l", mods = "CTRL|SHIFT", action = act.ShowLauncher },
+  { key = "q", mods = "CTRL|SHIFT", action = act.QuitApplication },
+  { key = "=", mods = "CTRL|SHIFT", action = act.IncreaseFontSize },
+  { key = "-", mods = "CTRL|SHIFT", action = act.DecreaseFontSize },
+  { key = "0", mods = "CTRL", action = act.ResetFontSize },
+  { key = "Enter", mods = "ALT", action = act.ToggleFullScreen },
   { key = "c", mods = "LEADER", action = new_tab_action },
-  { key = "x", mods = "LEADER", action = wezterm.action.CloseCurrentPane({ confirm = false }) },
-  { key = "x", mods = "CTRL|ALT", action = wezterm.action.CloseCurrentPane({ confirm = false }) },
-  { key = "\\", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "\\", mods = "CTRL|ALT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "phys:Backslash", mods = "CTRL|ALT", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "phys:Backslash", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "v", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "s", mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
-  { key = "|", mods = "LEADER", action = wezterm.action.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
-  { key = "-", mods = "LEADER", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
-  { key = "-", mods = "CTRL|ALT", action = wezterm.action.SplitVertical({ domain = "CurrentPaneDomain" }) },
-  { key = "h", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Left") },
-  { key = "j", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Down") },
-  { key = "k", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Up") },
-  { key = "l", mods = "LEADER", action = wezterm.action.ActivatePaneDirection("Right") },
-  { key = "z", mods = "LEADER", action = wezterm.action.TogglePaneZoomState },
+  { key = "w", mods = "LEADER", action = workspace_launcher_action },
+  { key = ",", mods = "LEADER", action = rename_tab_action },
+  { key = ".", mods = "LEADER", action = open_config_action },
+  { key = "x", mods = "LEADER", action = act.CloseCurrentPane({ confirm = false }) },
+  { key = "x", mods = "CTRL|ALT", action = act.CloseCurrentPane({ confirm = false }) },
+  { key = "\\", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "\\", mods = "CTRL|ALT", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "phys:Backslash", mods = "CTRL|ALT", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "phys:Backslash", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "v", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "s", mods = "LEADER", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
+  { key = "|", mods = "LEADER", action = act.SplitHorizontal({ domain = "CurrentPaneDomain" }) },
+  { key = "-", mods = "LEADER", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
+  { key = "-", mods = "CTRL|ALT", action = act.SplitVertical({ domain = "CurrentPaneDomain" }) },
+  { key = "h", mods = "LEADER", action = act.ActivatePaneDirection("Left") },
+  { key = "j", mods = "LEADER", action = act.ActivatePaneDirection("Down") },
+  { key = "k", mods = "LEADER", action = act.ActivatePaneDirection("Up") },
+  { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
+  { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
 }
 
 return config

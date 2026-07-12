@@ -44,7 +44,7 @@ Run the setup idempotently:
 1. Run `uv sync` to install dependencies.
 2. Run `uv run python setup-terminal.py --dry-run` and show me the planned changes.
 3. If the dry-run looks correct, run `uv run python setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python setup-terminal.py --user-install` instead.
-4. After the setup completes, verify that WezTerm, zsh, tmux, git, starship, fzf, fd, bat, ripgrep, jq, yq, shellcheck, tree, xh, ast-grep, sd, delta, typos, and uv are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
+4. After the setup completes, verify that WezTerm, zsh, tmux, git, lazygit, git-lfs, direnv, just, starship, fzf, fd, bat, ripgrep, jq, yq, shellcheck, tree, xh, ast-grep, sd, delta, typos, and uv are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
 5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
 
 Do not run destructive commands without explaining them first. If a prerequisite is missing, stop and tell me how to install it.
@@ -60,9 +60,9 @@ After installation, start WezTerm from the Start menu or run:
 wezterm
 ```
 
-WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, fzf, and the extra CLI tools ready.
+WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, lazygit, direnv, just, fzf, and the extra CLI tools ready.
 
-The default Starship prompt is intentionally single-line for readability: path, git, and status segments are shown before the prompt symbol on the same line.
+The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
 
 Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Space` then `x`.
 
@@ -115,43 +115,47 @@ wezterm
 
 ### WezTerm
 
-| Action                    | Shortcut                                        |
-| ------------------------- | ----------------------------------------------- |
-| New tab                   | `Ctrl + Shift + t`                              |
-| Close tab                 | `Ctrl + Shift + w`                              |
-| Close window              | `Ctrl + Shift + q`                              |
-| Copy selection            | `Ctrl + Shift + c`                              |
-| Paste                     | `Ctrl + Shift + v`                              |
-| Copy with mouse           | Select text and release left button             |
-| Paste with mouse          | Right-click                                     |
-| Split horizontal (direct) | `Ctrl + Alt + backslash`                        |
-| Split vertical (direct)   | `Ctrl + Alt + -`                                |
-| Close pane (direct)       | `Ctrl + Alt + x`                                |
-| Next tab                  | `Ctrl + Tab`                                    |
-| Previous tab              | `Ctrl + Shift + Tab`                            |
-| Split vertical            | `Ctrl + Space` then `-` or `s`                  |
-| Split horizontal          | `Ctrl + Space` then `backslash`, `pipe`, or `v` |
+| Action                    | Shortcut                                            |
+| ------------------------- | --------------------------------------------------- |
+| New tab                   | `Ctrl + Shift + t`                                  |
+| Close tab                 | `Ctrl + Shift + w`                                  |
+| Close window              | `Ctrl + Shift + q`                                  |
+| Copy selection            | `Ctrl + Shift + c`                                  |
+| Paste                     | `Ctrl + Shift + v`                                  |
+| Search in scrollback      | `Ctrl + Shift + f`                                  |
+| Quick-select URL/text     | `Ctrl + Shift + p`                                  |
+| Launcher (profiles/tabs)  | `Ctrl + Shift + l`                                  |
+| Copy with mouse           | Select text and release left button                 |
+| Paste with mouse          | Right-click                                         |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                            |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                    |
+| Close pane (direct)       | `Ctrl + Alt + x`                                    |
+| Next tab                  | `Ctrl + Tab`                                        |
+| Previous tab              | `Ctrl + Shift + Tab`                                |
+| Split vertical            | `Ctrl + Space` then `-` or `s`                      |
+| Split horizontal          | `Ctrl + Space` then `backslash`, `pipe`, or `v`     |
 | Move between panes        | `Shift + Ctrl + arrow` or `Ctrl + Space` then arrow |
-| Rename tab                | `Ctrl + Space` then `,`                         |
-| Toggle fullscreen         | `Alt + Enter`                                   |
-| Increase font size        | `Ctrl + Shift + =`                              |
-| Decrease font size        | `Ctrl + Shift + -`                              |
-| Reset font size           | `Ctrl + 0`                                      |
-| Open config               | `Ctrl + Space` then `.`                         |
+| Rename tab                | `Ctrl + Space` then `,`                             |
+| Switch workspace          | `Ctrl + Space` then `w`                             |
+| Toggle fullscreen         | `Alt + Enter`                                       |
+| Increase font size        | `Ctrl + Shift + =`                                  |
+| Decrease font size        | `Ctrl + Shift + -`                                  |
+| Reset font size           | `Ctrl + 0`                                          |
+| Open config               | `Ctrl + Space` then `.`                             |
 
 `Ctrl + Space` is a WezTerm leader key with a 3-second timeout. Press and release `Ctrl + Space`, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
 
 ### tmux
 
-| Action           | Shortcut             |
-| ---------------- | -------------------- |
-| Prefix key       | `Ctrl + Space`       |
-| New window       | `Ctrl + Space` then `c` |
-| Next window      | `Ctrl + Space` then `n` |
-| Previous window  | `Ctrl + Space` then `p` |
-| Reload config    | `Ctrl + Space` then `r` |
+| Action           | Shortcut                 |
+| ---------------- | ------------------------ |
+| Prefix key       | `Ctrl + Space`           |
+| New window       | `Ctrl + Space` then `c`  |
+| Next window      | `Ctrl + Space` then `n`  |
+| Previous window  | `Ctrl + Space` then `p`  |
+| Reload config    | `Ctrl + Space` then `r`  |
 | Split vertical   | `Ctrl + Space` then `\|` |
-| Split horizontal | `Ctrl + Space` then `-` |
+| Split horizontal | `Ctrl + Space` then `-`  |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
@@ -159,22 +163,24 @@ WezTerm and tmux shortcuts in this README are project-defined keybindings from [
 
 ## Starship prompt
 
-The prompt is intentionally single-line and minimal. It is configured in [`terminal_setup/templates/starship.toml`](terminal_setup/templates/starship.toml) and deployed to `~/.config/starship.toml`.
+The prompt is intentionally single-line and context-rich. It is configured in [`terminal_setup/templates/starship.toml`](terminal_setup/templates/starship.toml) and deployed to `~/.config/starship.toml`.
 
 A typical prompt looks like:
 
 ```text
-~/projects/terminal  main !? took 30s >
+~/projects/terminal  main !? +12-3 py:v3.14.0 took 30s >
 ```
 
-| Segment | Meaning |
-| ------- | ------- |
-| `~/projects/terminal` | Current directory (truncated to repo root) |
-| ` main` | Git branch |
-| `!?` | Git status (`!` modified, `?` untracked, etc.) |
-| `took 30s` | Duration of the last command (shown when over 500 ms) |
-| `>` | Prompt character (red if the last command failed) |
-| `✦1` | Number of background jobs (only shown when present) |
+| Segment               | Meaning                                               |
+| --------------------- | ----------------------------------------------------- |
+| `~/projects/terminal` | Current directory (truncated to repo root)            |
+| ` main`              | Git branch                                            |
+| `!?`                  | Git status (`!` modified, `?` untracked, etc.)        |
+| `+12-3`               | Git line metrics for staged/unstaged changes          |
+| `py:v3.14.0`          | Runtime context for active project tools              |
+| `took 30s`            | Duration of the last command (shown when over 500 ms) |
+| `>`                   | Prompt character (red if the last command failed)     |
+| `✦1`                  | Number of background jobs (only shown when present)   |
 
 The prompt uses the Tokyo Night color palette and keeps all segments on one line for readability.
 
@@ -192,9 +198,11 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 
 #### Inside WSL2 Ubuntu
 
-- Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Agent-first CLI tools: `fzf`, `fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
+- Core tools: `zsh`, `tmux`, `git`, `git-lfs`, `direnv`, `curl`, `wget`
+- Agent-first CLI tools: `lazygit`, `just`, `fzf`, `fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Aliases: `fd` -> `fdfind`, `bat` -> `batcat`
+
+`lazygit` is installed from the latest upstream release archive (not from distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
 
 #### Configs deployed
 
@@ -209,9 +217,11 @@ The setup targets WSL2 Ubuntu as the primary shell environment.
 The setup installs tools directly on the host.
 
 - Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
-- Agent-first CLI tools: `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
+- Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - WezTerm via `apt` repository, `pacman`, `dnf`, or Homebrew cask
 - Starship prompt via install script (Linux) or Homebrew (macOS)
+
+`lazygit` is installed from the latest upstream release archive (not from distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
 
 #### Configs deployed
 
@@ -249,20 +259,20 @@ uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-ter
 
 The zsh configuration uses Emacs-style readline shortcuts. These work in any terminal and are the fastest way to edit long commands without reaching for the mouse:
 
-| Shortcut        | Action                                      |
-| --------------- | ------------------------------------------- |
-| `Ctrl + A`      | Move cursor to start of line                |
-| `Ctrl + E`      | Move cursor to end of line                  |
-| `Shift + Home`  | Select from cursor to start of line         |
-| `Shift + End`   | Select from cursor to end of line           |
-| `Backspace`     | Delete selection or character before cursor |
-| `Delete`        | Delete selection or character under cursor  |
-| `Ctrl + U`      | Delete from cursor to start of line         |
-| `Ctrl + K`      | Delete from cursor to end of line           |
-| `Ctrl + W`      | Delete previous word                        |
-| `Alt + D`       | Delete next word                            |
-| `Ctrl + Y`      | Paste the last deleted text                 |
-| `Ctrl + L`      | Clear screen                                |
+| Shortcut       | Action                                      |
+| -------------- | ------------------------------------------- |
+| `Ctrl + A`     | Move cursor to start of line                |
+| `Ctrl + E`     | Move cursor to end of line                  |
+| `Shift + Home` | Select from cursor to start of line         |
+| `Shift + End`  | Select from cursor to end of line           |
+| `Backspace`    | Delete selection or character before cursor |
+| `Delete`       | Delete selection or character under cursor  |
+| `Ctrl + U`     | Delete from cursor to start of line         |
+| `Ctrl + K`     | Delete from cursor to end of line           |
+| `Ctrl + W`     | Delete previous word                        |
+| `Alt + D`      | Delete next word                            |
+| `Ctrl + Y`     | Paste the last deleted text                 |
+| `Ctrl + L`     | Clear screen                                |
 
 `Shift + Home` and `Shift + End` are bound in zsh to create a selection region; once text is selected, `Backspace` or `Delete` removes it just like on Windows.
 

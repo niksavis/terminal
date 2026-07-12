@@ -263,6 +263,7 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
     rust_fallback = {
         "ast-grep": ("ast-grep", "sg"),
         "typos": ("typos-cli", "typos"),
+        "just": ("just", "just"),
     }
     if package in rust_fallback:
         crate, command = rust_fallback[package]
@@ -294,6 +295,10 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
                 "curl -LsSf https://astral.sh/uv/install.sh | sh",
                 wsl_distro=wsl_distro,
             )
+        return True
+
+    if package == "lazygit":
+        _install_lazygit_release(runner, wsl_distro=wsl_distro, no_sudo=False)
         return True
 
     return False
@@ -383,6 +388,26 @@ def _wsl_apt_install_command(runner: Runner, packages: list[str], distro: str) -
         distro=distro,
         interactive=True,
     )
+
+
+def _split_wsl_packages_by_install_path(
+    runner: Runner,
+    packages: list[str],
+    *,
+    distro: str,
+) -> tuple[list[str], list[str]]:
+    """Split WSL packages into apt-installable and fallback groups."""
+    apt_packages: list[str] = []
+    fallback_packages: list[str] = []
+    for package in packages:
+        if package == "lazygit":
+            fallback_packages.append(package)
+            continue
+        if _apt_package_available(runner, package, wsl_distro=distro):
+            apt_packages.append(package)
+        else:
+            fallback_packages.append(package)
+    return apt_packages, fallback_packages
 
 
 def _find_system_command_path(
@@ -610,6 +635,40 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
 
+def _install_lazygit_release(
+    runner: Runner,
+    *,
+    wsl_distro: str | None = None,
+    no_sudo: bool,
+) -> None:
+    """Install the latest lazygit binary from upstream releases."""
+    install_command = "mkdir -p ~/.local/bin; install -m 0755 $tmp/lazygit ~/.local/bin/lazygit"
+    if not no_sudo:
+        install_command = "sudo install -m 0755 $tmp/lazygit /usr/local/bin/lazygit"
+
+    script = (
+        "set -e; "
+        "os=$(uname -s); "
+        "case $os in Linux) os=Linux;; Darwin) os=Darwin;; *) "
+        'echo "Unsupported OS for lazygit: $os" >&2; exit 1;; esac; '
+        "arch=$(uname -m); "
+        "case $arch in x86_64|amd64) arch=x86_64;; aarch64|arm64) arch=arm64;; *) "
+        'echo "Unsupported arch for lazygit: $arch" >&2; exit 1;; esac; '
+        "tmp=$(mktemp -d); "
+        "version=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n1); '
+        'if [ -z "$version" ]; then echo "Unable to resolve latest lazygit version" >&2; '
+        "exit 1; fi; "
+        "curl -fLo $tmp/lazygit.tar.gz "
+        '"https://github.com/jesseduffield/lazygit/releases/download/v${version}/'
+        'lazygit_${version}_${os}_${arch}.tar.gz"; '
+        "tar -xf $tmp/lazygit.tar.gz -C $tmp lazygit; "
+        f"{install_command}; "
+        "rm -rf $tmp"
+    )
+    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+
+
 def _command_for_package(package: str) -> str:
     """Return the command name for a package (Debian package names differ from binaries)."""
     mapping = {
@@ -653,6 +712,7 @@ def _install_user_local_tool(
         "xh": ("xh", "xh"),
         "ast-grep": ("ast-grep", "sg"),
         "sd": ("sd", "sd"),
+        "just": ("just", "just"),
         "git-delta": ("git-delta", "delta"),
         "typos": ("typos-cli", "typos"),
     }
@@ -701,6 +761,17 @@ def _install_user_local_tool(
         )
         return True
 
+    if package == "lazygit":
+        _warn_or_uninstall_system_version(
+            runner,
+            "lazygit",
+            platform.package_manager,
+            wsl_distro=distro,
+            policy=policy,
+        )
+        _install_lazygit_release(runner, wsl_distro=distro, no_sudo=True)
+        return True
+
     return False
 
 
@@ -722,6 +793,9 @@ def ensure_wsl_tools(
         "zsh",
         "tmux",
         "git",
+        "lazygit",
+        "git-lfs",
+        "direnv",
         "curl",
         "wget",
         "fzf",
@@ -735,6 +809,7 @@ def ensure_wsl_tools(
         "xh",
         "ast-grep",
         "sd",
+        "just",
         "git-delta",
         "typos",
         "uv",
@@ -758,13 +833,11 @@ def ensure_wsl_tools(
                 runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
         return
 
-    apt_packages: list[str] = []
-    fallback_packages: list[str] = []
-    for package in packages:
-        if _apt_package_available(runner, package, wsl_distro=distro):
-            apt_packages.append(package)
-        else:
-            fallback_packages.append(package)
+    apt_packages, fallback_packages = _split_wsl_packages_by_install_path(
+        runner,
+        packages,
+        distro=distro,
+    )
 
     if apt_packages:
         _wsl_apt_install_command(runner, apt_packages, distro)
@@ -849,6 +922,8 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
         return
     extras = {
         PackageManager.APT: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd-find",
             "bat",
@@ -860,11 +935,14 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
         ],
         PackageManager.HOMEBREW: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd",
             "bat",
@@ -876,11 +954,14 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos-cli",
             "uv",
         ],
         PackageManager.PACMAN: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd",
             "bat",
@@ -892,11 +973,14 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
         ],
         PackageManager.DNF: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd-find",
             "bat",
@@ -908,6 +992,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
@@ -915,6 +1000,7 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
     }
     for package in extras.get(platform.package_manager, []):
         install_package(runner, platform.package_manager, package)
+    _install_lazygit_release(runner, no_sudo=False)
 
 
 def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:

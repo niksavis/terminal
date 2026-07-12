@@ -89,6 +89,16 @@ if command -v zoxide >/dev/null 2>&1; then
   alias cd="z"
 fi
 
+# Use direnv for per-project environment loading.
+if command -v direnv >/dev/null 2>&1; then
+  eval "$(direnv hook zsh)"
+fi
+
+# just command runner shorthand
+if command -v just >/dev/null 2>&1; then
+  alias j="just"
+fi
+
 # fzf integration (josean-dev style)
 if command -v fzf >/dev/null 2>&1; then
   # Newer fzf versions support `fzf --zsh`; older distro builds expose scripts only.

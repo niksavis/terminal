@@ -274,6 +274,8 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
         "zsh",
         "tmux",
         "git",
+        "git-lfs",
+        "direnv",
         "curl",
         "wget",
         "fzf",
@@ -287,6 +289,7 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
         "xh",
         "ast-grep",
         "sd",
+        "just",
         "git-delta",
         "typos",
         "uv",
@@ -302,11 +305,20 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
     for package in expected_packages:
         assert package in script
 
+    lazygit_release_commands = [
+        command
+        for command in runner.commands
+        if command[:2] == ["sh", "-c"] and "jesseduffield/lazygit/releases/latest" in command[-1]
+    ]
+    assert len(lazygit_release_commands) == 1
+
 
 def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
     """Host extras should install the same baseline with package-name mapping per manager."""
     expected = {
         PackageManager.APT: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd-find",
             "bat",
@@ -318,11 +330,14 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
         ],
         PackageManager.HOMEBREW: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd",
             "bat",
@@ -334,11 +349,14 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos-cli",
             "uv",
         ],
         PackageManager.PACMAN: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd",
             "bat",
@@ -350,11 +368,14 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
         ],
         PackageManager.DNF: [
+            "git-lfs",
+            "direnv",
             "fzf",
             "fd-find",
             "bat",
@@ -366,6 +387,7 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "xh",
             "ast-grep",
             "sd",
+            "just",
             "git-delta",
             "typos",
             "uv",
@@ -379,6 +401,10 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
         ensure_host_cli_extras(cast(Runner, runner), platform)
 
         assert _installed_packages(runner.commands, manager) == expected_packages
+        assert any(
+            command[:2] == ["sh", "-c"] and "jesseduffield/lazygit/releases/latest" in command[-1]
+            for command in runner.commands
+        )
 
 
 def test_ensure_host_cli_extras_noop_on_windows() -> None:
