@@ -37,11 +37,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Only check prerequisites and exit.",
     )
     parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print additional diagnostic output.",
-    )
-    parser.add_argument(
         "--user-install",
         action="store_true",
         help="Install tools into user-writable locations without admin rights.",

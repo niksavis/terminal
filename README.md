@@ -1,80 +1,79 @@
 # terminal
 
-Cross-platform terminal environment setup. Install WezTerm, WSL2 Ubuntu tooling, zsh, tmux, starship, and an agent-first set of CLI tools on every developer machine.
+Cross-platform terminal environment setup for developers using coding agents. Install WezTerm, WSL2 Ubuntu tooling, zsh, tmux, starship, and an agent-first CLI toolchain with one idempotent setup flow.
+
+## Overview
+
+If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
+
+- A consistent terminal stack across Windows+WSL, Linux, and macOS.
+- Better defaults for multitasking: WezTerm + tmux + zsh + starship.
+- Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
+- Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
+
+## Quick install (users)
+
+Prerequisites: [uv](https://docs.astral.sh/uv/) and Python 3.14+. On Windows, install WSL2 Ubuntu.
+
+Use the latest setup directly from `main` (no clone required):
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
+```
+
+If you do not have admin rights on Windows:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --user-install
+```
+
+For reproducible installs, use the pinned command shown on each GitHub release page.
+
+## Contributor setup (required once after clone)
+
+```bash
+git clone https://github.com/niksavis/terminal.git
+cd terminal
+uv sync
+npm install
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+uv run pre-commit run --all-files
+uv run pytest tests/
+```
+
+Run the setup flow after your contributor environment is ready:
+
+```bash
+uv run python setup-terminal.py
+```
+
+Optional validation:
+
+```bash
+uv run python setup-terminal.py --check
+uv run python setup-terminal.py --dry-run
+uv run python setup-terminal.py --report-only
+```
 
 ## What's here
 
 - **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
 - **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), [`starship.toml`](terminal_setup/templates/starship.toml), and [`micro-settings.json`](terminal_setup/templates/micro-settings.json).
 - **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
-- **Scaffolding scripts** — cross-platform harness helpers in [`.scripts/`](.scripts/).
-- **Skill catalog** — basicly-managed tool skills in [`.basicly/skills/`](.basicly/skills/) projected to [`.claude/skills/`](.claude/skills/).
-- **Tests** — workspace and setup tests in [`tests/`](tests/).
-
-## Install guide
-
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.14+.
-
-```bash
-# Install dependencies and dev tools
-uv sync
-
-# Verify prerequisites only (no changes)
-uv run python setup-terminal.py --check
-
-# Preview what the setup will do
-uv run python setup-terminal.py --dry-run
-
-# Verify current tool/config status without applying setup changes
-uv run python setup-terminal.py --report-only
-
-# Run the full setup
-uv run python setup-terminal.py
-```
-
-The setup is idempotent: running it again installs missing tools, skips already up-to-date tools, and prompts before applying available tool updates.
-
-Use `--report-only` for verification-only checks. Use `--report` when you want to run setup first and then print the verification summary.
-
-### Recommended setup workflow
-
-For a full install/validation cycle:
-
-1. `uv sync`
-2. `uv run python setup-terminal.py --check`
-3. `uv run python setup-terminal.py --dry-run --verbose`
-4. `uv run python setup-terminal.py --verbose` (or `--user-install` on Windows without admin rights)
-5. `uv run python setup-terminal.py --report-only`
+- **Agent skills (optional)** — many provided tools have companion skills in [`.claude/skills/`](.claude/skills/). For now, copy the skills you want into your own repository manually.
 
 ### Install with an AI coding agent
 
 Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude Code, etc.) after cloning this repo. The agent will run the setup for you and report what it changed.
 
 ```text
-I want a full terminal setup for this repository.
+Install this repository's terminal setup from the current directory.
 
-Prerequisites: ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If running on Windows, ensure WSL2 Ubuntu is installed and usable.
-
-Execute this workflow end-to-end:
-1. Run `uv sync`.
-2. Run `uv run python setup-terminal.py --check` and report missing prerequisites, if any.
-3. Run `uv run python setup-terminal.py --dry-run --verbose` and summarize planned actions.
-4. Apply setup:
- - Use `uv run python setup-terminal.py --user-install --verbose` when admin rights are unavailable on Windows.
- - Otherwise use `uv run python setup-terminal.py --verbose`.
-5. Run `uv run python setup-terminal.py --report-only` to verify final state without re-running setup.
-6. Verify required tools are available in the detected target environment: wezterm, zsh, tmux, git, lazygit, git-lfs, direnv, just, starship, fzf, fd, bat, ripgrep, jq, yq, shellcheck, tree, xh, ast-grep, sd, delta, typos, uv.
-7. Provide a final summary with:
- - installed vs already-present tools
- - tools skipped because they were up to date
- - any update prompts shown and how they were answered
- - deployed config files
- - manual next steps (for example terminal/WSL restart if required)
-
-Behavior constraints:
-- Do not run destructive commands.
-- If a prerequisite is missing, stop and explain how to install it.
-- If sudo/password or y/n confirmation is required, pause and ask me to respond.
+1. Ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If missing, stop and tell me what to install.
+2. Run `uv run python setup-terminal.py`.
+3. If admin rights are unavailable on Windows, run `uv run python setup-terminal.py --user-install`.
+4. If any sudo/password or y/n update prompt appears, pause and ask me.
+5. When done, run `uv run python setup-terminal.py --report-only` and summarize what was installed, skipped, and any manual next steps.
 ```
 
 ## Quick start
@@ -105,23 +104,6 @@ This installs the same tools and configs directly on the WSL host. Then start a 
 
 ```bash
 zsh
-```
-
-Create a workspace directory and clone a repository (choose your own path):
-
-```bash
-mkdir -p <workspace-dir>
-cd <workspace-dir>
-git clone https://github.com/niksavis/beads-blueprint.git
-cd beads-blueprint
-```
-
-If you want to work on this repository after it is published:
-
-```bash
-cd <workspace-dir>
-git clone https://github.com/niksavis/terminal.git
-cd terminal
 ```
 
 ### Linux / macOS
@@ -213,71 +195,47 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 
 ## What gets installed
 
-### On Windows (PowerShell / Git Bash)
+### Common baseline (all supported platforms)
 
-The setup targets WSL2 Ubuntu as the primary shell environment.
-
-#### Windows host
-
-- WezTerm via `winget`
-- Starship prompt via `winget`
-- VS Code: Remote - WSL extension
-
-#### Inside WSL2 Ubuntu
-
-- Core tools: `zsh`, `tmux`, `git`, `git-lfs`, `direnv`, `curl`, `wget`
-- Agent-first CLI tools: `lazygit`, `just`, `fzf`, `fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
-- Aliases: `fd` -> `fdfind`, `bat` -> `batcat`
-
-`lazygit` is installed from the latest upstream release archive (not from distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
-
-#### Configs deployed
-
-- `wezterm.lua` -> `%USERPROFILE%\.config\wezterm\wezterm.lua`
-- `.tmux.conf` -> WSL `~/.tmux.conf`
-- `.zshrc` -> WSL `~/.zshrc`
-- `starship.toml` -> WSL `~/.config/starship.toml`
-- `settings.json` -> WSL `~/.config/micro/settings.json`
-
-### On Linux / macOS / WSL Ubuntu terminal
-
-The setup installs tools directly on the host.
-
-- Core tools: `zsh`, `tmux`, `git`, `curl`, `wget`
+- Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
-- WezTerm via `apt` repository, `pacman`, `dnf`, or Homebrew cask
-- Starship prompt via install script (Linux) or Homebrew (macOS)
+- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, `micro settings.json`
 
-`lazygit` is installed from the latest upstream release archive (not from distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
+`lazygit` is installed from the latest upstream release archive (not distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
 
-#### Configs deployed
+### Platform differences
 
-- `wezterm.lua` -> `~/.config/wezterm/wezterm.lua`
-- `.tmux.conf` -> `~/.tmux.conf`
-- `.zshrc` -> `~/.zshrc`
-- `starship.toml` -> `~/.config/starship.toml`
-- `settings.json` -> `~/.config/micro/settings.json`
+#### Windows (PowerShell / Git Bash)
 
-## Cheat Sheet Publishing
+- Targets WSL2 Ubuntu as the primary shell environment
+- Windows host installs: WezTerm via `winget`, Starship via `winget`, VS Code Remote - WSL extension
+- WSL aliases: `fd` -> `fdfind`, `bat` -> `batcat`
+- Config destinations: Windows `wezterm.lua` under `%USERPROFILE%\.config\wezterm\`, WSL files under `~`
 
-- Live page: [https://niksavis.github.io/terminal/](https://niksavis.github.io/terminal/)
-- Source: [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md)
-- Build: [`.scripts/render-cheat-sheet.py`](.scripts/render-cheat-sheet.py) renders `terminal-cheat-sheet.html`
-- CI/CD: [`.github/workflows/cheat-sheet.yml`](.github/workflows/cheat-sheet.yml) renders on each change to the cheat-sheet source and deploys the generated HTML to GitHub Pages on pushes to `main`
-- One-time repo setting: enable **Settings > Pages > Source: GitHub Actions**
+#### Linux / macOS / WSL terminal
+
+- Installs directly on the current host
+- WezTerm install path: `apt` repo / `pacman` / `dnf` / Homebrew cask (platform-dependent)
+- Starship install path: Linux install script or Homebrew on macOS
+- Config destinations: all files under `~` on the host
 
 ## CLI options
 
 ```bash
-uv run python setup-terminal.py --dry-run    # preview changes
 uv run python setup-terminal.py --check      # verify prerequisites only
+uv run python setup-terminal.py --dry-run    # preview changes
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
 uv run python setup-terminal.py --user-install # install without admin rights (Windows)
-uv run python setup-terminal.py --report     # run setup, then print verification summary
+uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
 uv run python setup-terminal.py --report-only # print verification summary without running setup
+uv run python setup-terminal.py --report     # run setup, then print verification summary
+uv run python setup-terminal.py --uninstall-system-versions # remove system tool versions automatically
+uv run python setup-terminal.py --keep-system-versions # keep system tool versions; only warn
 uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
+
+`--uninstall-system-versions` and `--keep-system-versions` are mutually exclusive.
 
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
@@ -320,10 +278,12 @@ This is **harmless and expected**. The setup is intentionally lightweight: it ta
 
 ## Development
 
-Install the git hooks to run lint, type checks, and tests automatically:
+After cloning, install all git hooks so commit format, lint, type checks, and tests run automatically:
 
 ```bash
-uv run pre-commit install --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+uv sync
+npm install
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
 ```
 
 Run the test suite and pre-commit checks manually:
@@ -331,10 +291,6 @@ Run the test suite and pre-commit checks manually:
 ```bash
 uv run pytest tests/
 uv run python .scripts/git-hooks/pre-commit.py
-
-# Project and verify tool skills
-PYTHONPATH=.basicly uv run python -m basicly.cli skills-build
-PYTHONPATH=.basicly uv run python -m basicly.cli skills-check
 ```
 
 ## VS Code
