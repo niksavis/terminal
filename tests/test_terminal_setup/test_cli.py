@@ -38,6 +38,13 @@ def test_parser_report_flag() -> None:
     assert args.report is True
 
 
+def test_parser_report_only_flag() -> None:
+    """The parser must accept --report-only."""
+    parser = build_parser()
+    args = parser.parse_args(["--report-only"])
+    assert args.report_only is True
+
+
 def test_parser_uninstall_system_versions_flag() -> None:
     """The parser must accept --uninstall-system-versions."""
     parser = build_parser()
@@ -104,3 +111,30 @@ def test_main_rejects_conflicting_system_version_flags() -> None:
             "--keep-system-versions",
         ])
     assert result == 2
+
+
+def test_main_report_only_skips_setup_actions() -> None:
+    """Report-only mode must avoid setup and only print verification output."""
+    fake_platform = PlatformInfo(
+        os=OperatingSystem.LINUX,
+        package_manager=PackageManager.APT,
+        is_wsl_available=False,
+        is_wsl_default_ubuntu=False,
+        wsl_distribution=None,
+        shell="/bin/zsh",
+        home=Path.home(),
+        wezterm_config_dir=Path.home() / ".config" / "wezterm",
+        vscode_settings_path=None,
+    )
+    with (
+        mock.patch("terminal_setup.cli.platform.detect_platform", return_value=fake_platform),
+        mock.patch("terminal_setup.cli.run_check", return_value=0) as mock_check,
+        mock.patch("terminal_setup.cli.print_setup_report") as mock_report,
+        mock.patch("terminal_setup.cli.run_setup") as mock_setup,
+    ):
+        result = main(["--report-only"])
+
+    assert result == 0
+    mock_check.assert_called_once()
+    mock_report.assert_called_once()
+    mock_setup.assert_not_called()

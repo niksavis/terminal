@@ -247,7 +247,8 @@ uv run python setup-terminal.py --check      # verify prerequisites only
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
 uv run python setup-terminal.py --user-install # install without admin rights (Windows)
-uv run python setup-terminal.py --report     # print a post-setup verification summary
+uv run python setup-terminal.py --report     # run setup, then print verification summary
+uv run python setup-terminal.py --report-only # print verification summary without running setup
 uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
 

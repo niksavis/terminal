@@ -62,6 +62,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print a post-setup verification report for tools and deployed configs.",
     )
     parser.add_argument(
+        "--report-only",
+        action="store_true",
+        help="Only print the verification report; do not run setup actions.",
+    )
+    parser.add_argument(
         "--uninstall-system-versions",
         action="store_true",
         dest="uninstall_system_versions",
@@ -401,6 +406,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return run_check(platform_info, runner)
+
+    if args.report_only:
+        status = run_check(platform_info, runner)
+        print_setup_report(
+            runner,
+            platform_info,
+            include_starship=not args.skip_starship,
+            include_vscode=not args.skip_vscode,
+        )
+        return status
 
     status = run_check(platform_info, runner)
     if status != 0:

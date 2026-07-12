@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 import shutil
 import subprocess  # nosec B404
 from dataclasses import dataclass, field
@@ -50,7 +51,7 @@ class ConsoleReporter:
 
     def command(self, command: list[str]) -> None:
         """Print a command that is about to run."""
-        print(f"RUN: {' '.join(command)}")
+        print(f"RUN: {shlex.join(command)}")
 
     def confirm(self, message: str) -> bool:
         """Prompt the user for a yes/no answer."""
