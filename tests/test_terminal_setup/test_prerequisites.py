@@ -456,7 +456,7 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
     """Release install should skip when installed lazygit matches latest version."""
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     installed_query = (
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
@@ -548,7 +548,7 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
     """Lazygit update should ask for consent and skip when user declines."""
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     installed_query = (
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "

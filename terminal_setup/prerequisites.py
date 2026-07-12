@@ -854,7 +854,7 @@ def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) ->
     """Return the latest tagged lazygit version from upstream releases."""
     script = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        "| sed -n 's/.*\"tag_name\": *\"v\\([^\"]*\\)\".*/\\1/p' | head -n 1"
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
     if result.returncode != 0:
@@ -900,17 +900,13 @@ def _install_lazygit_release(
     if installed_version:
         prompt = f"Update lazygit from {installed_version} to {latest_version}?"
         if runner.dry_run:
-            runner.reporter.info(
-                f"Would ask: {prompt} (answer 'no' by default in dry-run mode)"
-            )
+            runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
             return
         if not runner.confirm(prompt):
             runner.reporter.info("Skipping lazygit update")
             return
 
-    install_command = (
-        'mkdir -p ~/.local/bin; install -m 0755 "$tmp/lazygit" ~/.local/bin/lazygit'
-    )
+    install_command = 'mkdir -p ~/.local/bin; install -m 0755 "$tmp/lazygit" ~/.local/bin/lazygit'
     if not no_sudo:
         install_command = 'sudo install -m 0755 "$tmp/lazygit" /usr/local/bin/lazygit'
 
