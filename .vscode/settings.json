@@ -1,11 +1,21 @@
 {
   "editor.formatOnSave": true,
-  "editor.defaultFormatter": "charliermarsh.ruff",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit",
     "source.fixAll": "explicit"
   },
-  "editor.rulers": [100],
+  "editor.rulers": [
+    100
+  ],
   "files.eol": "\n",
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
@@ -30,7 +40,9 @@
   "ruff.fixAll": true,
   "python.testing.pytestEnabled": true,
   "python.testing.pytestPath": "pytest",
-  "python.testing.pytestArgs": ["tests/"],
+  "python.testing.pytestArgs": [
+    "tests/"
+  ],
   "python.testing.unittestEnabled": false,
   "python.testing.autoTestDiscoverOnSaveEnabled": true,
   "cSpell.diagnosticLevel": "Hint",
@@ -38,7 +50,10 @@
   "terminal.integrated.profiles.windows": {
     "Git Bash": {
       "source": "Git Bash",
-      "args": ["--login", "-i"],
+      "args": [
+        "--login",
+        "-i"
+      ],
       "icon": "terminal-bash"
     },
     "PowerShell": {
