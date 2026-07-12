@@ -339,15 +339,19 @@ def _wsl_apt_install_script(packages: list[str]) -> str:
         "sudo sh -c '"
         "set -e; "
         "export DEBIAN_FRONTEND=noninteractive; "
+        "rm -f /etc/apt/sources.list.d/wezterm.list "
+        "/etc/apt/sources.list.d/wezterm.sources "
+        "/etc/apt/sources.list.d/wezterm-fury.list "
+        "/etc/apt/sources.list.d/wezterm-fury.sources; "
         "for file in /etc/apt/sources.list.d/*; do "
         '[ -f "$file" ] || continue; '
-        'if grep -Eq "fury\\\\.wez\\\\.dev" "$file"; then '
+        'if grep -Eq "fury\\\\.wez\\\\.dev|apt\\\\.fury\\\\.io/wez" "$file"; then '
         'rm -f "$file"; '
         "fi; "
         "done; "
         "if [ -f /etc/apt/sources.list ] && "
-        'grep -Eq "fury\\\\.wez\\\\.dev" /etc/apt/sources.list; then '
-        "sed -i '/fury\\\\.wez\\\\.dev/d' /etc/apt/sources.list; "
+        'grep -Eq "fury\\\\.wez\\\\.dev|apt\\\\.fury\\\\.io/wez" /etc/apt/sources.list; then '
+        "sed -i '/fury\\\\.wez\\\\.dev/d;/apt\\\\.fury\\\\.io\\\\/wez/d' /etc/apt/sources.list; "
         "fi; "
         "apt-get update; "
         f"apt-get install -y {package_list}"
