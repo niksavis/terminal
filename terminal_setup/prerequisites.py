@@ -334,6 +334,8 @@ def install_wsl_ubuntu(runner: Runner) -> None:
 def _wsl_apt_install_script(packages: list[str]) -> str:
     """Return a shell script that updates apt and installs packages in one session."""
     package_list = " ".join(packages)
+    # Safety: remove only known legacy WezTerm source files/entries before apt update.
+    # Using rm -f keeps this cleanup idempotent and avoids failures when files are absent.
     return (
         "set -e; "
         "sudo sh -c '"
@@ -351,7 +353,7 @@ def _wsl_apt_install_script(packages: list[str]) -> str:
         "done; "
         "if [ -f /etc/apt/sources.list ] && "
         'grep -Eq "fury\\\\.wez\\\\.dev|apt\\\\.fury\\\\.io/wez" /etc/apt/sources.list; then '
-        "sed -i \"/fury\\\\.wez\\\\.dev/d;/apt\\\\.fury\\\\.io\\\\/wez/d\" /etc/apt/sources.list; "
+        'sed -i "/fury\\\\.wez\\\\.dev/d;/apt\\\\.fury\\\\.io\\\\/wez/d" /etc/apt/sources.list; '
         "fi; "
         "apt-get update; "
         f"apt-get install -y {package_list}"
