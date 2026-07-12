@@ -25,29 +25,56 @@ uv run python setup-terminal.py --check
 # Preview what the setup will do
 uv run python setup-terminal.py --dry-run
 
+# Verify current tool/config status without applying setup changes
+uv run python setup-terminal.py --report-only
+
 # Run the full setup
 uv run python setup-terminal.py
 ```
 
 The setup is idempotent: running it again installs missing tools, skips already up-to-date tools, and prompts before applying available tool updates.
 
+Use `--report-only` for verification-only checks. Use `--report` when you want to run setup first and then print the verification summary.
+
+### Recommended setup workflow
+
+For a full install/validation cycle:
+
+1. `uv sync`
+2. `uv run python setup-terminal.py --check`
+3. `uv run python setup-terminal.py --dry-run --verbose`
+4. `uv run python setup-terminal.py --verbose` (or `--user-install` on Windows without admin rights)
+5. `uv run python setup-terminal.py --report-only`
+
 ### Install with an AI coding agent
 
 Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude Code, etc.) after cloning this repo. The agent will run the setup for you and report what it changed.
 
 ```text
-I want to install the terminal environment defined in this repository.
+I want a full terminal setup for this repository.
 
-Prerequisites: ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available, and that WSL2 Ubuntu is installed if you are on Windows.
+Prerequisites: ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If running on Windows, ensure WSL2 Ubuntu is installed and usable.
 
-Run the setup idempotently:
-1. Run `uv sync` to install dependencies.
-2. Run `uv run python setup-terminal.py --dry-run` and show me the planned changes.
-3. If the dry-run looks correct, run `uv run python setup-terminal.py` to apply the setup. If I do not have admin rights on Windows, use `uv run python setup-terminal.py --user-install` instead.
-4. After the setup completes, verify that WezTerm, zsh, tmux, git, lazygit, git-lfs, direnv, just, starship, fzf, fd, bat, ripgrep, jq, yq, shellcheck, tree, xh, ast-grep, sd, delta, typos, and uv are available in the target environment (Windows WSL Ubuntu, Linux, or macOS as detected).
-5. Report which tools were installed, which configs were deployed, and any manual steps I still need to take (for example, restarting WezTerm or setting zsh as the default shell).
+Execute this workflow end-to-end:
+1. Run `uv sync`.
+2. Run `uv run python setup-terminal.py --check` and report missing prerequisites, if any.
+3. Run `uv run python setup-terminal.py --dry-run --verbose` and summarize planned actions.
+4. Apply setup:
+ - Use `uv run python setup-terminal.py --user-install --verbose` when admin rights are unavailable on Windows.
+ - Otherwise use `uv run python setup-terminal.py --verbose`.
+5. Run `uv run python setup-terminal.py --report-only` to verify final state without re-running setup.
+6. Verify required tools are available in the detected target environment: wezterm, zsh, tmux, git, lazygit, git-lfs, direnv, just, starship, fzf, fd, bat, ripgrep, jq, yq, shellcheck, tree, xh, ast-grep, sd, delta, typos, uv.
+7. Provide a final summary with:
+ - installed vs already-present tools
+ - tools skipped because they were up to date
+ - any update prompts shown and how they were answered
+ - deployed config files
+ - manual next steps (for example terminal/WSL restart if required)
 
-Do not run destructive commands without explaining them first. If a prerequisite is missing, stop and tell me how to install it.
+Behavior constraints:
+- Do not run destructive commands.
+- If a prerequisite is missing, stop and explain how to install it.
+- If sudo/password or y/n confirmation is required, pause and ask me to respond.
 ```
 
 ## Quick start
@@ -312,7 +339,7 @@ PYTHONPATH=.basicly uv run python -m basicly.cli skills-check
 
 ## VS Code
 
-Workspace settings, recommended extensions, tasks, and launch configs are committed in [`.vscode/`](.vscode/). Open the repo in VS Code: and install the recommended extensions when prompted.
+Workspace settings, recommended extensions, tasks, and launch configs are committed in [`.vscode/`](.vscode/). Open the repo in VS Code and install the recommended extensions when prompted.
 
 ## License
 
