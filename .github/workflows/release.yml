@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: release
 
 "on":
@@ -28,23 +29,21 @@ jobs:
           echo "tag_name=${tag_name}" >> "$GITHUB_OUTPUT"
 
       - name: Ensure tag is available locally
-        env:
-          TAG_NAME: ${{ steps.resolve_tag.outputs.tag_name }}
         shell: bash
         run: |
+          tag_name='${{ steps.resolve_tag.outputs.tag_name }}'
           git fetch --force --tags origin
-          git rev-parse "${TAG_NAME}" >/dev/null
+          git rev-parse "${tag_name}" >/dev/null
 
       - name: Generate brief release notes
-        env:
-          TAG_NAME: ${{ steps.resolve_tag.outputs.tag_name }}
         shell: bash
         run: |
-          prev_tag="$(git describe --tags --abbrev=0 "${TAG_NAME}^" 2>/dev/null || true)"
+          tag_name='${{ steps.resolve_tag.outputs.tag_name }}'
+          prev_tag="$(git describe --tags --abbrev=0 "${tag_name}^" 2>/dev/null || true)"
           if [ -n "${prev_tag}" ]; then
-            range="${prev_tag}..${TAG_NAME}"
+            range="${prev_tag}..${tag_name}"
           else
-            range="${TAG_NAME}"
+            range="${tag_name}"
           fi
 
           {
@@ -56,7 +55,7 @@ jobs:
             fi
             echo
             echo "## Install"
-            echo "\`uvx --from git+https://github.com/${GITHUB_REPOSITORY}@${TAG_NAME} terminal-setup\`"
+            echo "\`uvx --from git+https://github.com/${GITHUB_REPOSITORY}@${tag_name} terminal-setup\`"
           } > release-notes.md
 
       - name: Create or update GitHub release
