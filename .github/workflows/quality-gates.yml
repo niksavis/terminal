@@ -1,0 +1,81 @@
+name: quality-gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  commit-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+      - name: Validate conventional commit messages
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+            range="${base_sha}..${head_sha}"
+          else
+            before_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+            if [ -z "${before_sha}" ] || [ "${before_sha}" = "0000000000000000000000000000000000000000" ]; then
+              range="${head_sha}"
+            else
+              range="${before_sha}..${head_sha}"
+            fi
+          fi
+
+          echo "Checking commit messages in range: ${range}"
+
+          failed=0
+          count=0
+          while IFS=$'\t' read -r commit_sha subject; do
+            if [ -z "${commit_sha}" ]; then
+              continue
+            fi
+
+            count=$((count + 1))
+            msg_file="$(mktemp)"
+            printf "%s\n" "${subject}" > "${msg_file}"
+
+            if ! uv run python .scripts/git-hooks/commit-msg.py "${msg_file}"; then
+              echo "Invalid commit message in ${commit_sha}: ${subject}" >&2
+              failed=1
+            fi
+
+            rm -f "${msg_file}"
+          done < <(git log --format='%H%x09%s' "${range}")
+
+          if [ "${count}" -eq 0 ]; then
+            echo "No commits to validate."
+          fi
+
+          exit "${failed}"
+
+  quality-gates:
+    needs: commit-messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Python dependencies
+        run: uv sync
+      - name: Install Node dependencies
+        run: npm install --no-fund --no-audit
+      - name: Run pre-commit checks
+        run: uv run python .scripts/git-hooks/pre-commit.py
+      - name: Run pre-push checks
+        run: uv run python .scripts/git-hooks/pre-push.py

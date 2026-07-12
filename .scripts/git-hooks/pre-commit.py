@@ -7,12 +7,34 @@ It exists so the hook logic is testable and portable across hook managers.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess  # nosec B404
 import sys
 import time
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def markdownlint_args() -> tuple[str, ...]:
+    """Return a runnable markdownlint command across Windows, Linux, and WSL."""
+    markdownlint_mjs = PROJECT_ROOT / "node_modules" / "markdownlint-cli2" / "markdownlint-cli2.mjs"
+    lint_globs = ("**/*.md", "#node_modules")
+
+    if os.name == "nt":
+        return ("node", str(markdownlint_mjs), *lint_globs)
+
+    node_path = shutil.which("node")
+    if node_path:
+        return (node_path, str(markdownlint_mjs), *lint_globs)
+
+    # WSL setups may not expose `node` in PATH, but can run Windows Node directly.
+    wsl_node = Path("/mnt/c/Program Files/nodejs/node.exe")
+    if wsl_node.exists():
+        return (str(wsl_node), str(markdownlint_mjs), *lint_globs)
+
+    binary_path = PROJECT_ROOT / "node_modules" / ".bin" / "markdownlint-cli2"
+    return (str(binary_path), *lint_globs)
 
 
 def run(name: str, *args: str) -> tuple[int, float]:
@@ -47,7 +69,7 @@ def main() -> int:
             "-r",
             ".scripts",
         ),
-        ("markdownlint", "node_modules/.bin/markdownlint-cli2.cmd"),
+        ("markdownlint", *markdownlint_args()),
         ("cheat-sheet-html", "python", ".scripts/render-cheat-sheet.py", "--check"),
     ]
 
