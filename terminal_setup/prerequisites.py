@@ -346,7 +346,7 @@ def _wsl_apt_install_script(packages: list[str]) -> str:
         "fi; "
         "done; "
         "if [ -f /etc/apt/sources.list ] && "
-        "grep -Eq \"fury\\\\.wez\\\\.dev\" /etc/apt/sources.list; then "
+        'grep -Eq "fury\\\\.wez\\\\.dev" /etc/apt/sources.list; then '
         "sed -i '/fury\\\\.wez\\\\.dev/d' /etc/apt/sources.list; "
         "fi; "
         "apt-get update; "
