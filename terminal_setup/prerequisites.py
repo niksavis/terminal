@@ -648,15 +648,17 @@ def _install_lazygit_release(
 
     script = (
         "set -e; "
-        "os=$(uname -s); "
-        "case $os in Linux) os=Linux;; Darwin) os=Darwin;; *) "
-        'echo "Unsupported OS for lazygit: $os" >&2; exit 1;; esac; '
-        "arch=$(uname -m); "
-        "case $arch in x86_64|amd64) arch=x86_64;; aarch64|arm64) arch=arm64;; *) "
-        'echo "Unsupported arch for lazygit: $arch" >&2; exit 1;; esac; '
+        'os="$(uname -s)"; '
+        'if [ "$os" = "Linux" ]; then os="Linux"; '
+        'elif [ "$os" = "Darwin" ]; then os="Darwin"; '
+        'else echo "Unsupported OS for lazygit: $os" >&2; exit 1; fi; '
+        'arch="$(uname -m)"; '
+        'if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then arch="x86_64"; '
+        'elif [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then arch="arm64"; '
+        'else echo "Unsupported arch for lazygit: $arch" >&2; exit 1; fi; '
         "tmp=$(mktemp -d); "
         "version=$(curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n1); '
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1); '
         'if [ -z "$version" ]; then echo "Unable to resolve latest lazygit version" >&2; '
         "exit 1; fi; "
         "curl -fLo $tmp/lazygit.tar.gz "
