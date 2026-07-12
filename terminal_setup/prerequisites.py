@@ -193,9 +193,15 @@ def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | No
 def _command_available(runner: Runner, command: str, *, wsl_distro: str | None = None) -> bool:
     """Return whether a command is available on host or in WSL."""
     if wsl_distro is None or is_running_in_wsl():
-        return runner.which(command) is not None
+        if runner.which(command) is not None:
+            return True
+        return _is_user_local_command_available(runner, command)
+
+    script = (
+        f"if test -x ~/.local/bin/{command}; then exit 0; fi; command -v {command} >/dev/null 2>&1"
+    )
     result = runner.run(
-        ["wsl", "-d", wsl_distro, "--", "sh", "-c", f"command -v {command}"],
+        ["wsl", "-d", wsl_distro, "--", "sh", "-c", script],
         check=False,
         dry_run_safe=True,
     )

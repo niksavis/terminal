@@ -19,6 +19,9 @@ from terminal_setup.prerequisites import (
     ensure_wsl_tools,
 )
 from terminal_setup.prerequisites import (
+    _command_available as command_available,
+)
+from terminal_setup.prerequisites import (
     _find_owning_package as find_owning_package,
 )
 from terminal_setup.prerequisites import (
@@ -223,6 +226,25 @@ def test_check_all_returns_list() -> None:
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
         statuses = check_all(platform, runner)
     assert all(isinstance(s, PrerequisiteStatus) for s in statuses)
+
+
+def test_command_available_uses_user_local_bin_when_launched_from_windows() -> None:
+    """Windows->WSL checks should see binaries in ~/.local/bin even if PATH misses them."""
+    runner = FakeRunner(
+        outputs={
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--",
+                "sh",
+                "-c",
+                "if test -x ~/.local/bin/uv; then exit 0; fi; command -v uv >/dev/null 2>&1",
+            ): (0, ""),
+        }
+    )
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        assert command_available(cast(Runner, runner), "uv", wsl_distro="Ubuntu") is True
 
 
 def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
