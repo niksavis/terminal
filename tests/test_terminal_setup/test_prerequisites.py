@@ -33,6 +33,9 @@ from terminal_setup.prerequisites import (
 from terminal_setup.prerequisites import (
     _warn_or_uninstall_system_version as warn_or_uninstall_system_version,
 )
+from terminal_setup.prerequisites import (
+    _wsl_apt_install_script as wsl_apt_install_script,
+)
 from terminal_setup.runner import Runner
 
 
@@ -245,6 +248,14 @@ def test_command_available_uses_user_local_bin_when_launched_from_windows() -> N
     )
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
         assert command_available(cast(Runner, runner), "uv", wsl_distro="Ubuntu") is True
+
+
+def test_wsl_apt_install_script_removes_legacy_wezterm_repo() -> None:
+    """WSL apt install script should remove legacy fury.wez.dev source entries."""
+    script = wsl_apt_install_script(["zsh", "tmux"])
+    assert "fury\\\\.wez\\\\.dev" in script
+    assert "apt-get update" in script
+    assert "apt-get install -y zsh tmux" in script
 
 
 def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
