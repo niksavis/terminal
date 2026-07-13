@@ -137,7 +137,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
-        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.configs.deploy_all"),
     ):
         result = run_setup(
@@ -156,6 +156,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
 
     assert result == 0
     assert mock_tools.call_args.kwargs["no_sudo"] is True
+    assert mock_wezterm.call_args.kwargs["no_sudo"] is True
 
 
 def test_main_report_only_skips_setup_actions() -> None:

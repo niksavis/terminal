@@ -350,7 +350,12 @@ def run_setup(  # noqa: PLR0913
         prerequisites.ensure_shell_tools(runner, platform_info)
         prerequisites.ensure_host_cli_extras(runner, platform_info)
 
-    prerequisites.ensure_wezterm(runner, platform_info, user_install=user_install, no_sudo=no_sudo)
+    prerequisites.ensure_wezterm(
+        runner,
+        platform_info,
+        user_install=user_install,
+        no_sudo=no_sudo or user_install,
+    )
 
     if not skip_starship:
         prerequisites.ensure_starship(runner, platform_info, user_install=user_install)
