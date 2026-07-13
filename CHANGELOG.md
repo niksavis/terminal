@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.2.2 - 2026-07-13
+
+Delta: v0.2.1..v0.2.2
+
+### Highlights
+
+- All remaining tool downloads are now sha256-verified before installing: fzf, jq, and yq against their published checksum files, and the WezTerm Windows archive, WezTerm AppImage, and starship Windows archive against their `.sha256` release assets. (shellcheck publishes no checksum file; the uv/rustup vendor installers stay as-is by design.)
+- The Windows verification report now probes the known install directories, so freshly installed WezTerm/starship show `OK` with a restart hint instead of `MISSING` before the PATH refresh.
+- `wsl --install` now warns up front that administrator rights are required and fails with clear guidance instead of an opaque error.
+- Docs refreshed: portable Windows installs and user-local mode documented as the default behavior, and the release runbook now covers the version bump and commit-message constraints.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (5dbc80c)
+- docs: refresh install notes and release runbook (905090f)
+- feat(setup): verify remaining downloads and improve reporting (acfe6c5)
+
 ## v0.2.1 - 2026-07-13
 
 Delta: v0.2.0..v0.2.1
