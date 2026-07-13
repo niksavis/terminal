@@ -283,7 +283,10 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
-    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True),
+        mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
+    ):
         ensure_wsl_tools(cast(Runner, runner), platform)
 
     expected_packages = [
@@ -441,6 +444,7 @@ def test_ensure_wsl_tools_runs_directly_when_inside_wsl() -> None:
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True),
         mock.patch("terminal_setup.prerequisites._apt_package_available", return_value=True),
+        mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
     ):
         ensure_wsl_tools(cast(Runner, runner), platform)
 

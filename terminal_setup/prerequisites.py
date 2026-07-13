@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess  # nosec B404
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -1051,6 +1052,22 @@ def _install_user_local_tool(
     return False
 
 
+def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
+    """Fail fast when sudo would prompt for a password without a terminal.
+
+    sudo reads the password from the controlling terminal, so in headless
+    contexts (agents, CI, hidden consoles) the setup would hang forever on an
+    invisible prompt instead of failing.
+    """
+    if runner.dry_run or sys.stdin.isatty():
+        return
+    raise RuntimeError(
+        "This step may require a sudo password but stdin is not an interactive "
+        "terminal. Re-run from an interactive shell, or use --user-install / "
+        "--no-sudo to install into user-writable locations without sudo."
+    )
+
+
 def ensure_wsl_tools(
     runner: Runner,
     platform: PlatformInfo,
@@ -1109,6 +1126,7 @@ def ensure_wsl_tools(
                 runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
         return
 
+    _require_interactive_stdin_for_sudo(runner)
     apt_packages, fallback_packages = _split_wsl_packages_by_install_path(
         runner,
         packages,
@@ -1495,6 +1513,7 @@ def _ensure_wezterm_apt(runner: Runner) -> None:
     """
     keyring_dir = Path("/usr/share/keyrings")
     keyring_path = keyring_dir / "wezterm-fury.gpg"
+    _require_interactive_stdin_for_sudo(runner)
     if not runner.dry_run and not keyring_path.exists():
         runner.run(["sudo", "mkdir", "-p", str(keyring_dir)], interactive=True)
         gpg_script = (

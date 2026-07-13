@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
@@ -90,6 +91,11 @@ def _wsl_distro(platform: PlatformInfo) -> str:
     return platform.wsl_distribution or "Ubuntu"
 
 
+def _can_prompt_for_password(runner: Runner) -> bool:
+    """Return whether password prompts can reach the user."""
+    return runner.dry_run or sys.stdin.isatty()
+
+
 def set_wsl_default_shell(
     runner: Runner, platform: PlatformInfo, shell: str = "/usr/bin/zsh"
 ) -> None:
@@ -112,6 +118,12 @@ def set_wsl_default_shell(
     ).stdout.strip()
     if current_shell == shell:
         return
+    if not _can_prompt_for_password(runner):
+        runner.reporter.warn(
+            f"Skipping default shell change to {shell}: chsh needs a password "
+            "prompt but stdin is not an interactive terminal."
+        )
+        return
     # chsh may prompt for the user's password.
     runner.run(wsl_exec_command(distro, ["chsh", "-s", shell]), interactive=True)
 
@@ -127,6 +139,12 @@ def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = 
         ["sh", "-c", "getent passwd $(whoami) | cut -d: -f7"], check=False
     ).stdout.strip()
     if current_shell == shell_path:
+        return
+    if not _can_prompt_for_password(runner):
+        runner.reporter.warn(
+            f"Skipping default shell change to {shell_path}: chsh needs a password "
+            "prompt but stdin is not an interactive terminal."
+        )
         return
     # chsh may prompt for the user's password.
     runner.run(["chsh", "-s", shell_path], interactive=True)
@@ -148,7 +166,7 @@ def deploy_all(
     """Deploy all configuration files and set the default shell."""
     deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
     if _is_wsl_target(platform):
-        deploy_wsl_configs(runner, platform)
+        deploy_wsl_configs(runner, platform, include_starship=include_starship)
         if not no_sudo:
             set_wsl_default_shell(runner, platform)
         else:
@@ -178,17 +196,21 @@ def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
     return result.stdout.strip()
 
 
-def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
+def deploy_wsl_configs(
+    runner: Runner, platform: PlatformInfo, *, include_starship: bool = True
+) -> None:
     """Copy host config templates into the WSL Ubuntu home directory."""
     distro = _wsl_distro(platform)
     username = platform.home.name or "user"
     wsl_home = f"/home/{username}"
-    for template, target_name in [
+    templates = [
         ("tmux.conf", ".tmux.conf"),
         ("zshrc", ".zshrc"),
-        ("starship.toml", ".config/starship.toml"),
         ("micro-settings.json", ".config/micro/settings.json"),
-    ]:
+    ]
+    if include_starship:
+        templates.append(("starship.toml", ".config/starship.toml"))
+    for template, target_name in templates:
         source = template_path(template)
         destination = f"{wsl_home}/{target_name}"
         if is_running_in_wsl():
