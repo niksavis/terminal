@@ -29,6 +29,11 @@ class PrerequisiteStatus:
     message: str = ""
 
 
+# Node.js major version to install in WSL/Linux/macOS, matching the Windows
+# runtime. Track the current active major so both sides stay aligned.
+TARGET_NODE_MAJOR = "24"
+
+
 @dataclass(frozen=True)
 class SystemVersionPolicy:
     """Policy for handling pre-existing system-wide tool installations."""
@@ -829,6 +834,52 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
         "rm -rf $tmp"
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
+
+
+def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
+    """Install the latest Node.js ``TARGET_NODE_MAJOR`` release into ~/.local.
+
+    Downloads the official prebuilt tarball and merges its bin/lib/include/share
+    into ~/.local (npm and npx are relative symlinks into lib), so Node installs
+    without sudo and matches the Windows major version.
+    """
+    script = (
+        "set -e; "
+        "arch=$(uname -m); "
+        "case $arch in x86_64) arch=x64;; aarch64|arm64) arch=arm64;; esac; "
+        "os=$(uname -s | tr 'A-Z' 'a-z'); "
+        "case $os in darwin) os=darwin;; *) os=linux;; esac; "
+        "ver=$(curl -fsSL https://nodejs.org/dist/index.json "
+        f'| grep -o \'"version":"v{TARGET_NODE_MAJOR}[^"]*"\' | head -n 1 | cut -d\'"\' -f4); '
+        '[ -n "$ver" ] || { echo "Unable to resolve latest Node.js version" >&2; exit 1; }; '
+        "tmp=$(mktemp -d); "
+        'pkg="node-${ver}-${os}-${arch}"; '
+        'curl -fsSL -o "$tmp/node.tar.xz" "https://nodejs.org/dist/${ver}/${pkg}.tar.xz"; '
+        'tar -xJf "$tmp/node.tar.xz" -C "$tmp"; '
+        "mkdir -p ~/.local; "
+        'cp -R "$tmp/${pkg}/." ~/.local/; '
+        'rm -rf "$tmp"'
+    )
+    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+
+
+def ensure_node(runner: Runner, platform: PlatformInfo) -> None:
+    """Install Node.js user-locally where it is missing.
+
+    Node is installed without sudo into ~/.local, matching the major version
+    used on Windows. On Windows the WSL guest is targeted; Windows-native Node
+    is managed outside this setup.
+    """
+    if platform.os == OperatingSystem.WINDOWS:
+        distro = _wsl_distro(platform)
+        if not _command_available(runner, "node", wsl_distro=distro):
+            _install_node_binary(runner, wsl_distro=distro)
+        return
+    if platform.os not in {OperatingSystem.LINUX, OperatingSystem.MACOS}:
+        return
+    if _command_available(runner, "node"):
+        return
+    _install_node_binary(runner)
 
 
 def _parse_version_tuple(version: str) -> tuple[int, ...]:

@@ -204,6 +204,7 @@ def _print_wsl_report(
         "delta",
         "typos",
         "uv",
+        "node",
     ]:
         ok, detail = _wsl_command_present(runner, platform_info, command)
         _report_status(runner, f"wsl:{command}", ok, detail)
@@ -251,6 +252,7 @@ def _print_host_report(
         "delta",
         "typos",
         "uv",
+        "node",
     ]:
         path = runner.which(command)
         _report_status(runner, f"host:{command}", path is not None, path or "")
@@ -356,6 +358,8 @@ def run_setup(  # noqa: PLR0913
         user_install=user_install,
         no_sudo=no_sudo or user_install,
     )
+
+    prerequisites.ensure_node(runner, platform_info)
 
     if not skip_starship:
         prerequisites.ensure_starship(runner, platform_info, user_install=user_install)

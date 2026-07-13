@@ -9,6 +9,7 @@ from unittest import mock
 
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, detect_os
 from terminal_setup.prerequisites import (
+    TARGET_NODE_MAJOR,
     PrerequisiteStatus,
     SystemVersionPolicy,
     check_all,
@@ -16,6 +17,7 @@ from terminal_setup.prerequisites import (
     check_package_manager,
     check_wsl,
     ensure_host_cli_extras,
+    ensure_node,
     ensure_wsl_tools,
     install_package,
 )
@@ -636,6 +638,37 @@ def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
     assert install_scripts
     assert "~/.local/bin/lazygit" in install_scripts[0]
     assert "sudo" not in install_scripts[0]
+
+
+def test_ensure_node_installs_target_major_in_wsl_when_missing() -> None:
+    """On Windows, ensure_node installs the target Node major into the WSL guest."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    runner = SpyRunner()
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._command_available", return_value=False),
+    ):
+        ensure_node(cast(Runner, runner), platform)
+
+    install_scripts = [c[-1] for c in runner.commands if "nodejs.org/dist" in c[-1]]
+    assert install_scripts
+    assert f'"version":"v{TARGET_NODE_MAJOR}' in install_scripts[0]
+    assert all(c[:4] == ["wsl", "-d", "Ubuntu", "--exec"] for c in runner.commands if c[0] == "wsl")
+
+
+def test_ensure_node_skips_when_already_present() -> None:
+    """ensure_node must not reinstall Node when it is already available."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    runner = SpyRunner()
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._command_available", return_value=True),
+    ):
+        ensure_node(cast(Runner, runner), platform)
+
+    assert not any("nodejs.org/dist" in c[-1] for c in runner.commands)
 
 
 def test_system_version_policy_defaults() -> None:
