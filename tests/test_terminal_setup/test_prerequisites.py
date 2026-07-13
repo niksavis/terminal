@@ -486,7 +486,10 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
 
     assert any("releases/latest" in command[-1] for command in runner.commands)
     assert any("lazygit --version" in command[-1] for command in runner.commands)
-    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+    assert not any(
+        "releases/download" in command[-1] and "tar.gz" in command[-1]
+        for command in runner.commands
+    )
 
 
 def test_install_lazygit_release_uses_first_version_token() -> None:
@@ -611,7 +614,10 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
     install_lazygit_release(cast(Runner, runner), no_sudo=False)
 
     assert runner.confirm_prompts == ["Update lazygit from 0.48.0 to 0.49.0?"]
-    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+    assert not any(
+        "releases/download" in command[-1] and "tar.gz" in command[-1]
+        for command in runner.commands
+    )
 
 
 def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
@@ -637,7 +643,9 @@ def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
     assert wsl_commands
     assert all(command[:4] == ["wsl", "-d", "Ubuntu", "--exec"] for command in wsl_commands)
     install_scripts = [
-        command[-1] for command in runner.commands if "lazygit.tar.gz" in command[-1]
+        command[-1]
+        for command in runner.commands
+        if "releases/download" in command[-1] and "tar.gz" in command[-1]
     ]
     assert install_scripts
     assert "~/.local/bin/lazygit" in install_scripts[0]

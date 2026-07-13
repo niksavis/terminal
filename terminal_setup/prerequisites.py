@@ -1015,8 +1015,11 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
         '[ -n "$ver" ] || { echo "Unable to resolve latest Node.js version" >&2; exit 1; }; '
         "tmp=$(mktemp -d); "
         'pkg="node-${ver}-${os}-${arch}"; '
-        'curl -fsSL -o "$tmp/node.tar.xz" "https://nodejs.org/dist/${ver}/${pkg}.tar.xz"; '
-        'tar -xJf "$tmp/node.tar.xz" -C "$tmp"; '
+        'curl -fsSL -o "$tmp/${pkg}.tar.xz" "https://nodejs.org/dist/${ver}/${pkg}.tar.xz"; '
+        'curl -fsSL -o "$tmp/SHASUMS256.txt" "https://nodejs.org/dist/${ver}/SHASUMS256.txt"; '
+        '(cd "$tmp" && grep " ${pkg}.tar.xz$" SHASUMS256.txt | sha256sum -c -) '
+        '|| { echo "Node.js checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        'tar -xJf "$tmp/${pkg}.tar.xz" -C "$tmp"; '
         "mkdir -p ~/.local; "
         'cp -R "$tmp/${pkg}/." ~/.local/; '
         'rm -rf "$tmp"'
@@ -1146,10 +1149,18 @@ def _install_lazygit_release(
         'else echo "Unsupported arch for lazygit: $arch" >&2; exit 1; fi; '
         "tmp=$(mktemp -d); "
         f'version="{latest_version}"; '
-        'curl -fLo "$tmp/lazygit.tar.gz" '
-        '"https://github.com/jesseduffield/lazygit/releases/download/'
-        'v${version}/lazygit_${version}_${os}_${arch}.tar.gz"; '
-        'tar -xf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit; '
+        'pkg="lazygit_${version}_${os}_${arch}.tar.gz"; '
+        'base="https://github.com/jesseduffield/lazygit/releases/download/v${version}"; '
+        'curl -fsSLo "$tmp/${pkg}" "${base}/${pkg}"; '
+        'curl -fsSLo "$tmp/checksums.txt" "${base}/checksums.txt"; '
+        # checksums.txt lists lowercase file names while release assets use
+        # capitalized OS names, so compare digests instead of sha256sum -c.
+        "sumname=$(printf '%s' \"$pkg\" | tr 'A-Z' 'a-z'); "
+        'expected=$(grep " ${sumname}$" "$tmp/checksums.txt" | cut -d" " -f1); '
+        'actual=$(sha256sum "$tmp/${pkg}" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "lazygit checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        'tar -xf "$tmp/${pkg}" -C "$tmp" lazygit; '
         f"{install_command}; "
         'rm -rf "$tmp"'
     )
@@ -1412,7 +1423,9 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
         install_package(runner, platform.package_manager, package)
 
 
-def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_host_cli_extras(
+    runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False
+) -> None:
     """Install agent-first CLI tools on the host."""
     if platform.os == OperatingSystem.WINDOWS:
         return
@@ -1494,9 +1507,15 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "uv",
         ],
     }
-    for package in extras.get(platform.package_manager, []):
-        install_package(runner, platform.package_manager, package)
-    _install_lazygit_release(runner, no_sudo=False)
+    if no_sudo:
+        runner.reporter.warn(
+            "--no-sudo requested: skipping package-manager CLI extras on the host; "
+            "only tools with user-local installers are handled."
+        )
+    else:
+        for package in extras.get(platform.package_manager, []):
+            install_package(runner, platform.package_manager, package)
+    _install_lazygit_release(runner, no_sudo=no_sudo)
 
 
 def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
@@ -1519,8 +1538,13 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
     _add_to_user_path(runner, install_dir)
 
 
-def ensure_starship(runner: Runner, platform: PlatformInfo, *, user_install: bool = False) -> None:
-    """Install the starship prompt if possible."""
+def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
+    """Install the starship prompt if possible.
+
+    On Windows the portable release archive is always used: it needs no admin
+    rights, unlike winget's MSI packages. Existing winget installs are detected
+    and kept.
+    """
     if runner.which("starship"):
         return
     if platform.os == OperatingSystem.WINDOWS:
@@ -1537,37 +1561,7 @@ def ensure_starship(runner: Runner, platform: PlatformInfo, *, user_install: boo
             return
         if _is_winget_package_installed(runner, "Starship.Starship"):
             return
-        if user_install:
-            _ensure_starship_user_install(runner, platform)
-            return
-        if runner.which("winget"):
-            result = runner.run(
-                [
-                    "winget",
-                    "install",
-                    "--id",
-                    "Starship.Starship",
-                    "--accept-source-agreements",
-                    "--accept-package-agreements",
-                    "--scope",
-                    "user",
-                ],
-                check=False,
-                interactive=True,
-            )
-            if result.returncode != 0 and not _is_winget_package_installed(
-                runner, "Starship.Starship"
-            ):
-                raise RuntimeError("Failed to install starship via winget")
-            _ensure_windows_command_in_path(
-                runner,
-                "starship",
-                [
-                    Path("C:/Program Files/starship/bin"),
-                    platform.user_programs_dir / "starship",
-                    platform.user_programs_dir / "starship" / "bin",
-                ],
-            )
+        _ensure_starship_user_install(runner, platform)
         return
     if platform.os == OperatingSystem.LINUX:
         script_url = "https://starship.rs/install.sh"
@@ -1625,8 +1619,12 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
     _add_to_user_path(runner, install_dir)
 
 
-def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo, *, user_install: bool) -> None:
-    """Install WezTerm on Windows via existing installs, winget, or a user download."""
+def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
+    """Install WezTerm on Windows from the portable release archive.
+
+    The portable install needs no admin rights, unlike winget's MSI packages.
+    Existing system or winget installs are detected and kept.
+    """
     _ensure_windows_command_in_path(
         runner,
         "wezterm",
@@ -1640,46 +1638,15 @@ def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo, *, user_inst
         return
     if _is_winget_package_installed(runner, "wez.wezterm"):
         return
-    if user_install:
-        _ensure_wezterm_user_install(runner, platform)
-        return
-    if platform.package_manager != PackageManager.WINGET:
-        return
-    result = runner.run(
-        [
-            "winget",
-            "install",
-            "--id",
-            "wez.wezterm",
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-            "--scope",
-            "user",
-        ],
-        check=False,
-        interactive=True,
-    )
-    if result.returncode != 0 and not _is_winget_package_installed(runner, "wez.wezterm"):
-        raise RuntimeError("Failed to install WezTerm via winget")
-    _ensure_windows_command_in_path(
-        runner,
-        "wezterm",
-        [
-            Path("C:/Program Files/WezTerm"),
-            Path("C:/Program Files (x86)/WezTerm"),
-            platform.user_programs_dir / "WezTerm",
-        ],
-    )
+    _ensure_wezterm_user_install(runner, platform)
 
 
-def ensure_wezterm(
-    runner: Runner, platform: PlatformInfo, *, user_install: bool = False, no_sudo: bool = False
-) -> None:
+def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
     """Install WezTerm using the platform package manager."""
     if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.WINDOWS:
-        _ensure_wezterm_windows(runner, platform, user_install=user_install)
+        _ensure_wezterm_windows(runner, platform)
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         runner.run(["brew", "install", "--cask", "wezterm"])

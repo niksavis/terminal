@@ -44,8 +44,6 @@ class PlatformInfo:
     home: Path
     wezterm_config_dir: Path | None
     vscode_settings_path: Path | None
-    user_install: bool = False
-    no_sudo: bool = False
 
     @property
     def user_programs_dir(self) -> Path:
@@ -191,7 +189,7 @@ def get_vscode_settings_path() -> Path | None:
     return candidates[0] if candidates else None
 
 
-def detect_platform(user_install: bool = False, no_sudo: bool = False) -> PlatformInfo:
+def detect_platform() -> PlatformInfo:
     """Build a complete platform snapshot."""
     os = detect_os()
     in_wsl = is_running_in_wsl()
@@ -211,8 +209,6 @@ def detect_platform(user_install: bool = False, no_sudo: bool = False) -> Platfo
         home=get_home_directory(),
         wezterm_config_dir=get_wezterm_config_dir(),
         vscode_settings_path=get_vscode_settings_path(),
-        user_install=user_install,
-        no_sudo=no_sudo,
     )
 
 
