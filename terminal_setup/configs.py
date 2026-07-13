@@ -289,14 +289,24 @@ def configure_vscode_terminal(
 
 
 def ensure_vscode_extension(runner: Runner, extension_id: str) -> None:
-    """Install a VS Code extension if code is available."""
+    """Install a VS Code extension if code is available.
+
+    Extension installs are a convenience; a failing VS Code CLI must not
+    abort the rest of the setup.
+    """
     code_path = runner.which("code")
     if code_path is None:
         return
     if code_path.lower().endswith((".cmd", ".bat")):
-        runner.run(["cmd", "/c", code_path, "--install-extension", extension_id])
-        return
-    runner.run([code_path, "--install-extension", extension_id])
+        command = ["cmd", "/c", code_path, "--install-extension", extension_id]
+    else:
+        command = [code_path, "--install-extension", extension_id]
+    result = runner.run(command, check=False)
+    if result.returncode != 0:
+        runner.reporter.warn(
+            f"VS Code extension install failed for {extension_id} "
+            f"(exit {result.returncode}); install it manually from VS Code."
+        )
 
 
 def install_vscode_wsl_extension(runner: Runner, platform: PlatformInfo) -> None:
