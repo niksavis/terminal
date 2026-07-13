@@ -49,7 +49,7 @@ typeCheckingMode = "basic"
 terminal-setup = "terminal_setup.cli:main"
 
 [tool.bandit]
-exclude_dirs = [".basicly/tests", "tests"]
+exclude_dirs = ["tests"]
 skips = ["B101"]
 
 [tool.uv]

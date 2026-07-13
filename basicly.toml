@@ -1,0 +1,11 @@
+[paths]
+# Managed core fragments shipped by basicly.
+core_fragments = ".basicly/core/fragments"
+
+# User-owned overlay fragment roots. These are never modified by `basicly update`.
+overlay_fragments = [".basicly-local/fragments"]
+
+# Engine assets and output manifest.
+targets = ".basicly/core/targets"
+templates = ".basicly/core/templates"
+manifest = ".basicly/generated-manifest.json"

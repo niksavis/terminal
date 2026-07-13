@@ -10,7 +10,7 @@ import yaml
 from .loader import FRONT_MATTER_RE
 from .schema import ValidationError
 
-SKILLS_SOURCE_DIR = Path(".basicly/skills")
+SKILLS_SOURCE_DIR = Path(".basicly/core/skills")
 SKILL_FILE_NAME = "SKILL.md"
 DEFAULT_SKILL_ROOTS = (
     Path(".claude/skills"),
@@ -21,7 +21,7 @@ DEFAULT_SKILL_ROOTS = (
 
 @dataclass(frozen=True)
 class SkillDefinition:
-    """A source skill loaded from .basicly/skills."""
+    """A source skill loaded from .basicly/core/skills."""
 
     slug: str
     name: str

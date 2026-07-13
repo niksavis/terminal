@@ -14,6 +14,7 @@ def plan_outputs(
 ) -> list[PlannedOutput]:
     """Return the list of concrete output files to render."""
     active = [f for f in fragments if f.status == "active"]
+    active = _apply_user_replacements(active)
     planned: list[PlannedOutput] = []
 
     for target in targets:
@@ -47,6 +48,24 @@ def plan_outputs(
                     )
 
     return planned
+
+
+def _apply_user_replacements(fragments: list[Fragment]) -> list[Fragment]:
+    """Drop replaced core fragments when active user fragments declare replacements."""
+    replaced_core_ids = {
+        replaced_id
+        for fragment in fragments
+        if fragment.source == "user"
+        for replaced_id in fragment.replaces
+    }
+    if not replaced_core_ids:
+        return fragments
+
+    return [
+        fragment
+        for fragment in fragments
+        if not (fragment.source == "core" and fragment.id in replaced_core_ids)
+    ]
 
 
 def _select_fragments(fragments: list[Fragment], output: OutputDef) -> list[Fragment]:

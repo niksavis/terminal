@@ -28,24 +28,36 @@ REQUIRED_FRAGMENT_FIELDS = {"id", "description", "category", "applies_to"}
 
 def load_fragments(fragments_dir: Path, target_names: set[str]) -> list[Fragment]:
     """Load all fragment files from the fragments directory."""
+    return load_fragments_from_roots([(fragments_dir, None)], target_names)
+
+
+def load_fragments_from_roots(
+    fragment_roots: list[tuple[Path, str | None]],
+    target_names: set[str],
+) -> list[Fragment]:
+    """Load all fragment files from one or more fragment roots."""
     fragments: list[Fragment] = []
     seen_ids: dict[str, Path] = {}
 
-    for path in sorted(fragments_dir.rglob("*.fragment.md")):
-        fragment = _load_fragment(path)
-        _validate_fragment(fragment, path, target_names)
-        if fragment.id in seen_ids:
-            raise ValidationError(
-                f"duplicate fragment id '{fragment.id}' (first defined in {seen_ids[fragment.id]})",
-                path,
-            )
-        seen_ids[fragment.id] = path
-        fragments.append(fragment)
+    for root, source_hint in fragment_roots:
+        if not root.exists():
+            continue
+        for path in sorted(root.rglob("*.fragment.md")):
+            fragment = _load_fragment(path, source_hint)
+            _validate_fragment(fragment, path, target_names)
+            if fragment.id in seen_ids:
+                first_path = seen_ids[fragment.id]
+                raise ValidationError(
+                    f"duplicate fragment id '{fragment.id}' (first defined in {first_path})",
+                    path,
+                )
+            seen_ids[fragment.id] = path
+            fragments.append(fragment)
 
     return fragments
 
 
-def _load_fragment(path: Path) -> Fragment:
+def _load_fragment(path: Path, source_hint: str | None = None) -> Fragment:
     text = path.read_text(encoding="utf-8")
     match = FRONT_MATTER_RE.match(text)
     if not match:
@@ -62,6 +74,8 @@ def _load_fragment(path: Path) -> Fragment:
     body = match.group(2).strip("\n")
     scope = front.get("scope", {})
     scope_paths = scope.get("paths", list(DEFAULT_SCOPE)) if scope else list(DEFAULT_SCOPE)
+    inferred_source = source_hint or _infer_source_from_path(path)
+    source = front.get("source", inferred_source)
 
     return Fragment(
         id=front.get("id", ""),
@@ -75,11 +89,19 @@ def _load_fragment(path: Path) -> Fragment:
         title=front.get("title"),
         body=body,
         source_path=path,
-        source=front.get("source", "core"),
+        source=source,
         override=bool(front.get("override", False)),
         replaces=front.get("replaces", []),
         extends=front.get("extends", []),
     )
+
+
+def _infer_source_from_path(path: Path) -> str:
+    """Infer source based on path conventions when front matter omits source."""
+    parts = {part.lower() for part in path.parts}
+    if ".basicly-local" in parts or "user" in parts:
+        return "user"
+    return "core"
 
 
 def _validate_fragment(

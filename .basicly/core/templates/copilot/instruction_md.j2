@@ -1,0 +1,7 @@
+---
+description: {{ fragments[0].description }}
+applyTo: "{{ fragments[0].scope_paths | join(',') }}"
+---
+
+{{ header }}# {{ fragments[0].title }}
+{{ fragments[0].body }}

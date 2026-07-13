@@ -1,50 +1,65 @@
 {
   "version": "1",
-  "generated_at": "2026-07-11T22:33:24.981886+00:00",
+  "generated_at": "2026-07-13T16:30:33.578156+00:00",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:c87c4f395d863ed83210cf369ab68192b08e30d727102f1e6e30123c105c2325",
+      "hash": "sha256:ef2509da0320ecfa88f120d33190f51b135de0281046d27375f6d2c2013ac850",
       "source_fragments": [
         "require-explicit-confirmation",
+        "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
+        "secure-coding",
+        "decision-protocol",
         "core-rules",
         "quality-gate",
         "use",
         "python-style",
         "claude-defaults",
-        "if-stuck"
+        "self-improvement-retro",
+        "session-completion",
+        "non-interactive-shell"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:e9089db5acacd5a2c49a0246e041b9727befb54c7ef309738d2421a24a19471a",
+      "hash": "sha256:245211d4565ac4a8e95eb9f99d91e05ed5c347babfe3fe8a12df10d305213f66",
       "source_fragments": [
         "require-explicit-confirmation",
+        "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
+        "secure-coding",
+        "decision-protocol",
         "core-rules",
         "quality-gate",
         "use",
         "python-style",
-        "if-stuck"
+        "self-improvement-retro",
+        "session-completion",
+        "non-interactive-shell"
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:103e74a1bd162451167e1bbd790ddae78ce7f7c6d0b59550b8c28ec8583e6b1b",
+      "hash": "sha256:4bdd3b18d95b8a4582d0203e66ee2152798d8898012b354e47d8acfb7b669bfa",
       "source_fragments": [
         "require-explicit-confirmation",
+        "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
+        "secure-coding",
+        "decision-protocol",
         "core-rules",
         "quality-gate",
         "use",
         "python-style",
         "copilot-defaults",
-        "if-stuck"
+        "self-improvement-retro",
+        "session-completion",
+        "non-interactive-shell"
       ]
     },
     ".github/instructions/python-style.instructions.md": {
-      "hash": "sha256:f711a5c46224ccc0706a878461e976ceeb17b385fc27cc369ff437d802c244c4",
+      "hash": "sha256:1360eec789db244508fe63da8acccd360ab8ad5601c8a480dada4795b386a915",
       "source_fragments": [
         "python-style"
       ]

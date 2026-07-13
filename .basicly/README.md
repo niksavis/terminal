@@ -1,4 +1,4 @@
-# basicly
+# basicly (vendored bridge)
 
 A source-of-truth projector that generates AI agent configuration files from small, tool-agnostic Markdown fragments.
 
@@ -6,17 +6,50 @@ A source-of-truth projector that generates AI agent configuration files from sma
 
 Keep agent instructions (Claude Code, GitHub Copilot, Codex, etc.) in one place. Author a rule once as a fragment, then project it to each target's native format and activation rules.
 
+## Provenance
+
+This repo consumes `basicly` ahead of its packaged release. Until `uvx`
+installation ships, the engine is **vendored** at `.basicly/basicly/` as a
+temporary bridge, copied verbatim from the `basicly` repository:
+
+- Source: `basicly` repository, `src/basicly/` at commit
+  `edb2b7e7be5007c8fe0d747ca2e9d7080e8a9cdc`.
+- The engine's test suite lives in the `basicly` repository (not vendored here);
+  because the copy is byte-identical to that commit, upstream coverage applies.
+- Two catalog skills (`conventional-commits`, `tool-br`) are intentionally
+  excluded from `core/skills/`: they mandate a beads issue-tracker commit
+  workflow this repo does not use, and the catalog has no per-consumer
+  selection mechanism yet.
+- When re-syncing, copy `src/basicly/` over `.basicly/basicly/`, strip
+  `__pycache__`, re-apply the skill exclusions above, and update the commit
+  hash here.
+
+Once `basicly` is installable via `uvx`, delete `.basicly/basicly/` and switch
+the invocations below (and `.github/workflows/basicly.yml`) to the installed CLI.
+
 ## Layout
+
+This directory contains the catalog data a consumer repo has after
+`basicly init`/`update`, plus the vendored engine noted above.
 
 ```text
 .basicly/
-  fragments/      # tool-agnostic policy fragments (Markdown + YAML front matter)
-  targets/        # per-target registry files (YAML)
-  templates/      # Jinja2 templates for each target
-  basicly/        # engine: loader, planner, renderers, CLI
-  tests/          # engine tests
+  basicly/        # vendored engine (temporary bridge; see Provenance)
+  core/
+    fragments/    # managed core fragments shipped by basicly (guidance, non-deterministic)
+    skills/       # managed skill catalog shipped by basicly
+    hooks/        # managed git hook scripts (gating, deterministic) - see hooks/README.md
+    targets/      # per-target registry files (YAML)
+    templates/    # Jinja2 templates for each target
   generated-manifest.json  # deterministic projection record
+
+.basicly-local/
+  fragments/      # user-owned overlay fragments (this repo's own rules)
 ```
+
+Fragments and skills are the **suggestive** half of the harness (Markdown guidance a
+model reads); hooks under `core/hooks/` are the **gating** half (scripts that
+mechanically block a bad commit/push).
 
 ## Fragments
 
@@ -48,14 +81,14 @@ Fields:
 - `scope.paths` — glob list; non-default scopes produce path-scoped outputs.
 - `status` — `active` | `draft` | `deprecated`.
 - `title` — optional display heading.
-- `source` — `"core"` or `"user"` (reserved for phase 2; defaults to `"core"`).
-- `override` — boolean, allows a user fragment to replace core fragments (reserved).
-- `replaces` — list of fragment ids to remove when this fragment is active (reserved).
-- `extends` — list of fragment ids this fragment augments (reserved).
+- `source` — `"core"` or `"user"` (inferred from load root if omitted).
+- `override` — boolean, allows a user fragment to replace core fragments.
+- `replaces` — list of fragment ids to remove when this fragment is active.
+- `extends` — list of fragment ids this fragment augments (documentation only).
 
 ## Targets
 
-Targets are defined in `.basicly/targets/<name>.yaml`. Each target declares its outputs, templates, and fragment selection rules.
+Targets are defined in `.basicly/core/targets/<name>.yaml`. Each target declares its outputs, templates, and fragment selection rules.
 
 ## CLI
 
@@ -64,6 +97,9 @@ Run from the repository root:
 ```bash
 # List active fragments
 PYTHONPATH=.basicly uv run python -m basicly.cli list
+
+# Refresh managed core layout only
+PYTHONPATH=.basicly uv run python -m basicly.cli update
 
 # Build all enabled targets
 PYTHONPATH=.basicly uv run python -m basicly.cli build
@@ -93,39 +129,45 @@ The `.github/workflows/basicly.yml` workflow runs `check` on every push and pull
 
 ## Adding a fragment
 
-1. Create a new `.fragment.md` file under `.basicly/fragments/<category>/`.
+1. Repo-specific fragments go under `.basicly-local/fragments/user/<category>/`
+   (the overlay; never touched by `basicly update`). Core fragments under
+   `.basicly/core/fragments/` are managed catalog content — don't hand-edit them.
 2. Set `applies_to` to `[all]` for cross-tool rules, or to specific target names.
-3. Run `build` and commit the updated generated files and manifest.
+3. To supersede a core fragment instead of adding alongside it, set
+   `override: true` and `replaces: [<core-id>]` in the overlay fragment.
+4. Run `build` and commit the updated generated files and manifest.
 
-## Adding a target
+## Path configuration
 
-1. Add a renderer module at `.basicly/basicly/renderers/<name>.py`.
-2. Add templates under `.basicly/templates/<name>/`.
-3. Add a registry file at `.basicly/targets/<name>.yaml`.
-4. Run `build` and commit.
+Paths are configured in `basicly.toml`:
+
+1. `paths.core_fragments`
+2. `paths.overlay_fragments`
+3. `paths.targets`
+4. `paths.templates`
+5. `paths.manifest`
+
+This allows users to choose a custom overlay folder name instead of `.basicly-local`.
 
 ## Skill collection
 
 `basicly` also supports a repository-controlled skill catalog:
 
-- Source of truth: `.basicly/skills/<skill-name>/SKILL.md`
+- Source of truth: `.basicly/core/skills/<skill-name>/SKILL.md`
 - Projection roots (optional): `.claude/skills`, `.github/skills`, `.agents/skills`
 - Default behavior: `skills-build` syncs source skills into `.claude/skills`
 
-This keeps skills shippable when extracting the `basicly` engine into a standalone repository while still allowing downstream repos to consume projected skill files.
+Projection never deletes extra files, so repo-authored skills (e.g.
+`.claude/skills/release-process/`) coexist with projected catalog skills.
 
-## User customizations (phase 2 preview)
+## Git hooks
 
-The `.basicly/fragments/user/` directory is reserved for user-added fragments that
-survive updates to the core fragments shipped with basicly. The schema already accepts
-`source`, `override`, `replaces`, and `extends` fields with safe defaults. The full
-verification and override workflow is planned in
-[`.plan/source-of-truth-projector-extensions.md`](../.plan/source-of-truth-projector-extensions.md).
-
-## Extracting basicly
-
-The engine in `.basicly/basicly/` and templates in `.basicly/templates/` have no terminal-specific content. To reuse basicly in another repo:
-
-1. Copy `.basicly/basicly/` and `.basicly/templates/`.
-2. Replace `.basicly/fragments/` and `.basicly/targets/` with the new repo's content.
-3. Keep the CLI interface and manifest format unchanged.
+`basicly` ships git hook scripts as a catalog artifact under
+[`core/hooks/`](core/hooks/README.md) — the deterministic, gating counterpart to
+fragments/skills. **They are not wired in this repo**: the active git hooks live
+at `.scripts/git-hooks/` and are wired via
+[`.pre-commit-config.yaml`](../.pre-commit-config.yaml). The catalog copies stay
+as shipped so a future `hooks-build`/`hooks-check` projection can adopt them
+deliberately; note the catalog `commit-msg.py` enforces a stricter format
+(beads issue ids) than this repo's live hook, and the catalog `pre-commit.py`
+lacks this repo's cheat-sheet render check.
