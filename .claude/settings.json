@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest)",
+      "Bash(uv run pytest *)",
+      "Bash(uv run ruff check)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format --check *)",
+      "Bash(uv run pyright)",
+      "Bash(uv run pyright *)",
+      "Bash(uv run bandit *)",
+      "Bash(PYTHONPATH=.basicly uv run python -m basicly.cli *)",
+      "Bash(node node_modules/markdownlint-cli2/markdownlint-cli2.mjs *)",
+      "Bash(typos *)",
+      "Bash(br list *)",
+      "Bash(br ready *)",
+      "Bash(br show *)",
+      "Bash(br search *)",
+      "Bash(br stats *)"
+    ]
+  }
+}
