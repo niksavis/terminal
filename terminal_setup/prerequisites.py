@@ -453,8 +453,10 @@ def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> No
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
     """Install unsupported apt packages via a supported fallback path."""
+    # ast-grep is checked via its full binary name: probing `sg` false-positives
+    # on util-linux's /usr/bin/sg.
     rust_fallback = {
-        "ast-grep": ("ast-grep", "sg"),
+        "ast-grep": ("ast-grep", "ast-grep"),
         "typos": ("typos-cli", "typos"),
         "just": ("just", "just"),
     }
@@ -871,7 +873,10 @@ def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) ->
 
 def _installed_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
     """Return the installed lazygit version, or None when unavailable."""
+    # Prefer ~/.local/bin: non-login shells miss it on PATH, and reporting the
+    # stale system copy would re-prompt for an update on every run.
     script = (
+        'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
         "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
@@ -940,11 +945,13 @@ def _install_lazygit_release(
 
 def _command_for_package(package: str) -> str:
     """Return the command name for a package (Debian package names differ from binaries)."""
+    # ast-grep maps to its full binary name: probing `sg` false-positives on
+    # util-linux's /usr/bin/sg.
     mapping = {
         "fd-find": "fd",
         "bat": "bat",
         "ripgrep": "rg",
-        "ast-grep": "sg",
+        "ast-grep": "ast-grep",
         "git-delta": "delta",
         "typos-cli": "typos",
     }
@@ -979,7 +986,7 @@ def _install_user_local_tool(
         "bat": ("bat", "bat"),
         "ripgrep": ("ripgrep", "rg"),
         "xh": ("xh", "xh"),
-        "ast-grep": ("ast-grep", "sg"),
+        "ast-grep": ("ast-grep", "ast-grep"),
         "sd": ("sd", "sd"),
         "just": ("just", "just"),
         "git-delta": ("git-delta", "delta"),
@@ -1120,10 +1127,15 @@ def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
     """Install post-package CLI extras inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
     _run_in_wsl_or_host(runner, ["sh", "-c", "mkdir -p ~/.local/bin"], distro=distro)
-    # Create common binary aliases for Debian/Ubuntu package names.
-    fd_alias = "command -v fdfind >/dev/null && ln -sf $(command -v fdfind) ~/.local/bin/fd || true"
+    # Create common binary aliases for Debian/Ubuntu package names. Skip when a
+    # user-local binary already exists so cargo-installed copies are not clobbered.
+    fd_alias = (
+        "[ -e ~/.local/bin/fd ] || { command -v fdfind >/dev/null "
+        "&& ln -sf $(command -v fdfind) ~/.local/bin/fd; } || true"
+    )
     bat_alias = (
-        "command -v batcat >/dev/null && ln -sf $(command -v batcat) ~/.local/bin/bat || true"
+        "[ -e ~/.local/bin/bat ] || { command -v batcat >/dev/null "
+        "&& ln -sf $(command -v batcat) ~/.local/bin/bat; } || true"
     )
     _run_in_wsl_or_host(runner, ["sh", "-c", fd_alias], distro=distro)
     _run_in_wsl_or_host(runner, ["sh", "-c", bat_alias], distro=distro)
@@ -1277,17 +1289,18 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
     install_dir = platform.user_programs_dir / "starship"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
-    script_url = "https://starship.rs/install.sh"
-    runner.run(
-        [
-            "powershell",
-            "-Command",
-            f"& {{ $ErrorActionPreference = 'Stop'; "
-            f"Invoke-WebRequest -Uri {script_url} -UseBasicParsing | "
-            f"Invoke-Expression; install -y -b '{install_dir_str}' }}",
-        ],
-        interactive=True,
+    api_url = "https://api.github.com/repos/starship/starship/releases/latest"
+    base_url = "https://github.com/starship/starship/releases/download"
+    script = (
+        f"$ErrorActionPreference = 'Stop'; "
+        f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
+        f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
+        f"$zip = Join-Path $env:TEMP 'starship.zip'; "
+        f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
+        f"Remove-Item $zip"
     )
+    runner.run(["powershell", "-Command", script], interactive=True)
     _add_to_user_path(runner, install_dir)
 
 
@@ -1374,14 +1387,24 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
     install_dir_str = str(install_dir).replace("\\", "/")
     api_url = "https://api.github.com/repos/wez/wezterm/releases/latest"
     base_url = "https://github.com/wez/wezterm/releases/download"
+    # The release zip nests everything under a WezTerm-windows-<tag>/ folder;
+    # flatten it so wezterm.exe lands directly in the install directory.
     script = (
         f"$ErrorActionPreference = 'Stop'; "
         f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
-        f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
-        f"Remove-Item $zip"
+        f"$extract = Join-Path $env:TEMP 'wezterm-extract'; "
+        f"if (Test-Path $extract) {{ Remove-Item $extract -Recurse -Force }}; "
+        f"Expand-Archive -Path $zip -DestinationPath $extract -Force; "
+        f"$inner = Get-ChildItem -Path $extract -Directory | Select-Object -First 1; "
+        f"$source = if ($inner -and -not (Get-ChildItem -Path $extract -File)) "
+        f"{{ $inner.FullName }} else {{ $extract }}; "
+        f"Copy-Item -Path (Join-Path $source '*') -Destination '{install_dir_str}' "
+        f"-Recurse -Force; "
+        f"Remove-Item $zip; "
+        f"Remove-Item $extract -Recurse -Force"
     )
     runner.run(["powershell", "-Command", script], interactive=True)
     _add_to_user_path(runner, install_dir)

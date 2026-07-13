@@ -460,6 +460,7 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     installed_query = (
+        'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
         "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
@@ -485,6 +486,7 @@ def test_install_lazygit_release_uses_first_version_token() -> None:
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     installed_query = (
+        'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
         "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
@@ -583,6 +585,7 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
     )
     installed_query = (
+        'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
         "lazygit --version 2>/dev/null "
         "| grep -Eo 'version=[0-9][0-9.]*' | head -n 1 | cut -d= -f2"
