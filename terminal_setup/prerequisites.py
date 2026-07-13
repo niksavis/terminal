@@ -689,6 +689,21 @@ def _uninstall_package(
     runner.run(command, interactive=True)
 
 
+def _command_version(runner: Runner, path: str, *, wsl_distro: str | None = None) -> str:
+    """Return a short version string for the binary at ``path``.
+
+    Extracts the first version-like token from ``<path> --version``; returns
+    "unknown" when no version can be determined.
+    """
+    script = (
+        f'v="$("{path}" --version 2>/dev/null | head -n 1)"; '
+        'printf "%s" "$v" | grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
+    )
+    result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
+    version = result.stdout.strip()
+    return version or "unknown"
+
+
 def _remove_system_file(runner: Runner, path: str, *, wsl_distro: str | None = None) -> None:
     """Remove a system file with sudo (for binaries no package owns)."""
     command = ["sudo", "rm", "-f", path]
@@ -798,7 +813,12 @@ def _reconcile_system_versions(
         "(the user-local copy takes precedence on PATH):"
     )
     for binary, path in conflicts:
-        runner.reporter.info(f"  - {binary}: system copy at {path}")
+        user_version = _command_version(runner, f"$HOME/.local/bin/{binary}", wsl_distro=wsl_distro)
+        system_version = _command_version(runner, path, wsl_distro=wsl_distro)
+        runner.reporter.info(
+            f"  - {binary}: user-local {user_version} (~/.local/bin/{binary}) "
+            f"vs system {system_version} ({path})"
+        )
 
     if policy.keep:
         runner.reporter.info(
@@ -1008,12 +1028,12 @@ def ensure_node(runner: Runner, platform: PlatformInfo) -> None:
     """
     if platform.os == OperatingSystem.WINDOWS:
         distro = _wsl_distro(platform)
-        if not _command_available(runner, "node", wsl_distro=distro):
+        if not _is_user_local_command_available(runner, "node", wsl_distro=distro):
             _install_node_binary(runner, wsl_distro=distro)
         return
     if platform.os not in {OperatingSystem.LINUX, OperatingSystem.MACOS}:
         return
-    if _command_available(runner, "node"):
+    if _is_user_local_command_available(runner, "node"):
         return
     _install_node_binary(runner)
 
@@ -1162,12 +1182,12 @@ def _install_user_local_tool(
     runner: Runner,
     package: str,
     platform: PlatformInfo,
-    *,
-    policy: SystemVersionPolicy | None = None,
 ) -> bool:
     """Install a tool into user-writable locations without sudo.
 
-    Returns True when a user-local install path is known for the package.
+    Conflicts with system-wide copies are handled afterwards by
+    ``_reconcile_system_versions``; this function only installs the user-local
+    copy. Returns True when a user-local install path is known for the package.
     """
     cargo_tools: dict[str, tuple[str, str]] = {
         "fd-find": ("fd-find", "fd"),
@@ -1183,13 +1203,6 @@ def _install_user_local_tool(
     distro = _wsl_distro(platform)
     if package in cargo_tools:
         crate, binary = cargo_tools[package]
-        _warn_or_uninstall_system_version(
-            runner,
-            binary,
-            platform.package_manager,
-            wsl_distro=distro,
-            policy=policy,
-        )
         _install_cargo_tool(runner, crate, binary, wsl_distro=distro)
         return True
 
@@ -1200,24 +1213,10 @@ def _install_user_local_tool(
         "shellcheck": _install_shellcheck_binary,
     }
     if package in static_binaries:
-        _warn_or_uninstall_system_version(
-            runner,
-            package,
-            platform.package_manager,
-            wsl_distro=distro,
-            policy=policy,
-        )
         static_binaries[package](runner, wsl_distro=distro)
         return True
 
     if package == "uv":
-        _warn_or_uninstall_system_version(
-            runner,
-            "uv",
-            platform.package_manager,
-            wsl_distro=distro,
-            policy=policy,
-        )
         _run_shell_command(
             runner,
             "curl -LsSf https://astral.sh/uv/install.sh | sh",
@@ -1226,13 +1225,6 @@ def _install_user_local_tool(
         return True
 
     if package == "lazygit":
-        _warn_or_uninstall_system_version(
-            runner,
-            "lazygit",
-            platform.package_manager,
-            wsl_distro=distro,
-            policy=policy,
-        )
         _install_lazygit_release(runner, wsl_distro=distro, no_sudo=True)
         return True
 
@@ -1312,9 +1304,14 @@ def ensure_wsl_tools(
                         "skipping."
                     )
                 continue
-            if package != "lazygit" and _command_available(runner, command, wsl_distro=distro):
+            # Install a user-local copy even when a system copy exists so the
+            # setup owns the tool; a stale system copy is reconciled afterwards.
+            # lazygit always runs (its installer version-checks before download).
+            if package != "lazygit" and _is_user_local_command_available(
+                runner, command, wsl_distro=distro
+            ):
                 continue
-            if not _install_user_local_tool(runner, package, platform, policy=policy):
+            if not _install_user_local_tool(runner, package, platform):
                 runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
         _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return

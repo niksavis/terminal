@@ -651,7 +651,10 @@ def test_ensure_node_installs_target_major_in_wsl_when_missing() -> None:
 
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
-        mock.patch("terminal_setup.prerequisites._command_available", return_value=False),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=False,
+        ),
     ):
         ensure_node(cast(Runner, runner), platform)
 
@@ -668,7 +671,10 @@ def test_ensure_node_skips_when_already_present() -> None:
 
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
-        mock.patch("terminal_setup.prerequisites._command_available", return_value=True),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=True,
+        ),
     ):
         ensure_node(cast(Runner, runner), platform)
 
