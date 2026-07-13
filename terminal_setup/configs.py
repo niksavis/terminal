@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl
+from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -106,14 +106,14 @@ def set_wsl_default_shell(
         runner.run(["chsh", "-s", shell], interactive=True)
         return
     current_shell = runner.run(
-        ["wsl", "-d", distro, "--", "sh", "-c", "getent passwd $(whoami) | cut -d: -f7"],
+        wsl_exec_command(distro, ["sh", "-c", "getent passwd $(whoami) | cut -d: -f7"]),
         check=False,
         dry_run_safe=True,
     ).stdout.strip()
     if current_shell == shell:
         return
     # chsh may prompt for the user's password.
-    runner.run(["wsl", "-d", distro, "--", "chsh", "-s", shell], interactive=True)
+    runner.run(wsl_exec_command(distro, ["chsh", "-s", shell]), interactive=True)
 
 
 def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = "zsh") -> None:
@@ -172,7 +172,7 @@ def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
         rest = str(windows_path)[len(windows_path.drive) :].replace("\\", "/")
         return f"/mnt/{drive}{rest}"
     result = runner.run(
-        ["wsl", "-d", distro, "--", "wslpath", "-u", str(windows_path).replace("\\", "/")],
+        wsl_exec_command(distro, ["wslpath", "-u", str(windows_path).replace("\\", "/")]),
         check=True,
     )
     return result.stdout.strip()
@@ -195,9 +195,9 @@ def deploy_wsl_configs(runner: Runner, platform: PlatformInfo) -> None:
             runner.ensure_dir(Path(destination).parent)
             runner.copy(source, Path(destination))
         else:
-            runner.run(["wsl", "-d", distro, "--", "mkdir", "-p", destination.rsplit("/", 1)[0]])
+            runner.run(wsl_exec_command(distro, ["mkdir", "-p", destination.rsplit("/", 1)[0]]))
             wsl_source = _to_wsl_path(runner, distro, source)
-            runner.run(["wsl", "-d", distro, "--", "cp", wsl_source, destination])
+            runner.run(wsl_exec_command(distro, ["cp", wsl_source, destination]))
 
 
 def _configure_vscode_terminal_windows(

@@ -6,7 +6,7 @@ import argparse
 import sys
 
 from . import configs, platform, prerequisites
-from .platform import is_running_in_wsl
+from .platform import is_running_in_wsl, wsl_exec_command
 from .runner import ConsoleReporter, Runner
 
 
@@ -39,7 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--user-install",
         action="store_true",
-        help="Install tools into user-writable locations without admin rights.",
+        help=(
+            "Install tools into user-writable locations without admin rights. "
+            "Tools inside WSL/Linux are installed without sudo (as with --no-sudo)."
+        ),
     )
     parser.add_argument(
         "--no-sudo",
@@ -121,7 +124,7 @@ def _wsl_command_present(
     else:
         distro = platform_info.wsl_distribution or "Ubuntu"
         result = runner.run(
-            ["wsl", "-d", distro, "--", "sh", "-c", script],
+            wsl_exec_command(distro, ["sh", "-c", script]),
             check=False,
             dry_run_safe=True,
         )
@@ -142,7 +145,7 @@ def _wsl_file_exists(
     else:
         distro = platform_info.wsl_distribution or "Ubuntu"
         result = runner.run(
-            ["wsl", "-d", distro, "--", "sh", "-c", f"test -f {path}"],
+            wsl_exec_command(distro, ["sh", "-c", f"test -f {path}"]),
             check=False,
             dry_run_safe=True,
         )
@@ -338,7 +341,7 @@ def run_setup(  # noqa: PLR0913
         prerequisites.ensure_wsl_tools(
             runner,
             platform_info,
-            no_sudo=no_sudo,
+            no_sudo=no_sudo or user_install,
             uninstall_system_versions=uninstall_system_versions,
             keep_system_versions=keep_system_versions,
         )

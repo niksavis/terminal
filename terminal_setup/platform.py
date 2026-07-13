@@ -92,6 +92,18 @@ def detect_package_manager(os: OperatingSystem) -> PackageManager:
     return PackageManager.UNKNOWN
 
 
+def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
+    """Wrap a command so it runs inside a WSL distro without shell re-parsing.
+
+    ``wsl -- <command>`` passes the command line through the guest's default
+    shell, which expands ``$variables`` and ``$(...)`` before the target
+    command runs and corrupts ``sh -c`` scripts. ``--exec`` hands the
+    arguments to the command verbatim, so shell builtins (``command``, ``.``)
+    must be invoked via an explicit ``sh -c``.
+    """
+    return ["wsl", "-d", distro, "--exec", *command]
+
+
 def _wsl_command(args: list[str]) -> subprocess.CompletedProcess[str]:
     """Run a WSL command and return the result.
 

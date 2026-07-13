@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest import mock
 
-from terminal_setup.cli import build_parser, main
+from terminal_setup.cli import build_parser, main, run_setup
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
 
 
@@ -83,9 +83,13 @@ def test_main_runs_wsl_setup_when_inside_wsl() -> None:
     """Main should run the WSL setup path when executed from inside WSL."""
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
-        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True),
         mock.patch("terminal_setup.cli.platform.detect_platform") as mock_detect,
-        mock.patch("terminal_setup.prerequisites._apt_package_available", return_value=True),
+        mock.patch("terminal_setup.cli.run_check", return_value=0),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
     ):
         mock_detect.return_value = PlatformInfo(
             os=OperatingSystem.LINUX,
@@ -98,8 +102,9 @@ def test_main_runs_wsl_setup_when_inside_wsl() -> None:
             wezterm_config_dir=Path.home() / ".config" / "wezterm",
             vscode_settings_path=None,
         )
-        result = main(["--dry-run", "--report"])
+        result = main(["--dry-run"])
     assert result == 0
+    mock_tools.assert_called_once()
 
 
 def test_main_rejects_conflicting_system_version_flags() -> None:
@@ -112,6 +117,45 @@ def test_main_rejects_conflicting_system_version_flags() -> None:
             "--keep-system-versions",
         ])
     assert result == 2
+
+
+def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
+    """--user-install must install WSL tools without sudo even without --no-sudo."""
+    fake_platform = PlatformInfo(
+        os=OperatingSystem.WINDOWS,
+        package_manager=PackageManager.WINGET,
+        is_wsl_available=True,
+        is_wsl_default_ubuntu=True,
+        wsl_distribution="Ubuntu",
+        shell="powershell",
+        home=Path.home(),
+        wezterm_config_dir=None,
+        vscode_settings_path=None,
+        user_install=True,
+    )
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
+    ):
+        result = run_setup(
+            fake_platform,
+            mock.Mock(),
+            skip_vscode=True,
+            skip_starship=True,
+            user_install=True,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+
+    assert result == 0
+    assert mock_tools.call_args.kwargs["no_sudo"] is True
 
 
 def test_main_report_only_skips_setup_actions() -> None:

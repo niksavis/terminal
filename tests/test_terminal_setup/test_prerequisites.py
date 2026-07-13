@@ -254,7 +254,7 @@ def test_command_available_uses_user_local_bin_when_launched_from_windows() -> N
                 "wsl",
                 "-d",
                 "Ubuntu",
-                "--",
+                "--exec",
                 "sh",
                 "-c",
                 "if test -x ~/.local/bin/uv; then exit 0; fi; command -v uv >/dev/null 2>&1",
@@ -601,6 +601,36 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
     assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
 
 
+def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
+    """Windows->WSL commands must use `wsl --exec` to avoid shell re-parsing.
+
+    Without --exec the guest's default shell expands $variables inside the
+    install script before sh runs, breaking the OS/arch detection.
+    """
+    latest_query = (
+        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
+        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
+    )
+    runner = FakeRunner(
+        outputs={
+            ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", latest_query): (0, "0.63.0\n"),
+        }
+    )
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        install_lazygit_release(cast(Runner, runner), wsl_distro="Ubuntu", no_sudo=True)
+
+    wsl_commands = [command for command in runner.commands if command[0] == "wsl"]
+    assert wsl_commands
+    assert all(command[:4] == ["wsl", "-d", "Ubuntu", "--exec"] for command in wsl_commands)
+    install_scripts = [
+        command[-1] for command in runner.commands if "lazygit.tar.gz" in command[-1]
+    ]
+    assert install_scripts
+    assert "~/.local/bin/lazygit" in install_scripts[0]
+    assert "sudo" not in install_scripts[0]
+
+
 def test_system_version_policy_defaults() -> None:
     """The default policy must neither uninstall nor keep system versions."""
     policy = system_version_policy()
@@ -632,7 +662,7 @@ def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
     """_find_system_command_path must query the WSL distro when requested."""
     runner = FakeRunner(
         outputs={
-            ("wsl", "-d", "Ubuntu", "--", "sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
         }
     )
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):

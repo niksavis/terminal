@@ -8,7 +8,13 @@ import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 
-from .platform import OperatingSystem, PackageManager, PlatformInfo, is_running_in_wsl
+from .platform import (
+    OperatingSystem,
+    PackageManager,
+    PlatformInfo,
+    is_running_in_wsl,
+    wsl_exec_command,
+)
 from .runner import Runner
 
 
@@ -57,7 +63,7 @@ def check_wsl_command(
         )
     else:
         result = runner.run(
-            ["wsl", "-d", distro, "--", "command", "-v", command],
+            wsl_exec_command(distro, ["sh", "-c", f"command -v {command}"]),
             check=False,
             dry_run_safe=True,
         )
@@ -172,7 +178,7 @@ def install_package(
     command = _package_install_command(package_manager, package)
 
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
 
     # apt/pacman/dnf run under sudo and may prompt for a password.
     interactive = package_manager in {
@@ -209,7 +215,7 @@ def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | No
     """Return whether a package exists in apt metadata."""
     command = ["apt-cache", "show", package]
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     result = runner.run(command, check=False, dry_run_safe=True)
     return result.returncode == 0
 
@@ -257,7 +263,7 @@ def _apt_package_versions(
     """Return `(installed, latest)` versions for apt packages."""
     command = ["apt-cache", "policy", package]
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     result = runner.run(command, check=False, dry_run_safe=True)
     if result.returncode != 0:
         return None, None
@@ -375,7 +381,7 @@ def _command_available(runner: Runner, command: str, *, wsl_distro: str | None =
         f"if test -x ~/.local/bin/{command}; then exit 0; fi; command -v {command} >/dev/null 2>&1"
     )
     result = runner.run(
-        ["wsl", "-d", wsl_distro, "--", "sh", "-c", script],
+        wsl_exec_command(wsl_distro, ["sh", "-c", script]),
         check=False,
         dry_run_safe=True,
     )
@@ -391,7 +397,7 @@ def _is_user_local_command_available(
     """Return whether a command exists as an executable in ~/.local/bin."""
     if wsl_distro and not is_running_in_wsl():
         result = runner.run(
-            ["wsl", "-d", wsl_distro, "--", "sh", "-c", f"test -x ~/.local/bin/{command}"],
+            wsl_exec_command(wsl_distro, ["sh", "-c", f"test -x ~/.local/bin/{command}"]),
             check=False,
             dry_run_safe=True,
         )
@@ -407,7 +413,7 @@ def _run_shell_command(runner: Runner, script: str, *, wsl_distro: str | None = 
     """Run a shell command on host or in WSL."""
     command = ["sh", "-c", script]
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     runner.run(command, interactive=True)
 
 
@@ -420,7 +426,7 @@ def _run_shell_read(
     """Run a read-only shell command on host or in WSL and capture output."""
     command = ["sh", "-c", script]
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     return runner.run(command, check=False, dry_run_safe=True)
 
 
@@ -432,7 +438,7 @@ def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> No
         return
     if wsl_distro is not None and not is_running_in_wsl():
         result = runner.run(
-            ["wsl", "-d", wsl_distro, "--", "sh", "-c", "test -x ~/.cargo/bin/cargo"],
+            wsl_exec_command(wsl_distro, ["sh", "-c", "test -x ~/.cargo/bin/cargo"]),
             check=False,
             dry_run_safe=True,
         )
@@ -511,7 +517,7 @@ def update_packages(
         return
 
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
 
     # apt/pacman may prompt for a password via sudo.
     interactive = package_manager in {PackageManager.APT, PackageManager.PACMAN}
@@ -562,7 +568,7 @@ def _run_in_wsl_or_host(
 ) -> subprocess.CompletedProcess[str]:
     """Run a command directly on the host or wrap it for WSL when called from Windows."""
     if distro and not is_running_in_wsl():
-        command = ["wsl", "-d", distro, "--", *command]
+        command = wsl_exec_command(distro, command)
     return runner.run(command, interactive=interactive)
 
 
@@ -606,7 +612,7 @@ def _find_system_command_path(
     """Return the path to a system-wide command, or None if it is absent."""
     lookup_command = ["sh", "-c", f"command -v {command}"]
     if wsl_distro and not is_running_in_wsl():
-        lookup_command = ["wsl", "-d", wsl_distro, "--", *lookup_command]
+        lookup_command = wsl_exec_command(wsl_distro, lookup_command)
 
     result = runner.run(lookup_command, check=False, dry_run_safe=True)
     if result.returncode != 0:
@@ -636,7 +642,7 @@ def _find_owning_package(
         return None
 
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     result = runner.run(command, check=False, dry_run_safe=True)
     if result.returncode != 0:
         return None
@@ -671,7 +677,7 @@ def _uninstall_package(
         raise RuntimeError(f"Unsupported package manager for removing {package}")
 
     if wsl_distro and not is_running_in_wsl():
-        command = ["wsl", "-d", wsl_distro, "--", *command]
+        command = wsl_exec_command(wsl_distro, command)
     runner.run(command, interactive=True)
 
 
