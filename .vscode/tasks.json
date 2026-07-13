@@ -78,7 +78,12 @@
     {
       "label": "basicly: build",
       "type": "shell",
-      "command": "uv run --python-path .basicly python -m basicly.cli build",
+      "command": "uv run python -m basicly.cli build",
+      "options": {
+        "env": {
+          "PYTHONPATH": ".basicly"
+        }
+      },
       "group": "build",
       "presentation": {
         "reveal": "always",
@@ -88,7 +93,12 @@
     {
       "label": "basicly: check",
       "type": "shell",
-      "command": "uv run --python-path .basicly python -m basicly.cli check",
+      "command": "uv run python -m basicly.cli check",
+      "options": {
+        "env": {
+          "PYTHONPATH": ".basicly"
+        }
+      },
       "group": "build",
       "presentation": {
         "reveal": "always",
