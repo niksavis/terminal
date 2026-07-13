@@ -34,6 +34,27 @@ class PrerequisiteStatus:
 TARGET_NODE_MAJOR = "24"
 
 
+def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:
+    """Return known install directories for a Windows tool.
+
+    Used both to find existing installs and to report tools that are installed
+    but not yet on PATH in the current shell (PATH updates need a restart).
+    """
+    if command == "wezterm":
+        return [
+            Path("C:/Program Files/WezTerm"),
+            Path("C:/Program Files (x86)/WezTerm"),
+            platform.user_programs_dir / "WezTerm",
+        ]
+    if command == "starship":
+        return [
+            Path("C:/Program Files/starship/bin"),
+            platform.user_programs_dir / "starship",
+            platform.user_programs_dir / "starship" / "bin",
+        ]
+    return []
+
+
 @dataclass(frozen=True)
 class SystemVersionPolicy:
     """Policy for handling pre-existing system-wide tool installations."""
@@ -533,8 +554,22 @@ def update_packages(
 
 
 def install_wsl_ubuntu(runner: Runner) -> None:
-    """Install Ubuntu as the default WSL distribution."""
-    runner.run(["wsl", "--install", "-d", "Ubuntu"])
+    """Install Ubuntu as the default WSL distribution.
+
+    ``wsl --install`` needs administrator rights; fail with clear guidance
+    instead of an opaque error when they are missing.
+    """
+    runner.reporter.warn(
+        "Installing WSL requires administrator rights. Without them, ask an "
+        "administrator to run 'wsl --install -d Ubuntu' or install Ubuntu "
+        "from the Microsoft Store, then re-run this setup."
+    )
+    result = runner.run(["wsl", "--install", "-d", "Ubuntu"], check=False, interactive=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            "wsl --install failed (administrator rights are likely required). "
+            "Install WSL Ubuntu manually and re-run this setup."
+        )
 
 
 def _wsl_apt_install_script(packages: list[str]) -> str:
@@ -941,6 +976,13 @@ def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> Non
         'url="https://github.com/junegunn/fzf/releases/download/${release}/'
         'fzf-${version}-linux_${arch}.tar.gz"; '
         "curl -fsSL -o $tmp/fzf.tar.gz $url; "
+        'curl -fsSL -o $tmp/checksums.txt "https://github.com/junegunn/fzf/releases/download/'
+        '${release}/fzf_${version}_checksums.txt"; '
+        'expected=$(grep " fzf-${version}-linux_${arch}.tar.gz$" $tmp/checksums.txt '
+        '| cut -d" " -f1); '
+        'actual=$(sha256sum $tmp/fzf.tar.gz | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "fzf checksum verification failed" >&2; rm -rf $tmp; exit 1; }; '
         "tar -xzf $tmp/fzf.tar.gz -C $tmp; "
         "mkdir -p ~/.local/bin; "
         "mv $tmp/fzf ~/.local/bin/fzf; "
@@ -955,10 +997,18 @@ def _install_jq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         "set -e; "
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "mkdir -p ~/.local/bin; "
-        "curl -fsSL -o ~/.local/bin/jq "
+        "tmp=$(mktemp -d); "
+        'curl -fsSL -o "$tmp/jq" '
         "https://github.com/jqlang/jq/releases/latest/download/jq-linux-${arch}; "
-        "chmod +x ~/.local/bin/jq"
+        'curl -fsSL -o "$tmp/sha256sum.txt" '
+        "https://github.com/jqlang/jq/releases/latest/download/sha256sum.txt; "
+        'expected=$(grep " jq-linux-${arch}$" "$tmp/sha256sum.txt" | cut -d" " -f1); '
+        'actual=$(sha256sum "$tmp/jq" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "jq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/jq" ~/.local/bin/jq; '
+        'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
@@ -969,10 +1019,19 @@ def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         "set -e; "
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "mkdir -p ~/.local/bin; "
-        "curl -fsSL -o ~/.local/bin/yq "
+        "tmp=$(mktemp -d); "
+        'curl -fsSL -o "$tmp/yq" '
         "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}; "
-        "chmod +x ~/.local/bin/yq"
+        'curl -fsSL -o "$tmp/checksums-bsd" '
+        "https://github.com/mikefarah/yq/releases/latest/download/checksums-bsd; "
+        'expected=$(grep "^SHA256 (yq_linux_${arch}) = " "$tmp/checksums-bsd" '
+        '| cut -d" " -f4); '
+        'actual=$(sha256sum "$tmp/yq" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "yq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/yq" ~/.local/bin/yq; '
+        'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
@@ -1531,6 +1590,11 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
         f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
         f"$zip = Join-Path $env:TEMP 'starship.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"$expected = ((Invoke-RestMethod -Uri ($url + '.sha256') -UseBasicParsing) "
+        f"-split '\\s+')[0].ToLower(); "
+        f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
+        f"if ($actual -ne $expected) "
+        f"{{ Remove-Item $zip; throw 'starship checksum verification failed' }}; "
         f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
         f"Remove-Item $zip"
     )
@@ -1551,11 +1615,7 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
         _ensure_windows_command_in_path(
             runner,
             "starship",
-            [
-                Path("C:/Program Files/starship/bin"),
-                platform.user_programs_dir / "starship",
-                platform.user_programs_dir / "starship" / "bin",
-            ],
+            windows_tool_candidate_dirs(platform, "starship"),
         )
         if runner.which("starship"):
             return
@@ -1604,6 +1664,11 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"$expected = ((Invoke-RestMethod -Uri ($url + '.sha256') -UseBasicParsing) "
+        f"-split '\\s+')[0].ToLower(); "
+        f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
+        f"if ($actual -ne $expected) "
+        f"{{ Remove-Item $zip; throw 'WezTerm checksum verification failed' }}; "
         f"$extract = Join-Path $env:TEMP 'wezterm-extract'; "
         f"if (Test-Path $extract) {{ Remove-Item $extract -Recurse -Force }}; "
         f"Expand-Archive -Path $zip -DestinationPath $extract -Force; "
@@ -1628,11 +1693,7 @@ def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
     _ensure_windows_command_in_path(
         runner,
         "wezterm",
-        [
-            Path("C:/Program Files/WezTerm"),
-            Path("C:/Program Files (x86)/WezTerm"),
-            platform.user_programs_dir / "WezTerm",
-        ],
+        windows_tool_candidate_dirs(platform, "wezterm"),
     )
     if runner.which("wezterm"):
         return
@@ -1712,5 +1773,17 @@ def _ensure_wezterm_appimage(runner: Runner) -> None:
     )
     install_dir = Path.home() / ".local" / "bin"
     target = install_dir / "wezterm"
-    script = f"mkdir -p {install_dir}; curl -fsSL -o {target} {appimage_url}; chmod +x {target}"
+    script = (
+        "set -e; "
+        "tmp=$(mktemp -d); "
+        f'curl -fsSL -o "$tmp/wezterm.AppImage" {appimage_url}; '
+        f'curl -fsSL -o "$tmp/wezterm.AppImage.sha256" {appimage_url}.sha256; '
+        'expected=$(cut -d" " -f1 "$tmp/wezterm.AppImage.sha256"); '
+        'actual=$(sha256sum "$tmp/wezterm.AppImage" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "WezTerm AppImage checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        f"mkdir -p {install_dir}; "
+        f'install -m 0755 "$tmp/wezterm.AppImage" {target}; '
+        'rm -rf "$tmp"'
+    )
     runner.run(["sh", "-c", script], interactive=True)

@@ -163,6 +163,14 @@ def _print_windows_report(
         if command == "starship" and not include_starship:
             continue
         path = runner.which(command)
+        if path is None:
+            # PATH updates only reach new shells; also probe the known install
+            # directories so a fresh install reports accurately.
+            for directory in prerequisites.windows_tool_candidate_dirs(platform_info, command):
+                executable = directory / f"{command}.exe"
+                if executable.exists():
+                    path = f"{executable} (restart terminal for PATH)"
+                    break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
 
     if platform_info.wezterm_config_dir is not None:

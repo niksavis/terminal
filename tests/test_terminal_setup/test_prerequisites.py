@@ -20,6 +20,7 @@ from terminal_setup.prerequisites import (
     ensure_node,
     ensure_wsl_tools,
     install_package,
+    windows_tool_candidate_dirs,
 )
 from terminal_setup.prerequisites import (
     _command_available as command_available,
@@ -754,6 +755,16 @@ def test_reconcile_skips_tools_without_userlocal_copy() -> None:
         reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
 
     assert not any("rm" in command for command in runner.commands)
+
+
+def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
+    """Candidate dirs must include the per-user programs directory."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
+    starship_dirs = windows_tool_candidate_dirs(platform, "starship")
+    assert platform.user_programs_dir / "WezTerm" in wezterm_dirs
+    assert platform.user_programs_dir / "starship" in starship_dirs
+    assert windows_tool_candidate_dirs(platform, "unknown-tool") == []
 
 
 def test_system_version_policy_defaults() -> None:
