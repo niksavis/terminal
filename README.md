@@ -229,7 +229,7 @@ uv run python setup-terminal.py --check      # verify prerequisites only
 uv run python setup-terminal.py --dry-run    # preview changes
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
-uv run python setup-terminal.py --user-install # install without admin rights (Windows)
+uv run python setup-terminal.py --user-install # user-local installs everywhere; no admin/sudo
 uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
 uv run python setup-terminal.py --report-only # print verification summary without running setup
 uv run python setup-terminal.py --report     # run setup, then print verification summary
@@ -244,7 +244,7 @@ After installing, the setup reconciles duplicates: it reports every tool present
 
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
-> **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
+> **Note:** On Windows, WezTerm and Starship are always installed from portable release archives to `%LOCALAPPDATA%\Programs\` and the user PATH is updated (no admin rights or MSI needed). You must restart your terminal for the new PATH to take effect; until then the setup report marks them OK with a restart hint.
 
 ## Command-line editing
 
