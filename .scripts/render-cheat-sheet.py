@@ -26,12 +26,6 @@ def _bi(name: str, path: str) -> str:
 
 
 ICONS = {
-    "x-lg": _bi(
-        "x-lg",
-        '<path d="M2.146 2.146a.5.5 0 0 1 .708 0L8 7.293l5.146-5.147a.5.5 0 0 1 '
-        ".708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 "
-        '5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854a.5.5 0 0 1 0-.708"/>',
-    ),
     "plus-lg": _bi(
         "plus-lg",
         '<path fill-rule="evenodd" '
@@ -56,6 +50,23 @@ ICONS = {
         'a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708"/>',
     ),
 }
+
+# Bootstrap Icons chevron-down, tinted for the select dropdown indicator.
+SELECT_CHEVRON_SVG = (
+    "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='#a6adc8' "
+    "viewBox='0 0 16 16'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 "
+    "10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 "
+    "0-.708'/></svg>"
+)
+
+
+def _select_chevron_data() -> str:
+    """URL-encode the select chevron SVG for use in a CSS data URI."""
+    svg = SELECT_CHEVRON_SVG
+    for old, new in ((" ", "%20"), ("<", "%3C"), (">", "%3E"), ("#", "%23")):
+        svg = svg.replace(old, new)
+    return svg
+
 
 FAVICON_SVG = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">'
@@ -239,14 +250,21 @@ section:not(.collapsed) .toggle {
 }
 
 #section-jump {
-  flex: 0 1 220px;
+  flex: 0 1 240px;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 2.25rem 0.5rem 1rem;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  background: var(--code-bg);
+  background-color: var(--code-bg);
+  background-image: url("data:image/svg+xml,__SELECT_CHEVRON__");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  background-size: 0.75rem;
   color: var(--muted);
   font-size: 0.875rem;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
 }
 
 #section-jump:focus {
@@ -297,6 +315,29 @@ code {
   padding: 0.125rem 0.25rem;
   border-radius: 0.25rem;
   font-size: 0.9em;
+  position: relative;
+  cursor: copy;
+}
+
+code:hover {
+  outline: 1px solid var(--accent);
+}
+
+code.copied::after {
+  content: "Copied";
+  position: absolute;
+  top: -1.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  background: var(--accent);
+  color: var(--bg);
+  font-family: system-ui, sans-serif;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .danger { color: var(--danger); }
@@ -412,7 +453,6 @@ footer svg {
 JS = """
 (function () {
   const search = document.getElementById('search');
-  const clearSearch = document.getElementById('clear-search');
   const sections = Array.from(document.querySelectorAll('section'));
 
   const chevronRight = __CHEVRON_RIGHT_SVG__;
@@ -444,12 +484,6 @@ JS = """
 
   document.getElementById('expand-all').addEventListener('click', () => setAllCollapsed(false));
   document.getElementById('collapse-all').addEventListener('click', () => setAllCollapsed(true));
-
-  clearSearch.addEventListener('click', () => {
-    search.value = '';
-    updateSearch();
-    search.focus();
-  });
 
   function updateSearch() {
     const query = search.value.trim().toLowerCase();
@@ -520,6 +554,41 @@ JS = """
       event.preventDefault();
       search.focus();
     }
+  });
+
+  // Click any command to copy it to the clipboard.
+  function copyViaTextarea(text) {
+    return new Promise(resolve => {
+      const helper = document.createElement('textarea');
+      helper.value = text;
+      helper.style.position = 'fixed';
+      helper.style.opacity = '0';
+      document.body.appendChild(helper);
+      helper.select();
+      document.execCommand('copy');
+      helper.remove();
+      resolve();
+    });
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).catch(() => copyViaTextarea(text));
+    }
+    return copyViaTextarea(text);
+  }
+
+  document.querySelectorAll('main code').forEach(code => {
+    code.title = 'Click to copy';
+  });
+
+  document.querySelector('main').addEventListener('click', event => {
+    const code = event.target.closest('code');
+    if (!code) return;
+    copyText(code.innerText.trim()).then(() => {
+      code.classList.add('copied');
+      setTimeout(() => code.classList.remove('copied'), 1200);
+    });
   });
 })();
 """
@@ -693,7 +762,7 @@ def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
   <meta name="keywords" content="terminal, linux, commands, cheat sheet, wezterm, tmux, zsh">
   <link rel="icon" type="image/svg+xml" href="{FAVICON}">
   <title>{html.escape(title)}</title>
-  <style>{CSS}</style>
+  <style>{CSS.replace("__SELECT_CHEVRON__", _select_chevron_data())}</style>
 </head>
 <body>
   <header>
@@ -703,14 +772,11 @@ def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
         <input
           id="search"
           type="search"
-          placeholder="Search commands and shortcuts... (press / to focus)"
+          placeholder="Search... ( / )"
           autocomplete="off"
         >
         {nav}
         <div class="controls">
-          <button id="clear-search" type="button" title="Clear search">
-            {ICONS["x-lg"]}
-          </button>
           <button id="expand-all" type="button" title="Expand all sections">
             {ICONS["plus-lg"]}
           </button>
