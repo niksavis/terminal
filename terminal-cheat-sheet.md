@@ -6,19 +6,94 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 ## WezTerm Shortcuts (project custom)
 
-- New tab: `Ctrl + Shift + T`
-- Close tab: `Ctrl + Shift + W`
-- Close window: `Ctrl + Shift + Q`
-- Copy selection: `Ctrl + Shift + C`
-- Paste: `Ctrl + Shift + V`
-- Split horizontal (direct): `Ctrl + Alt + backslash`
-- Split vertical (direct): `Ctrl + Alt + -`
-- Close pane (direct): `Ctrl + Alt + X`
-- Split vertical: `Ctrl + Space` then `-` or `s`
-- Split horizontal: `Ctrl + Space` then `backslash`, `pipe`, or `v`
-- Close pane: `Ctrl + Space` then `x`
-
 `Ctrl + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
+
+### Tabs & Windows
+
+| Action                   | Shortcut                              |
+| ------------------------ | ------------------------------------- |
+| New tab                  | `Ctrl + Shift + T` or leader then `c` |
+| Close tab                | `Ctrl + Shift + W`                    |
+| Next / previous tab      | `Ctrl + Tab` / `Ctrl + Shift + Tab`   |
+| Rename tab               | leader then `,`                       |
+| Switch workspace         | leader then `w`                       |
+| Launcher (profiles/tabs) | `Ctrl + Shift + L`                    |
+| Toggle fullscreen        | `Alt + Enter`                         |
+| Close window             | `Ctrl + Shift + Q`                    |
+
+### Panes
+
+| Action                    | Shortcut                                            |
+| ------------------------- | --------------------------------------------------- |
+| Split horizontal          | leader then `backslash`, `pipe`, or `v`             |
+| Split vertical            | leader then `-` or `s`                              |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                            |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                    |
+| Move between panes        | `Ctrl + Shift + arrow` or leader then `h/j/k/l`     |
+| Zoom / unzoom pane        | leader then `z`                                     |
+| Close pane                | leader then `x` or `Ctrl + Alt + X`                 |
+
+### Copy, Paste & Search
+
+| Action                | Shortcut                            |
+| --------------------- | ----------------------------------- |
+| Copy selection        | `Ctrl + Shift + C`                  |
+| Paste                 | `Ctrl + Shift + V`                  |
+| Copy with mouse       | Select text and release left button |
+| Paste with mouse      | Right-click                         |
+| Search in scrollback  | `Ctrl + Shift + F`                  |
+| Quick-select URL/text | `Ctrl + Shift + P`                  |
+
+### Appearance & Config
+
+| Action                        | Shortcut                                |
+| ----------------------------- | --------------------------------------- |
+| Increase / decrease font size | `Ctrl + Shift + =` / `Ctrl + Shift + -` |
+| Reset font size               | `Ctrl + 0`                              |
+| Open WezTerm config           | leader then `.`                         |
+
+## tmux Shortcuts (project custom)
+
+The tmux prefix is `Ctrl + Space`, matching the WezTerm leader. Mouse support and vi copy-mode keys are enabled.
+
+| Action                       | Shortcut                                 |
+| ---------------------------- | ---------------------------------------- |
+| Prefix key                   | `Ctrl + Space`                           |
+| New window (keeps directory) | prefix then `c`                          |
+| Next / previous window       | prefix then `n` / `p`                    |
+| Split horizontal             | prefix then `pipe`                       |
+| Split vertical               | prefix then `-`                          |
+| Resize pane                  | prefix then `h/j/k/l`                    |
+| Zoom / unzoom pane           | prefix then `m`                          |
+| Copy mode (vi keys)          | prefix then `[`, then `v` select, `y` copy |
+| Reload tmux config           | prefix then `r`                          |
+| Install tmux plugins (TPM)   | prefix then `I`                          |
+
+Sessions survive terminal restarts via tmux-resurrect/continuum: reattach with `tmux attach`.
+
+## Modern CLI Tools (installed by this setup)
+
+Faster, friendlier replacements for classic commands. All are installed by `terminal-setup`.
+
+| Tool         | Replaces / Purpose | Example                                          |
+| ------------ | ------------------ | ------------------------------------------------ |
+| `fd`         | `find`             | `fd '\.py$'` - find files by regex, fast         |
+| `rg`         | `grep -r`          | `rg "TODO" src/` - recursive code search         |
+| `bat`        | `cat`              | `bat file.py` - view with syntax highlighting    |
+| `fzf`        | interactive filter | `history \| fzf` - fuzzy-pick from any list      |
+| `lazygit`    | git UI             | `lazygit` - stage, commit, and browse visually   |
+| `delta`      | `diff` pager       | used by git automatically for readable diffs     |
+| `jq`         | JSON processor     | `curl api \| jq .items[0]` - query JSON          |
+| `yq`         | YAML processor     | `yq .jobs ci.yml` - query/edit YAML              |
+| `xh`         | `curl` for APIs    | `xh get api.example.com/users` - clean HTTP      |
+| `sd`         | `sed` replace      | `sd 'old' 'new' file` - simple find/replace      |
+| `ast-grep`   | structural search  | `ast-grep -p 'if ($X) $S'` - code-aware matching |
+| `just`       | task runner        | `just test` - run project recipes                |
+| `typos`      | spell checker      | `typos src/` - find typos in code and docs       |
+| `tree`       | directory tree     | `tree -L 2` - visualize folder structure         |
+| `direnv`     | per-dir env vars   | auto-loads `.envrc` when entering a directory    |
+| `uv`         | Python tooling     | `uv run script.py` - fast installs and runs      |
+| `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs       |
 
 ## Navigation
 

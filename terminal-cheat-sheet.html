@@ -125,6 +125,7 @@ section {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
+  scroll-margin-top: 8rem;
 }
 
 section.collapsed .section-body {
@@ -171,6 +172,28 @@ section:not(.collapsed) .toggle {
 
 .section-body {
   padding: 0.5rem 1rem 1rem;
+}
+
+.section-body h3 {
+  margin: 1.25rem 0 0.25rem;
+  font-size: 1rem;
+  color: var(--fg);
+}
+
+#section-jump {
+  flex: 0 1 220px;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--code-bg);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+#section-jump:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 p {
@@ -254,6 +277,24 @@ footer svg {
   height: 1.25rem;
 }
 
+@media print {
+  :root {
+    --bg: #ffffff;
+    --fg: #111111;
+    --muted: #555555;
+    --accent: #0a4a8f;
+    --danger: #b00020;
+    --code-bg: #f0f0f0;
+    --border: #cccccc;
+    --row-alt: #f7f7f7;
+  }
+
+  header { position: static; background: #ffffff; }
+  .search-row, .toggle, footer { display: none; }
+  section { break-inside: avoid; }
+  section.collapsed .section-body { display: block; }
+}
+
 @media (max-width: 640px) {
   header {
     padding: 1rem;
@@ -277,6 +318,10 @@ footer svg {
     flex: 1 1 auto;
     min-width: 240px;
     font-size: 1rem;
+  }
+
+  #section-jump {
+    flex: 1 1 100%;
   }
 
   .controls {
@@ -314,9 +359,10 @@ footer svg {
         <input
           id="search"
           type="search"
-          placeholder="Search commands and shortcuts..."
+          placeholder="Search commands and shortcuts... (press / to focus)"
           autocomplete="off"
         >
+        <select id="section-jump" aria-label="Jump to section"><option value="">Jump to section...</option><option value="wezterm-shortcuts-project-custom">WezTerm Shortcuts (project custom)</option><option value="tmux-shortcuts-project-custom">tmux Shortcuts (project custom)</option><option value="modern-cli-tools-installed-by-this-setup">Modern CLI Tools (installed by this setup)</option><option value="navigation">Navigation</option><option value="file-operations">File Operations</option><option value="file-viewing">File Viewing</option><option value="text-output">Text &amp; Output</option><option value="permissions-execution">Permissions &amp; Execution</option><option value="users-system">Users &amp; System</option><option value="package-management-debian-ubuntu">Package Management (Debian/Ubuntu)</option><option value="archives-search">Archives &amp; Search</option><option value="network-remote">Network &amp; Remote</option><option value="background-jobs">Background Jobs</option><option value="history-shortcuts">History &amp; Shortcuts</option><option value="command-line-editing">Command-line Editing</option><option value="starship-prompt-project-config">Starship Prompt (project config)</option><option value="pipes-redirection">Pipes &amp; Redirection</option><option value="hardware-disk-info">Hardware &amp; Disk Info</option><option value="file-compression">File Compression</option><option value="shell-variables">Shell Variables</option><option value="shell-command-management">Shell Command Management</option><option value="more-keyboard-shortcuts">More Keyboard Shortcuts</option><option value="safety-notes">Safety Notes</option></select>
         <div class="controls">
           <button id="clear-search" type="button" title="Clear search">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-lg" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.146 2.146a.5.5 0 0 1 .708 0L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854a.5.5 0 0 1 0-.708"/></svg>
@@ -332,28 +378,294 @@ footer svg {
     </div>
   </header>
   <main>
-    <section class="collapsed">
+    <section class="collapsed" id="wezterm-shortcuts-project-custom">
 <div class="section-header" title="Click to expand/collapse">
       <h2>WezTerm Shortcuts (project custom)</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
     </div>
 <div class="section-body">
-<ul>
-<li>New tab: <code>Ctrl + Shift + T</code></li>
-<li>Close tab: <code>Ctrl + Shift + W</code></li>
-<li>Close window: <code>Ctrl + Shift + Q</code></li>
-<li>Copy selection: <code>Ctrl + Shift + C</code></li>
-<li>Paste: <code>Ctrl + Shift + V</code></li>
-<li>Split horizontal (direct): <code>Ctrl + Alt + backslash</code></li>
-<li>Split vertical (direct): <code>Ctrl + Alt + -</code></li>
-<li>Close pane (direct): <code>Ctrl + Alt + X</code></li>
-<li>Split vertical: <code>Ctrl + Space</code> then <code>-</code> or <code>s</code></li>
-<li>Split horizontal: <code>Ctrl + Space</code> then <code>backslash</code>, <code>pipe</code>, or <code>v</code></li>
-<li>Close pane: <code>Ctrl + Space</code> then <code>x</code></li>
-</ul>
 <p><code>Ctrl + Space</code> is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over <code>Ctrl + A</code> so the standard shell shortcuts <code>Ctrl + A</code> (beginning-of-line) and <code>Ctrl + E</code> (end-of-line) keep working.</p>
+<h3>Tabs &amp; Windows</h3>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Shortcut</th>
+</tr></thead><tbody>
+<tr>
+<td>New tab</td>
+<td><code>Ctrl + Shift + T</code> or leader then <code>c</code></td>
+</tr>
+<tr>
+<td>Close tab</td>
+<td><code>Ctrl + Shift + W</code></td>
+</tr>
+<tr>
+<td>Next / previous tab</td>
+<td><code>Ctrl + Tab</code> / <code>Ctrl + Shift + Tab</code></td>
+</tr>
+<tr>
+<td>Rename tab</td>
+<td>leader then <code>,</code></td>
+</tr>
+<tr>
+<td>Switch workspace</td>
+<td>leader then <code>w</code></td>
+</tr>
+<tr>
+<td>Launcher (profiles/tabs)</td>
+<td><code>Ctrl + Shift + L</code></td>
+</tr>
+<tr>
+<td>Toggle fullscreen</td>
+<td><code>Alt + Enter</code></td>
+</tr>
+<tr>
+<td>Close window</td>
+<td><code>Ctrl + Shift + Q</code></td>
+</tr>
+</tbody></table>
+<h3>Panes</h3>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Shortcut</th>
+</tr></thead><tbody>
+<tr>
+<td>Split horizontal</td>
+<td>leader then <code>backslash</code>, <code>pipe</code>, or <code>v</code></td>
+</tr>
+<tr>
+<td>Split vertical</td>
+<td>leader then <code>-</code> or <code>s</code></td>
+</tr>
+<tr>
+<td>Split horizontal (direct)</td>
+<td><code>Ctrl + Alt + backslash</code></td>
+</tr>
+<tr>
+<td>Split vertical (direct)</td>
+<td><code>Ctrl + Alt + -</code></td>
+</tr>
+<tr>
+<td>Move between panes</td>
+<td><code>Ctrl + Shift + arrow</code> or leader then <code>h/j/k/l</code></td>
+</tr>
+<tr>
+<td>Zoom / unzoom pane</td>
+<td>leader then <code>z</code></td>
+</tr>
+<tr>
+<td>Close pane</td>
+<td>leader then <code>x</code> or <code>Ctrl + Alt + X</code></td>
+</tr>
+</tbody></table>
+<h3>Copy, Paste &amp; Search</h3>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Shortcut</th>
+</tr></thead><tbody>
+<tr>
+<td>Copy selection</td>
+<td><code>Ctrl + Shift + C</code></td>
+</tr>
+<tr>
+<td>Paste</td>
+<td><code>Ctrl + Shift + V</code></td>
+</tr>
+<tr>
+<td>Copy with mouse</td>
+<td>Select text and release left button</td>
+</tr>
+<tr>
+<td>Paste with mouse</td>
+<td>Right-click</td>
+</tr>
+<tr>
+<td>Search in scrollback</td>
+<td><code>Ctrl + Shift + F</code></td>
+</tr>
+<tr>
+<td>Quick-select URL/text</td>
+<td><code>Ctrl + Shift + P</code></td>
+</tr>
+</tbody></table>
+<h3>Appearance &amp; Config</h3>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Shortcut</th>
+</tr></thead><tbody>
+<tr>
+<td>Increase / decrease font size</td>
+<td><code>Ctrl + Shift + =</code> / <code>Ctrl + Shift + -</code></td>
+</tr>
+<tr>
+<td>Reset font size</td>
+<td><code>Ctrl + 0</code></td>
+</tr>
+<tr>
+<td>Open WezTerm config</td>
+<td>leader then <code>.</code></td>
+</tr>
+</tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="tmux-shortcuts-project-custom">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>tmux Shortcuts (project custom)</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<p>The tmux prefix is <code>Ctrl + Space</code>, matching the WezTerm leader. Mouse support and vi copy-mode keys are enabled.</p>
+<table>
+<thead><tr>
+<th>Action</th>
+<th>Shortcut</th>
+</tr></thead><tbody>
+<tr>
+<td>Prefix key</td>
+<td><code>Ctrl + Space</code></td>
+</tr>
+<tr>
+<td>New window (keeps directory)</td>
+<td>prefix then <code>c</code></td>
+</tr>
+<tr>
+<td>Next / previous window</td>
+<td>prefix then <code>n</code> / <code>p</code></td>
+</tr>
+<tr>
+<td>Split horizontal</td>
+<td>prefix then <code>pipe</code></td>
+</tr>
+<tr>
+<td>Split vertical</td>
+<td>prefix then <code>-</code></td>
+</tr>
+<tr>
+<td>Resize pane</td>
+<td>prefix then <code>h/j/k/l</code></td>
+</tr>
+<tr>
+<td>Zoom / unzoom pane</td>
+<td>prefix then <code>m</code></td>
+</tr>
+<tr>
+<td>Copy mode (vi keys)</td>
+<td>prefix then <code>[</code>, then <code>v</code> select, <code>y</code> copy</td>
+</tr>
+<tr>
+<td>Reload tmux config</td>
+<td>prefix then <code>r</code></td>
+</tr>
+<tr>
+<td>Install tmux plugins (TPM)</td>
+<td>prefix then <code>I</code></td>
+</tr>
+</tbody></table>
+<p>Sessions survive terminal restarts via tmux-resurrect/continuum: reattach with <code>tmux attach</code>.</p>
+</div></section>
+<section class="collapsed" id="modern-cli-tools-installed-by-this-setup">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Modern CLI Tools (installed by this setup)</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<p>Faster, friendlier replacements for classic commands. All are installed by <code>terminal-setup</code>.</p>
+<table>
+<thead><tr>
+<th>Tool</th>
+<th>Replaces / Purpose</th>
+<th>Example</th>
+</tr></thead><tbody>
+<tr>
+<td><code>fd</code></td>
+<td><code>find</code></td>
+<td><code>fd '\.py$'</code> - find files by regex, fast</td>
+</tr>
+<tr>
+<td><code>rg</code></td>
+<td><code>grep -r</code></td>
+<td><code>rg "TODO" src/</code> - recursive code search</td>
+</tr>
+<tr>
+<td><code>bat</code></td>
+<td><code>cat</code></td>
+<td><code>bat file.py</code> - view with syntax highlighting</td>
+</tr>
+<tr>
+<td><code>fzf</code></td>
+<td>interactive filter</td>
+<td><code>history \| fzf</code> - fuzzy-pick from any list</td>
+</tr>
+<tr>
+<td><code>lazygit</code></td>
+<td>git UI</td>
+<td><code>lazygit</code> - stage, commit, and browse visually</td>
+</tr>
+<tr>
+<td><code>delta</code></td>
+<td><code>diff</code> pager</td>
+<td>used by git automatically for readable diffs</td>
+</tr>
+<tr>
+<td><code>jq</code></td>
+<td>JSON processor</td>
+<td><code>curl api \| jq .items[0]</code> - query JSON</td>
+</tr>
+<tr>
+<td><code>yq</code></td>
+<td>YAML processor</td>
+<td><code>yq .jobs ci.yml</code> - query/edit YAML</td>
+</tr>
+<tr>
+<td><code>xh</code></td>
+<td><code>curl</code> for APIs</td>
+<td><code>xh get api.example.com/users</code> - clean HTTP</td>
+</tr>
+<tr>
+<td><code>sd</code></td>
+<td><code>sed</code> replace</td>
+<td><code>sd 'old' 'new' file</code> - simple find/replace</td>
+</tr>
+<tr>
+<td><code>ast-grep</code></td>
+<td>structural search</td>
+<td><code>ast-grep -p 'if ($X) $S'</code> - code-aware matching</td>
+</tr>
+<tr>
+<td><code>just</code></td>
+<td>task runner</td>
+<td><code>just test</code> - run project recipes</td>
+</tr>
+<tr>
+<td><code>typos</code></td>
+<td>spell checker</td>
+<td><code>typos src/</code> - find typos in code and docs</td>
+</tr>
+<tr>
+<td><code>tree</code></td>
+<td>directory tree</td>
+<td><code>tree -L 2</code> - visualize folder structure</td>
+</tr>
+<tr>
+<td><code>direnv</code></td>
+<td>per-dir env vars</td>
+<td>auto-loads <code>.envrc</code> when entering a directory</td>
+</tr>
+<tr>
+<td><code>uv</code></td>
+<td>Python tooling</td>
+<td><code>uv run script.py</code> - fast installs and runs</td>
+</tr>
+<tr>
+<td><code>shellcheck</code></td>
+<td>shell linter</td>
+<td><code>shellcheck deploy.sh</code> - catch script bugs</td>
+</tr>
+</tbody></table>
+</div></section>
+<section class="collapsed" id="navigation">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Navigation</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -414,7 +726,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="file-operations">
 <div class="section-header" title="Click to expand/collapse">
       <h2>File Operations</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -483,7 +795,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="file-viewing">
 <div class="section-header" title="Click to expand/collapse">
       <h2>File Viewing</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -528,7 +840,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="text-output">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Text &amp; Output</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -617,7 +929,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="permissions-execution">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Permissions &amp; Execution</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -670,7 +982,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="users-system">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Users &amp; System</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -803,7 +1115,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="package-management-debian-ubuntu">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Package Management (Debian/Ubuntu)</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -832,7 +1144,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="archives-search">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Archives &amp; Search</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -877,7 +1189,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="network-remote">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Network &amp; Remote</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -926,7 +1238,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="background-jobs">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Background Jobs</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -959,7 +1271,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="history-shortcuts">
 <div class="section-header" title="Click to expand/collapse">
       <h2>History &amp; Shortcuts</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1020,7 +1332,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="command-line-editing">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Command-line Editing</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1077,7 +1389,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="starship-prompt-project-config">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Starship Prompt (project config)</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1122,7 +1434,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="pipes-redirection">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Pipes &amp; Redirection</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1159,7 +1471,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="hardware-disk-info">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Hardware &amp; Disk Info</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1232,7 +1544,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="file-compression">
 <div class="section-header" title="Click to expand/collapse">
       <h2>File Compression</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1285,7 +1597,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="shell-variables">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Shell Variables</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1322,7 +1634,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="shell-command-management">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Shell Command Management</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1379,7 +1691,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="more-keyboard-shortcuts">
 <div class="section-header" title="Click to expand/collapse">
       <h2>More Keyboard Shortcuts</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1424,7 +1736,7 @@ footer svg {
 </tr>
 </tbody></table>
 </div></section>
-<section class="collapsed">
+<section class="collapsed" id="safety-notes">
 <div class="section-header" title="Click to expand/collapse">
       <h2>Safety Notes</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -1501,21 +1813,44 @@ footer svg {
   function updateSearch() {
     const query = search.value.trim().toLowerCase();
     sections.forEach(section => {
+      const heading = section.querySelector('.section-header h2');
+      const headingMatch =
+        !!query && heading && heading.innerText.toLowerCase().includes(query);
       const rows = Array.from(section.querySelectorAll('tbody tr'));
-      let sectionMatch = !query;
+      let sectionMatch = !query || headingMatch;
 
       if (rows.length > 0) {
-        sectionMatch = false;
+        // A match on the section title shows the whole section unfiltered.
         rows.forEach(row => {
           const text = row.innerText.toLowerCase();
-          const match = !query || text.includes(query);
+          const match = !query || headingMatch || text.includes(query);
           row.classList.toggle('hidden', !match);
           if (match) sectionMatch = true;
+        });
+
+        // A match on a subheading shows that subsection's full table.
+        section.querySelectorAll('h3').forEach(sub => {
+          if (!query || headingMatch) return;
+          if (!sub.innerText.toLowerCase().includes(query)) return;
+          const table = sub.nextElementSibling;
+          if (table && table.tagName === 'TABLE') {
+            table.querySelectorAll('tbody tr').forEach(row => row.classList.remove('hidden'));
+            sectionMatch = true;
+          }
+        });
+
+        // Hide tables (and their subheadings) that lost all rows to the filter.
+        section.querySelectorAll('table').forEach(table => {
+          const anyVisible = Array.from(table.querySelectorAll('tbody tr'))
+            .some(row => !row.classList.contains('hidden'));
+          table.classList.toggle('hidden', !anyVisible);
+          const prev = table.previousElementSibling;
+          if (prev && prev.tagName === 'H3') prev.classList.toggle('hidden', !anyVisible);
         });
       } else {
         const body = section.querySelector('.section-body');
         const text = body ? body.innerText.toLowerCase() : '';
-        sectionMatch = !query || text.includes(query);
+        sectionMatch = !query || headingMatch || text.includes(query);
       }
 
       section.classList.toggle('hidden', !sectionMatch);
@@ -1527,6 +1862,24 @@ footer svg {
   }
 
   search.addEventListener('input', updateSearch);
+
+  const sectionJump = document.getElementById('section-jump');
+  sectionJump.addEventListener('change', () => {
+    const target = document.getElementById(sectionJump.value);
+    if (target) {
+      target.classList.remove('collapsed');
+      updateToggleIcon(target);
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    sectionJump.value = '';
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === '/' && document.activeElement !== search) {
+      event.preventDefault();
+      search.focus();
+    }
+  });
 })();
 </script>
 </body>

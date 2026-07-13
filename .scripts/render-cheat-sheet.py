@@ -183,6 +183,7 @@ section {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   overflow: hidden;
+  scroll-margin-top: 8rem;
 }
 
 section.collapsed .section-body {
@@ -229,6 +230,28 @@ section:not(.collapsed) .toggle {
 
 .section-body {
   padding: 0.5rem 1rem 1rem;
+}
+
+.section-body h3 {
+  margin: 1.25rem 0 0.25rem;
+  font-size: 1rem;
+  color: var(--fg);
+}
+
+#section-jump {
+  flex: 0 1 220px;
+  min-width: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background: var(--code-bg);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+#section-jump:focus {
+  outline: none;
+  border-color: var(--accent);
 }
 
 p {
@@ -312,6 +335,24 @@ footer svg {
   height: 1.25rem;
 }
 
+@media print {
+  :root {
+    --bg: #ffffff;
+    --fg: #111111;
+    --muted: #555555;
+    --accent: #0a4a8f;
+    --danger: #b00020;
+    --code-bg: #f0f0f0;
+    --border: #cccccc;
+    --row-alt: #f7f7f7;
+  }
+
+  header { position: static; background: #ffffff; }
+  .search-row, .toggle, footer { display: none; }
+  section { break-inside: avoid; }
+  section.collapsed .section-body { display: block; }
+}
+
 @media (max-width: 640px) {
   header {
     padding: 1rem;
@@ -335,6 +376,10 @@ footer svg {
     flex: 1 1 auto;
     min-width: 240px;
     font-size: 1rem;
+  }
+
+  #section-jump {
+    flex: 1 1 100%;
   }
 
   .controls {
@@ -409,21 +454,44 @@ JS = """
   function updateSearch() {
     const query = search.value.trim().toLowerCase();
     sections.forEach(section => {
+      const heading = section.querySelector('.section-header h2');
+      const headingMatch =
+        !!query && heading && heading.innerText.toLowerCase().includes(query);
       const rows = Array.from(section.querySelectorAll('tbody tr'));
-      let sectionMatch = !query;
+      let sectionMatch = !query || headingMatch;
 
       if (rows.length > 0) {
-        sectionMatch = false;
+        // A match on the section title shows the whole section unfiltered.
         rows.forEach(row => {
           const text = row.innerText.toLowerCase();
-          const match = !query || text.includes(query);
+          const match = !query || headingMatch || text.includes(query);
           row.classList.toggle('hidden', !match);
           if (match) sectionMatch = true;
+        });
+
+        // A match on a subheading shows that subsection's full table.
+        section.querySelectorAll('h3').forEach(sub => {
+          if (!query || headingMatch) return;
+          if (!sub.innerText.toLowerCase().includes(query)) return;
+          const table = sub.nextElementSibling;
+          if (table && table.tagName === 'TABLE') {
+            table.querySelectorAll('tbody tr').forEach(row => row.classList.remove('hidden'));
+            sectionMatch = true;
+          }
+        });
+
+        // Hide tables (and their subheadings) that lost all rows to the filter.
+        section.querySelectorAll('table').forEach(table => {
+          const anyVisible = Array.from(table.querySelectorAll('tbody tr'))
+            .some(row => !row.classList.contains('hidden'));
+          table.classList.toggle('hidden', !anyVisible);
+          const prev = table.previousElementSibling;
+          if (prev && prev.tagName === 'H3') prev.classList.toggle('hidden', !anyVisible);
         });
       } else {
         const body = section.querySelector('.section-body');
         const text = body ? body.innerText.toLowerCase() : '';
-        sectionMatch = !query || text.includes(query);
+        sectionMatch = !query || headingMatch || text.includes(query);
       }
 
       section.classList.toggle('hidden', !sectionMatch);
@@ -435,6 +503,24 @@ JS = """
   }
 
   search.addEventListener('input', updateSearch);
+
+  const sectionJump = document.getElementById('section-jump');
+  sectionJump.addEventListener('change', () => {
+    const target = document.getElementById(sectionJump.value);
+    if (target) {
+      target.classList.remove('collapsed');
+      updateToggleIcon(target);
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    sectionJump.value = '';
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === '/' && document.activeElement !== search) {
+      event.preventDefault();
+      search.focus();
+    }
+  });
 })();
 """
 
@@ -485,6 +571,11 @@ def parse_markdown(md: str) -> list[dict]:
     i = 0
     while i < len(lines):
         line = lines[i]
+        if line.startswith("### "):
+            if current is not None:
+                current["body"].append({"type": "subheading", "text": line[4:].strip()})
+            i += 1
+            continue
         if line.startswith("## "):
             current = {"heading": line[3:].strip(), "body": []}
             sections.append(current)
@@ -527,11 +618,16 @@ def render_cell(text: str) -> str:
     return "".join(parts)
 
 
+def _slugify(heading: str) -> str:
+    """Turn a section heading into an HTML id."""
+    return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
+
+
 def render_sections(sections: list[dict]) -> str:
     """Render parsed sections as HTML."""
     parts: list[str] = []
     for section in sections:
-        parts.append('<section class="collapsed">')
+        parts.append(f'<section class="collapsed" id="{_slugify(section["heading"])}">')
         header = html.escape(section["heading"])
         parts.append(
             '<div class="section-header" title="Click to expand/collapse">\n'
@@ -541,7 +637,9 @@ def render_sections(sections: list[dict]) -> str:
         )
         parts.append('<div class="section-body">')
         for block in section["body"]:
-            if block["type"] == "paragraph":
+            if block["type"] == "subheading":
+                parts.append(f"<h3>{render_cell(block['text'])}</h3>")
+            elif block["type"] == "paragraph":
                 parts.append(f"<p>{render_cell(block['text'])}</p>")
             elif block["type"] == "list":
                 parts.append("<ul>")
@@ -566,9 +664,22 @@ def render_sections(sections: list[dict]) -> str:
     return "\n".join(parts)
 
 
+def render_nav(sections: list[dict]) -> str:
+    """Render the section jump dropdown for the page header."""
+    options = "".join(
+        f'<option value="{_slugify(section["heading"])}">{html.escape(section["heading"])}</option>'
+        for section in sections
+    )
+    return (
+        '<select id="section-jump" aria-label="Jump to section">'
+        f'<option value="">Jump to section...</option>{options}</select>'
+    )
+
+
 def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
     """Render markdown to a complete self-contained HTML page."""
     sections = parse_markdown(md)
+    nav = render_nav(sections)
     body = render_sections(sections)
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -592,9 +703,10 @@ def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
         <input
           id="search"
           type="search"
-          placeholder="Search commands and shortcuts..."
+          placeholder="Search commands and shortcuts... (press / to focus)"
           autocomplete="off"
         >
+        {nav}
         <div class="controls">
           <button id="clear-search" type="button" title="Clear search">
             {ICONS["x-lg"]}
