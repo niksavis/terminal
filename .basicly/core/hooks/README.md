@@ -21,6 +21,9 @@ lefthook or another hook manager, and so their logic is directly unit-testable.
 ## Status
 
 This directory is the catalog source of truth this repo dogfoods directly
-(`.pre-commit-config.yaml` points straight here). There is no `hooks-build` /
-`hooks-check` projection command yet for installing these hooks into a fresh
-consumer repo — see `docs/architecture.md` §11 for that gap.
+(`.pre-commit-config.yaml` points straight here). A fresh consumer repo installs
+these hooks with `basicly hooks-build`, which materializes the scripts and merges
+a managed `repo: local` block into `.pre-commit-config.yaml` (foreign repos/hooks
+are preserved); `basicly hooks-check` reports drift. The hooks are described
+tool-agnostically in [`hooks.yaml`](hooks.yaml) so another manager (e.g. lefthook)
+can be projected later. See `docs/architecture.md` §4.2, §11.6.

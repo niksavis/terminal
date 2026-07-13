@@ -12,17 +12,19 @@ This repo consumes `basicly` ahead of its packaged release. Until `uvx`
 installation ships, the engine is **vendored** at `.basicly/basicly/` as a
 temporary bridge, copied verbatim from the `basicly` repository:
 
-- Source: `basicly` repository, `src/basicly/` at commit
-  `edb2b7e7be5007c8fe0d747ca2e9d7080e8a9cdc`.
+- Source: the `basicly` repository (`src/basicly/` for the engine, `.basicly/core/`
+  for the catalog) at commit `ffb5552a1f7e927fad1c7c7b8741e52a5e72e2c5`.
 - The engine's test suite lives in the `basicly` repository (not vendored here);
   because the copy is byte-identical to that commit, upstream coverage applies.
 - Two catalog skills (`conventional-commits`, `tool-br`) are intentionally
   excluded from `core/skills/`: they mandate a beads issue-tracker commit
   workflow this repo does not use, and the catalog has no per-consumer
   selection mechanism yet.
-- When re-syncing, copy `src/basicly/` over `.basicly/basicly/`, strip
-  `__pycache__`, re-apply the skill exclusions above, and update the commit
-  hash here.
+- To re-sync, run `uv run python .scripts/sync-basicly.py` (defaults to a
+  sibling `basicly` checkout; `--source PATH` overrides). It refreshes both
+  trees, re-applies the skill exclusions, updates the commit hash here, and
+  regenerates the projected files. Never hand-edit `.basicly/basicly/` or
+  `.basicly/core/`.
 
 Once `basicly` is installable via `uvx`, delete `.basicly/basicly/` and switch
 the invocations below (and `.github/workflows/basicly.yml`) to the installed CLI.

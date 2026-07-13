@@ -1,0 +1,23 @@
+# Manifest of catalog git-hook scripts, described independently of any hook
+# manager. `basicly hooks-build` renders these into a manager's native config
+# (pre-commit today); the fields stay tool-agnostic so another manager
+# (e.g. lefthook) can be projected later. See docs/architecture.md §4.2, §11.6.
+hooks:
+  - id: pre-commit-script
+    script: pre-commit.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
+  - id: commit-msg-script
+    script: commit-msg.py
+    stage: commit-msg
+    pass_filenames: true
+  - id: beads-commit-msg-script
+    script: beads-commit-msg.py
+    stage: commit-msg
+    pass_filenames: true
+  - id: pre-push-script
+    script: pre-push.py
+    stage: pre-push
+    always_run: true
+    pass_filenames: false

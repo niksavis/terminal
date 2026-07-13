@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from . import __version__
-from .catalog import bundled_catalog_root
-from .config import CONFIG_FILE, ProjectPaths, load_project_paths
+from .catalog import bundled_catalog_root, iter_catalog_files
+from .config import CONFIG_FILE, DEFAULT_CONFIG_TOML, ProjectPaths, load_project_paths
 from .hooks import check_hooks, sync_hooks
 from .loader import load_fragments_from_roots, load_targets
 from .planner import plan_outputs
@@ -321,31 +321,14 @@ def cmd_update(_args: argparse.Namespace) -> int:
     return 0
 
 
-_DEFAULT_CONFIG = """\
-# basicly path wiring. Managed core catalog is materialized by `basicly init`
-# and refreshed by `basicly update`; the overlay is always yours to edit.
-[paths]
-core_fragments = ".basicly/core/fragments"
-overlay_fragments = [".basicly-local/fragments"]
-targets = ".basicly/core/targets"
-templates = ".basicly/core/templates"
-manifest = ".basicly/generated-manifest.json"
-"""
-
-
 def _materialize_catalog(src: Path, dst: Path) -> tuple[int, int]:
     """Copy catalog files from ``src`` to ``dst`` without overwriting existing ones.
 
-    Returns ``(written, skipped)``. Skips Python bytecode caches so a source-tree
-    materialization never carries ``__pycache__`` artifacts into a consumer repo.
+    Returns ``(written, skipped)``.
     """
     written = 0
     skipped = 0
-    for path in sorted(src.rglob("*")):
-        if path.is_dir():
-            continue
-        if "__pycache__" in path.parts or path.suffix == ".pyc":
-            continue
+    for path in iter_catalog_files(src):
         target = dst / path.relative_to(src)
         if target.exists():
             skipped += 1
@@ -362,7 +345,7 @@ def cmd_init(_args: argparse.Namespace) -> int:
     paths = load_project_paths(repo_root)
 
     core_src = bundled_catalog_root()
-    core_dst = repo_root / ".basicly" / "core"
+    core_dst = repo_root / paths.core_root
     if core_src.resolve() == core_dst.resolve():
         print("Core catalog is its own authoring source here; left in place.")
     else:
@@ -383,7 +366,7 @@ def cmd_init(_args: argparse.Namespace) -> int:
     if config_path.exists():
         print(f"{CONFIG_FILE} already exists; left unchanged")
     else:
-        config_path.write_text(_DEFAULT_CONFIG, encoding="utf-8")
+        config_path.write_text(DEFAULT_CONFIG_TOML, encoding="utf-8")
         print(f"Wrote {CONFIG_FILE}")
 
     print("\nNext steps:")
@@ -394,18 +377,35 @@ def cmd_init(_args: argparse.Namespace) -> int:
 
 
 def _core_hooks_dir(paths: ProjectPaths) -> Path:
-    """Location of the on-disk core hooks dir, derived from the core layout."""
-    return paths.core_fragments_dir.parent / "hooks"
+    """Location of the on-disk core hooks dir, derived from the core root.
+
+    Must stay repo-relative: the path is baked into the shared
+    .pre-commit-config.yaml, so an absolute path would not be portable.
+    """
+    hooks_dir = paths.core_root / "hooks"
+    if hooks_dir.is_absolute():
+        raise ValueError(
+            f"core hooks dir {hooks_dir} is absolute; set a repo-relative "
+            f"core_fragments path in {CONFIG_FILE} so hook wiring stays portable"
+        )
+    return hooks_dir
 
 
 def cmd_hooks_build(_args: argparse.Namespace) -> int:
     """Materialize hook scripts and wire them into the pre-commit config."""
     repo_root = _repo_root()
     paths = load_project_paths(repo_root)
+    config_path = repo_root / ".pre-commit-config.yaml"
+    config_existed = config_path.exists()
     result = sync_hooks(repo_root, _core_hooks_dir(paths))
 
     for path in result.written:
         print(f"Wrote {_format_path(path, repo_root)}")
+    if config_existed and config_path in result.written:
+        print(
+            "Note: .pre-commit-config.yaml was rewritten to update managed hooks; "
+            "comments/formatting outside them may have been normalized."
+        )
     if not result.written:
         print("No hook files changed.")
 

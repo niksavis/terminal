@@ -41,6 +41,9 @@ htmlcov/
 .env
 .env.local
 
+# Claude Code per-machine settings (and its atomic-write temp files)
+.claude/settings.local.json*
+
 # Node.js
 node_modules/
 # package.json and package-lock.json are tracked to pin markdownlint-cli2.
