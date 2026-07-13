@@ -2,6 +2,72 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.2.2 - 2026-07-13
+
+Delta: v0.2.1..v0.2.2
+
+### Highlights
+
+- All remaining tool downloads are now sha256-verified before installing: fzf, jq, and yq against their published checksum files, and the WezTerm Windows archive, WezTerm AppImage, and starship Windows archive against their `.sha256` release assets. (shellcheck publishes no checksum file; the uv/rustup vendor installers stay as-is by design.)
+- The Windows verification report now probes the known install directories, so freshly installed WezTerm/starship show `OK` with a restart hint instead of `MISSING` before the PATH refresh.
+- `wsl --install` now warns up front that administrator rights are required and fails with clear guidance instead of an opaque error.
+- Docs refreshed: portable Windows installs and user-local mode documented as the default behavior, and the release runbook now covers the version bump and commit-message constraints.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (5dbc80c)
+- docs: refresh install notes and release runbook (905090f)
+- feat(setup): verify remaining downloads and improve reporting (acfe6c5)
+
+## v0.2.1 - 2026-07-13
+
+Delta: v0.2.0..v0.2.1
+
+### Highlights
+
+- Windows installs no longer use winget/MSI: WezTerm and starship always install from portable release archives into `%LOCALAPPDATA%\Programs\`, so the setup works without admin rights in every mode. Existing winget installs are still detected and kept.
+- Node.js and lazygit downloads are now sha256-verified against the published checksum files before installing.
+- `--no-sudo` is honored on native Linux/macOS hosts for CLI extras: package-manager installs are skipped with a warning and lazygit installs user-locally.
+- Documented the managed Node runtime, the single-source `--user-install` model, and the versioned system-vs-user conflict report in the README and cheat sheet.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (431aa46)
+- docs: document node runtime and single-source install model (ac0e21f)
+- feat(setup): portable windows installs with checksums and no-sudo extras (4d179e3)
+
+## v0.2.0 - 2026-07-13
+
+Delta: v0.1.0..v0.2.0
+
+### Highlights
+
+- Fixed the core Windows-to-WSL failure: WSL commands now run via `wsl --exec`, so the guest shell no longer expands variables inside install scripts (the "Unsupported OS" error). `--user-install` now implies no-sudo for WSL/Linux tools.
+- Node.js is now installed and managed user-locally in WSL/Linux, matching the Windows major version; the setup report includes it.
+- Single-source tool model: `--user-install` installs user-local copies even when a system copy exists, then reports each conflict with both versions and reconciles it. Removal is interactive by default, automatic with `--uninstall-system-versions`, or report-only with `--keep-system-versions`.
+- More reliable Windows installs: WezTerm and starship install from release archives directly onto PATH, and setup templates are packaged into the wheel so `uvx` installs work.
+- Safer runs: headless/no-TTY runs fail fast instead of hanging on hidden sudo prompts, and a failing VS Code extension install warns instead of aborting setup.
+- Overhauled the terminal cheat sheet: full WezTerm and tmux shortcut reference, a modern CLI tool guide, click-to-copy commands, jump-to-section navigation, and a mobile-friendly responsive layout.
+- Scoped the starship Kubernetes prompt segment to Kubernetes directories so it no longer implies a cluster connection everywhere.
+
+### Commit delta (auto-generated)
+
+- fix(setup): detect system tool copies shadowed by user-local ones (91c97f7)
+- feat(setup): force user-local installs and show versions in conflict report (2202f85)
+- feat(setup): report and reconcile system-vs-userlocal tool conflicts (a5c3f5e)
+- feat(setup): install user-local nodejs matching windows major (cfc0536)
+- feat(cheat-sheet): click-to-copy commands and header polish (9a1e93f)
+- feat(cheat-sheet): full shortcut reference and smarter html page (a1e25b6)
+- fix(setup): fail fast on headless sudo and honor skip-starship in wsl (d59519d)
+- fix(config): scope starship kubernetes segment to k8s directories (432c926)
+- fix(setup): use appimage fallback for wezterm when user-install is set (b090e00)
+- fix(setup): warn instead of abort when vscode extension install fails (3f76158)
+- fix(packaging): ship terminal-setup templates in the wheel (f7bc4fb)
+- fix(setup): repair windows user installs and wsl tool detection (989178f)
+- fix(setup): run wsl commands via --exec to stop shell re-parsing (4ab9173)
+- chore(plans): move projector plans to basicly and keep wezterm status only (7c6c022)
+- docs(skills): add release-process skill (516e074)
+
 ## v0.1.0 - 2026-07-12
 
 Delta: initial..v0.1.0

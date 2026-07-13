@@ -163,6 +163,14 @@ def _print_windows_report(
         if command == "starship" and not include_starship:
             continue
         path = runner.which(command)
+        if path is None:
+            # PATH updates only reach new shells; also probe the known install
+            # directories so a fresh install reports accurately.
+            for directory in prerequisites.windows_tool_candidate_dirs(platform_info, command):
+                executable = directory / f"{command}.exe"
+                if executable.exists():
+                    path = f"{executable} (restart terminal for PATH)"
+                    break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
 
     if platform_info.wezterm_config_dir is not None:
@@ -350,19 +358,18 @@ def run_setup(  # noqa: PLR0913
         prerequisites.ensure_wsl_cli_extras(runner, platform_info)
     else:
         prerequisites.ensure_shell_tools(runner, platform_info)
-        prerequisites.ensure_host_cli_extras(runner, platform_info)
+        prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=no_sudo or user_install)
 
     prerequisites.ensure_wezterm(
         runner,
         platform_info,
-        user_install=user_install,
         no_sudo=no_sudo or user_install,
     )
 
     prerequisites.ensure_node(runner, platform_info)
 
     if not skip_starship:
-        prerequisites.ensure_starship(runner, platform_info, user_install=user_install)
+        prerequisites.ensure_starship(runner, platform_info)
 
     configs.deploy_all(
         runner,
@@ -403,7 +410,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()
     runner = Runner(dry_run=args.dry_run, reporter=reporter)
-    platform_info = platform.detect_platform(user_install=args.user_install, no_sudo=args.no_sudo)
+    platform_info = platform.detect_platform()
 
     if args.uninstall_system_versions and args.keep_system_versions:
         runner.reporter.error(

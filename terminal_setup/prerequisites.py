@@ -34,6 +34,27 @@ class PrerequisiteStatus:
 TARGET_NODE_MAJOR = "24"
 
 
+def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:
+    """Return known install directories for a Windows tool.
+
+    Used both to find existing installs and to report tools that are installed
+    but not yet on PATH in the current shell (PATH updates need a restart).
+    """
+    if command == "wezterm":
+        return [
+            Path("C:/Program Files/WezTerm"),
+            Path("C:/Program Files (x86)/WezTerm"),
+            platform.user_programs_dir / "WezTerm",
+        ]
+    if command == "starship":
+        return [
+            Path("C:/Program Files/starship/bin"),
+            platform.user_programs_dir / "starship",
+            platform.user_programs_dir / "starship" / "bin",
+        ]
+    return []
+
+
 @dataclass(frozen=True)
 class SystemVersionPolicy:
     """Policy for handling pre-existing system-wide tool installations."""
@@ -533,8 +554,22 @@ def update_packages(
 
 
 def install_wsl_ubuntu(runner: Runner) -> None:
-    """Install Ubuntu as the default WSL distribution."""
-    runner.run(["wsl", "--install", "-d", "Ubuntu"])
+    """Install Ubuntu as the default WSL distribution.
+
+    ``wsl --install`` needs administrator rights; fail with clear guidance
+    instead of an opaque error when they are missing.
+    """
+    runner.reporter.warn(
+        "Installing WSL requires administrator rights. Without them, ask an "
+        "administrator to run 'wsl --install -d Ubuntu' or install Ubuntu "
+        "from the Microsoft Store, then re-run this setup."
+    )
+    result = runner.run(["wsl", "--install", "-d", "Ubuntu"], check=False, interactive=True)
+    if result.returncode != 0:
+        raise RuntimeError(
+            "wsl --install failed (administrator rights are likely required). "
+            "Install WSL Ubuntu manually and re-run this setup."
+        )
 
 
 def _wsl_apt_install_script(packages: list[str]) -> str:
@@ -617,8 +652,13 @@ def _find_system_command_path(
     *,
     wsl_distro: str | None = None,
 ) -> str | None:
-    """Return the path to a system-wide command, or None if it is absent."""
-    lookup_command = ["sh", "-c", f"command -v {command}"]
+    """Return the path to a system-wide command, or None if it is absent.
+
+    Resolves against a system-only PATH so a user-local copy in ~/.local/bin
+    never shadows the system copy we are looking for.
+    """
+    system_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    lookup_command = ["sh", "-c", f"PATH={system_path} command -v {command}"]
     if wsl_distro and not is_running_in_wsl():
         lookup_command = wsl_exec_command(wsl_distro, lookup_command)
 
@@ -696,8 +736,8 @@ def _command_version(runner: Runner, path: str, *, wsl_distro: str | None = None
     "unknown" when no version can be determined.
     """
     script = (
-        f'v="$("{path}" --version 2>/dev/null | head -n 1)"; '
-        'printf "%s" "$v" | grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
+        f'"{path}" --version 2>/dev/null | head -n 5 '
+        '| grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
     )
     result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
     version = result.stdout.strip()
@@ -936,6 +976,13 @@ def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> Non
         'url="https://github.com/junegunn/fzf/releases/download/${release}/'
         'fzf-${version}-linux_${arch}.tar.gz"; '
         "curl -fsSL -o $tmp/fzf.tar.gz $url; "
+        'curl -fsSL -o $tmp/checksums.txt "https://github.com/junegunn/fzf/releases/download/'
+        '${release}/fzf_${version}_checksums.txt"; '
+        'expected=$(grep " fzf-${version}-linux_${arch}.tar.gz$" $tmp/checksums.txt '
+        '| cut -d" " -f1); '
+        'actual=$(sha256sum $tmp/fzf.tar.gz | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "fzf checksum verification failed" >&2; rm -rf $tmp; exit 1; }; '
         "tar -xzf $tmp/fzf.tar.gz -C $tmp; "
         "mkdir -p ~/.local/bin; "
         "mv $tmp/fzf ~/.local/bin/fzf; "
@@ -950,10 +997,18 @@ def _install_jq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         "set -e; "
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "mkdir -p ~/.local/bin; "
-        "curl -fsSL -o ~/.local/bin/jq "
+        "tmp=$(mktemp -d); "
+        'curl -fsSL -o "$tmp/jq" '
         "https://github.com/jqlang/jq/releases/latest/download/jq-linux-${arch}; "
-        "chmod +x ~/.local/bin/jq"
+        'curl -fsSL -o "$tmp/sha256sum.txt" '
+        "https://github.com/jqlang/jq/releases/latest/download/sha256sum.txt; "
+        'expected=$(grep " jq-linux-${arch}$" "$tmp/sha256sum.txt" | cut -d" " -f1); '
+        'actual=$(sha256sum "$tmp/jq" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "jq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/jq" ~/.local/bin/jq; '
+        'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
@@ -964,10 +1019,19 @@ def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         "set -e; "
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "mkdir -p ~/.local/bin; "
-        "curl -fsSL -o ~/.local/bin/yq "
+        "tmp=$(mktemp -d); "
+        'curl -fsSL -o "$tmp/yq" '
         "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}; "
-        "chmod +x ~/.local/bin/yq"
+        'curl -fsSL -o "$tmp/checksums-bsd" '
+        "https://github.com/mikefarah/yq/releases/latest/download/checksums-bsd; "
+        'expected=$(grep "^SHA256 (yq_linux_${arch}) = " "$tmp/checksums-bsd" '
+        '| cut -d" " -f4); '
+        'actual=$(sha256sum "$tmp/yq" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "yq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/yq" ~/.local/bin/yq; '
+        'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
@@ -1010,8 +1074,11 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
         '[ -n "$ver" ] || { echo "Unable to resolve latest Node.js version" >&2; exit 1; }; '
         "tmp=$(mktemp -d); "
         'pkg="node-${ver}-${os}-${arch}"; '
-        'curl -fsSL -o "$tmp/node.tar.xz" "https://nodejs.org/dist/${ver}/${pkg}.tar.xz"; '
-        'tar -xJf "$tmp/node.tar.xz" -C "$tmp"; '
+        'curl -fsSL -o "$tmp/${pkg}.tar.xz" "https://nodejs.org/dist/${ver}/${pkg}.tar.xz"; '
+        'curl -fsSL -o "$tmp/SHASUMS256.txt" "https://nodejs.org/dist/${ver}/SHASUMS256.txt"; '
+        '(cd "$tmp" && grep " ${pkg}.tar.xz$" SHASUMS256.txt | sha256sum -c -) '
+        '|| { echo "Node.js checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        'tar -xJf "$tmp/${pkg}.tar.xz" -C "$tmp"; '
         "mkdir -p ~/.local; "
         'cp -R "$tmp/${pkg}/." ~/.local/; '
         'rm -rf "$tmp"'
@@ -1141,10 +1208,18 @@ def _install_lazygit_release(
         'else echo "Unsupported arch for lazygit: $arch" >&2; exit 1; fi; '
         "tmp=$(mktemp -d); "
         f'version="{latest_version}"; '
-        'curl -fLo "$tmp/lazygit.tar.gz" '
-        '"https://github.com/jesseduffield/lazygit/releases/download/'
-        'v${version}/lazygit_${version}_${os}_${arch}.tar.gz"; '
-        'tar -xf "$tmp/lazygit.tar.gz" -C "$tmp" lazygit; '
+        'pkg="lazygit_${version}_${os}_${arch}.tar.gz"; '
+        'base="https://github.com/jesseduffield/lazygit/releases/download/v${version}"; '
+        'curl -fsSLo "$tmp/${pkg}" "${base}/${pkg}"; '
+        'curl -fsSLo "$tmp/checksums.txt" "${base}/checksums.txt"; '
+        # checksums.txt lists lowercase file names while release assets use
+        # capitalized OS names, so compare digests instead of sha256sum -c.
+        "sumname=$(printf '%s' \"$pkg\" | tr 'A-Z' 'a-z'); "
+        'expected=$(grep " ${sumname}$" "$tmp/checksums.txt" | cut -d" " -f1); '
+        'actual=$(sha256sum "$tmp/${pkg}" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "lazygit checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        'tar -xf "$tmp/${pkg}" -C "$tmp" lazygit; '
         f"{install_command}; "
         'rm -rf "$tmp"'
     )
@@ -1407,7 +1482,9 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
         install_package(runner, platform.package_manager, package)
 
 
-def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_host_cli_extras(
+    runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False
+) -> None:
     """Install agent-first CLI tools on the host."""
     if platform.os == OperatingSystem.WINDOWS:
         return
@@ -1489,9 +1566,15 @@ def ensure_host_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
             "uv",
         ],
     }
-    for package in extras.get(platform.package_manager, []):
-        install_package(runner, platform.package_manager, package)
-    _install_lazygit_release(runner, no_sudo=False)
+    if no_sudo:
+        runner.reporter.warn(
+            "--no-sudo requested: skipping package-manager CLI extras on the host; "
+            "only tools with user-local installers are handled."
+        )
+    else:
+        for package in extras.get(platform.package_manager, []):
+            install_package(runner, platform.package_manager, package)
+    _install_lazygit_release(runner, no_sudo=no_sudo)
 
 
 def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
@@ -1507,6 +1590,11 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
         f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
         f"$zip = Join-Path $env:TEMP 'starship.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"$expected = ((Invoke-RestMethod -Uri ($url + '.sha256') -UseBasicParsing) "
+        f"-split '\\s+')[0].ToLower(); "
+        f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
+        f"if ($actual -ne $expected) "
+        f"{{ Remove-Item $zip; throw 'starship checksum verification failed' }}; "
         f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
         f"Remove-Item $zip"
     )
@@ -1514,55 +1602,26 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
     _add_to_user_path(runner, install_dir)
 
 
-def ensure_starship(runner: Runner, platform: PlatformInfo, *, user_install: bool = False) -> None:
-    """Install the starship prompt if possible."""
+def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
+    """Install the starship prompt if possible.
+
+    On Windows the portable release archive is always used: it needs no admin
+    rights, unlike winget's MSI packages. Existing winget installs are detected
+    and kept.
+    """
     if runner.which("starship"):
         return
     if platform.os == OperatingSystem.WINDOWS:
         _ensure_windows_command_in_path(
             runner,
             "starship",
-            [
-                Path("C:/Program Files/starship/bin"),
-                platform.user_programs_dir / "starship",
-                platform.user_programs_dir / "starship" / "bin",
-            ],
+            windows_tool_candidate_dirs(platform, "starship"),
         )
         if runner.which("starship"):
             return
         if _is_winget_package_installed(runner, "Starship.Starship"):
             return
-        if user_install:
-            _ensure_starship_user_install(runner, platform)
-            return
-        if runner.which("winget"):
-            result = runner.run(
-                [
-                    "winget",
-                    "install",
-                    "--id",
-                    "Starship.Starship",
-                    "--accept-source-agreements",
-                    "--accept-package-agreements",
-                    "--scope",
-                    "user",
-                ],
-                check=False,
-                interactive=True,
-            )
-            if result.returncode != 0 and not _is_winget_package_installed(
-                runner, "Starship.Starship"
-            ):
-                raise RuntimeError("Failed to install starship via winget")
-            _ensure_windows_command_in_path(
-                runner,
-                "starship",
-                [
-                    Path("C:/Program Files/starship/bin"),
-                    platform.user_programs_dir / "starship",
-                    platform.user_programs_dir / "starship" / "bin",
-                ],
-            )
+        _ensure_starship_user_install(runner, platform)
         return
     if platform.os == OperatingSystem.LINUX:
         script_url = "https://starship.rs/install.sh"
@@ -1605,6 +1664,11 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
+        f"$expected = ((Invoke-RestMethod -Uri ($url + '.sha256') -UseBasicParsing) "
+        f"-split '\\s+')[0].ToLower(); "
+        f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
+        f"if ($actual -ne $expected) "
+        f"{{ Remove-Item $zip; throw 'WezTerm checksum verification failed' }}; "
         f"$extract = Join-Path $env:TEMP 'wezterm-extract'; "
         f"if (Test-Path $extract) {{ Remove-Item $extract -Recurse -Force }}; "
         f"Expand-Archive -Path $zip -DestinationPath $extract -Force; "
@@ -1620,61 +1684,30 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
     _add_to_user_path(runner, install_dir)
 
 
-def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo, *, user_install: bool) -> None:
-    """Install WezTerm on Windows via existing installs, winget, or a user download."""
+def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
+    """Install WezTerm on Windows from the portable release archive.
+
+    The portable install needs no admin rights, unlike winget's MSI packages.
+    Existing system or winget installs are detected and kept.
+    """
     _ensure_windows_command_in_path(
         runner,
         "wezterm",
-        [
-            Path("C:/Program Files/WezTerm"),
-            Path("C:/Program Files (x86)/WezTerm"),
-            platform.user_programs_dir / "WezTerm",
-        ],
+        windows_tool_candidate_dirs(platform, "wezterm"),
     )
     if runner.which("wezterm"):
         return
     if _is_winget_package_installed(runner, "wez.wezterm"):
         return
-    if user_install:
-        _ensure_wezterm_user_install(runner, platform)
-        return
-    if platform.package_manager != PackageManager.WINGET:
-        return
-    result = runner.run(
-        [
-            "winget",
-            "install",
-            "--id",
-            "wez.wezterm",
-            "--accept-source-agreements",
-            "--accept-package-agreements",
-            "--scope",
-            "user",
-        ],
-        check=False,
-        interactive=True,
-    )
-    if result.returncode != 0 and not _is_winget_package_installed(runner, "wez.wezterm"):
-        raise RuntimeError("Failed to install WezTerm via winget")
-    _ensure_windows_command_in_path(
-        runner,
-        "wezterm",
-        [
-            Path("C:/Program Files/WezTerm"),
-            Path("C:/Program Files (x86)/WezTerm"),
-            platform.user_programs_dir / "WezTerm",
-        ],
-    )
+    _ensure_wezterm_user_install(runner, platform)
 
 
-def ensure_wezterm(
-    runner: Runner, platform: PlatformInfo, *, user_install: bool = False, no_sudo: bool = False
-) -> None:
+def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
     """Install WezTerm using the platform package manager."""
     if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.WINDOWS:
-        _ensure_wezterm_windows(runner, platform, user_install=user_install)
+        _ensure_wezterm_windows(runner, platform)
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         runner.run(["brew", "install", "--cask", "wezterm"])
@@ -1740,5 +1773,17 @@ def _ensure_wezterm_appimage(runner: Runner) -> None:
     )
     install_dir = Path.home() / ".local" / "bin"
     target = install_dir / "wezterm"
-    script = f"mkdir -p {install_dir}; curl -fsSL -o {target} {appimage_url}; chmod +x {target}"
+    script = (
+        "set -e; "
+        "tmp=$(mktemp -d); "
+        f'curl -fsSL -o "$tmp/wezterm.AppImage" {appimage_url}; '
+        f'curl -fsSL -o "$tmp/wezterm.AppImage.sha256" {appimage_url}.sha256; '
+        'expected=$(cut -d" " -f1 "$tmp/wezterm.AppImage.sha256"); '
+        'actual=$(sha256sum "$tmp/wezterm.AppImage" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "WezTerm AppImage checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        f"mkdir -p {install_dir}; "
+        f'install -m 0755 "$tmp/wezterm.AppImage" {target}; '
+        'rm -rf "$tmp"'
+    )
     runner.run(["sh", "-c", script], interactive=True)

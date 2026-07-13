@@ -686,11 +686,17 @@ footer svg {
 <td><code>uv run script.py</code> - fast installs and runs</td>
 </tr>
 <tr>
+<td><code>node</code></td>
+<td>JavaScript runtime</td>
+<td><code>node script.js</code> - run JS; <code>npm install</code> for packages</td>
+</tr>
+<tr>
 <td><code>shellcheck</code></td>
 <td>shell linter</td>
 <td><code>shellcheck deploy.sh</code> - catch script bugs</td>
 </tr>
 </tbody></table>
+<p>Python in WSL is uv-managed: <code>python</code> and <code>python3</code> in <code>~/.local/bin</code> point to the latest uv-installed CPython (the system <code>/usr/bin/python3</code> stays untouched for OS scripts). Node.js is installed user-locally in <code>~/.local</code> at the same major version as Windows.</p>
 </div></section>
 <section class="collapsed" id="navigation">
 <div class="section-header" title="Click to expand/collapse">

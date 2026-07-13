@@ -9,7 +9,9 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - A consistent terminal stack across Windows+WSL, Linux, and macOS.
 - Better defaults for multitasking: WezTerm + tmux + zsh + starship.
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
+- Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v24), matching the Windows versions.
 - Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
+- Single-source tool ownership: `--user-install` keeps every managed tool in `~/.local`, reports conflicts with system copies (with versions), and can remove the duplicates.
 
 ## Quick install (users)
 
@@ -199,16 +201,17 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
+- Runtimes (WSL/Linux/macOS): `node` (latest v24, user-local in `~/.local`)
 - Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, `micro settings.json`
 
-`lazygit` is installed from the latest upstream release archive (not distro/Homebrew package versions) so `lazygit --version` reflects a current tagged release.
+`lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
 
 ### Platform differences
 
 #### Windows (PowerShell / Git Bash)
 
 - Targets WSL2 Ubuntu as the primary shell environment
-- Windows host installs: WezTerm via `winget`, Starship via `winget`, VS Code Remote - WSL extension
+- Windows host installs: WezTerm and Starship from portable release archives into `%LOCALAPPDATA%\Programs\` (no admin rights or MSI needed; existing winget installs are detected and kept), plus the VS Code Remote - WSL extension
 - WSL aliases: `fd` -> `fdfind`, `bat` -> `batcat`
 - Config destinations: Windows `wezterm.lua` under `%USERPROFILE%\.config\wezterm\`, WSL files under `~`
 
@@ -226,7 +229,7 @@ uv run python setup-terminal.py --check      # verify prerequisites only
 uv run python setup-terminal.py --dry-run    # preview changes
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
-uv run python setup-terminal.py --user-install # install without admin rights (Windows)
+uv run python setup-terminal.py --user-install # user-local installs everywhere; no admin/sudo
 uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
 uv run python setup-terminal.py --report-only # print verification summary without running setup
 uv run python setup-terminal.py --report     # run setup, then print verification summary
@@ -235,11 +238,13 @@ uv run python setup-terminal.py --keep-system-versions # keep system tool versio
 uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
 
-`--uninstall-system-versions` and `--keep-system-versions` are mutually exclusive.
+`--user-install` implies `--no-sudo` for tools inside WSL/Linux: every managed tool is installed user-locally under `~/.local`, even when a system copy already exists, so re-running the setup updates everything from one place.
+
+After installing, the setup reconciles duplicates: it reports every tool present both in `~/.local/bin` and system-wide, with both versions (for example `lazygit: user-local 0.63.0 vs system 0.60.0`), then asks per tool whether to remove the system copy. `--uninstall-system-versions` removes them all without prompting (requires sudo); `--keep-system-versions` only reports. The two flags are mutually exclusive. Headless runs never prompt or hang; they report and explain instead.
 
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
-> **Note:** When using `--user-install` on Windows, WezTerm and Starship are installed to `%LOCALAPPDATA%\Programs\` and the user PATH is updated. You must restart your terminal for the new PATH to take effect.
+> **Note:** On Windows, WezTerm and Starship are always installed from portable release archives to `%LOCALAPPDATA%\Programs\` and the user PATH is updated (no admin rights or MSI needed). You must restart your terminal for the new PATH to take effect; until then the setup report marks them OK with a restart hint.
 
 ## Command-line editing
 

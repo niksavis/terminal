@@ -93,7 +93,10 @@ Faster, friendlier replacements for classic commands. All are installed by `term
 | `tree`       | directory tree     | `tree -L 2` - visualize folder structure         |
 | `direnv`     | per-dir env vars   | auto-loads `.envrc` when entering a directory    |
 | `uv`         | Python tooling     | `uv run script.py` - fast installs and runs      |
+| `node`       | JavaScript runtime | `node script.js` - run JS; `npm install` for packages |
 | `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs       |
+
+Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the latest uv-installed CPython (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js is installed user-locally in `~/.local` at the same major version as Windows.
 
 ## Navigation
 

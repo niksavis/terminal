@@ -131,7 +131,6 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
         home=Path.home(),
         wezterm_config_dir=None,
         vscode_settings_path=None,
-        user_install=True,
     )
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),

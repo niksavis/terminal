@@ -20,6 +20,7 @@ from terminal_setup.prerequisites import (
     ensure_node,
     ensure_wsl_tools,
     install_package,
+    windows_tool_candidate_dirs,
 )
 from terminal_setup.prerequisites import (
     _command_available as command_available,
@@ -486,7 +487,10 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
 
     assert any("releases/latest" in command[-1] for command in runner.commands)
     assert any("lazygit --version" in command[-1] for command in runner.commands)
-    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+    assert not any(
+        "releases/download" in command[-1] and "tar.gz" in command[-1]
+        for command in runner.commands
+    )
 
 
 def test_install_lazygit_release_uses_first_version_token() -> None:
@@ -611,7 +615,10 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
     install_lazygit_release(cast(Runner, runner), no_sudo=False)
 
     assert runner.confirm_prompts == ["Update lazygit from 0.48.0 to 0.49.0?"]
-    assert not any("lazygit.tar.gz" in command[-1] for command in runner.commands)
+    assert not any(
+        "releases/download" in command[-1] and "tar.gz" in command[-1]
+        for command in runner.commands
+    )
 
 
 def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
@@ -637,7 +644,9 @@ def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
     assert wsl_commands
     assert all(command[:4] == ["wsl", "-d", "Ubuntu", "--exec"] for command in wsl_commands)
     install_scripts = [
-        command[-1] for command in runner.commands if "lazygit.tar.gz" in command[-1]
+        command[-1]
+        for command in runner.commands
+        if "releases/download" in command[-1] and "tar.gz" in command[-1]
     ]
     assert install_scripts
     assert "~/.local/bin/lazygit" in install_scripts[0]
@@ -693,6 +702,7 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
                 "--exec",
                 "sh",
                 "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
                 "command -v lazygit",
             ): (0, "/usr/local/bin/lazygit"),
         }
@@ -747,6 +757,16 @@ def test_reconcile_skips_tools_without_userlocal_copy() -> None:
     assert not any("rm" in command for command in runner.commands)
 
 
+def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
+    """Candidate dirs must include the per-user programs directory."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
+    starship_dirs = windows_tool_candidate_dirs(platform, "starship")
+    assert platform.user_programs_dir / "WezTerm" in wezterm_dirs
+    assert platform.user_programs_dir / "starship" in starship_dirs
+    assert windows_tool_candidate_dirs(platform, "unknown-tool") == []
+
+
 def test_system_version_policy_defaults() -> None:
     """The default policy must neither uninstall nor keep system versions."""
     policy = system_version_policy()
@@ -758,7 +778,11 @@ def test_find_system_command_path_detects_system_binary() -> None:
     """_find_system_command_path must return the path for a system binary."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
         }
     )
     assert find_system_command_path(cast(Runner, runner), "rg") == "/usr/bin/rg"
@@ -768,7 +792,11 @@ def test_find_system_command_path_ignores_user_local() -> None:
     """_find_system_command_path must ignore binaries under the user's home."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, str(Path.home() / ".local/bin/rg")),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, str(Path.home() / ".local/bin/rg")),
         }
     )
     assert find_system_command_path(cast(Runner, runner), "rg") is None
@@ -778,7 +806,15 @@ def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
     """_find_system_command_path must query the WSL distro when requested."""
     runner = FakeRunner(
         outputs={
-            ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
         }
     )
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -823,7 +859,11 @@ def test_warn_or_uninstall_keeps_system_version_when_requested() -> None:
     """With keep policy, the function must warn and not run any uninstall command."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -840,7 +880,11 @@ def test_warn_or_uninstall_removes_system_version_when_requested() -> None:
     """With uninstall policy, the function must run the package manager remove command."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -857,7 +901,11 @@ def test_warn_or_uninstall_prompts_and_removes_on_yes() -> None:
     """Interactive mode must remove the package when the user answers yes."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -872,7 +920,11 @@ def test_warn_or_uninstall_prompts_and_keeps_on_no() -> None:
     """Interactive mode must keep the package when the user answers no."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
