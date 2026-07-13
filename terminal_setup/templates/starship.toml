@@ -74,9 +74,13 @@ format = " [docker:$context]($style)"
 style = "fg:cyan"
 
 [kubernetes]
+# Show the kubectl context only inside Kubernetes-related directories so the
+# prompt does not imply a cluster connection everywhere.
 disabled = false
 format = " [k8s:$context(\\($namespace\\))]($style)"
 style = "fg:cyan"
+detect_files = ["k8s.yaml", "skaffold.yaml", "helmfile.yaml", "Chart.yaml", "kustomization.yaml"]
+detect_folders = ["k8s", "kubernetes", "helm", "manifests"]
 
 [python]
 format = " [py:$version(\\($virtualenv\\))]($style)"
