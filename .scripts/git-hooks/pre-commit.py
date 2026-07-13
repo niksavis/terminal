@@ -68,6 +68,7 @@ def main() -> int:
             "pyproject.toml",
             "-r",
             ".scripts",
+            "terminal_setup",
         ),
         ("markdownlint", *markdownlint_args()),
         ("cheat-sheet-html", "python", ".scripts/render-cheat-sheet.py", "--check"),

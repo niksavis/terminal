@@ -48,7 +48,7 @@
     {
       "label": "security: bandit",
       "type": "shell",
-      "command": "uv run bandit -c pyproject.toml -r .scripts",
+      "command": "uv run bandit -c pyproject.toml -r .scripts terminal_setup",
       "group": "build",
       "presentation": {
         "reveal": "always",
