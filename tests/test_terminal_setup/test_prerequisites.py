@@ -34,6 +34,9 @@ from terminal_setup.prerequisites import (
     _install_lazygit_release as install_lazygit_release,
 )
 from terminal_setup.prerequisites import (
+    _reconcile_system_versions as reconcile_system_versions,
+)
+from terminal_setup.prerequisites import (
     _system_version_policy as system_version_policy,
 )
 from terminal_setup.prerequisites import (
@@ -66,6 +69,7 @@ class SpyRunner:
     def __init__(self) -> None:
         """Initialize the recorded command list."""
         self.commands: list[list[str]] = []
+        self.dry_run = False
         self.reporter = FakeReporter()
 
     def run(  # noqa: PLR0913
@@ -669,6 +673,72 @@ def test_ensure_node_skips_when_already_present() -> None:
         ensure_node(cast(Runner, runner), platform)
 
     assert not any("nodejs.org/dist" in c[-1] for c in runner.commands)
+
+
+def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
+    """A user-local tool with an unowned /usr/local system copy is removed."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
+    runner = FakeRunner(
+        outputs={
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                "command -v lazygit",
+            ): (0, "/usr/local/bin/lazygit"),
+        }
+    )
+    policy = system_version_policy(uninstall_system_versions=True)
+
+    def fake_user_local(_runner: object, binary: str, **_kwargs: object) -> bool:
+        return binary == "lazygit"
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            side_effect=fake_user_local,
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._find_owning_package",
+            return_value=None,
+        ),
+    ):
+        reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
+
+    assert [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "--exec",
+        "sudo",
+        "rm",
+        "-f",
+        "/usr/local/bin/lazygit",
+    ] in runner.commands
+
+
+def test_reconcile_skips_tools_without_userlocal_copy() -> None:
+    """Reconcile must not touch tools that have no user-local copy."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
+    runner = FakeRunner()
+    policy = system_version_policy(uninstall_system_versions=True)
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=False,
+        ),
+    ):
+        reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
+
+    assert not any("rm" in command for command in runner.commands)
 
 
 def test_system_version_policy_defaults() -> None:

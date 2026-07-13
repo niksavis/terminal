@@ -689,6 +689,144 @@ def _uninstall_package(
     runner.run(command, interactive=True)
 
 
+def _remove_system_file(runner: Runner, path: str, *, wsl_distro: str | None = None) -> None:
+    """Remove a system file with sudo (for binaries no package owns)."""
+    command = ["sudo", "rm", "-f", path]
+    if wsl_distro and not is_running_in_wsl():
+        command = wsl_exec_command(wsl_distro, command)
+    runner.run(command, interactive=True)
+
+
+def _handle_unowned_system_version(
+    runner: Runner,
+    command: str,
+    path: str,
+    *,
+    wsl_distro: str | None = None,
+    policy: SystemVersionPolicy,
+) -> None:
+    """Apply the system-version policy to a binary no package manager owns.
+
+    Only files under ``/usr/local`` are removable; other unowned paths are left
+    in place with a warning so the setup never deletes unmanaged system files it
+    does not understand.
+    """
+    removable = path.startswith("/usr/local/")
+    if policy.keep or not removable:
+        suffix = "" if removable else " (outside /usr/local; not removed automatically)"
+        runner.reporter.warn(
+            f"{command} is installed system-wide at {path} and is not managed by a "
+            f"package{suffix}. The user-local copy in ~/.local/bin will take precedence."
+        )
+        return
+
+    if policy.uninstall:
+        runner.reporter.info(
+            f"Removing unowned system binary {command} at {path} because "
+            "--uninstall-system-versions was requested."
+        )
+        _remove_system_file(runner, path, wsl_distro=wsl_distro)
+        return
+
+    prompt = (
+        f"{command} is installed system-wide at {path} and is not managed by a package. "
+        "Remove it so the user-local copy in ~/.local/bin takes precedence?"
+    )
+    if runner.dry_run:
+        runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+        return
+    if runner.confirm(prompt):
+        _remove_system_file(runner, path, wsl_distro=wsl_distro)
+    else:
+        runner.reporter.info(f"Keeping the system binary at {path}.")
+
+
+# Managed tools that may exist both user-locally and system-wide; reconciled so
+# a user-local copy takes precedence over a duplicate system install.
+_RECONCILE_BINARIES = (
+    "fd",
+    "bat",
+    "rg",
+    "xh",
+    "ast-grep",
+    "sd",
+    "just",
+    "delta",
+    "typos",
+    "fzf",
+    "jq",
+    "yq",
+    "shellcheck",
+    "uv",
+    "lazygit",
+    "node",
+    "starship",
+)
+
+
+def _reconcile_system_versions(
+    runner: Runner,
+    platform: PlatformInfo,
+    policy: SystemVersionPolicy,
+    *,
+    wsl_distro: str | None = None,
+) -> None:
+    """Report and reconcile tools installed both user-locally and system-wide.
+
+    Runs after every install. A managed tool is a conflict when a copy exists in
+    ~/.local/bin *and* a system-wide copy exists; the user-local copy already
+    wins on PATH, so the system copy is redundant. Behavior by policy:
+
+    - ``--keep-system-versions``: report only.
+    - ``--uninstall-system-versions``: remove every system copy (needs sudo).
+    - default: prompt per tool when stdin is interactive; otherwise report and
+      explain how to remove them, so headless runs never hang.
+    """
+    conflicts: list[tuple[str, str]] = []
+    for binary in _RECONCILE_BINARIES:
+        if not _is_user_local_command_available(runner, binary, wsl_distro=wsl_distro):
+            continue
+        path = _find_system_command_path(runner, binary, wsl_distro=wsl_distro)
+        if path is not None:
+            conflicts.append((binary, path))
+
+    if not conflicts:
+        return
+
+    runner.reporter.info(
+        "Detected tools installed both in ~/.local/bin and system-wide "
+        "(the user-local copy takes precedence on PATH):"
+    )
+    for binary, path in conflicts:
+        runner.reporter.info(f"  - {binary}: system copy at {path}")
+
+    if policy.keep:
+        runner.reporter.info(
+            "Keeping system copies (--keep-system-versions). Re-run with "
+            "--uninstall-system-versions to remove them once the user-local tools work."
+        )
+        return
+
+    if not policy.uninstall and not _stdin_is_interactive(runner):
+        runner.reporter.warn(
+            "Not removing system copies: re-run from an interactive terminal to choose "
+            "per tool, or pass --uninstall-system-versions to remove them automatically."
+        )
+        return
+
+    if policy.uninstall:
+        _require_interactive_stdin_for_sudo(runner)
+
+    for binary, _path in conflicts:
+        _warn_or_uninstall_system_version(
+            runner,
+            binary,
+            platform.package_manager,
+            wsl_distro=wsl_distro,
+            policy=policy,
+        )
+
+
 def _warn_or_uninstall_system_version(
     runner: Runner,
     command: str,
@@ -710,10 +848,8 @@ def _warn_or_uninstall_system_version(
 
     package = _find_owning_package(runner, path, package_manager, wsl_distro=wsl_distro)
     if package is None:
-        runner.reporter.warn(
-            f"{command} is already installed system-wide at {path}. "
-            "A user-local copy will be installed in ~/.local/bin. "
-            "You can remove the system version later if the local one works."
+        _handle_unowned_system_version(
+            runner, command, path, wsl_distro=wsl_distro, policy=resolved_policy
         )
         return
 
@@ -1103,6 +1239,11 @@ def _install_user_local_tool(
     return False
 
 
+def _stdin_is_interactive(runner: Runner) -> bool:
+    """Return whether prompts can reach the user (or are simulated in dry-run)."""
+    return runner.dry_run or sys.stdin.isatty()
+
+
 def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
     """Fail fast when sudo would prompt for a password without a terminal.
 
@@ -1110,7 +1251,7 @@ def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
     contexts (agents, CI, hidden consoles) the setup would hang forever on an
     invisible prompt instead of failing.
     """
-    if runner.dry_run or sys.stdin.isatty():
+    if _stdin_is_interactive(runner):
         return
     raise RuntimeError(
         "This step may require a sudo password but stdin is not an interactive "
@@ -1175,6 +1316,7 @@ def ensure_wsl_tools(
                 continue
             if not _install_user_local_tool(runner, package, platform, policy=policy):
                 runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
+        _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return
 
     _require_interactive_stdin_for_sudo(runner)
@@ -1190,6 +1332,8 @@ def ensure_wsl_tools(
     for package in fallback_packages:
         if not _install_apt_fallback(runner, package, wsl_distro=distro):
             raise RuntimeError(f"Package '{package}' is not available via apt")
+
+    _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
