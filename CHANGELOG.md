@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.2.1 - 2026-07-13
+
+Delta: v0.2.0..v0.2.1
+
+### Highlights
+
+- Windows installs no longer use winget/MSI: WezTerm and starship always install from portable release archives into `%LOCALAPPDATA%\Programs\`, so the setup works without admin rights in every mode. Existing winget installs are still detected and kept.
+- Node.js and lazygit downloads are now sha256-verified against the published checksum files before installing.
+- `--no-sudo` is honored on native Linux/macOS hosts for CLI extras: package-manager installs are skipped with a warning and lazygit installs user-locally.
+- Documented the managed Node runtime, the single-source `--user-install` model, and the versioned system-vs-user conflict report in the README and cheat sheet.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (431aa46)
+- docs: document node runtime and single-source install model (ac0e21f)
+- feat(setup): portable windows installs with checksums and no-sudo extras (4d179e3)
+
 ## v0.2.0 - 2026-07-13
 
 Delta: v0.1.0..v0.2.0
