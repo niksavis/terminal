@@ -1,3 +1,7 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [ "setuptools>=77" ]
+
 [project]
 name = "terminal"
 version = "0.1.0"
@@ -26,6 +30,12 @@ dev = [
   "ruff>=0.15.21",
   "vulture>=2.16",
 ]
+
+[tool.setuptools]
+packages = [ "terminal_setup" ]
+
+[tool.setuptools.package-data]
+terminal_setup = [ "templates/*" ]
 
 [tool.pytest.ini_options]
 pythonpath = [".basicly", "."]
