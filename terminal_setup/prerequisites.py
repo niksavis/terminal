@@ -617,8 +617,13 @@ def _find_system_command_path(
     *,
     wsl_distro: str | None = None,
 ) -> str | None:
-    """Return the path to a system-wide command, or None if it is absent."""
-    lookup_command = ["sh", "-c", f"command -v {command}"]
+    """Return the path to a system-wide command, or None if it is absent.
+
+    Resolves against a system-only PATH so a user-local copy in ~/.local/bin
+    never shadows the system copy we are looking for.
+    """
+    system_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    lookup_command = ["sh", "-c", f"PATH={system_path} command -v {command}"]
     if wsl_distro and not is_running_in_wsl():
         lookup_command = wsl_exec_command(wsl_distro, lookup_command)
 
@@ -696,8 +701,8 @@ def _command_version(runner: Runner, path: str, *, wsl_distro: str | None = None
     "unknown" when no version can be determined.
     """
     script = (
-        f'v="$("{path}" --version 2>/dev/null | head -n 1)"; '
-        'printf "%s" "$v" | grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
+        f'"{path}" --version 2>/dev/null | head -n 5 '
+        '| grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
     )
     result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
     version = result.stdout.strip()

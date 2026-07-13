@@ -693,6 +693,7 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
                 "--exec",
                 "sh",
                 "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
                 "command -v lazygit",
             ): (0, "/usr/local/bin/lazygit"),
         }
@@ -758,7 +759,11 @@ def test_find_system_command_path_detects_system_binary() -> None:
     """_find_system_command_path must return the path for a system binary."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
         }
     )
     assert find_system_command_path(cast(Runner, runner), "rg") == "/usr/bin/rg"
@@ -768,7 +773,11 @@ def test_find_system_command_path_ignores_user_local() -> None:
     """_find_system_command_path must ignore binaries under the user's home."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, str(Path.home() / ".local/bin/rg")),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, str(Path.home() / ".local/bin/rg")),
         }
     )
     assert find_system_command_path(cast(Runner, runner), "rg") is None
@@ -778,7 +787,15 @@ def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
     """_find_system_command_path must query the WSL distro when requested."""
     runner = FakeRunner(
         outputs={
-            ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
         }
     )
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -823,7 +840,11 @@ def test_warn_or_uninstall_keeps_system_version_when_requested() -> None:
     """With keep policy, the function must warn and not run any uninstall command."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -840,7 +861,11 @@ def test_warn_or_uninstall_removes_system_version_when_requested() -> None:
     """With uninstall policy, the function must run the package manager remove command."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -857,7 +882,11 @@ def test_warn_or_uninstall_prompts_and_removes_on_yes() -> None:
     """Interactive mode must remove the package when the user answers yes."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
@@ -872,7 +901,11 @@ def test_warn_or_uninstall_prompts_and_keeps_on_no() -> None:
     """Interactive mode must keep the package when the user answers no."""
     runner = FakeRunner(
         outputs={
-            ("sh", "-c", "command -v rg"): (0, "/usr/bin/rg"),
+            (
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin command -v rg",
+            ): (0, "/usr/bin/rg"),
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
         }
     )
