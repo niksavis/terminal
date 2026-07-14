@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 import sys
 from pathlib import Path
 
@@ -155,11 +156,13 @@ def _is_wsl_target(platform: PlatformInfo) -> bool:
     return is_running_in_wsl() or platform.os == OperatingSystem.WINDOWS
 
 
-def deploy_all(
+def deploy_all(  # noqa: PLR0913
     runner: Runner,
     platform: PlatformInfo,
     *,
     include_starship: bool = True,
+    include_claude: bool = True,
+    claude_nerdfont: bool = True,
     no_sudo: bool = False,
     wsl_start_dir: str | None = None,
 ) -> None:
@@ -181,6 +184,8 @@ def deploy_all(
             set_host_default_shell(runner, platform)
         else:
             runner.reporter.info("Skipping default shell change because --no-sudo was requested.")
+    if include_claude:
+        deploy_claude_statusline(runner, platform, nerdfont=claude_nerdfont)
 
 
 def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
@@ -220,6 +225,81 @@ def deploy_wsl_configs(
             runner.run(wsl_exec_command(distro, ["mkdir", "-p", destination.rsplit("/", 1)[0]]))
             wsl_source = _to_wsl_path(runner, distro, source)
             runner.run(wsl_exec_command(distro, ["cp", wsl_source, destination]))
+
+
+def _claude_statusline_command(*, nerdfont: bool) -> str:
+    """Return the settings.json command that launches the status line script."""
+    prefix = "" if nerdfont else "STATUSLINE_NERDFONT=0 "
+    return f"{prefix}bash ~/.claude/statusline.sh"
+
+
+def _claude_wsl_install_script(source: str, *, nerdfont: bool) -> str:
+    """Return a POSIX-sh script that installs the status line into a WSL/Linux home.
+
+    Runs inside the target distro; a no-op when Claude Code (``~/.claude``) is absent.
+    Merges settings.json with jq so existing keys are preserved.
+    """
+    command = _claude_statusline_command(nerdfont=nerdfont)
+    return (
+        'claude="$HOME/.claude"; '
+        '[ -d "$claude" ] || { echo "Claude Code not detected ($claude missing); '
+        'skipping status line."; exit 0; }; '
+        '[ -f "$claude/statusline.sh" ] && echo "Replacing existing $claude/statusline.sh"; '
+        f'cp -f {shlex.quote(source)} "$claude/statusline.sh"; '
+        's="$claude/settings.json"; [ -f "$s" ] || printf "%s" "{}" > "$s"; '
+        'command -v jq >/dev/null 2>&1 || { echo "WARN: jq not found; add the statusLine '
+        'block to $s manually"; exit 0; }; '
+        'tmp="$(mktemp)"; '
+        f"if jq --arg c {shlex.quote(command)} "
+        "'.statusLine = {type: \"command\", command: $c, padding: 0}' "
+        '"$s" > "$tmp" 2>/dev/null; then mv "$tmp" "$s"; '
+        'else rm -f "$tmp"; '
+        'echo "WARN: $s is not valid JSON; add the statusLine block manually"; fi'
+    )
+
+
+def deploy_claude_statusline(
+    runner: Runner, platform: PlatformInfo, *, nerdfont: bool = True
+) -> None:
+    """Install the Claude Code status line when Claude Code is present (``~/.claude``).
+
+    Copies the status line script into ``~/.claude`` and registers it in
+    ``settings.json``, preserving any existing settings. A no-op (with an info
+    message) when Claude Code is not installed. Pass ``nerdfont=False`` for the
+    universal build that renders without a Nerd Font.
+    """
+    source = template_path("statusline.sh")
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        distro = _wsl_distro(platform)
+        wsl_source = _to_wsl_path(runner, distro, source)
+        script = _claude_wsl_install_script(wsl_source, nerdfont=nerdfont)
+        runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+        return
+    claude_dir = platform.home / ".claude"
+    if not claude_dir.is_dir():
+        runner.reporter.info("Claude Code not detected (~/.claude missing); skipping status line.")
+        return
+    destination = claude_dir / "statusline.sh"
+    if destination.exists():
+        runner.reporter.info(f"Replacing existing {destination}")
+    runner.copy(source, destination)
+    settings_path = claude_dir / "settings.json"
+    settings: dict[str, object] = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            runner.reporter.warn(
+                "~/.claude/settings.json is not valid JSON; leaving it unchanged. "
+                "Add the statusLine block manually."
+            )
+            return
+    settings["statusLine"] = {
+        "type": "command",
+        "command": _claude_statusline_command(nerdfont=nerdfont),
+        "padding": 0,
+    }
+    runner.write_text(settings_path, json.dumps(settings, indent=2) + "\n")
 
 
 def _configure_vscode_terminal_windows(

@@ -5,10 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from terminal_setup.configs import (
     CHEAT_SHEET_PATH,
     TEMPLATE_DIR,
     configure_vscode_terminal,
+    deploy_claude_statusline,
     deploy_micro_config,
     deploy_tmux_config,
     deploy_wezterm_config,
@@ -17,6 +20,36 @@ from terminal_setup.configs import (
 )
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
 from terminal_setup.runner import Runner
+
+
+class RecordingReporter:
+    """Reporter that records messages and commands for assertions."""
+
+    def __init__(self) -> None:
+        """Initialize empty record lists."""
+        self.messages: list[str] = []
+        self.commands: list[list[str]] = []
+
+    def info(self, message: str) -> None:
+        """Record an info message."""
+        self.messages.append(message)
+
+    def warn(self, message: str) -> None:
+        """Record a warning message."""
+        self.messages.append(message)
+
+    def error(self, message: str) -> None:
+        """Record an error message."""
+        self.messages.append(message)
+
+    def command(self, command: list[str]) -> None:
+        """Record a command."""
+        self.commands.append(command)
+
+    def confirm(self, message: str) -> bool:
+        """Return False for any confirmation prompt."""
+        del message
+        return False
 
 
 def make_platform(
@@ -265,3 +298,113 @@ def test_configure_vscode_terminal_windows_uses_optional_wsl_cwd(tmp_path: Path)
     settings = json.loads(platform.vscode_settings_path.read_text(encoding="utf-8"))
     profiles = settings.get("terminal.integrated.profiles.windows", {})
     assert profiles["Ubuntu (WSL)"]["args"] == ["-d", "Ubuntu", "--cd", "$HOME/workspace"]
+
+
+def _make_claude_home(tmp_path: Path) -> Path:
+    """Create a ~/.claude directory under a temp home and return it."""
+    claude = tmp_path / ".claude"
+    claude.mkdir(parents=True)
+    return claude
+
+
+def test_deploy_claude_statusline_installs(tmp_path: Path) -> None:
+    """The status line script and settings.json entry must be installed."""
+    claude = _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=False), platform)
+
+    script = claude / "statusline.sh"
+    assert script.exists()
+    assert "Claude Code status line" in script.read_text(encoding="utf-8")
+    settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert settings["statusLine"] == {
+        "type": "command",
+        "command": "bash ~/.claude/statusline.sh",
+        "padding": 0,
+    }
+
+
+def test_deploy_claude_statusline_universal_font(tmp_path: Path) -> None:
+    """nerdfont=False must select the universal build via the command prefix."""
+    claude = _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=False), platform, nerdfont=False)
+
+    settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert settings["statusLine"]["command"] == "STATUSLINE_NERDFONT=0 bash ~/.claude/statusline.sh"
+
+
+def test_deploy_claude_statusline_preserves_and_is_idempotent(tmp_path: Path) -> None:
+    """Existing settings keys must be preserved and repeated runs must be stable."""
+    claude = _make_claude_home(tmp_path)
+    (claude / "settings.json").write_text(
+        json.dumps({"theme": "dark"}, indent=2) + "\n", encoding="utf-8"
+    )
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=False), platform)
+    deploy_claude_statusline(Runner(dry_run=False), platform)
+
+    settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert settings["theme"] == "dark"
+    assert settings["statusLine"]["command"] == "bash ~/.claude/statusline.sh"
+
+
+def test_deploy_claude_statusline_skips_without_claude_dir(tmp_path: Path) -> None:
+    """Without ~/.claude the deploy must be a no-op with an info message."""
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    reporter = RecordingReporter()
+    deploy_claude_statusline(Runner(dry_run=False, reporter=reporter), platform)
+
+    assert not (tmp_path / ".claude").exists()
+    assert any("not detected" in message for message in reporter.messages)
+
+
+def test_deploy_claude_statusline_leaves_invalid_settings_unchanged(tmp_path: Path) -> None:
+    """Invalid settings.json must be left untouched while the script is still copied."""
+    claude = _make_claude_home(tmp_path)
+    (claude / "settings.json").write_text("{not json", encoding="utf-8")
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=False), platform)
+
+    assert (claude / "statusline.sh").exists()
+    assert (claude / "settings.json").read_text(encoding="utf-8") == "{not json"
+
+
+def test_deploy_claude_statusline_logs_replacement(tmp_path: Path) -> None:
+    """Re-installing over an existing script must overwrite and log the replacement."""
+    _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=False), platform)
+
+    reporter = RecordingReporter()
+    deploy_claude_statusline(Runner(dry_run=False, reporter=reporter), platform)
+    assert any(
+        "Replacing existing" in message and "statusline.sh" in message
+        for message in reporter.messages
+    )
+
+
+def test_deploy_claude_statusline_dry_run_makes_no_changes(tmp_path: Path) -> None:
+    """A dry run must not write any files."""
+    claude = _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_statusline(Runner(dry_run=True), platform)
+
+    assert not (claude / "statusline.sh").exists()
+    assert not (claude / "settings.json").exists()
+
+
+def test_deploy_claude_statusline_windows_pushes_into_wsl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """On a Windows host the deploy must run the install script inside the WSL distro."""
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    reporter = RecordingReporter()
+    deploy_claude_statusline(Runner(dry_run=True, reporter=reporter), platform)
+
+    joined = [" ".join(command) for command in reporter.commands]
+    assert any(
+        "statusline.sh" in command and "jq" in command and "$HOME/.claude" in command
+        for command in joined
+    )
