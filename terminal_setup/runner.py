@@ -111,8 +111,13 @@ class ConsoleReporter:
         self._emit("step", message)
 
     def command(self, command: list[str]) -> None:
-        """Print a command that is about to run."""
-        self._emit("run", shlex.join(command))
+        """Print a command that is about to run (truncated to one line on a terminal)."""
+        line = shlex.join(command)
+        if self._color:
+            limit = max(20, shutil.get_terminal_size((100, 24)).columns - 3)
+            if len(line) > limit:
+                line = line[: limit - 1] + "…"
+        self._emit("run", line)
 
     def confirm(self, message: str) -> bool:
         """Prompt the user for a yes/no answer."""
@@ -151,7 +156,10 @@ class Runner:
         prerequisite checks) that should always execute so dry-run output
         reflects the real system state.
         """
-        self.reporter.command(command)
+        # Echo actions, not read-only probes: dry_run_safe commands are inspections
+        # (command -v, apt-cache show, version checks) and would only add noise.
+        if not dry_run_safe:
+            self.reporter.command(command)
         if self.dry_run and not dry_run_safe:
             return subprocess.CompletedProcess(
                 args=command,
