@@ -208,7 +208,7 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Runtimes (WSL/Linux/macOS): `node` (latest v24, user-local in `~/.local`)
-- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, `micro settings.json`, and `~/.claude/statusline.sh` (Claude Code status line, when Claude Code is installed)
+- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, and `~/.claude/statusline.sh` (Claude Code status line, when Claude Code is installed)
 
 `lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
 
@@ -292,15 +292,7 @@ This is **harmless and expected**. The setup is intentionally lightweight: it ta
 
 ## Development
 
-After cloning, install all git hooks so commit format, lint, type checks, and tests run automatically:
-
-```bash
-uv sync
-npm install
-uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-```
-
-Run the test suite and pre-commit checks manually:
+Contributor environment setup (dependencies and git hooks) is covered under [Contributor setup](#contributor-setup-required-once-after-clone). Once that is done, run the test suite and checks manually with:
 
 ```bash
 uv run pytest tests/
