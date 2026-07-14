@@ -52,9 +52,9 @@ uv run python setup-terminal.py
 Optional validation:
 
 ```bash
-uv run python setup-terminal.py --check
+uv run python setup-terminal.py --only check
 uv run python setup-terminal.py --dry-run
-uv run python setup-terminal.py --report-only
+uv run python setup-terminal.py --only report
 ```
 
 ## What's here
@@ -75,7 +75,7 @@ Install this repository's terminal setup from the current directory.
 2. Run `uv run python setup-terminal.py`.
 3. If admin rights are unavailable on Windows, run `uv run python setup-terminal.py --user-install`.
 4. If any sudo/password or y/n update prompt appears, pause and ask me.
-5. When done, run `uv run python setup-terminal.py --report-only` and summarize what was installed, skipped, and any manual next steps.
+5. When done, run `uv run python setup-terminal.py --only report` and summarize what was installed, skipped, and any manual next steps.
 ```
 
 ## Quick start
@@ -199,7 +199,7 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 
 When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exists), the setup deploys a responsive status line to `~/.claude/statusline.sh` and registers it in `~/.claude/settings.json` (existing settings are preserved). It shows the model and reasoning effort, git repo/branch/state, gauges for context-window and 5-hour/weekly rate-limit usage (green → yellow → red), session cost with burn rate, and lines changed — using the same Tokyo Night palette as the prompt. Segments shorten and drop by priority as the terminal narrows.
 
-Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--claude-no-nerdfont` for the universal build that renders in any font, or `--skip-claude` to skip it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--config-only`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
+Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd-font` for the universal build that renders in any font, or `--skip-claude` to skip it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--only config`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
 
 ## What gets installed
 
@@ -231,25 +231,25 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--claude-
 ## CLI options
 
 ```bash
-uv run python setup-terminal.py --check      # verify prerequisites only
+uv run python setup-terminal.py --only check # verify prerequisites, then exit
 uv run python setup-terminal.py --dry-run    # preview changes
-uv run python setup-terminal.py --config-only # re-apply all configs (incl. Claude status line); no package installs
+uv run python setup-terminal.py --only config # re-apply all configs (incl. Claude status line); no package installs
+uv run python setup-terminal.py --only report # print verification summary, then exit
+uv run python setup-terminal.py --report     # run setup, then print verification summary
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
 uv run python setup-terminal.py --skip-claude # skip the Claude Code status line
-uv run python setup-terminal.py --claude-no-nerdfont # install the universal (no Nerd Font) status line
+uv run python setup-terminal.py --no-nerd-font # install the universal (no Nerd Font) status line
 uv run python setup-terminal.py --user-install # user-local installs everywhere; no admin/sudo
 uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
-uv run python setup-terminal.py --report-only # print verification summary without running setup
-uv run python setup-terminal.py --report     # run setup, then print verification summary
-uv run python setup-terminal.py --uninstall-system-versions # remove system tool versions automatically
-uv run python setup-terminal.py --keep-system-versions # keep system tool versions; only warn
+uv run python setup-terminal.py --system-versions uninstall # remove system tool versions without prompting
+uv run python setup-terminal.py --system-versions keep # keep system tool versions; only warn
 uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
 
 `--user-install` implies `--no-sudo` for tools inside WSL/Linux: every managed tool is installed user-locally under `~/.local`, even when a system copy already exists, so re-running the setup updates everything from one place.
 
-After installing, the setup reconciles duplicates: it reports every tool present both in `~/.local/bin` and system-wide, with both versions (for example `lazygit: user-local 0.63.0 vs system 0.60.0`), then asks per tool whether to remove the system copy. `--uninstall-system-versions` removes them all without prompting (requires sudo); `--keep-system-versions` only reports. The two flags are mutually exclusive. Headless runs never prompt or hang; they report and explain instead.
+After installing, the setup reconciles duplicates: it reports every tool present both in `~/.local/bin` and system-wide, with both versions (for example `lazygit: user-local 0.63.0 vs system 0.60.0`), then asks per tool whether to remove the system copy. `--system-versions uninstall` removes them all without prompting (requires sudo); `--system-versions keep` only reports. Headless runs never prompt or hang; they report and explain instead.
 
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 

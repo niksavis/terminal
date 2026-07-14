@@ -15,47 +15,68 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="terminal-setup",
         description="Install and configure a cross-platform terminal environment.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "examples:\n"
+            "  terminal-setup                 full install and configuration\n"
+            "  terminal-setup --dry-run       preview the steps without making changes\n"
+            "  terminal-setup --only check    verify prerequisites, then exit\n"
+            "  terminal-setup --only config   re-apply configuration only (no package installs)\n"
+            "  terminal-setup --only report   print the verification report, then exit\n"
+            "  terminal-setup --report        full run, then print the verification report\n"
+            "  terminal-setup --skip-claude   install everything except the Claude status line\n"
+            "  terminal-setup --no-nerd-font  use the universal (no Nerd Font) status line\n"
+        ),
     )
-    parser.add_argument(
+
+    run = parser.add_argument_group("run options")
+    run.add_argument(
         "--dry-run",
         action="store_true",
         help="Print the steps that would be executed without making changes.",
     )
-    parser.add_argument(
+    run.add_argument(
+        "--only",
+        choices=("check", "config", "report"),
+        help=(
+            "Limit the run to one phase and exit: 'check' verifies prerequisites, "
+            "'config' re-applies configuration without installing packages, "
+            "'report' prints the verification report."
+        ),
+    )
+    run.add_argument(
+        "--report",
+        action="store_true",
+        help="After a full run, print a verification report for tools and deployed configs.",
+    )
+
+    skip = parser.add_argument_group("skip components")
+    skip.add_argument(
         "--skip-vscode",
         action="store_true",
         help="Skip VS Code settings and extension configuration.",
     )
-    parser.add_argument(
+    skip.add_argument(
         "--skip-starship",
         action="store_true",
         help="Skip starship prompt installation and configuration.",
     )
-    parser.add_argument(
+    skip.add_argument(
         "--skip-claude",
         action="store_true",
-        help="Skip installing the Claude Code status line (installed by default when "
-        "~/.claude is present).",
+        help="Skip the Claude Code status line (installed by default when ~/.claude exists).",
     )
-    parser.add_argument(
-        "--claude-no-nerdfont",
+
+    status_line = parser.add_argument_group("status line")
+    status_line.add_argument(
+        "--no-nerd-font",
         action="store_true",
-        dest="claude_no_nerdfont",
+        dest="no_nerd_font",
         help="Install the universal (no Nerd Font) build of the Claude Code status line.",
     )
-    parser.add_argument(
-        "--check",
-        action="store_true",
-        help="Only check prerequisites and exit.",
-    )
-    parser.add_argument(
-        "--config-only",
-        action="store_true",
-        dest="config_only",
-        help="Re-apply configuration (WezTerm, tmux, zsh, starship, micro, VS Code settings, "
-        "and the Claude Code status line) without installing or checking packages.",
-    )
-    parser.add_argument(
+
+    install = parser.add_argument_group("install behavior")
+    install.add_argument(
         "--user-install",
         action="store_true",
         help=(
@@ -63,46 +84,31 @@ def build_parser() -> argparse.ArgumentParser:
             "Tools inside WSL/Linux are installed without sudo (as with --no-sudo)."
         ),
     )
-    parser.add_argument(
+    install.add_argument(
         "--no-sudo",
         action="store_true",
         dest="no_sudo",
         help=(
             "Avoid sudo/password prompts by installing tools into user-writable "
-            "locations where possible. Base system packages that are missing will "
-            "be skipped with a warning."
+            "locations where possible; missing base system packages are skipped with a warning."
         ),
     )
-    parser.add_argument(
-        "--report",
-        action="store_true",
-        help="Print a post-setup verification report for tools and deployed configs.",
-    )
-    parser.add_argument(
-        "--report-only",
-        action="store_true",
-        help="Only print the verification report; do not run setup actions.",
-    )
-    parser.add_argument(
-        "--uninstall-system-versions",
-        action="store_true",
-        dest="uninstall_system_versions",
+    install.add_argument(
+        "--system-versions",
+        choices=("keep", "uninstall"),
+        dest="system_versions",
         help=(
-            "When a system-wide version of a tool exists and a user-local copy is "
-            "installed, automatically remove the system version without prompting."
+            "How to handle a system-wide tool version when a user-local copy is installed: "
+            "'uninstall' removes it without prompting, 'keep' only warns. Prompts when unset."
         ),
     )
-    parser.add_argument(
-        "--keep-system-versions",
-        action="store_true",
-        dest="keep_system_versions",
-        help=("Keep system-wide versions of tools and only warn; do not prompt to uninstall them."),
-    )
-    parser.add_argument(
+
+    paths = parser.add_argument_group("paths")
+    paths.add_argument(
         "--windows-terminal-cwd",
-        help=("Optional Windows terminal cwd for VS Code (user-specific). Example: D:\\Workspace"),
+        help="Optional Windows terminal cwd for VS Code (user-specific). Example: D:\\Workspace",
     )
-    parser.add_argument(
+    paths.add_argument(
         "--wsl-terminal-cwd",
         help=(
             "Optional WSL startup cwd for terminal profiles and WezTerm config "
@@ -343,7 +349,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
     skip_vscode: bool,
     skip_starship: bool,
     skip_claude: bool,
-    claude_no_nerdfont: bool,
+    no_nerd_font: bool,
     config_only: bool,
     user_install: bool,
     no_sudo: bool,
@@ -408,7 +414,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
         platform_info,
         include_starship=not skip_starship,
         include_claude=not skip_claude,
-        claude_nerdfont=not claude_no_nerdfont,
+        claude_nerdfont=not no_nerd_font,
         no_sudo=no_sudo,
         wsl_start_dir=wsl_terminal_cwd,
     )
@@ -448,16 +454,10 @@ def main(argv: list[str] | None = None) -> int:
     runner = Runner(dry_run=args.dry_run, reporter=reporter)
     platform_info = platform.detect_platform()
 
-    if args.uninstall_system_versions and args.keep_system_versions:
-        runner.reporter.error(
-            "--uninstall-system-versions and --keep-system-versions are mutually exclusive."
-        )
-        return 2
-
-    if args.check:
+    if args.only == "check":
         return run_check(platform_info, runner)
 
-    if args.report_only:
+    if args.only == "report":
         status = run_check(platform_info, runner)
         print_setup_report(
             runner,
@@ -467,7 +467,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         return status
 
-    if not args.config_only:
+    config_only = args.only == "config"
+    if not config_only:
         status = run_check(platform_info, runner)
         if status != 0:
             if args.dry_run:
@@ -481,12 +482,12 @@ def main(argv: list[str] | None = None) -> int:
         skip_vscode=args.skip_vscode,
         skip_starship=args.skip_starship,
         skip_claude=args.skip_claude,
-        claude_no_nerdfont=args.claude_no_nerdfont,
-        config_only=args.config_only,
+        no_nerd_font=args.no_nerd_font,
+        config_only=config_only,
         user_install=args.user_install,
         no_sudo=args.no_sudo,
-        uninstall_system_versions=args.uninstall_system_versions,
-        keep_system_versions=args.keep_system_versions,
+        uninstall_system_versions=args.system_versions == "uninstall",
+        keep_system_versions=args.system_versions == "keep",
         report=args.report,
         windows_terminal_cwd=args.windows_terminal_cwd,
         wsl_terminal_cwd=args.wsl_terminal_cwd,
