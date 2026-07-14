@@ -126,6 +126,10 @@ class FakeReporter:
         """Record a step message."""
         self.messages.append(("step", message))
 
+    def prompt(self, message: str) -> None:
+        """Record a prompt message."""
+        self.messages.append(("prompt", message))
+
     def command(self, command: list[str]) -> None:
         """Record a command that would run."""
         self.messages.append(("command", " ".join(command)))

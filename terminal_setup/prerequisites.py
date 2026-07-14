@@ -180,7 +180,7 @@ def install_package(
     """Install a package using the detected package manager."""
     if package_manager == PackageManager.WINGET:
         if _is_winget_package_installed(runner, package):
-            runner.reporter.info(f"{package} is already installed; skipping")
+            runner.reporter.success(f"{package} is already installed; skipping")
             return
     elif package_manager == PackageManager.APT and not _apt_package_available(
         runner, package, wsl_distro=wsl_distro
@@ -384,12 +384,12 @@ def _should_install_package_update(
         return True
 
     if latest is None or latest == installed:
-        runner.reporter.info(f"{package} is up to date ({installed}); skipping")
+        runner.reporter.success(f"{package} is up to date ({installed}); skipping")
         return False
 
     prompt = f"Update {package} from {installed} to {latest}?"
     if runner.dry_run:
-        runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+        runner.reporter.prompt(f"{prompt} (answer 'no' by default in dry-run mode)")
         return False
     if runner.confirm(prompt):
         return True
@@ -788,7 +788,7 @@ def _handle_unowned_system_version(
         "Remove it so the user-local copy in ~/.local/bin takes precedence?"
     )
     if runner.dry_run:
-        runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+        runner.reporter.prompt(f"{prompt} (answer 'no' by default in dry-run mode)")
         return
     if runner.confirm(prompt):
         _remove_system_file(runner, path, wsl_distro=wsl_distro)
@@ -848,7 +848,7 @@ def _reconcile_system_versions(
     if not conflicts:
         return
 
-    runner.reporter.info(
+    runner.reporter.step(
         "Detected tools installed both in ~/.local/bin and system-wide "
         "(the user-local copy takes precedence on PATH):"
     )
@@ -856,7 +856,7 @@ def _reconcile_system_versions(
         user_version = _command_version(runner, f"$HOME/.local/bin/{binary}", wsl_distro=wsl_distro)
         system_version = _command_version(runner, path, wsl_distro=wsl_distro)
         runner.reporter.info(
-            f"  - {binary}: user-local {user_version} (~/.local/bin/{binary}) "
+            f"  {binary}: user-local {user_version} (~/.local/bin/{binary}) "
             f"vs system {system_version} ({path})"
         )
 
@@ -933,7 +933,7 @@ def _warn_or_uninstall_system_version(
         "Remove the system version so the user-local copy in ~/.local/bin takes precedence?"
     )
     if runner.dry_run:
-        runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+        runner.reporter.prompt(f"{prompt} (answer 'no' by default in dry-run mode)")
         return
     if runner.confirm(prompt):
         _uninstall_package(runner, package, package_manager, wsl_distro=wsl_distro)
@@ -1180,13 +1180,13 @@ def _install_lazygit_release(
             "lazygit is already up to date "
             f"(installed: {installed_version}, latest: {latest_version})"
         )
-        runner.reporter.info(message)
+        runner.reporter.success(message)
         return
 
     if installed_version:
         prompt = f"Update lazygit from {installed_version} to {latest_version}?"
         if runner.dry_run:
-            runner.reporter.info(f"Would ask: {prompt} (answer 'no' by default in dry-run mode)")
+            runner.reporter.prompt(f"{prompt} (answer 'no' by default in dry-run mode)")
             return
         if not runner.confirm(prompt):
             runner.reporter.info("Skipping lazygit update")

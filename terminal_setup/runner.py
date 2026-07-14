@@ -35,6 +35,10 @@ class Reporter(Protocol):
         """Report a phase heading or a next action for the user."""
         ...
 
+    def prompt(self, message: str) -> None:
+        """Report a decision that needs the user's input."""
+        ...
+
     def command(self, command: list[str]) -> None:
         """Report a command that is about to run."""
         ...
@@ -51,6 +55,7 @@ _LEVEL_STYLES = {
     "warn": ("⚠", "33", "[warn]"),  # yellow warning sign
     "info": ("•", "2", "[info]"),  # dim bullet
     "step": ("→", "36;1", "[next]"),  # bold cyan arrow
+    "prompt": ("?", "35", "[ask ]"),  # magenta question — needs a decision
     "run": ("$", "2", "[ run]"),  # dim shell prompt
 }
 
@@ -109,6 +114,10 @@ class ConsoleReporter:
     def step(self, message: str) -> None:
         """Print a phase heading or a next action for the user."""
         self._emit("step", message)
+
+    def prompt(self, message: str) -> None:
+        """Print a decision that needs the user's input."""
+        self._emit("prompt", message)
 
     def command(self, command: list[str]) -> None:
         """Print a command that is about to run (truncated to one line on a terminal)."""
