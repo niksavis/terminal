@@ -42,6 +42,14 @@ class RecordingReporter:
         """Record an error message."""
         self.messages.append(message)
 
+    def success(self, message: str) -> None:
+        """Record a success message."""
+        self.messages.append(message)
+
+    def step(self, message: str) -> None:
+        """Record a step message."""
+        self.messages.append(message)
+
     def command(self, command: list[str]) -> None:
         """Record a command."""
         self.commands.append(command)

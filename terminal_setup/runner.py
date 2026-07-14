@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import shutil
 import subprocess  # nosec B404
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
@@ -25,6 +27,14 @@ class Reporter(Protocol):
         """Report an error message."""
         ...
 
+    def success(self, message: str) -> None:
+        """Report a step that completed successfully."""
+        ...
+
+    def step(self, message: str) -> None:
+        """Report a phase heading or a next action for the user."""
+        ...
+
     def command(self, command: list[str]) -> None:
         """Report a command that is about to run."""
         ...
@@ -34,24 +44,75 @@ class Reporter(Protocol):
         ...
 
 
+_LEVEL_STYLES = {
+    # level: (unicode marker, ANSI colour code, ASCII fallback label)
+    "success": ("✓", "32", "[ ok ]"),  # green check
+    "error": ("✗", "31", "[fail]"),  # red cross
+    "warn": ("⚠", "33", "[warn]"),  # yellow warning sign
+    "info": ("•", "2", "[info]"),  # dim bullet
+    "step": ("→", "36;1", "[next]"),  # bold cyan arrow
+    "run": ("$", "2", "[ run]"),  # dim shell prompt
+}
+
+
+def _stream_supports_color() -> bool:
+    """Return True when ANSI colour should be emitted to stdout."""
+    return (
+        sys.stdout.isatty()
+        and os.environ.get("NO_COLOR") is None
+        and os.environ.get("TERM") != "dumb"
+    )
+
+
+def _stream_supports_unicode() -> bool:
+    """Return True when stdout can encode the marker glyphs."""
+    return "utf" in (sys.stdout.encoding or "").lower()
+
+
 class ConsoleReporter:
-    """Default reporter that prints to stdout/stderr."""
+    """Default reporter that prints symbol-prefixed, colour-aware progress lines.
+
+    Colour is used only on an interactive terminal (and never when ``NO_COLOR`` is
+    set); unicode markers fall back to ASCII labels on non-UTF-8 streams, so output
+    stays readable when piped, logged, or run in a legacy console.
+    """
+
+    def __init__(self) -> None:
+        """Detect colour and unicode support once for this stream."""
+        self._color = _stream_supports_color()
+        self._unicode = _stream_supports_unicode()
+
+    def _emit(self, level: str, message: str) -> None:
+        marker, color, label = _LEVEL_STYLES[level]
+        marker = marker if self._unicode else label
+        if self._color:
+            print(f"\033[{color}m{marker}\033[0m {message}")
+        else:
+            print(f"{marker} {message}")
 
     def info(self, message: str) -> None:
         """Print an informational message."""
-        print(f"INFO: {message}")
+        self._emit("info", message)
 
     def warn(self, message: str) -> None:
         """Print a warning message."""
-        print(f"WARN: {message}")
+        self._emit("warn", message)
 
     def error(self, message: str) -> None:
         """Print an error message."""
-        print(f"ERROR: {message}")
+        self._emit("error", message)
+
+    def success(self, message: str) -> None:
+        """Print a completed-step message."""
+        self._emit("success", message)
+
+    def step(self, message: str) -> None:
+        """Print a phase heading or a next action for the user."""
+        self._emit("step", message)
 
     def command(self, command: list[str]) -> None:
         """Print a command that is about to run."""
-        print(f"RUN: {shlex.join(command)}")
+        self._emit("run", shlex.join(command))
 
     def confirm(self, message: str) -> bool:
         """Prompt the user for a yes/no answer."""

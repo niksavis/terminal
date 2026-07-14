@@ -122,9 +122,9 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
     """Print a single report status line."""
     suffix = f" ({detail})" if detail else ""
     if ok:
-        runner.reporter.info(f"[REPORT][OK] {label}{suffix}")
+        runner.reporter.success(f"{label}{suffix}")
         return
-    runner.reporter.warn(f"[REPORT][MISSING] {label}{suffix}")
+    runner.reporter.warn(f"{label}{suffix}")
 
 
 def _wsl_command_present(
@@ -303,7 +303,7 @@ def print_setup_report(
     include_vscode: bool,
 ) -> None:
     """Print a concise post-setup report of tools and deployed configs."""
-    runner.reporter.info("[REPORT] Setup verification summary")
+    runner.reporter.step("Verification report")
 
     in_wsl = is_running_in_wsl()
     if platform_info.os == platform.OperatingSystem.WINDOWS:
@@ -331,14 +331,18 @@ def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
     all_present = True
     for status in statuses:
         if status.present:
-            runner.reporter.info(f"[OK] {status.name}: {status.message}")
+            runner.reporter.success(f"{status.name}: {status.message}")
         else:
             all_present = False
-            runner.reporter.warn(f"[MISSING] {status.name}: {status.message}")
+            runner.reporter.warn(f"{status.name}: {status.message}")
     if not all_present:
         runner.reporter.error("Some prerequisites are missing.")
+        runner.reporter.step(
+            "Install the missing tools, or re-run with --user-install to add them "
+            "user-locally without admin rights; use --dry-run to preview first."
+        )
         return 1
-    runner.reporter.info("All prerequisites are satisfied.")
+    runner.reporter.success("All prerequisites are satisfied.")
     return 0
 
 
@@ -379,6 +383,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
                 runner.reporter.warn("WSL default is not Ubuntu; attempting to install Ubuntu.")
                 prerequisites.install_wsl_ubuntu(runner)
 
+        runner.reporter.step("Installing tools")
         if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
             if in_wsl:
                 runner.reporter.info(
@@ -409,6 +414,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
         if not skip_starship:
             prerequisites.ensure_starship(runner, platform_info)
 
+    runner.reporter.step("Deploying configuration")
     configs.deploy_all(
         runner,
         platform_info,
@@ -437,12 +443,15 @@ def run_setup(  # noqa: PLR0912, PLR0913
             include_vscode=not skip_vscode,
         )
 
-    runner.reporter.info("Setup complete.")
-    if not config_only:
+    runner.reporter.success("Setup complete.")
+    if config_only:
+        runner.reporter.step("Reload your shell or WezTerm to pick up the new configuration.")
+    else:
         if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
-            runner.reporter.info("Restart your terminal for the updated PATH to take effect.")
+            runner.reporter.step("Restart your terminal for the updated PATH to take effect.")
         if in_wsl:
-            runner.reporter.info("Restart your WSL session for the updated PATH to take effect.")
+            runner.reporter.step("Restart your WSL session for the updated PATH to take effect.")
+    runner.reporter.step("Verify anytime with: terminal-setup --only report")
     return 0
 
 
