@@ -32,9 +32,28 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip starship prompt installation and configuration.",
     )
     parser.add_argument(
+        "--skip-claude",
+        action="store_true",
+        help="Skip installing the Claude Code status line (installed by default when "
+        "~/.claude is present).",
+    )
+    parser.add_argument(
+        "--claude-no-nerdfont",
+        action="store_true",
+        dest="claude_no_nerdfont",
+        help="Install the universal (no Nerd Font) build of the Claude Code status line.",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="Only check prerequisites and exit.",
+    )
+    parser.add_argument(
+        "--config-only",
+        action="store_true",
+        dest="config_only",
+        help="Re-apply configuration (WezTerm, tmux, zsh, starship, micro, VS Code settings, "
+        "and the Claude Code status line) without installing or checking packages.",
     )
     parser.add_argument(
         "--user-install",
@@ -226,6 +245,7 @@ def _print_wsl_report(
         "~/.zshrc",
         "~/.config/starship.toml",
         "~/.config/micro/settings.json",
+        "~/.claude/statusline.sh",
     ]:
         ok, detail = _wsl_file_exists(runner, platform_info, path)
         _report_status(runner, f"wsl:{path}", ok, detail)
@@ -316,12 +336,15 @@ def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
     return 0
 
 
-def run_setup(  # noqa: PLR0913
+def run_setup(  # noqa: PLR0912, PLR0913
     platform_info: platform.PlatformInfo,
     runner: Runner,
     *,
     skip_vscode: bool,
     skip_starship: bool,
+    skip_claude: bool,
+    claude_no_nerdfont: bool,
+    config_only: bool,
     user_install: bool,
     no_sudo: bool,
     uninstall_system_versions: bool,
@@ -333,54 +356,66 @@ def run_setup(  # noqa: PLR0913
     """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
     runner.reporter.info(f"Package manager: {platform_info.package_manager.name.lower()}")
-    if user_install:
+    if config_only:
+        runner.reporter.info(
+            "Config-only mode: applying configuration without installing packages."
+        )
+    elif user_install:
         runner.reporter.info("User-install mode: tools will be installed without admin rights")
 
     in_wsl = is_running_in_wsl()
-    if platform_info.os == platform.OperatingSystem.WINDOWS:
-        if not platform_info.is_wsl_available:
-            runner.reporter.warn("WSL is not available; attempting to install Ubuntu.")
-            prerequisites.install_wsl_ubuntu(runner)
-        elif not platform_info.is_wsl_default_ubuntu:
-            runner.reporter.warn("WSL default is not Ubuntu; attempting to install Ubuntu.")
-            prerequisites.install_wsl_ubuntu(runner)
+    if not config_only:
+        if platform_info.os == platform.OperatingSystem.WINDOWS:
+            if not platform_info.is_wsl_available:
+                runner.reporter.warn("WSL is not available; attempting to install Ubuntu.")
+                prerequisites.install_wsl_ubuntu(runner)
+            elif not platform_info.is_wsl_default_ubuntu:
+                runner.reporter.warn("WSL default is not Ubuntu; attempting to install Ubuntu.")
+                prerequisites.install_wsl_ubuntu(runner)
 
-    if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
-        if in_wsl:
-            runner.reporter.info("Running inside WSL; installing tools into the current distro.")
-        prerequisites.ensure_wsl_tools(
+        if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
+            if in_wsl:
+                runner.reporter.info(
+                    "Running inside WSL; installing tools into the current distro."
+                )
+            prerequisites.ensure_wsl_tools(
+                runner,
+                platform_info,
+                no_sudo=no_sudo or user_install,
+                uninstall_system_versions=uninstall_system_versions,
+                keep_system_versions=keep_system_versions,
+            )
+            prerequisites.ensure_wsl_cli_extras(runner, platform_info)
+        else:
+            prerequisites.ensure_shell_tools(runner, platform_info)
+            prerequisites.ensure_host_cli_extras(
+                runner, platform_info, no_sudo=no_sudo or user_install
+            )
+
+        prerequisites.ensure_wezterm(
             runner,
             platform_info,
             no_sudo=no_sudo or user_install,
-            uninstall_system_versions=uninstall_system_versions,
-            keep_system_versions=keep_system_versions,
         )
-        prerequisites.ensure_wsl_cli_extras(runner, platform_info)
-    else:
-        prerequisites.ensure_shell_tools(runner, platform_info)
-        prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=no_sudo or user_install)
 
-    prerequisites.ensure_wezterm(
-        runner,
-        platform_info,
-        no_sudo=no_sudo or user_install,
-    )
+        prerequisites.ensure_node(runner, platform_info)
 
-    prerequisites.ensure_node(runner, platform_info)
-
-    if not skip_starship:
-        prerequisites.ensure_starship(runner, platform_info)
+        if not skip_starship:
+            prerequisites.ensure_starship(runner, platform_info)
 
     configs.deploy_all(
         runner,
         platform_info,
         include_starship=not skip_starship,
+        include_claude=not skip_claude,
+        claude_nerdfont=not claude_no_nerdfont,
         no_sudo=no_sudo,
         wsl_start_dir=wsl_terminal_cwd,
     )
 
     if not skip_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:
-        configs.install_vscode_wsl_extension(runner, platform_info)
+        if not config_only:
+            configs.install_vscode_wsl_extension(runner, platform_info)
         configs.configure_vscode_terminal(
             runner,
             platform_info,
@@ -397,10 +432,11 @@ def run_setup(  # noqa: PLR0913
         )
 
     runner.reporter.info("Setup complete.")
-    if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
-        runner.reporter.info("Restart your terminal for the updated PATH to take effect.")
-    if in_wsl:
-        runner.reporter.info("Restart your WSL session for the updated PATH to take effect.")
+    if not config_only:
+        if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
+            runner.reporter.info("Restart your terminal for the updated PATH to take effect.")
+        if in_wsl:
+            runner.reporter.info("Restart your WSL session for the updated PATH to take effect.")
     return 0
 
 
@@ -431,18 +467,22 @@ def main(argv: list[str] | None = None) -> int:
         )
         return status
 
-    status = run_check(platform_info, runner)
-    if status != 0:
-        if args.dry_run:
-            runner.reporter.info("Dry-run continues; missing prerequisites would be installed.")
-        else:
-            return status
+    if not args.config_only:
+        status = run_check(platform_info, runner)
+        if status != 0:
+            if args.dry_run:
+                runner.reporter.info("Dry-run continues; missing prerequisites would be installed.")
+            else:
+                return status
 
     return run_setup(
         platform_info,
         runner,
         skip_vscode=args.skip_vscode,
         skip_starship=args.skip_starship,
+        skip_claude=args.skip_claude,
+        claude_no_nerdfont=args.claude_no_nerdfont,
+        config_only=args.config_only,
         user_install=args.user_install,
         no_sudo=args.no_sudo,
         uninstall_system_versions=args.uninstall_system_versions,

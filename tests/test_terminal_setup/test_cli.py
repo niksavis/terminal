@@ -31,6 +31,69 @@ def test_parser_skip_flags() -> None:
     assert args.skip_starship is True
 
 
+def test_parser_claude_flags() -> None:
+    """The parser must accept Claude status line flags."""
+    parser = build_parser()
+    args = parser.parse_args(["--skip-claude", "--claude-no-nerdfont"])
+    assert args.skip_claude is True
+    assert args.claude_no_nerdfont is True
+
+
+def test_parser_config_only_flag() -> None:
+    """The parser must accept --config-only."""
+    parser = build_parser()
+    args = parser.parse_args(["--config-only"])
+    assert args.config_only is True
+
+
+def test_run_setup_config_only_skips_package_installs() -> None:
+    """--config-only must deploy configs without installing or checking packages."""
+    fake_platform = PlatformInfo(
+        os=OperatingSystem.LINUX,
+        package_manager=PackageManager.APT,
+        is_wsl_available=True,
+        is_wsl_default_ubuntu=True,
+        wsl_distribution="Ubuntu",
+        shell="/bin/zsh",
+        home=Path.home(),
+        wezterm_config_dir=Path.home() / ".config" / "wezterm",
+        vscode_settings_path=None,
+    )
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras") as mock_extras,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_node") as mock_node,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_starship") as mock_starship,
+        mock.patch("terminal_setup.cli.configs.deploy_all") as mock_deploy,
+    ):
+        result = run_setup(
+            fake_platform,
+            mock.Mock(),
+            skip_vscode=True,
+            skip_starship=False,
+            skip_claude=False,
+            claude_no_nerdfont=False,
+            config_only=True,
+            user_install=False,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+
+    assert result == 0
+    mock_tools.assert_not_called()
+    mock_extras.assert_not_called()
+    mock_wezterm.assert_not_called()
+    mock_node.assert_not_called()
+    mock_starship.assert_not_called()
+    mock_deploy.assert_called_once()
+
+
 def test_parser_report_flag() -> None:
     """The parser must accept --report."""
     parser = build_parser()
@@ -144,6 +207,9 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
             mock.Mock(),
             skip_vscode=True,
             skip_starship=True,
+            skip_claude=True,
+            claude_no_nerdfont=False,
+            config_only=False,
             user_install=True,
             no_sudo=False,
             uninstall_system_versions=False,

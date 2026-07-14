@@ -60,7 +60,7 @@ uv run python setup-terminal.py --report-only
 ## What's here
 
 - **Terminal setup** — Python package in [`terminal_setup/`](terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
-- **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), [`starship.toml`](terminal_setup/templates/starship.toml), and [`micro-settings.json`](terminal_setup/templates/micro-settings.json).
+- **Config templates** — [`wezterm.lua`](terminal_setup/templates/wezterm.lua), [`.tmux.conf`](terminal_setup/templates/tmux.conf), [`.zshrc`](terminal_setup/templates/zshrc), [`starship.toml`](terminal_setup/templates/starship.toml), [`micro-settings.json`](terminal_setup/templates/micro-settings.json), and [`statusline.sh`](terminal_setup/templates/statusline.sh) (Claude Code status line).
 - **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
 - **Agent skills (optional)** — many provided tools have companion skills in [`.claude/skills/`](.claude/skills/). For now, copy the skills you want into your own repository manually.
 
@@ -195,6 +195,12 @@ A typical prompt looks like:
 
 The prompt uses the Tokyo Night color palette and keeps all segments on one line for readability.
 
+## Claude Code status line
+
+When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exists), the setup deploys a responsive status line to `~/.claude/statusline.sh` and registers it in `~/.claude/settings.json` (existing settings are preserved). It shows the model and reasoning effort, git repo/branch/state, gauges for context-window and 5-hour/weekly rate-limit usage (green → yellow → red), session cost with burn rate, and lines changed — using the same Tokyo Night palette as the prompt. Segments shorten and drop by priority as the terminal narrows.
+
+Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--claude-no-nerdfont` for the universal build that renders in any font, or `--skip-claude` to skip it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--config-only`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
+
 ## What gets installed
 
 ### Common baseline (all supported platforms)
@@ -202,7 +208,7 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Runtimes (WSL/Linux/macOS): `node` (latest v24, user-local in `~/.local`)
-- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, `micro settings.json`
+- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, `micro settings.json`, and `~/.claude/statusline.sh` (Claude Code status line, when Claude Code is installed)
 
 `lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
 
@@ -227,8 +233,11 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 ```bash
 uv run python setup-terminal.py --check      # verify prerequisites only
 uv run python setup-terminal.py --dry-run    # preview changes
+uv run python setup-terminal.py --config-only # re-apply all configs (incl. Claude status line); no package installs
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
+uv run python setup-terminal.py --skip-claude # skip the Claude Code status line
+uv run python setup-terminal.py --claude-no-nerdfont # install the universal (no Nerd Font) status line
 uv run python setup-terminal.py --user-install # user-local installs everywhere; no admin/sudo
 uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
 uv run python setup-terminal.py --report-only # print verification summary without running setup
