@@ -549,6 +549,12 @@ def test_statusline_template_defaults_to_universal_under_git_bash() -> None:
     assert "NERDFONT=${STATUSLINE_NERDFONT:-0}" in content
 
 
+def test_statusline_template_basenames_windows_paths() -> None:
+    """The git segment must strip Windows backslash path components to show the repo name."""
+    content = template_path("statusline.sh").read_text(encoding="utf-8")
+    assert r"##*\\}" in content
+
+
 def test_deploy_claude_statusline_windows_installs_native_host(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

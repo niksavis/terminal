@@ -148,7 +148,10 @@ while IFS= read -r line; do
   esac
 done <<<"$(git -C "$cwd" status --porcelain=v2 --branch 2>/dev/null)"
 if [ -n "$branch" ]; then
-  trunc "${proj##*/}" 20; repo=$_t
+  # repo name = basename of the project dir, handling Windows backslash paths
+  # (Claude on Windows sends e.g. C:\path\repo, which has no forward slash)
+  repo_dir=${proj##*/}; repo_dir=${repo_dir##*\\}
+  trunc "$repo_dir" 20; repo=$_t
   trunc "$branch" 24; br=$_t
   dotfg=$FGR; (( dirty ))&& dotfg=$FDR
   g="${FT}${G_REPO}${repo}${R} "
