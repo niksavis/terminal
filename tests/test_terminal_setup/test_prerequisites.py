@@ -9,6 +9,7 @@ from unittest import mock
 
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, detect_os
 from terminal_setup.prerequisites import (
+    _RECONCILE_BINARIES,
     TARGET_NODE_MAJOR,
     PrerequisiteStatus,
     SystemVersionPolicy,
@@ -33,6 +34,9 @@ from terminal_setup.prerequisites import (
 )
 from terminal_setup.prerequisites import (
     _install_lazygit_release as install_lazygit_release,
+)
+from terminal_setup.prerequisites import (
+    _install_user_local_tool as install_user_local_tool,
 )
 from terminal_setup.prerequisites import (
     _reconcile_system_versions as reconcile_system_versions,
@@ -966,3 +970,26 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
 
     assert available.call_count >= 1
     assert all(call.kwargs.get("wsl_distro") == "Ubuntu" for call in available.call_args_list)
+
+
+def test_install_user_local_tool_handles_gitlfs_and_direnv() -> None:
+    """git-lfs and direnv must have user-local installers instead of being skipped."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+
+    for package, marker in (("git-lfs", "git-lfs-linux-"), ("direnv", "direnv.linux-")):
+        runner = SpyRunner()
+        with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
+            handled = install_user_local_tool(cast(Runner, runner), package, platform)
+
+        assert handled is True, f"{package} should have a user-local installer"
+        scripts = [command[-1] for command in runner.commands if command[:2] == ["sh", "-c"]]
+        assert any(marker in script for script in scripts), (
+            f"expected a {package} download referencing {marker!r}"
+        )
+        assert any("~/.local/bin" in script for script in scripts)
+
+
+def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
+    """User-local git-lfs/direnv must participate in system-version reconciliation."""
+    assert "git-lfs" in _RECONCILE_BINARIES
+    assert "direnv" in _RECONCILE_BINARIES

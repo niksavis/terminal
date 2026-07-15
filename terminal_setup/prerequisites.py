@@ -812,6 +812,8 @@ _RECONCILE_BINARIES = (
     "jq",
     "yq",
     "shellcheck",
+    "git-lfs",
+    "direnv",
     "uv",
     "lazygit",
     "node",
@@ -1056,6 +1058,58 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
 
+def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
+    """Download the git-lfs binary to ~/.local/bin.
+
+    Installs the binary only, matching the apt package: the user still runs
+    ``git lfs install`` once to register the global filters.
+    """
+    script = (
+        "set -e; "
+        "arch=$(uname -m); "
+        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
+        "tmp=$(mktemp -d); "
+        "release=$(curl -s https://api.github.com/repos/git-lfs/git-lfs/releases/latest | "
+        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
+        "version=${release#v}; "
+        'pkg="git-lfs-linux-${arch}-${release}.tar.gz"; '
+        'base="https://github.com/git-lfs/git-lfs/releases/download/${release}"; '
+        'curl -fsSL -o "$tmp/$pkg" "$base/$pkg"; '
+        'curl -fsSL -o "$tmp/sha256sums.asc" "$base/sha256sums.asc"; '
+        # sha256sums.asc lists each asset as "<sha256> *<filename>".
+        'expected=$(grep " [*]$pkg$" "$tmp/sha256sums.asc" | cut -d" " -f1); '
+        'actual=$(sha256sum "$tmp/$pkg" | cut -d" " -f1); '
+        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
+        '|| { echo "git-lfs checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
+        'tar -xzf "$tmp/$pkg" -C "$tmp"; '
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/git-lfs-${version}/git-lfs" ~/.local/bin/git-lfs; '
+        'rm -rf "$tmp"'
+    )
+    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+
+
+def _install_direnv_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
+    """Download the direnv binary to ~/.local/bin.
+
+    direnv publishes no checksum file alongside its release binaries, so — like
+    the upstream install.sh and the xh/uv installers — the download is trusted
+    over HTTPS with no separate sha256 step.
+    """
+    script = (
+        "set -e; "
+        "arch=$(uname -m); "
+        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
+        "tmp=$(mktemp -d); "
+        'curl -fsSL -o "$tmp/direnv" '
+        "https://github.com/direnv/direnv/releases/latest/download/direnv.linux-${arch}; "
+        "mkdir -p ~/.local/bin; "
+        'install -m 0755 "$tmp/direnv" ~/.local/bin/direnv; '
+        'rm -rf "$tmp"'
+    )
+    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+
+
 def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
     """Install the latest Node.js ``TARGET_NODE_MAJOR`` release into ~/.local.
 
@@ -1286,6 +1340,8 @@ def _install_user_local_tool(
         "jq": _install_jq_binary,
         "yq": _install_yq_binary,
         "shellcheck": _install_shellcheck_binary,
+        "git-lfs": _install_gitlfs_binary,
+        "direnv": _install_direnv_binary,
     }
     if package in static_binaries:
         static_binaries[package](runner, wsl_distro=distro)
