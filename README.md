@@ -11,7 +11,7 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
 - Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v24), matching the Windows versions.
 - Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
-- Single-source tool ownership: `--user-install` keeps every managed tool in `~/.local`, reports conflicts with system copies (with versions), and can remove the duplicates.
+- No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
 
 ## Quick install (users)
 
@@ -23,11 +23,7 @@ Use the latest setup directly from `main` (no clone required):
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
 ```
 
-If you do not have admin rights on Windows:
-
-```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --user-install
-```
+This installs everything user-locally, without admin rights. To install the WSL/Linux tools system-wide instead (via apt/brew, needs sudo/admin), add `--system-install`.
 
 For reproducible installs, use the pinned command shown on each GitHub release page.
 
@@ -72,8 +68,8 @@ Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude C
 Install this repository's terminal setup from the current directory.
 
 1. Ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If missing, stop and tell me what to install.
-2. Run `uv run python setup-terminal.py`.
-3. If admin rights are unavailable on Windows, run `uv run python setup-terminal.py --user-install`.
+2. Run `uv run python setup-terminal.py` (user-local, no admin required).
+3. Only if a system-wide install is explicitly wanted, run `uv run python setup-terminal.py --system-install` (needs admin/sudo).
 4. If any sudo/password or y/n update prompt appears, pause and ask me.
 5. When done, run `uv run python setup-terminal.py --only report` and summarize what was installed, skipped, and any manual next steps.
 ```
@@ -244,14 +240,14 @@ uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extension
 uv run python setup-terminal.py --skip-starship # skip starship prompt
 uv run python setup-terminal.py --skip-claude # skip the Claude Code status line
 uv run python setup-terminal.py --no-nerd-font # install the universal (no Nerd Font) status line
-uv run python setup-terminal.py --user-install # user-local installs everywhere; no admin/sudo
-uv run python setup-terminal.py --no-sudo    # avoid sudo prompts; skip missing base packages
+uv run python setup-terminal.py --system-install # install system-wide via apt/brew (needs sudo/admin)
+uv run python setup-terminal.py --no-sudo    # force the user-local path; skip missing base packages
 uv run python setup-terminal.py --system-versions uninstall # remove system tool versions without prompting
 uv run python setup-terminal.py --system-versions keep # keep system tool versions; only warn
 uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
 ```
 
-`--user-install` implies `--no-sudo` for tools inside WSL/Linux: every managed tool is installed user-locally under `~/.local`, even when a system copy already exists, so re-running the setup updates everything from one place.
+By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there); macOS uses Homebrew, which needs no admin either way. The deprecated `--user-install` flag is a no-op kept for compatibility.
 
 After installing, the setup reconciles duplicates: it reports every tool present both in `~/.local/bin` and system-wide, with both versions (for example `lazygit: user-local 0.63.0 vs system 0.60.0`), then asks per tool whether to remove the system copy. `--system-versions uninstall` removes them all without prompting (requires sudo); `--system-versions keep` only reports. Headless runs never prompt or hang; they report and explain instead.
 

@@ -18,7 +18,8 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "examples:\n"
-            "  terminal-setup                 full install and configuration\n"
+            "  terminal-setup                 user-local install and configuration (no admin)\n"
+            "  terminal-setup --system-install install system-wide via the package manager\n"
             "  terminal-setup --dry-run       preview the steps without making changes\n"
             "  terminal-setup --only check    verify prerequisites, then exit\n"
             "  terminal-setup --only config   re-apply configuration only (no package installs)\n"
@@ -77,11 +78,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     install = parser.add_argument_group("install behavior")
     install.add_argument(
+        "--system-install",
+        action="store_true",
+        dest="system_install",
+        help=(
+            "Install tools system-wide with the OS package manager (apt/brew), using "
+            "sudo/admin. Default is a user-local install into ~/.local without admin rights."
+        ),
+    )
+    install.add_argument(
         "--user-install",
         action="store_true",
         help=(
-            "Install tools into user-writable locations without admin rights. "
-            "Tools inside WSL/Linux are installed without sudo (as with --no-sudo)."
+            "Deprecated: a user-local install without admin rights is now the default, "
+            "so this flag is a no-op kept for backwards compatibility."
         ),
     )
     install.add_argument(
@@ -89,8 +99,8 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="no_sudo",
         help=(
-            "Avoid sudo/password prompts by installing tools into user-writable "
-            "locations where possible; missing base system packages are skipped with a warning."
+            "Force the user-local, no-sudo install path everywhere (the default on Windows "
+            "and WSL); on a native Linux host, missing base packages are skipped with a warning."
         ),
     )
     install.add_argument(
@@ -338,15 +348,15 @@ def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
     if not all_present:
         runner.reporter.error("Some prerequisites are missing.")
         runner.reporter.step(
-            "Install the missing tools, or re-run with --user-install to add them "
-            "user-locally without admin rights; use --dry-run to preview first."
+            "Re-run terminal-setup to add them user-locally without admin rights (the "
+            "default), or use --dry-run to preview first."
         )
         return 1
     runner.reporter.success("All prerequisites are satisfied.")
     return 0
 
 
-def run_setup(  # noqa: PLR0912, PLR0913
+def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     platform_info: platform.PlatformInfo,
     runner: Runner,
     *,
@@ -355,6 +365,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
     skip_claude: bool,
     no_nerd_font: bool,
     config_only: bool,
+    system_install: bool,
     user_install: bool,
     no_sudo: bool,
     uninstall_system_versions: bool,
@@ -366,14 +377,29 @@ def run_setup(  # noqa: PLR0912, PLR0913
     """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
     runner.reporter.info(f"Package manager: {platform_info.package_manager.name.lower()}")
+
+    in_wsl = is_running_in_wsl()
+    # A user-local, no-sudo install is the default; --system-install opts back
+    # into the package-manager path. User-local is only implemented for the WSL
+    # guest, so on a native Linux/macOS host the default stays on the package
+    # manager unless --no-sudo is given explicitly.
+    targets_wsl = platform_info.os == platform.OperatingSystem.WINDOWS or in_wsl
+    effective_no_sudo = False if system_install else (no_sudo or user_install or targets_wsl)
+
     if config_only:
         runner.reporter.info(
             "Config-only mode: applying configuration without installing packages."
         )
-    elif user_install:
-        runner.reporter.info("User-install mode: tools will be installed without admin rights")
+    elif system_install:
+        runner.reporter.info("System-install mode: installing tools system-wide (needs admin/sudo)")
+    elif effective_no_sudo:
+        runner.reporter.info("Installing tools into user-writable locations (no admin rights)")
+    if user_install:
+        runner.reporter.warn(
+            "--user-install is deprecated: a user-local install is the default now, "
+            "so the flag is a no-op."
+        )
 
-    in_wsl = is_running_in_wsl()
     if not config_only:
         if platform_info.os == platform.OperatingSystem.WINDOWS:
             if not platform_info.is_wsl_available:
@@ -392,21 +418,19 @@ def run_setup(  # noqa: PLR0912, PLR0913
             prerequisites.ensure_wsl_tools(
                 runner,
                 platform_info,
-                no_sudo=no_sudo or user_install,
+                no_sudo=effective_no_sudo,
                 uninstall_system_versions=uninstall_system_versions,
                 keep_system_versions=keep_system_versions,
             )
             prerequisites.ensure_wsl_cli_extras(runner, platform_info)
         else:
             prerequisites.ensure_shell_tools(runner, platform_info)
-            prerequisites.ensure_host_cli_extras(
-                runner, platform_info, no_sudo=no_sudo or user_install
-            )
+            prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
         prerequisites.ensure_wezterm(
             runner,
             platform_info,
-            no_sudo=no_sudo or user_install,
+            no_sudo=effective_no_sudo,
         )
 
         prerequisites.ensure_node(runner, platform_info)
@@ -447,7 +471,7 @@ def run_setup(  # noqa: PLR0912, PLR0913
     if config_only:
         runner.reporter.step("Reload your shell or WezTerm to pick up the new configuration.")
     else:
-        if user_install and platform_info.os == platform.OperatingSystem.WINDOWS:
+        if platform_info.os == platform.OperatingSystem.WINDOWS:
             runner.reporter.step("Restart your terminal for the updated PATH to take effect.")
         if in_wsl:
             runner.reporter.step("Restart your WSL session for the updated PATH to take effect.")
@@ -493,6 +517,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_claude=args.skip_claude,
         no_nerd_font=args.no_nerd_font,
         config_only=config_only,
+        system_install=args.system_install,
         user_install=args.user_install,
         no_sudo=args.no_sudo,
         uninstall_system_versions=args.system_versions == "uninstall",

@@ -170,6 +170,7 @@ def test_run_setup_config_only_skips_package_installs() -> None:
             skip_claude=False,
             no_nerd_font=False,
             config_only=True,
+            system_install=False,
             user_install=False,
             no_sudo=False,
             uninstall_system_versions=False,
@@ -216,6 +217,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
             skip_claude=True,
             no_nerd_font=False,
             config_only=False,
+            system_install=False,
             user_install=True,
             no_sudo=False,
             uninstall_system_versions=False,
@@ -228,6 +230,101 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
     assert result == 0
     assert mock_tools.call_args.kwargs["no_sudo"] is True
     assert mock_wezterm.call_args.kwargs["no_sudo"] is True
+
+
+def _windows_platform() -> PlatformInfo:
+    """Build a Windows PlatformInfo for install-mode tests."""
+    return PlatformInfo(
+        os=OperatingSystem.WINDOWS,
+        package_manager=PackageManager.WINGET,
+        is_wsl_available=True,
+        is_wsl_default_ubuntu=True,
+        wsl_distribution="Ubuntu",
+        shell="powershell",
+        home=Path.home(),
+        wezterm_config_dir=None,
+        vscode_settings_path=None,
+    )
+
+
+def _run_setup_install_mode(
+    fake_platform: PlatformInfo, *, system_install: bool, user_install: bool, no_sudo: bool
+) -> tuple[mock.Mock, mock.Mock]:
+    """Run setup with only install flags varied; return (wsl_tools, host_extras) mocks."""
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_shell_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_host_cli_extras") as mock_extras,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
+        mock.patch("terminal_setup.cli.configs.install_vscode_wsl_extension"),
+        mock.patch("terminal_setup.cli.configs.configure_vscode_terminal"),
+    ):
+        result = run_setup(
+            fake_platform,
+            mock.Mock(),
+            skip_vscode=True,
+            skip_starship=True,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=False,
+            system_install=system_install,
+            user_install=user_install,
+            no_sudo=no_sudo,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+    assert result == 0
+    return mock_tools, mock_extras
+
+
+def test_parser_system_install_flag() -> None:
+    """The parser must accept --system-install."""
+    parser = build_parser()
+    assert parser.parse_args(["--system-install"]).system_install is True
+    assert parser.parse_args([]).system_install is False
+
+
+def test_run_setup_default_is_user_local_on_windows() -> None:
+    """With no flags on Windows, WSL tools must install user-locally (no sudo)."""
+    mock_tools, _ = _run_setup_install_mode(
+        _windows_platform(), system_install=False, user_install=False, no_sudo=False
+    )
+    assert mock_tools.call_args.kwargs["no_sudo"] is True
+
+
+def test_run_setup_system_install_uses_sudo_on_windows() -> None:
+    """--system-install must take the sudo/system-wide path even on Windows."""
+    mock_tools, _ = _run_setup_install_mode(
+        _windows_platform(), system_install=True, user_install=False, no_sudo=False
+    )
+    assert mock_tools.call_args.kwargs["no_sudo"] is False
+
+
+def test_run_setup_native_linux_default_uses_package_manager() -> None:
+    """With no flags on a native Linux host, host extras must use the package manager (sudo)."""
+    fake_platform = PlatformInfo(
+        os=OperatingSystem.LINUX,
+        package_manager=PackageManager.APT,
+        is_wsl_available=False,
+        is_wsl_default_ubuntu=False,
+        wsl_distribution=None,
+        shell="/bin/zsh",
+        home=Path.home(),
+        wezterm_config_dir=Path.home() / ".config" / "wezterm",
+        vscode_settings_path=None,
+    )
+    _, mock_extras = _run_setup_install_mode(
+        fake_platform, system_install=False, user_install=False, no_sudo=False
+    )
+    assert mock_extras.call_args.kwargs["no_sudo"] is False
 
 
 def test_main_report_mode_skips_setup_actions() -> None:
