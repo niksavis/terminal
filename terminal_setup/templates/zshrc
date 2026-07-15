@@ -30,13 +30,19 @@ compinit -d ~/.zcompdump
 zstyle ":completion:*" menu select
 zstyle ":completion:*" matcher-list "m:{a-zA-Z}={A-Za-z}"
 
-# Key bindings
+# Key bindings. Bind both CSI (^[[) and SS3 (^[O) variants: zle enables the
+# terminal's application mode (smkx), where arrows and Home/End send SS3
+# sequences, so CSI-only bindings never fire in WezTerm.
 bindkey -e
 bindkey "^[[H" beginning-of-line
+bindkey "^[OH" beginning-of-line
 bindkey "^[[F" end-of-line
+bindkey "^[OF" end-of-line
 bindkey "^[[3~" delete-char
 bindkey '^[[A' history-search-backward
+bindkey '^[OA' history-search-backward
 bindkey '^[[B' history-search-forward
+bindkey '^[OB' history-search-forward
 
 # Windows-style line selection: Shift+Home/End select from the cursor to the
 # start/end of the line. Once a region is active, Backspace and Delete remove
@@ -72,6 +78,11 @@ __osc_command_mark() {
 autoload -Uz add-zsh-hook
 add-zsh-hook precmd __osc_prompt_mark
 add-zsh-hook preexec __osc_command_mark
+
+# Prefer micro as the default editor when the setup installed it.
+if [[ -z "$EDITOR" ]] && command -v micro >/dev/null 2>&1; then
+  export EDITOR=micro
+fi
 
 # Aliases
 alias reload-zsh="source ~/.zshrc"
