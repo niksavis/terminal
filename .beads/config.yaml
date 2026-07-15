@@ -1,0 +1,30 @@
+# Beads (br) project configuration for terminal.
+#
+# Issue id prefix is pinned here (see `issue_prefix` below) so every clone and a
+# fresh `br init` — on any machine, Windows or WSL/Linux — generates identical
+# `term-<hash>` ids. This tracked value is authoritative: it wins over the
+# local SQLite db, so the convention never depends on per-machine db state.
+#
+# ID FORMAT: ids stay single-hyphen `term-<hash>` (do NOT use
+# `br create --slug ...`).
+#
+# Priority scale (0=Critical .. 4=Backlog, per `br schema issue`):
+#   0 Critical — blocks release, drop everything.
+#   1 High     — next up; blocks other planned work.
+#   2 Medium   — normal work item (default).
+#   3 Low      — nice to have, not urgent.
+#   4 Backlog  — captured but not yet planned.
+#
+# Issue type taxonomy (canonical enum from `br schema issue`):
+#   epic     — large initiative; decomposed into children via --parent.
+#   feature  — scoped, user-visible capability.
+#   task     — default type for general work; hierarchy via --parent.
+#   bug      — defect in existing behavior.
+#   chore    — maintenance/non-feature work (deps, tooling, cleanup).
+#   docs     — documentation-only work.
+#   question — open question/spike needing an answer before work starts.
+issue_prefix: term
+
+defaults:
+  priority: 2
+  type: task
