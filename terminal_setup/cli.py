@@ -107,6 +107,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     install.add_argument(
+        "--update",
+        action="store_true",
+        help=(
+            "Refresh user-local tools (and Node) to their latest releases by re-running "
+            "the installers even when a copy already exists."
+        ),
+    )
+    install.add_argument(
         "--system-versions",
         choices=("keep", "uninstall"),
         dest="system_versions",
@@ -383,7 +391,8 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     config_only: bool,
     system_install: bool,
     user_install: bool,
-    no_sudo: bool,
+    update: bool = False,
+    no_sudo: bool = False,
     uninstall_system_versions: bool,
     keep_system_versions: bool,
     report: bool,
@@ -435,6 +444,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 runner,
                 platform_info,
                 no_sudo=effective_no_sudo,
+                update=update,
                 uninstall_system_versions=uninstall_system_versions,
                 keep_system_versions=keep_system_versions,
             )
@@ -449,7 +459,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             no_sudo=effective_no_sudo,
         )
 
-        prerequisites.ensure_node(runner, platform_info)
+        prerequisites.ensure_node(runner, platform_info, update=update)
 
         if not skip_starship:
             prerequisites.ensure_starship(runner, platform_info)
@@ -562,6 +572,7 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         config_only=config_only,
         system_install=args.system_install,
         user_install=args.user_install,
+        update=args.update,
         no_sudo=args.no_sudo,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",

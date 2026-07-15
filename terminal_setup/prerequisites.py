@@ -1173,21 +1173,22 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
     _run_shell_command(runner, script, wsl_distro=wsl_distro)
 
 
-def ensure_node(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
     """Install Node.js user-locally where it is missing.
 
     Node is installed without sudo into ~/.local, matching the major version
     used on Windows. On Windows the WSL guest is targeted; Windows-native Node
-    is managed outside this setup.
+    is managed outside this setup. ``update=True`` reinstalls the latest
+    release of the target major even when a copy exists.
     """
     if platform.os == OperatingSystem.WINDOWS:
         distro = _wsl_distro(platform)
-        if not _is_user_local_command_available(runner, "node", wsl_distro=distro):
+        if update or not _is_user_local_command_available(runner, "node", wsl_distro=distro):
             _install_node_binary(runner, wsl_distro=distro)
         return
     if platform.os not in {OperatingSystem.LINUX, OperatingSystem.MACOS}:
         return
-    if _is_user_local_command_available(runner, "node"):
+    if not update and _is_user_local_command_available(runner, "node"):
         return
     _install_node_binary(runner)
 
@@ -1416,15 +1417,21 @@ def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
     )
 
 
-def ensure_wsl_tools(
+def ensure_wsl_tools(  # noqa: PLR0913
     runner: Runner,
     platform: PlatformInfo,
     *,
     no_sudo: bool = False,
+    update: bool = False,
     uninstall_system_versions: bool = False,
     keep_system_versions: bool = False,
 ) -> None:
-    """Install core tools inside the WSL Ubuntu guest."""
+    """Install core tools inside the WSL Ubuntu guest.
+
+    ``update=True`` re-runs the user-local installers even when a copy
+    already exists, refreshing tools to their latest release; the default
+    presence check keeps plain re-runs fast and rate-limit friendly.
+    """
     distro = _wsl_distro(platform)
     policy = _system_version_policy(
         uninstall_system_versions=uninstall_system_versions,
@@ -1471,8 +1478,10 @@ def ensure_wsl_tools(
             # Install a user-local copy even when a system copy exists so the
             # setup owns the tool; a stale system copy is reconciled afterwards.
             # lazygit always runs (its installer version-checks before download).
-            if package != "lazygit" and _is_user_local_command_available(
-                runner, command, wsl_distro=distro
+            if (
+                not update
+                and package != "lazygit"
+                and _is_user_local_command_available(runner, command, wsl_distro=distro)
             ):
                 continue
             if not _install_user_local_tool(runner, package, platform):

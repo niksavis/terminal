@@ -1105,3 +1105,32 @@ def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> No
     assert "-ieq" in script
     assert "$dir = 'C:\\Users\\test\\tool'" in script
     assert "SendMessageTimeout" in script  # notify running shells of the change
+
+
+def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
+    """--update must re-run installers that a presence check would skip."""
+    platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
+    runner = SpyRunner()
+    installed: list[str] = []
+    with (
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=True,
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._command_available",
+            return_value=True,
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._install_user_local_tool",
+            side_effect=lambda _runner, package, _platform: installed.append(package) or True,
+        ),
+        mock.patch("terminal_setup.prerequisites._reconcile_system_versions"),
+    ):
+        ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=False)
+        assert installed == ["lazygit"]  # only the self-version-checking installer
+        installed.clear()
+        ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=True)
+    assert "fzf" in installed
+    assert "jq" in installed
+    assert len(installed) > 10
