@@ -645,3 +645,16 @@ def test_deploy_wsl_configs_inside_wsl_uses_platform_home(
     assert (tmp_path / ".zshrc").exists()
     assert (tmp_path / ".config" / "micro" / "settings.json").exists()
     assert (tmp_path / ".config" / "starship.toml").exists()
+
+
+def test_wsl_start_dir_rejects_shell_metacharacters(tmp_path: Path) -> None:
+    """Values that could escape the quoted startup command must be rejected."""
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    for bad in ['"broken"', "a`whoami`", "$(rm -rf /)", "back\\slash"]:
+        with pytest.raises(ValueError, match="wsl-terminal-cwd"):
+            deploy_wezterm_config(runner, platform, wsl_start_dir=bad)
+    deploy_wezterm_config(runner, platform, wsl_start_dir="$HOME/workspace")
+    assert platform.wezterm_config_dir is not None
+    rendered = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
+    assert 'cd "$HOME/workspace"' in rendered

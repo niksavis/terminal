@@ -26,12 +26,33 @@ def _escape_for_lua_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
+# Characters that would escape the double-quoted shell context the value is
+# embedded in (wezterm.lua startup args: zsh -lc 'cd "<value>" ...'). Plain
+# ``$VAR`` expansion stays allowed on purpose ($HOME is the documented form),
+# but command substitution and quote-breaking are rejected.
+_WSL_START_DIR_FORBIDDEN = ('"', "`", "$(", "\\", "\n")
+
+
 def _resolve_wsl_start_dir(wsl_start_dir: str | None) -> str:
-    """Return the WSL start directory placeholder value for WezTerm template rendering."""
+    """Return the WSL start directory placeholder value for WezTerm template rendering.
+
+    Raises ``ValueError`` for values that would break or escape the quoted
+    shell command embedded in the generated WezTerm config: a bad value would
+    otherwise break every new tab or execute on every terminal launch.
+    """
     if wsl_start_dir is None:
         return "$HOME"
     normalized = wsl_start_dir.strip()
-    return normalized or "$HOME"
+    if not normalized:
+        return "$HOME"
+    for token in _WSL_START_DIR_FORBIDDEN:
+        if token in normalized:
+            message = (
+                f"--wsl-terminal-cwd must not contain {token!r}; the value is embedded "
+                "in the WezTerm startup shell command"
+            )
+            raise ValueError(message)
+    return normalized
 
 
 def _is_stale_windows_terminal_cwd(value: str) -> bool:
