@@ -192,19 +192,20 @@ config.colors = {
   brights = { "#214969", "#E52E2E", "#44FFB1", "#FFE073", "#A277FF", "#a277ff", "#24EAF7", "#24EAF7" },
 }
 
--- Put broadly available fonts first to avoid startup warnings on fresh machines.
+-- Every font named here must resolve on a fresh machine, or WezTerm raises a
+-- "Unable to load a font specified in your font config" notification at
+-- startup. WezTerm bundles JetBrains Mono, Noto Color Emoji, and Symbols Nerd
+-- Font Mono, so Nerd Font glyphs (starship, statusline) render without
+-- installing any extra fonts.
 if is_windows then
   config.font = wezterm.font_with_fallback({
     "Consolas",
     "Cascadia Mono",
-    "MesloLGS Nerd Font Mono",
     "Noto Color Emoji",
   })
 else
   config.font = wezterm.font_with_fallback({
     "DejaVu Sans Mono",
-    "Noto Sans Mono",
-    "MesloLGS Nerd Font Mono",
     "JetBrains Mono",
     "Noto Color Emoji",
   })
