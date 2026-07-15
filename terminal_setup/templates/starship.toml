@@ -6,7 +6,9 @@ format = """
 $username$hostname$directory$git_branch$git_status$git_state$git_metrics$docker_context$kubernetes$python$nodejs$rust$golang$cmd_duration$jobs$status $character"""
 
 scan_timeout = 30
-command_timeout = 500
+# git_metrics runs a git diff per prompt; 500ms produced per-prompt
+# "command timed out" warnings on large repositories.
+command_timeout = 1000
 
 palette = "tokyonight_night"
 
