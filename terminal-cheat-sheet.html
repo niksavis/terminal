@@ -411,7 +411,7 @@ footer svg {
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
     </div>
 <div class="section-body">
-<p><code>Ctrl + Space</code> is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over <code>Ctrl + A</code> so the standard shell shortcuts <code>Ctrl + A</code> (beginning-of-line) and <code>Ctrl + E</code> (end-of-line) keep working.</p>
+<p><code>Ctrl + Shift + Space</code> is a leader key with a 3-second timeout: press and release it, then press the second key. Plain <code>Ctrl + Space</code> is deliberately left free — it is the tmux prefix — and <code>Ctrl + A</code>/<code>Ctrl + E</code> keep their shell meanings (beginning/end of line).</p>
 <h3>Tabs &amp; Windows</h3>
 <table>
 <thead><tr>
@@ -446,10 +446,6 @@ footer svg {
 <td>Toggle fullscreen</td>
 <td><code>Alt + Enter</code></td>
 </tr>
-<tr>
-<td>Close window</td>
-<td><code>Ctrl + Shift + Q</code></td>
-</tr>
 </tbody></table>
 <h3>Panes</h3>
 <table>
@@ -475,7 +471,7 @@ footer svg {
 </tr>
 <tr>
 <td>Move between panes</td>
-<td><code>Ctrl + Shift + arrow</code> or leader then <code>h/j/k/l</code></td>
+<td><code>Ctrl + Shift + Left/Right</code> or leader then <code>h/j/k/l</code></td>
 </tr>
 <tr>
 <td>Zoom / unzoom pane</td>
@@ -513,6 +509,14 @@ footer svg {
 <td><code>Ctrl + Shift + F</code></td>
 </tr>
 <tr>
+<td>Scroll one screen</td>
+<td><code>Shift + PageUp</code> / <code>Shift + PageDown</code></td>
+</tr>
+<tr>
+<td>Jump to previous / next prompt</td>
+<td><code>Ctrl + Shift + Up</code> / <code>Ctrl + Shift + Down</code></td>
+</tr>
+<tr>
 <td>Quick-select URL/text</td>
 <td><code>Ctrl + Shift + P</code></td>
 </tr>
@@ -543,7 +547,7 @@ footer svg {
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
     </div>
 <div class="section-body">
-<p>The tmux prefix is <code>Ctrl + Space</code>, matching the WezTerm leader. Mouse support and vi copy-mode keys are enabled.</p>
+<p>The tmux prefix is <code>Ctrl + Space</code>; the WezTerm leader is <code>Ctrl + Shift + Space</code>, so the prefix passes straight through to tmux. Mouse support and vi copy-mode keys are enabled, and copy-mode <code>y</code> reaches the system clipboard (OSC 52) — including the Windows clipboard from WSL.</p>
 <table>
 <thead><tr>
 <th>Action</th>
@@ -570,8 +574,12 @@ footer svg {
 <td>prefix then <code>-</code></td>
 </tr>
 <tr>
-<td>Resize pane</td>
+<td>Move between panes</td>
 <td>prefix then <code>h/j/k/l</code></td>
+</tr>
+<tr>
+<td>Resize pane</td>
+<td>prefix then <code>H/J/K/L</code> (repeatable)</td>
 </tr>
 <tr>
 <td>Zoom / unzoom pane</td>
@@ -579,7 +587,7 @@ footer svg {
 </tr>
 <tr>
 <td>Copy mode (vi keys)</td>
-<td>prefix then <code>[</code>, then <code>v</code> select, <code>y</code> copy</td>
+<td>prefix then <code>[</code>, then <code>v</code> select, <code>y</code> copy to clipboard</td>
 </tr>
 <tr>
 <td>Reload tmux config</td>

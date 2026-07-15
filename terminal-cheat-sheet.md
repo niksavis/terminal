@@ -6,7 +6,7 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 ## WezTerm Shortcuts (project custom)
 
-`Ctrl + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
+`Ctrl + Shift + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. Plain `Ctrl + Space` is deliberately left free — it is the tmux prefix — and `Ctrl + A`/`Ctrl + E` keep their shell meanings (beginning/end of line).
 
 ### Tabs & Windows
 
@@ -19,7 +19,6 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 | Switch workspace         | leader then `w`                       |
 | Launcher (profiles/tabs) | `Ctrl + Shift + L`                    |
 | Toggle fullscreen        | `Alt + Enter`                         |
-| Close window             | `Ctrl + Shift + Q`                    |
 
 ### Panes
 
@@ -29,7 +28,7 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 | Split vertical            | leader then `-` or `s`                              |
 | Split horizontal (direct) | `Ctrl + Alt + backslash`                            |
 | Split vertical (direct)   | `Ctrl + Alt + -`                                    |
-| Move between panes        | `Ctrl + Shift + arrow` or leader then `h/j/k/l`     |
+| Move between panes        | `Ctrl + Shift + Left/Right` or leader then `h/j/k/l` |
 | Zoom / unzoom pane        | leader then `z`                                     |
 | Close pane                | leader then `x` or `Ctrl + Alt + X`                 |
 
@@ -42,6 +41,8 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 | Copy with mouse       | Select text and release left button |
 | Paste with mouse      | Right-click                         |
 | Search in scrollback  | `Ctrl + Shift + F`                  |
+| Scroll one screen     | `Shift + PageUp` / `Shift + PageDown` |
+| Jump to previous / next prompt | `Ctrl + Shift + Up` / `Ctrl + Shift + Down` |
 | Quick-select URL/text | `Ctrl + Shift + P`                  |
 
 ### Appearance & Config
@@ -54,7 +55,7 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 ## tmux Shortcuts (project custom)
 
-The tmux prefix is `Ctrl + Space`, matching the WezTerm leader. Mouse support and vi copy-mode keys are enabled.
+The tmux prefix is `Ctrl + Space`; the WezTerm leader is `Ctrl + Shift + Space`, so the prefix passes straight through to tmux. Mouse support and vi copy-mode keys are enabled, and copy-mode `y` reaches the system clipboard (OSC 52) — including the Windows clipboard from WSL.
 
 | Action                       | Shortcut                                 |
 | ---------------------------- | ---------------------------------------- |
@@ -63,9 +64,10 @@ The tmux prefix is `Ctrl + Space`, matching the WezTerm leader. Mouse support an
 | Next / previous window       | prefix then `n` / `p`                    |
 | Split horizontal             | prefix then `pipe`                       |
 | Split vertical               | prefix then `-`                          |
-| Resize pane                  | prefix then `h/j/k/l`                    |
+| Move between panes           | prefix then `h/j/k/l`                    |
+| Resize pane                  | prefix then `H/J/K/L` (repeatable)       |
 | Zoom / unzoom pane           | prefix then `m`                          |
-| Copy mode (vi keys)          | prefix then `[`, then `v` select, `y` copy |
+| Copy mode (vi keys)          | prefix then `[`, then `v` select, `y` copy to clipboard |
 | Reload tmux config           | prefix then `r`                          |
 | Install tmux plugins (TPM)   | prefix then `I`                          |
 
