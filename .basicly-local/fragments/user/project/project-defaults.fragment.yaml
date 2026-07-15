@@ -14,7 +14,7 @@ body: |
   - Scope: cross-platform terminal tooling and automation.
   - Platforms: Windows, Linux, macOS.
   - Python: managed with `uv`.
-  - Script harness and CI helpers: `.scripts/`; prefer `.scripts/` entry points over long inline command blocks.
+  - Script harness and CI helpers: `.scripts/` (prefer its entry points over inline command blocks).
   - Shared skills: `.claude/skills/`.
-  - No global build/test command yet; run only commands configured by task/subproject.
-  - Check lockfiles/config before choosing package managers or tooling.
+  - No global build/test command yet; run only per-task configured commands.
+  - Check lockfiles/config before choosing package managers.

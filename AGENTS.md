@@ -23,10 +23,10 @@ not rely on other agent config files being present.
 - Scope: cross-platform terminal tooling and automation.
 - Platforms: Windows, Linux, macOS.
 - Python: managed with `uv`.
-- Script harness and CI helpers: `.scripts/`; prefer `.scripts/` entry points over long inline command blocks.
+- Script harness and CI helpers: `.scripts/` (prefer its entry points over inline command blocks).
 - Shared skills: `.claude/skills/`.
-- No global build/test command yet; run only commands configured by task/subproject.
-- Check lockfiles/config before choosing package managers or tooling.
+- No global build/test command yet; run only per-task configured commands.
+- Check lockfiles/config before choosing package managers.
 
 ## No User Path Leakage
 
@@ -77,7 +77,7 @@ not rely on other agent config files being present.
 ## Overlay Authoring
 
 - Customize agent guidance only via YAML fragments under `.basicly-local/fragments/user/` (`basicly fragment-new` scaffolds one); never edit `.basicly/core/` or any generated file.
-- After editing the overlay, rebuild with the `basicly: build` VS Code task or `uvx --from git+https://github.com/niksavis/basicly@main basicly build`.
+- After editing the overlay, rebuild with the `basicly: build` VS Code task.
 
 ## Quality Gate
 
