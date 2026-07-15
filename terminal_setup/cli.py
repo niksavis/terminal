@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
+from pathlib import Path
 
 from . import configs, platform, prerequisites
 from .platform import is_running_in_wsl, wsl_exec_command
@@ -267,6 +269,19 @@ def _print_wsl_report(
         _report_status(runner, f"wsl:{path}", ok, detail)
 
 
+def _host_command_path(runner: Runner, command: str) -> str | None:
+    """Return a host command path, preferring the user-local ~/.local/bin copy.
+
+    A --no-sudo install lands in ~/.local/bin, which may not be on the
+    invoking shell's PATH yet; without this probe the report would mark
+    freshly installed tools as missing.
+    """
+    local = Path.home() / ".local" / "bin" / command
+    if local.is_file() and os.access(local, os.X_OK):
+        return str(local)
+    return runner.which(command)
+
+
 def _print_host_report(
     runner: Runner,
     *,
@@ -298,10 +313,10 @@ def _print_host_report(
         "uv",
         "node",
     ]:
-        path = runner.which(command)
+        path = _host_command_path(runner, command)
         _report_status(runner, f"host:{command}", path is not None, path or "")
     if include_starship:
-        path = runner.which("starship")
+        path = _host_command_path(runner, "starship")
         _report_status(runner, "host:starship", path is not None, path or "")
 
 
