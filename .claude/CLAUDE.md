@@ -107,3 +107,4 @@ not rely on `AGENTS.md` being present.
 
 - Prefer cross-platform implementations over shell-specific behavior when a choice exists.
 - Use non-interactive flags (`cp -f`, `mv -f`, `rm -f`, package-manager `-y`, `ssh -o BatchMode=yes`) for ops that can hang on a prompt — some shells alias these to interactive mode.
+- Never pipe state-changing commands (`git commit`/`push`/`tag`, installs, deploys) through filters like `tail`/`grep` inside a `&&` chain — the pipe replaces the command's exit code and masks failures; run them bare and read the output afterwards.
