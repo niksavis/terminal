@@ -330,11 +330,11 @@ table.insert(config.mouse_bindings, {
 })
 config.alternate_buffer_wheel_scroll_speed = wheel_scroll_lines
 
--- Key bindings. Use Ctrl+Space as the leader so standard readline shortcuts
--- such as Ctrl+A (beginning-of-line) and Ctrl+E (end-of-line) keep working in
--- the shell. Ctrl+Space has no default binding in WezTerm, zsh, tmux, or most
--- terminal editors, so it avoids the conflict caused by Ctrl+A.
-config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 3000 }
+-- Key bindings. The leader is Ctrl+Shift+Space: plain Ctrl+Space is the tmux
+-- prefix (deployed tmux.conf), so the leader must not shadow it, and readline
+-- shortcuts such as Ctrl+A/Ctrl+E stay untouched. Ctrl+Shift+Space is free on
+-- Windows and Linux (unlike Alt+Space, which opens the Windows system menu).
+config.leader = { key = "Space", mods = "CTRL|SHIFT", timeout_milliseconds = 3000 }
 config.keys = {
   { key = "t", mods = "CTRL|SHIFT", action = new_tab_action },
   { key = "w", mods = "CTRL|SHIFT", action = act.CloseCurrentTab({ confirm = false }) },
@@ -344,7 +344,6 @@ config.keys = {
   { key = "f", mods = "CTRL|SHIFT", action = act.Search("CurrentSelectionOrEmptyString") },
   { key = "p", mods = "CTRL|SHIFT", action = act.QuickSelect },
   { key = "l", mods = "CTRL|SHIFT", action = act.ShowLauncher },
-  { key = "q", mods = "CTRL|SHIFT", action = act.QuitApplication },
   { key = "=", mods = "CTRL|SHIFT", action = act.IncreaseFontSize },
   { key = "-", mods = "CTRL|SHIFT", action = act.DecreaseFontSize },
   { key = "0", mods = "CTRL", action = act.ResetFontSize },
