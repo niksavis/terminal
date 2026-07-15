@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from unittest import mock
+
+import pytest
 
 from terminal_setup.platform import (
     OperatingSystem,
@@ -10,6 +13,7 @@ from terminal_setup.platform import (
     detect_os,
     detect_package_manager,
     get_home_directory,
+    get_vscode_settings_path,
     is_running_in_wsl,
 )
 
@@ -59,3 +63,29 @@ def test_is_running_in_wsl_false_for_plain_linux() -> None:
         mock.patch("pathlib.Path.read_text", return_value="6.8.0-35-generic"),
     ):
         assert is_running_in_wsl() is False
+
+
+def test_vscode_settings_fallback_is_a_real_user_settings_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """On a fresh machine the fallback must be a path VS Code actually reads."""
+    monkeypatch.setattr("terminal_setup.platform.get_home_directory", lambda: tmp_path)
+    monkeypatch.setattr("terminal_setup.platform.detect_os", lambda: OperatingSystem.LINUX)
+    path = get_vscode_settings_path()
+    assert path == tmp_path / ".config" / "Code" / "User" / "settings.json"
+
+    monkeypatch.setattr("terminal_setup.platform.detect_os", lambda: OperatingSystem.WINDOWS)
+    path = get_vscode_settings_path()
+    assert path == tmp_path / "AppData" / "Roaming" / "Code" / "User" / "settings.json"
+
+
+def test_vscode_settings_prefers_existing_location(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """An existing settings.json wins over the OS default."""
+    existing = tmp_path / ".config" / "Code" / "User" / "settings.json"
+    existing.parent.mkdir(parents=True)
+    existing.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr("terminal_setup.platform.get_home_directory", lambda: tmp_path)
+    monkeypatch.setattr("terminal_setup.platform.detect_os", lambda: OperatingSystem.WINDOWS)
+    assert get_vscode_settings_path() == existing

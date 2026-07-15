@@ -175,10 +175,22 @@ def get_wezterm_config_dir() -> Path | None:
 
 
 def get_vscode_settings_path() -> Path | None:
-    """Return the VS Code settings.json path, if discoverable."""
+    """Return the VS Code user settings.json path, if discoverable.
+
+    Falls back to the OS-appropriate user-settings location on a fresh
+    machine: ``~/.vscode/settings.json`` is never read by VS Code as user
+    settings, so writing there would silently no-op.
+    """
     home = get_home_directory()
+    os = detect_os()
+    if os == OperatingSystem.WINDOWS:
+        default = home / "AppData" / "Roaming" / "Code" / "User" / "settings.json"
+    elif os == OperatingSystem.MACOS:
+        default = home / "Library" / "Application Support" / "Code" / "User" / "settings.json"
+    else:
+        default = home / ".config" / "Code" / "User" / "settings.json"
     candidates = [
-        home / ".vscode" / "settings.json",
+        default,
         home / "AppData" / "Roaming" / "Code" / "User" / "settings.json",
         home / "Library" / "Application Support" / "Code" / "User" / "settings.json",
         home / ".config" / "Code" / "User" / "settings.json",
@@ -186,7 +198,7 @@ def get_vscode_settings_path() -> Path | None:
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    return candidates[0] if candidates else None
+    return default
 
 
 def detect_platform() -> PlatformInfo:
