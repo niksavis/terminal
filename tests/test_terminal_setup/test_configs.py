@@ -21,6 +21,7 @@ from terminal_setup.configs import (
     deploy_tmux_config,
     deploy_wezterm_config,
     deploy_windows_shell_prompts,
+    deploy_wsl_configs,
     deploy_zsh_config,
     template_path,
 )
@@ -594,3 +595,53 @@ def test_deploy_claude_statusline_windows_skips_native_without_git_bash(
 
     assert not (claude / "statusline.sh").exists()
     assert not (claude / "settings.json").exists()
+
+
+def test_deploy_wsl_configs_resolves_guest_home_not_windows_username(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """From Windows, targets must use $HOME inside the guest, never the profile name."""
+    home = tmp_path / "WinUser"
+    home.mkdir()
+    platform = make_platform(OperatingSystem.WINDOWS, home)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr(
+        "terminal_setup.configs._to_wsl_path",
+        lambda _runner, _distro, source: f"/mnt/c/templates/{source.name}",
+    )
+    commands: list[list[str]] = []
+    monkeypatch.setattr(
+        runner,
+        "run",
+        lambda command, **_kwargs: (
+            commands.append(command) or subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+
+    deploy_wsl_configs(runner, platform)
+
+    assert commands, "expected wsl deploy commands"
+    for command in commands:
+        script = command[-1]
+        assert command[-3:-1] == ["sh", "-c"]
+        assert "$HOME/" in script
+        assert "WinUser" not in script
+    scripts = [command[-1] for command in commands]
+    assert any('mkdir -p "$HOME/.config/micro"' in script for script in scripts)
+    assert any('"$HOME/.tmux.conf"' in script for script in scripts)
+
+
+def test_deploy_wsl_configs_inside_wsl_uses_platform_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Inside WSL the templates land under the real home directory."""
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: True)
+
+    deploy_wsl_configs(Runner(dry_run=False, reporter=RecordingReporter()), platform)
+
+    assert (tmp_path / ".tmux.conf").exists()
+    assert (tmp_path / ".zshrc").exists()
+    assert (tmp_path / ".config" / "micro" / "settings.json").exists()
+    assert (tmp_path / ".config" / "starship.toml").exists()

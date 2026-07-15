@@ -310,10 +310,13 @@ def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
 def deploy_wsl_configs(
     runner: Runner, platform: PlatformInfo, *, include_starship: bool = True
 ) -> None:
-    """Copy host config templates into the WSL Ubuntu home directory."""
+    """Copy host config templates into the WSL Ubuntu home directory.
+
+    The guest home is resolved as ``$HOME`` inside the distro; it must not be
+    derived from the Windows profile name, which routinely differs from the
+    Linux username.
+    """
     distro = _wsl_distro(platform)
-    username = platform.home.name or "user"
-    wsl_home = f"/home/{username}"
     templates = [
         ("tmux.conf", ".tmux.conf"),
         ("zshrc", ".zshrc"),
@@ -323,14 +326,16 @@ def deploy_wsl_configs(
         templates.append(("starship.toml", ".config/starship.toml"))
     for template, target_name in templates:
         source = template_path(template)
-        destination = f"{wsl_home}/{target_name}"
         if is_running_in_wsl():
-            runner.ensure_dir(Path(destination).parent)
-            runner.copy(source, Path(destination))
+            destination = platform.home / target_name
+            runner.ensure_dir(destination.parent)
+            runner.copy(source, destination)
         else:
-            runner.run(wsl_exec_command(distro, ["mkdir", "-p", destination.rsplit("/", 1)[0]]))
             wsl_source = _to_wsl_path(runner, distro, source)
-            runner.run(wsl_exec_command(distro, ["cp", wsl_source, destination]))
+            parent = target_name.rsplit("/", 1)[0] if "/" in target_name else ""
+            mkdir = f'mkdir -p "$HOME/{parent}" && ' if parent else ""
+            script = f'{mkdir}cp {shlex.quote(wsl_source)} "$HOME/{target_name}"'
+            runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
 
 
 def _claude_statusline_command(*, nerdfont: bool) -> str:
