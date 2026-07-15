@@ -1434,7 +1434,7 @@ def ensure_wsl_tools(
     ]
 
     if no_sudo:
-        runner.reporter.info("--no-sudo requested: installing tools into user-writable locations.")
+        runner.reporter.info("Installing WSL tools into ~/.local without sudo.")
         base_packages = {"zsh", "tmux", "git", "curl", "wget", "tree"}
         for package in packages:
             command = _command_for_package(package)

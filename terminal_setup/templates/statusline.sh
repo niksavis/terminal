@@ -45,7 +45,13 @@ shopt -s extglob
 input=$(cat)
 
 # ── config ──
-NERDFONT=${STATUSLINE_NERDFONT:-1}
+# Nerd Font glyphs need a Nerd Font, which the terminal running a Windows-native
+# shell often lacks, so default to the universal build under Git Bash
+# (MSYS/Cygwin). An explicit STATUSLINE_NERDFONT still wins on every platform.
+case "$OSTYPE" in
+  msys* | cygwin*) NERDFONT=${STATUSLINE_NERDFONT:-0} ;;
+  *) NERDFONT=${STATUSLINE_NERDFONT:-1} ;;
+esac
 
 # ── parse (single jq call; mapfile keeps empty fields aligned) ──
 mapfile -t F < <(

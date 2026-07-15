@@ -542,6 +542,13 @@ def test_statusline_template_strips_cr_from_jq() -> None:
     assert "tr -d '\\r'" in content
 
 
+def test_statusline_template_defaults_to_universal_under_git_bash() -> None:
+    """Under Git Bash (MSYS/Cygwin) the status line must default to the no-Nerd-Font build."""
+    content = template_path("statusline.sh").read_text(encoding="utf-8")
+    assert "msys*" in content and "cygwin*" in content
+    assert "NERDFONT=${STATUSLINE_NERDFONT:-0}" in content
+
+
 def test_deploy_claude_statusline_windows_installs_native_host(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
