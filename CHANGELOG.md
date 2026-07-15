@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.3.1 - 2026-07-15
+
+Delta: v0.3.0..v0.3.1
+
+### Highlights
+
+- WezTerm no longer shows the "Unable to load a font specified in your font config" notification on startup. The config named fonts the setup never installs (MesloLGS Nerd Font Mono everywhere, Noto Sans Mono on Linux/WSL); it now names only fonts guaranteed to resolve. Nerd Font glyphs for starship and the status line still render via WezTerm's bundled Symbols Nerd Font Mono, and the visible font is unchanged (Consolas/Cascadia Mono on Windows, DejaVu Sans Mono on Linux).
+- Mouse wheel scrolling is twice as fast: 6 lines per wheel tick instead of 3, in both the scrollback and alternate-screen apps. Full-screen apps that handle the wheel themselves (tmux, less) are unaffected.
+- Re-apply with `terminal-setup --only config` and restart WezTerm.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (fa6bf1a)
+- feat(wezterm): double mouse wheel scroll speed (2182a00)
+- fix(wezterm): drop unresolvable fonts causing the startup warning toast (ce18f8d)
+
 ## v0.3.0 - 2026-07-15
 
 Delta: v0.2.2..v0.3.0
