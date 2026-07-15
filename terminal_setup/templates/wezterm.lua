@@ -312,6 +312,24 @@ table.insert(config.mouse_bindings, {
   action = act.CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection"),
 })
 
+-- Scroll the scrollback twice as fast as the 3-line default per wheel tick.
+-- alt_screen = false keeps full-screen apps (less, tmux, editors) on the
+-- default wheel handling, and the alternate-screen speed is doubled to match.
+local wheel_scroll_lines = 6
+table.insert(config.mouse_bindings, {
+  event = { Down = { streak = 1, button = { WheelUp = 1 } } },
+  mods = "NONE",
+  action = act.ScrollByLine(-wheel_scroll_lines),
+  alt_screen = false,
+})
+table.insert(config.mouse_bindings, {
+  event = { Down = { streak = 1, button = { WheelDown = 1 } } },
+  mods = "NONE",
+  action = act.ScrollByLine(wheel_scroll_lines),
+  alt_screen = false,
+})
+config.alternate_buffer_wheel_scroll_speed = wheel_scroll_lines
+
 -- Key bindings. Use Ctrl+Space as the leader so standard readline shortcuts
 -- such as Ctrl+A (beginning-of-line) and Ctrl+E (end-of-line) keep working in
 -- the shell. Ctrl+Space has no default binding in WezTerm, zsh, tmux, or most
