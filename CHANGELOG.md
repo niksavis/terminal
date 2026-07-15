@@ -2,6 +2,43 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.3.0 - 2026-07-15
+
+Delta: v0.2.2..v0.3.0
+
+### Highlights
+
+- **Breaking — install default flipped to user-local.** Running with no flags now installs tools user-locally without admin rights (on Windows and inside WSL). `--user-install` is a deprecated no-op kept for compatibility; use the new `--system-install` for a system-wide install via apt/brew. Re-running the setup is still the update path.
+- git-lfs and direnv now install user-locally in WSL (previously skipped in no-admin mode). The system-vs-user reconciliation also resolves apt ownership correctly when run from Windows, so it can offer to remove duplicate system copies instead of mislabeling them.
+- Native Windows shells are first-class: the WezTerm launch menu gains an auto-detected Git Bash entry, and Starship is wired into PowerShell 7 (`$PROFILE`) and Git Bash, sharing one `~/.config/starship.toml`.
+- The Claude Code status line is now installed for the Windows-native Claude too (not just WSL) and renders correctly there: a UTF-8-locale fix removes the mangled (`�`) gauges from Windows `jq`'s CRLF output, the build falls back to universal glyphs when no Nerd Font is present, and the git segment shows the repo name for Windows backslash paths.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (46077d5)
+- fix(statusline): show repo name for windows backslash paths (b5f2dae)
+- fix(setup): windows statusline glyphs and accurate no-sudo message (9f0357f)
+- docs: align install docs with the user-local default (fc42bb2)
+- feat(cli): default to user-local install with opt-in --system-install (4ce17bc)
+- fix(statusline): force utf-8 locale under git bash on windows (ce08328)
+- fix(setup): reconcile wsl tool ownership via apt from windows (f894b62)
+- feat(setup): give windows-native shells starship and claude status line (2f422be)
+- feat(setup): add user-local git-lfs and direnv installers (e8a90e4)
+- feat(cli): add prompt level and refine install log markers (94b03df)
+- refactor(runner): quiet read-only probe echo in install output (281ada2)
+- feat(cli): make install output symbol-based and color-aware (46ac29e)
+- docs(readme): consolidate setup instructions and fix config-file naming (3dfc793)
+- refactor(cli): align setup flag names and group the help output (f932899)
+- chore(scripts): remove unrelated wsl ubuntu upgrade script (2f3437f)
+- feat(cli): add claude and config-only setup flags (4822511)
+- feat(configs): install claude code status line during setup (9bf051e)
+- chore(claude): adopt trusted-workstation permission model (5138e7a)
+- ci: extend bandit gate to scan terminal-setup package (59a0840)
+- fix(vscode): scope bandit task to first-party source like the gate (ab62b99)
+- fix(vscode): use pythonpath env for basicly tasks (6fc0ca8)
+- feat(scripts): add sync-basicly script and refresh vendored engine (e88bad1)
+- chore: add claude code permission allowlist for repo gates (91b013d)
+- refactor(basicly): adopt core catalog layout with vendored engine bridge (7c4e0b6)
+
 ## v0.2.2 - 2026-07-13
 
 Delta: v0.2.1..v0.2.2
