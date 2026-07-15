@@ -87,6 +87,110 @@ def deploy_micro_config(runner: Runner, platform: PlatformInfo) -> None:
     runner.copy(template_path("micro-settings.json"), destination)
 
 
+# Marker comment that guards the blocks appended to shell rc files so repeated
+# runs stay idempotent and hand-edited rc files are never clobbered.
+_STARSHIP_BLOCK_MARKER = "# terminal-setup: starship"
+_BASHRC_SOURCE_MARKER = "# terminal-setup: source .bashrc"
+
+
+def _append_guarded_block(runner: Runner, path: Path, marker: str, block: str) -> bool:
+    """Append a marker-guarded block to a file unless the marker already exists.
+
+    Preserves any existing content and returns True only when the block is
+    written, so repeated runs are idempotent.
+    """
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    if marker in existing:
+        return False
+    prefix = existing
+    if prefix and not prefix.endswith("\n"):
+        prefix += "\n"
+    if prefix:
+        prefix += "\n"
+    runner.write_text(path, prefix + block)
+    return True
+
+
+def _find_git_bash(platform: PlatformInfo) -> Path | None:
+    r"""Return the path to Git for Windows' bash.exe, or None when absent.
+
+    Probes the standard system and per-user install locations. Ignores
+    ``C:\Windows\System32\bash.exe``, which is the WSL launcher, not Git Bash.
+    """
+    candidates = [
+        Path("C:/Program Files/Git/bin/bash.exe"),
+        Path("C:/Program Files (x86)/Git/bin/bash.exe"),
+        platform.user_programs_dir / "Git" / "bin" / "bash.exe",
+    ]
+    return next((candidate for candidate in candidates if candidate.exists()), None)
+
+
+def _configure_pwsh_starship(runner: Runner, platform: PlatformInfo) -> None:
+    """Wire starship into the PowerShell 7 profile (idempotent)."""
+    del platform
+    if runner.which("pwsh") is None:
+        runner.reporter.info("PowerShell 7 (pwsh) not found; skipping its starship prompt setup.")
+        return
+    # Add-Content with a single-quoted array writes one line per element and
+    # avoids PowerShell here-string column rules; none of the lines contain a
+    # single quote, so the quoting is safe.
+    lines = [
+        _STARSHIP_BLOCK_MARKER,
+        "if (Get-Command starship -ErrorAction SilentlyContinue) {",
+        "    Invoke-Expression (&starship init powershell)",
+        "}",
+    ]
+    ps_array = ",".join(f"'{line}'" for line in lines)
+    # Resolve $PROFILE with pwsh itself so the PowerShell-7 path and any
+    # OneDrive-redirected Documents folder are honored, then append only once.
+    script = (
+        "$ErrorActionPreference = 'Stop'; "
+        "$p = $PROFILE.CurrentUserAllHosts; "
+        "$d = Split-Path -Parent $p; "
+        "if (-not (Test-Path $d)) { New-Item -ItemType Directory -Path $d -Force | Out-Null }; "
+        f"$m = '{_STARSHIP_BLOCK_MARKER}'; "
+        "if ((-not (Test-Path $p)) -or (-not (Select-String -Path $p -SimpleMatch $m -Quiet))) "
+        f"{{ Add-Content -Path $p -Value {ps_array} }}"
+    )
+    result = runner.run(["pwsh", "-NoProfile", "-Command", script], check=False)
+    if result.returncode != 0:
+        runner.reporter.warn(
+            "Could not update the PowerShell 7 profile; add "
+            "'Invoke-Expression (&starship init powershell)' to $PROFILE manually."
+        )
+
+
+def _configure_git_bash_starship(runner: Runner, platform: PlatformInfo) -> None:
+    """Wire starship into Git Bash rc files when Git Bash is installed."""
+    if _find_git_bash(platform) is None:
+        runner.reporter.info("Git Bash not found; skipping its starship prompt setup.")
+        return
+    bashrc_block = (
+        f"{_STARSHIP_BLOCK_MARKER}\n"
+        "if command -v starship >/dev/null 2>&1; then\n"
+        '  eval "$(starship init bash)"\n'
+        "fi\n"
+    )
+    _append_guarded_block(runner, platform.home / ".bashrc", _STARSHIP_BLOCK_MARKER, bashrc_block)
+    # Login shells read .bash_profile, not .bashrc, so make sure it sources it.
+    profile_block = f"{_BASHRC_SOURCE_MARKER}\nif [ -f ~/.bashrc ]; then . ~/.bashrc; fi\n"
+    _append_guarded_block(
+        runner, platform.home / ".bash_profile", _BASHRC_SOURCE_MARKER, profile_block
+    )
+
+
+def deploy_windows_shell_prompts(runner: Runner, platform: PlatformInfo) -> None:
+    """Give the Windows-native shells (PowerShell 7, Git Bash) the starship prompt.
+
+    Deploys the shared starship config to the Windows home and wires starship
+    into the pwsh 7 profile and Git Bash rc files. WSL keeps its own setup; cmd
+    is left plain because it has no starship prompt hook.
+    """
+    deploy_starship_config(runner, platform)
+    _configure_pwsh_starship(runner, platform)
+    _configure_git_bash_starship(runner, platform)
+
+
 def _wsl_distro(platform: PlatformInfo) -> str:
     """Return the WSL distribution to use, falling back to Ubuntu."""
     return platform.wsl_distribution or "Ubuntu"
@@ -170,6 +274,8 @@ def deploy_all(  # noqa: PLR0913
     deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
     if _is_wsl_target(platform):
         deploy_wsl_configs(runner, platform, include_starship=include_starship)
+        if include_starship and platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+            deploy_windows_shell_prompts(runner, platform)
         if not no_sudo:
             set_wsl_default_shell(runner, platform)
         else:
@@ -270,11 +376,29 @@ def deploy_claude_statusline(
     """
     source = template_path("statusline.sh")
     if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        # Claude Code opened inside WSL (WezTerm's default Ubuntu shell).
         distro = _wsl_distro(platform)
         wsl_source = _to_wsl_path(runner, distro, source)
         script = _claude_wsl_install_script(wsl_source, nerdfont=nerdfont)
         runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+        # Claude Code opened natively on Windows (from pwsh 7 or Git Bash) reads
+        # %USERPROFILE%\.claude and runs the status line through Git Bash, so the
+        # same bash script serves it — but only when Git Bash is installed.
+        if _find_git_bash(platform) is None:
+            runner.reporter.info(
+                "Git Bash not found; skipping the Windows-native Claude status line "
+                "(Claude runs the bash script through Git Bash)."
+            )
+            return
+        _deploy_claude_statusline_host(runner, platform, source, nerdfont=nerdfont)
         return
+    _deploy_claude_statusline_host(runner, platform, source, nerdfont=nerdfont)
+
+
+def _deploy_claude_statusline_host(
+    runner: Runner, platform: PlatformInfo, source: Path, *, nerdfont: bool
+) -> None:
+    """Install the status line into the host ``~/.claude`` (no-op when absent)."""
     claude_dir = platform.home / ".claude"
     if not claude_dir.is_dir():
         runner.reporter.info("Claude Code not detected (~/.claude missing); skipping status line.")

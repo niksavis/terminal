@@ -57,7 +57,7 @@ mapfile -t F < <(
     (.rate_limits.five_hour.used_percentage // ""),
     (.rate_limits.five_hour.resets_at // ""),
     (.rate_limits.seven_day.used_percentage // ""),
-    (.rate_limits.seven_day.resets_at // "")' 2>/dev/null
+    (.rate_limits.seven_day.resets_at // "")' 2>/dev/null | tr -d '\r'
 )
 model=${F[0]}; effort=${F[1]}; proj=${F[2]}; wt=${F[3]}; cwd=${F[4]}
 cost=${F[5]}; dur=${F[6]}; added=${F[7]}; removed=${F[8]}

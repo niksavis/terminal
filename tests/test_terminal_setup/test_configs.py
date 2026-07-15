@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from terminal_setup.configs import (
+    _STARSHIP_BLOCK_MARKER,
     CHEAT_SHEET_PATH,
     TEMPLATE_DIR,
+    _append_guarded_block,
+    _configure_git_bash_starship,
+    _configure_pwsh_starship,
     configure_vscode_terminal,
     deploy_claude_statusline,
     deploy_micro_config,
     deploy_tmux_config,
     deploy_wezterm_config,
+    deploy_windows_shell_prompts,
     deploy_zsh_config,
     template_path,
 )
@@ -406,6 +412,114 @@ def test_deploy_claude_statusline_dry_run_makes_no_changes(tmp_path: Path) -> No
     assert not (claude / "settings.json").exists()
 
 
+def test_wezterm_template_offers_git_bash() -> None:
+    """The WezTerm template must add a Git Bash launch entry (auto-detected)."""
+    content = template_path("wezterm.lua").read_text(encoding="utf-8")
+    assert 'label = "Git Bash"' in content
+    assert "find_git_bash" in content
+
+
+def test_append_guarded_block_preserves_and_is_idempotent(tmp_path: Path) -> None:
+    """The guarded block must preserve existing content and write at most once."""
+    rc = tmp_path / "rc"
+    rc.write_text("existing line\n", encoding="utf-8")
+    runner = Runner(dry_run=False)
+
+    assert _append_guarded_block(runner, rc, "# marker", "# marker\nblock\n") is True
+    assert _append_guarded_block(runner, rc, "# marker", "# marker\nblock\n") is False
+
+    content = rc.read_text(encoding="utf-8")
+    assert content.startswith("existing line\n")
+    assert content.count("# marker") == 1
+    assert "block" in content
+
+
+def test_configure_pwsh_starship_appends_marker(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With pwsh present the profile update command must carry the starship init."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=True, reporter=reporter)
+    monkeypatch.setattr(runner, "which", lambda _command: "C:/pwsh.exe")
+
+    _configure_pwsh_starship(runner, platform)
+
+    joined = [" ".join(command) for command in reporter.commands]
+    assert any(
+        "pwsh" in command
+        and "starship init powershell" in command
+        and _STARSHIP_BLOCK_MARKER in command
+        for command in joined
+    )
+
+
+def test_configure_pwsh_starship_skips_without_pwsh(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without pwsh the profile must be left untouched with an info message."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=True, reporter=reporter)
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+
+    _configure_pwsh_starship(runner, platform)
+
+    assert reporter.commands == []
+    assert any("PowerShell 7" in message for message in reporter.messages)
+
+
+def test_configure_git_bash_starship_writes_rc_files(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Git Bash rc files must gain a single idempotent starship block."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    monkeypatch.setattr(
+        "terminal_setup.configs._find_git_bash",
+        lambda _platform: Path("C:/Program Files/Git/bin/bash.exe"),
+    )
+    runner = Runner(dry_run=False)
+
+    _configure_git_bash_starship(runner, platform)
+    _configure_git_bash_starship(runner, platform)
+
+    bashrc = (tmp_path / ".bashrc").read_text(encoding="utf-8")
+    assert bashrc.count(_STARSHIP_BLOCK_MARKER) == 1
+    assert "starship init bash" in bashrc
+    bash_profile = (tmp_path / ".bash_profile").read_text(encoding="utf-8")
+    assert ".bashrc" in bash_profile
+
+
+def test_configure_git_bash_starship_skips_without_git_bash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without Git Bash no rc files must be created."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    monkeypatch.setattr("terminal_setup.configs._find_git_bash", lambda _platform: None)
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+
+    _configure_git_bash_starship(runner, platform)
+
+    assert not (tmp_path / ".bashrc").exists()
+    assert not (tmp_path / ".bash_profile").exists()
+    assert any("Git Bash not found" in message for message in reporter.messages)
+
+
+def test_deploy_windows_shell_prompts_deploys_host_starship(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The Windows host must get its own starship.toml for the native shells."""
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    monkeypatch.setattr("terminal_setup.configs._find_git_bash", lambda _platform: None)
+    runner = Runner(dry_run=False)
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+
+    deploy_windows_shell_prompts(runner, platform)
+
+    assert (tmp_path / ".config" / "starship.toml").exists()
+
+
 def test_deploy_claude_statusline_windows_pushes_into_wsl(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -420,3 +534,50 @@ def test_deploy_claude_statusline_windows_pushes_into_wsl(
         "statusline.sh" in command and "jq" in command and "$HOME/.claude" in command
         for command in joined
     )
+
+
+def test_statusline_template_strips_cr_from_jq() -> None:
+    """The status line must strip CR so Windows jq's CRLF output does not break it."""
+    content = template_path("statusline.sh").read_text(encoding="utf-8")
+    assert "tr -d '\\r'" in content
+
+
+def test_deploy_claude_statusline_windows_installs_native_host(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With Git Bash present the Windows-native ~/.claude must also get the status line."""
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr(
+        "terminal_setup.configs._find_git_bash",
+        lambda _platform: Path("C:/Program Files/Git/bin/bash.exe"),
+    )
+    claude = tmp_path / ".claude"
+    claude.mkdir()
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False)
+    # Record the WSL push without executing wsl.exe, but let copy/write_text run.
+    monkeypatch.setattr(runner, "run", lambda *a, **_k: subprocess.CompletedProcess(a, 0, "", ""))
+
+    deploy_claude_statusline(runner, platform)
+
+    assert (claude / "statusline.sh").exists()
+    settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert settings["statusLine"]["command"] == "bash ~/.claude/statusline.sh"
+
+
+def test_deploy_claude_statusline_windows_skips_native_without_git_bash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Without Git Bash the Windows-native ~/.claude must not be configured."""
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr("terminal_setup.configs._find_git_bash", lambda _platform: None)
+    claude = tmp_path / ".claude"
+    claude.mkdir()
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False)
+    monkeypatch.setattr(runner, "run", lambda *a, **_k: subprocess.CompletedProcess(a, 0, "", ""))
+
+    deploy_claude_statusline(runner, platform)
+
+    assert not (claude / "statusline.sh").exists()
+    assert not (claude / "settings.json").exists()

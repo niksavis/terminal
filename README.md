@@ -90,6 +90,8 @@ wezterm
 
 WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, lazygit, direnv, just, fzf, and the extra CLI tools ready.
 
+Press `Ctrl + Shift + l` for the launch menu to switch shells: **Ubuntu (WSL)** (default), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
+
 The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
 
 Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Space` then `x`.
@@ -198,6 +200,8 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 ## Claude Code status line
 
 When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exists), the setup deploys a responsive status line to `~/.claude/statusline.sh` and registers it in `~/.claude/settings.json` (existing settings are preserved). It shows the model and reasoning effort, git repo/branch/state, gauges for context-window and 5-hour/weekly rate-limit usage (green → yellow → red), session cost with burn rate, and lines changed — using the same Tokyo Night palette as the prompt. Segments shorten and drop by priority as the terminal narrows.
+
+On Windows the status line is installed into **both** Claude Code homes so it looks the same wherever you open `claude`: the WSL `~/.claude` (Claude launched from WezTerm's Ubuntu shell) and the Windows-native `%USERPROFILE%\.claude` (Claude launched from PowerShell 7 or Git Bash). Windows-native Claude runs the status line through Git Bash, so that half is installed only when Git for Windows is present; the single bash script is shared across all of them (it strips the CR that Windows `jq` adds to its output).
 
 Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd-font` for the universal build that renders in any font, or `--skip-claude` to skip it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--only config`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
 

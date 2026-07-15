@@ -107,6 +107,35 @@ if is_windows then
     label = "PowerShell",
     args = { "pwsh.exe", "-NoLogo" },
   })
+  -- Offer Git Bash when Git for Windows is installed. Probe the standard
+  -- system and per-user locations; skip C:\Windows\System32\bash.exe, which is
+  -- the WSL launcher, not Git Bash. Launch as a login+interactive shell so the
+  -- rc files (and the starship prompt wired in by terminal-setup) load.
+  local function find_git_bash()
+    local candidates = {
+      "C:\\Program Files\\Git\\bin\\bash.exe",
+      "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+    }
+    local localappdata = os.getenv("LOCALAPPDATA")
+    if localappdata then
+      table.insert(candidates, localappdata .. "\\Programs\\Git\\bin\\bash.exe")
+    end
+    for _, candidate in ipairs(candidates) do
+      local handle = io.open(candidate, "r")
+      if handle then
+        handle:close()
+        return candidate
+      end
+    end
+    return nil
+  end
+  local git_bash = find_git_bash()
+  if git_bash then
+    table.insert(config.launch_menu, {
+      label = "Git Bash",
+      args = { git_bash, "--login", "-i" },
+    })
+  end
   table.insert(config.launch_menu, {
     label = "Command Prompt",
     args = { "cmd.exe" },
@@ -142,6 +171,7 @@ config.color_scheme = "Tokyo Night"
 config.window_background_opacity = 1.0
 config.skip_close_confirmation_for_processes_named = {
   "bash",
+  "bash.exe",
   "zsh",
   "tmux",
   "pwsh.exe",
