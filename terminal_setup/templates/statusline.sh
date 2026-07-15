@@ -33,6 +33,14 @@
 # rate limits arrive pre-computed on stdin, so no transcript parsing is needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
+# Git Bash on Windows (MSYS/Cygwin) may launch in a non-UTF-8 locale, where
+# bash slices strings by byte and splits the multi-byte gauge/icon glyphs
+# mid-character (they show up as �). Force a UTF-8 locale there so slicing is
+# character-aware. WSL, Linux, and macOS keep their own already-UTF-8 locale.
+case "$OSTYPE" in
+  msys* | cygwin*) export LC_ALL=C.UTF-8 ;;
+esac
+
 shopt -s extglob
 input=$(cat)
 
