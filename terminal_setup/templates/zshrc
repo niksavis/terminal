@@ -55,6 +55,24 @@ select-to-end-of-line() {
 zle -N select-to-end-of-line
 bindkey "\e[1;2F" select-to-end-of-line
 
+# Terminal integration: OSC 7 reports the cwd (WezTerm tab titles and
+# new-tab inheritance), OSC 133 marks prompt starts so WezTerm can jump
+# between prompts (Ctrl+Shift+Up/Down) in long scrollback. Terminals that
+# do not understand these sequences ignore them.
+__osc_report_cwd() {
+  printf '\033]7;file://%s%s\033\\' "${HOST:-localhost}" "${PWD// /%20}"
+}
+__osc_prompt_mark() {
+  __osc_report_cwd
+  printf '\033]133;A\033\\'
+}
+__osc_command_mark() {
+  printf '\033]133;C\033\\'
+}
+autoload -Uz add-zsh-hook
+add-zsh-hook precmd __osc_prompt_mark
+add-zsh-hook preexec __osc_command_mark
+
 # Aliases
 alias reload-zsh="source ~/.zshrc"
 alias edit-zsh="${EDITOR:-nano} ~/.zshrc"

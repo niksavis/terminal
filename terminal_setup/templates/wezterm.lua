@@ -342,6 +342,10 @@ config.keys = {
   { key = "c", mods = "CTRL|SHIFT", action = act.CopyTo("ClipboardAndPrimarySelection") },
   { key = "v", mods = "CTRL|SHIFT", action = act.PasteFrom("Clipboard") },
   { key = "f", mods = "CTRL|SHIFT", action = act.Search("CurrentSelectionOrEmptyString") },
+  -- Jump between prompts in the scrollback (needs the OSC 133 marks emitted
+  -- by the deployed zshrc) — fast navigation through long command output.
+  { key = "UpArrow", mods = "CTRL|SHIFT", action = act.ScrollToPrompt(-1) },
+  { key = "DownArrow", mods = "CTRL|SHIFT", action = act.ScrollToPrompt(1) },
   { key = "p", mods = "CTRL|SHIFT", action = act.QuickSelect },
   { key = "l", mods = "CTRL|SHIFT", action = act.ShowLauncher },
   { key = "=", mods = "CTRL|SHIFT", action = act.IncreaseFontSize },
