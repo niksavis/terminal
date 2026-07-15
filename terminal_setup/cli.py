@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 
@@ -495,11 +496,38 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the CLI."""
+    """Entry point for the CLI.
+
+    Wraps the run so every failure path prints what actually broke — the
+    default traceback for a failed subprocess hides the child's captured
+    stderr, which is usually the only useful diagnostic.
+    """
     parser = build_parser()
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()
     runner = Runner(dry_run=args.dry_run, reporter=reporter)
+    try:
+        return _dispatch(args, runner)
+    except KeyboardInterrupt:
+        reporter.error("Interrupted.")
+        return 130
+    except subprocess.CalledProcessError as error:
+        reporter.error(f"Command failed with exit code {error.returncode}: {error.cmd}")
+        stderr = (error.stderr or "").strip()
+        stdout = (error.stdout or "").strip()
+        if stderr:
+            reporter.error(stderr)
+        elif stdout:
+            reporter.error(stdout)
+        reporter.step("Re-run with --dry-run to preview the failing step.")
+        return 1
+    except (RuntimeError, ValueError, OSError) as error:
+        reporter.error(str(error))
+        return 1
+
+
+def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
+    """Run the phase selected by the parsed arguments."""
     platform_info = platform.detect_platform()
 
     if args.only == "check":

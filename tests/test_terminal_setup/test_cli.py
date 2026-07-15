@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from unittest import mock
 
@@ -352,3 +353,28 @@ def test_main_report_mode_skips_setup_actions() -> None:
     mock_check.assert_called_once()
     mock_report.assert_called_once()
     mock_setup.assert_not_called()
+
+
+def test_main_surfaces_child_stderr_on_failure() -> None:
+    """A failed subprocess must print its captured stderr, not a traceback."""
+    error = subprocess.CalledProcessError(
+        returncode=2, cmd=["wsl", "cp"], output="", stderr="cp: permission denied"
+    )
+    with (
+        mock.patch("terminal_setup.cli._dispatch", side_effect=error),
+        mock.patch("sys.stderr"),
+        mock.patch("sys.stdout"),
+    ):
+        status = main([])
+    assert status == 1
+
+
+def test_main_reports_clean_error_for_value_errors() -> None:
+    """Validation errors (e.g. --wsl-terminal-cwd) exit 1 without a traceback."""
+    with (
+        mock.patch("terminal_setup.cli._dispatch", side_effect=ValueError("bad value")),
+        mock.patch("sys.stderr"),
+        mock.patch("sys.stdout"),
+    ):
+        status = main([])
+    assert status == 1

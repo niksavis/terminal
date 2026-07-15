@@ -559,6 +559,11 @@ def install_wsl_ubuntu(runner: Runner) -> None:
     ``wsl --install`` needs administrator rights; fail with clear guidance
     instead of an opaque error when they are missing.
     """
+    if runner.which("wsl") is None:
+        raise RuntimeError(
+            "the 'wsl' command is not available on this system; install WSL "
+            "(Windows feature 'Windows Subsystem for Linux') and re-run this setup."
+        )
     runner.reporter.warn(
         "Installing WSL requires administrator rights. Without them, ask an "
         "administrator to run 'wsl --install -d Ubuntu' or install Ubuntu "
