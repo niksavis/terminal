@@ -2,6 +2,53 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.0 - 2026-07-15
+
+Delta: v0.3.1..v0.4.0
+
+### Highlights
+
+- **Breaking (muscle memory) — the WezTerm leader moved to `Ctrl+Shift+Space`.** Plain `Ctrl+Space` now reaches the tmux prefix from inside WezTerm (previously the leader shadowed it, making tmux bindings unusable). The no-confirmation `Ctrl+Shift+Q` quit binding is gone, vim-tmux-navigator is dropped so `Ctrl+L` works again (shell clear and Claude Code), and tmux pane navigation is prefix + `h/j/k/l` with repeatable resize on the capitals.
+- **Jump between prompts in huge scrollback**: the deployed zshrc now emits OSC 133 prompt marks and OSC 7 cwd reports, so `Ctrl+Shift+Up/Down` jumps prompt-to-prompt in WezTerm and tab titles show the working directory for WSL panes again.
+- **tmux copy reaches the system clipboard**: copy-mode `y` now uses OSC 52, crossing the WSL boundary to the Windows clipboard without clip.exe.
+- Setup correctness fixes: the WSL guest home is resolved as `$HOME` instead of guessed from the Windows profile name (crashed when usernames differed), deployed files always get LF endings (the Windows-native status line was broken by CRLF), starship now installs into the WSL guest when setup runs from Windows, the VS Code fallback writes to a settings path VS Code actually reads, GitHub release lookups fail with a clear message when rate limited, and the Windows PATH update is idempotent and preserves `%VAR%` entries.
+- New `--update` flag refreshes user-local tools (and Node) to their latest releases; plain re-runs keep the fast presence check. Failures now print the failing command's stderr instead of a bare traceback.
+- Status line hardening: cost math and glyph rendering survive comma-decimal and non-UTF-8 locales, and a malformed `resets_at` no longer aborts the render. The template test suite grew from 127 to 153 tests.
+- Internal: the repo adopted the packaged basicly harness (YAML catalog, beads tracker `term-*`, commit gates); no effect on installed terminals.
+- Re-apply with `terminal-setup --only config`, restart WezTerm, and reload tmux (prefix + `r`).
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-k9e) (54fb20f)
+- chore(beads): close the packaged basicly adoption (term-7xk) (53ed404)
+- chore(beads): close the overlay trim track (term-m3a) (211a400)
+- chore(overlay): trim fragment bodies so generated agent files fit the 8000 cap (term-m3a) (15f6130)
+- chore(beads): record m3a filing and claim (term-m3a) (7cf0c3c)
+- chore(harness): adopt packaged basicly install and migrate the overlay to yaml (term-7xk) (ed0efff)
+- chore(beads): close the review remediation epic (2f20a82)
+- docs(cheat-sheet): reflect the new keybinding scheme and navigation (971a3e2)
+- test(cli): cover report probes and runner matrix and generated scripts (942f3d8)
+- feat(cli): add update flag to refresh user-local tools on re-run (ce17bee)
+- feat(cli): surface child stderr and clean errors on every exit path (9dbd925)
+- docs(prerequisites): state the deliberate checksum omission for shellcheck (1db559f)
+- fix(prerequisites): make the windows path update idempotent and lossless (39addd7)
+- fix(configs): reject shell metacharacters in wsl terminal cwd (15b3c21)
+- fix(cli): probe user-local bin in the host verification report (17ff6b9)
+- fix(platform): fall back to a real vscode user settings path (9f40d31)
+- fix(prerequisites): validate github release lookups before building urls (a6e7c3a)
+- fix(prerequisites): install starship into the wsl guest from windows (057b792)
+- chore(starship): raise command timeout for git metrics on large repos (8c1200f)
+- fix(statusline): locale-proof number parsing and glyph slicing (30bdf80)
+- fix(tmux): guard the tpm bootstrap with an install hint (a39bbe5)
+- fix(zshrc): bind ss3 application-mode key variants and prefer micro (8e5edfb)
+- feat(shell-integration): osc 7 and 133 marks with jump-to-prompt keys (6b4e65b)
+- fix(tmux): copy selections to the system clipboard via osc 52 (9b1522e)
+- fix(tmux): vim-style pane navigation without stealing root-table keys (e2f67aa)
+- fix(wezterm): move leader off the tmux prefix and drop quit binding (12c326d)
+- fix(configs): resolve wsl guest home from the distro not windows profile (3a72dce)
+- fix(runner): force lf newlines when writing deployed files (ae9889d)
+- chore(beads): init tracker and file 2026-07 review remediation epic (bf9bd83)
+- chore(claude): forbid exit-code-masking pipes on state-changing commands (9d31183)
+
 ## v0.3.1 - 2026-07-15
 
 Delta: v0.3.0..v0.3.1
