@@ -33,13 +33,23 @@
 # rate limits arrive pre-computed on stdin, so no transcript parsing is needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Git Bash on Windows (MSYS/Cygwin) may launch in a non-UTF-8 locale, where
-# bash slices strings by byte and splits the multi-byte gauge/icon glyphs
-# mid-character (they show up as �). Force a UTF-8 locale there so slicing is
-# character-aware. WSL, Linux, and macOS keep their own already-UTF-8 locale.
-case "$OSTYPE" in
-  msys* | cygwin*) export LC_ALL=C.UTF-8 ;;
-esac
+# Locale hygiene (fork-free):
+# 1. LC_ALL would override LC_NUMERIC below, so demote it to LC_CTYPE first.
+# 2. jq always emits C-locale numbers (dot decimals); force LC_NUMERIC=C so
+#    printf %.2f parses them under comma-decimal locales (de_DE, de_AT, ...).
+# 3. Probe whether string slicing is character-aware — ${#probe} is 1 only in
+#    a working UTF-8 locale. Git Bash and stripped cron/CI environments are
+#    byte-based and would split the multi-byte gauge/icon glyphs (�); force a
+#    UTF-8 LC_CTYPE there. Sessions already UTF-8 keep their own locale.
+if [ -n "${LC_ALL:-}" ]; then
+  export LC_CTYPE="$LC_ALL"
+  export LC_ALL=""
+fi
+export LC_NUMERIC=C
+probe=$'▮'
+if [ "${#probe}" != 1 ]; then
+  export LC_CTYPE=C.UTF-8
+fi
 
 shopt -s extglob
 input=$(cat)
@@ -125,7 +135,10 @@ hnum(){ local n=$1
 trunc(){ local s=$1 n=$2; if (( ${#s}>n )); then _t="${s:0:n-1}…"; else _t="$s"; fi; }
 strip(){ _s="${1//$'\033'\[*([0-9;])m/}"; }
 now=""
-reset_in(){ [ -z "$now" ] && now=$(date +%s); local d=$(( $1 - now )); (( d<0 ))&&d=0
+# Guard: resets_at must be epoch seconds; leave the segment empty otherwise
+# (an ISO-8601 string would abort the arithmetic and kill the render).
+reset_in(){ [[ $1 == +([0-9]) ]] || { _r=""; return; }
+  [ -z "$now" ] && now=$(date +%s); local d=$(( $1 - now )); (( d<0 ))&&d=0
   if   (( d>=86400 )); then _r="$((d/86400))d"
   elif (( d>=3600  )); then _r="$((d/3600))h"; else _r="$((d/60))m"; fi; }
 
