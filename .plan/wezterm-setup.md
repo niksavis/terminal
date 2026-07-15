@@ -26,7 +26,7 @@ already wired and used as the current baseline.
 
 ### Windows + WSL
 
-- Setup path supports user-install mode (`--user-install`) for restricted environments.
+- Setup installs user-locally without admin rights by default; `--system-install` opts into a system-wide install.
 - WezTerm config prefers WSL Ubuntu domains on Windows when available.
 - VS Code Remote - WSL integration is documented in the main README.
 

@@ -23,7 +23,7 @@ Use the latest setup directly from `main` (no clone required):
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
 ```
 
-This installs everything user-locally, without admin rights. To install the WSL/Linux tools system-wide instead (via apt/brew, needs sudo/admin), add `--system-install`.
+No admin rights are needed on Windows, WSL, or macOS: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
 For reproducible installs, use the pinned command shown on each GitHub release page.
 
