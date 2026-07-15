@@ -19,6 +19,7 @@ from terminal_setup.prerequisites import (
     check_wsl,
     ensure_host_cli_extras,
     ensure_node,
+    ensure_starship,
     ensure_wsl_tools,
     install_package,
     windows_tool_candidate_dirs,
@@ -1039,3 +1040,28 @@ def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
     """User-local git-lfs/direnv must participate in system-version reconciliation."""
     assert "git-lfs" in _RECONCILE_BINARIES
     assert "direnv" in _RECONCILE_BINARIES
+
+
+def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
+    """Windows runs must install starship into the WSL guest too (zshrc inits it there)."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    runner = SpyRunner()
+    original_run = runner.run
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        result = original_run(command, **kwargs)  # type: ignore[arg-type]
+        script = command[-1]
+        if "test -x ~/.local/bin/starship" in script or "command -v starship" in script:
+            return subprocess.CompletedProcess(command, 1, "", "")
+        return result
+
+    runner.run = run  # type: ignore[method-assign]
+    runner.which = lambda _command: "C:/Program Files/starship/bin/starship.exe"  # type: ignore[attr-defined]
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        ensure_starship(cast(Runner, runner), platform)
+
+    scripts = [command[-1] for command in runner.commands if command[:1] != ["powershell"]]
+    assert any("starship.rs/install.sh" in script for script in scripts), (
+        "expected a WSL guest starship install"
+    )

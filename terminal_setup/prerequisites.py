@@ -1668,33 +1668,49 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
     _add_to_user_path(runner, install_dir)
 
 
+# User-local starship install for Linux hosts and the WSL guest (no sudo).
+_STARSHIP_INSTALL_SCRIPT = (
+    "mkdir -p ~/.local/bin && "
+    "curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b ~/.local/bin"
+)
+
+
+def _ensure_starship_wsl_guest(runner: Runner, platform: PlatformInfo) -> None:
+    """Install starship inside the WSL guest; the deployed zshrc inits it there."""
+    distro = _wsl_distro(platform)
+    if _is_user_local_command_available(runner, "starship", wsl_distro=distro):
+        return
+    if _command_available(runner, "starship", wsl_distro=distro):
+        return
+    runner.reporter.info("Installing starship into the WSL guest.")
+    _run_shell_command(runner, _STARSHIP_INSTALL_SCRIPT, wsl_distro=distro)
+
+
 def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
     """Install the starship prompt if possible.
 
     On Windows the portable release archive is always used: it needs no admin
     rights, unlike winget's MSI packages. Existing winget installs are detected
-    and kept.
+    and kept. The WSL guest gets its own user-local copy: the deployed zshrc
+    inits starship there, independently of the Windows-native binary.
     """
+    if platform.os == OperatingSystem.WINDOWS:
+        if not runner.which("starship"):
+            _ensure_windows_command_in_path(
+                runner,
+                "starship",
+                windows_tool_candidate_dirs(platform, "starship"),
+            )
+            if not runner.which("starship") and not _is_winget_package_installed(
+                runner, "Starship.Starship"
+            ):
+                _ensure_starship_user_install(runner, platform)
+        _ensure_starship_wsl_guest(runner, platform)
+        return
     if runner.which("starship"):
         return
-    if platform.os == OperatingSystem.WINDOWS:
-        _ensure_windows_command_in_path(
-            runner,
-            "starship",
-            windows_tool_candidate_dirs(platform, "starship"),
-        )
-        if runner.which("starship"):
-            return
-        if _is_winget_package_installed(runner, "Starship.Starship"):
-            return
-        _ensure_starship_user_install(runner, platform)
-        return
     if platform.os == OperatingSystem.LINUX:
-        script_url = "https://starship.rs/install.sh"
-        install_script = (
-            f"mkdir -p ~/.local/bin && curl -fsSL {script_url} | sh -s -- -y -b ~/.local/bin"
-        )
-        runner.run(["sh", "-c", install_script])
+        runner.run(["sh", "-c", _STARSHIP_INSTALL_SCRIPT])
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         install_package(runner, PackageManager.HOMEBREW, "starship")
