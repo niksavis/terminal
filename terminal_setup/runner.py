@@ -207,18 +207,27 @@ class Runner:
             path.mkdir(parents=True, exist_ok=True)
 
     def write_text(self, path: Path, content: str) -> None:
-        """Write text to a file, creating parent directories as needed."""
+        """Write text to a file, creating parent directories as needed.
+
+        Always writes LF newlines: deployed files include shell scripts and
+        configs consumed by POSIX tools, which break on Windows CRLF.
+        """
         self.reporter.info(f"write file {path}")
         if not self.dry_run:
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content, encoding="utf-8")
+            path.write_text(content, encoding="utf-8", newline="\n")
 
     def copy(self, source: Path, destination: Path) -> None:
-        """Copy a file, creating parent directories as needed."""
+        """Copy a file, creating parent directories as needed.
+
+        Always writes LF newlines; see ``write_text``.
+        """
         self.reporter.info(f"copy {source} -> {destination}")
         if not self.dry_run:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            destination.write_text(
+                source.read_text(encoding="utf-8"), encoding="utf-8", newline="\n"
+            )
 
     def confirm(self, prompt: str) -> bool:
         """Ask the user a yes/no question via the reporter."""
@@ -240,4 +249,6 @@ class Runner:
             destination.symlink_to(source)
         except OSError:
             self.reporter.warn(f"symlink failed for {destination}; copying instead")
-            destination.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            destination.write_text(
+                source.read_text(encoding="utf-8"), encoding="utf-8", newline="\n"
+            )

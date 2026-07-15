@@ -106,3 +106,25 @@ def test_runner_symlink_replaces_existing(tmp_path: Path) -> None:
     assert destination.read_text(encoding="utf-8") == "target"
     if platform_module.system() != "Windows":
         assert destination.is_symlink()
+
+
+def test_runner_write_text_forces_lf_newlines(tmp_path: Path) -> None:
+    """Deployed files must keep LF endings on every host (shell scripts break on CRLF)."""
+    destination = tmp_path / "script.sh"
+
+    runner = Runner(dry_run=False, reporter=ConsoleReporter())
+    runner.write_text(destination, "#!/bin/bash\necho ok\n")
+
+    assert b"\r" not in destination.read_bytes()
+
+
+def test_runner_copy_forces_lf_newlines(tmp_path: Path) -> None:
+    """Copied files must keep LF endings on every host (shell scripts break on CRLF)."""
+    source = tmp_path / "source.sh"
+    source.write_text("#!/bin/bash\necho ok\n", encoding="utf-8", newline="\n")
+    destination = tmp_path / "dest.sh"
+
+    runner = Runner(dry_run=False, reporter=ConsoleReporter())
+    runner.copy(source, destination)
+
+    assert b"\r" not in destination.read_bytes()
