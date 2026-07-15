@@ -834,11 +834,21 @@ def _reconcile_system_versions(
     ~/.local/bin *and* a system-wide copy exists; the user-local copy already
     wins on PATH, so the system copy is redundant. Behavior by policy:
 
-    - ``--keep-system-versions``: report only.
-    - ``--uninstall-system-versions``: remove every system copy (needs sudo).
+    - ``--system-versions keep``: report only.
+    - ``--system-versions uninstall``: remove every system copy (needs sudo).
     - default: prompt per tool when stdin is interactive; otherwise report and
       explain how to remove them, so headless runs never hang.
+
+    On Windows the WSL guest is managed by apt, so ownership is resolved with
+    dpkg regardless of the host's package manager.
     """
+    # When reconciling the WSL Ubuntu guest from a Windows host, the guest is
+    # managed by apt, not the host's package manager (winget), so package
+    # ownership must be resolved with dpkg.
+    package_manager = platform.package_manager
+    if wsl_distro is not None and not is_running_in_wsl():
+        package_manager = PackageManager.APT
+
     conflicts: list[tuple[str, str]] = []
     for binary in _RECONCILE_BINARIES:
         if not _is_user_local_command_available(runner, binary, wsl_distro=wsl_distro):
@@ -864,15 +874,15 @@ def _reconcile_system_versions(
 
     if policy.keep:
         runner.reporter.info(
-            "Keeping system copies (--keep-system-versions). Re-run with "
-            "--uninstall-system-versions to remove them once the user-local tools work."
+            "Keeping system copies (--system-versions keep). Re-run with "
+            "--system-versions uninstall to remove them once the user-local tools work."
         )
         return
 
     if not policy.uninstall and not _stdin_is_interactive(runner):
         runner.reporter.warn(
             "Not removing system copies: re-run from an interactive terminal to choose "
-            "per tool, or pass --uninstall-system-versions to remove them automatically."
+            "per tool, or pass --system-versions uninstall to remove them automatically."
         )
         return
 
@@ -883,7 +893,7 @@ def _reconcile_system_versions(
         _warn_or_uninstall_system_version(
             runner,
             binary,
-            platform.package_manager,
+            package_manager,
             wsl_distro=wsl_distro,
             policy=policy,
         )

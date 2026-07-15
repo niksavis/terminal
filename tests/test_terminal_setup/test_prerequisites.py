@@ -773,6 +773,52 @@ def test_reconcile_skips_tools_without_userlocal_copy() -> None:
     assert not any("rm" in command for command in runner.commands)
 
 
+def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
+    """Reconciling the WSL guest from Windows must resolve ownership via apt, not winget."""
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    runner = FakeRunner()
+    policy = system_version_policy(uninstall_system_versions=True)
+
+    def fake_user_local(_runner: object, binary: str, **_kwargs: object) -> bool:
+        return binary == "git-lfs"
+
+    def fake_system_path(_runner: object, command: str, **_kwargs: object) -> str | None:
+        return "/usr/bin/git-lfs" if command == "git-lfs" else None
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            side_effect=fake_user_local,
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._find_system_command_path",
+            side_effect=fake_system_path,
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._find_owning_package",
+            return_value="git-lfs",
+        ) as owning,
+    ):
+        reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
+
+    # Ownership must be looked up with apt (dpkg), not the host's winget.
+    assert owning.call_args.args[2] == PackageManager.APT
+    # Removal must go through apt-get inside the WSL distro (winget would raise).
+    assert [
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "--exec",
+        "sudo",
+        "apt-get",
+        "remove",
+        "-y",
+        "git-lfs",
+    ] in runner.commands
+
+
 def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
     """Candidate dirs must include the per-user programs directory."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
