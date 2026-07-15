@@ -1730,15 +1730,40 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
 
 
 def _add_to_user_path(runner: Runner, directory: Path) -> None:
-    """Add a directory to the user's PATH persistently on Windows."""
+    """Add a directory to the user's PATH persistently on Windows.
+
+    Reads and writes the registry value unexpanded (``DoNotExpandEnvironmentNames``
+    + ``ExpandString``): the ``[Environment]`` API round-trip would permanently
+    flatten ``%USERPROFILE%``-style entries. The membership check compares path
+    segments case-insensitively with native backslashes, so re-runs stay
+    idempotent, and a manual WM_SETTINGCHANGE broadcast tells running shells
+    about the change (the raw registry write does not notify by itself).
+    """
     if runner.dry_run:
         return
-    directory_str = str(directory).replace("\\", "/")
+    directory_str = str(directory).replace("/", "\\")
     script = (
-        f"$target = [Environment]::GetEnvironmentVariable('PATH', 'User'); "
-        f"if ($target -notlike '*{directory_str}*') {{ "
-        f"[Environment]::SetEnvironmentVariable("
-        f"'PATH', $target + ';{directory_str}', 'User') }}"
+        f"$dir = '{directory_str}'; "
+        "$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true); "
+        "$path = [string]$key.GetValue('Path', '', "
+        "[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
+        "$parts = @($path -split ';' | Where-Object { $_ -ne '' }); "
+        "$exists = $false; "
+        "foreach ($p in $parts) { "
+        "if ($p.TrimEnd('\\') -ieq $dir.TrimEnd('\\')) { $exists = $true } }; "
+        "if (-not $exists) { "
+        "$key.SetValue('Path', (($parts + $dir) -join ';'), "
+        "[Microsoft.Win32.RegistryValueKind]::ExpandString); "
+        '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
+        "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
+        "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
+        "$smto = Add-Type -MemberDefinition $sig -Name 'SendMessageTimeout' "
+        "-Namespace 'Win32Broadcast' -PassThru; "
+        "[UIntPtr]$out = [UIntPtr]::Zero; "
+        "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "
+        "2, 5000, [ref]$out) | Out-Null "
+        "}; "
+        "$key.Close()"
     )
     runner.run(["powershell", "-Command", script], interactive=True)
     _add_to_process_path(directory)

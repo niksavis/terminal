@@ -13,6 +13,7 @@ from terminal_setup.prerequisites import (
     TARGET_NODE_MAJOR,
     PrerequisiteStatus,
     SystemVersionPolicy,
+    _add_to_user_path,
     _install_fzf_binary,
     _install_gitlfs_binary,
     _install_shellcheck_binary,
@@ -1085,3 +1086,22 @@ def test_release_lookup_installers_validate_the_resolved_tag() -> None:
     for script in scripts:
         assert "curl -fsSL https://api.github.com" in script
         assert "could not resolve the latest release" in script
+
+
+def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
+    """The PATH script must read/write unexpanded values and compare real segments.
+
+    The [Environment] API round-trip flattened %USERPROFILE% entries to
+    literal paths, and the substring -notlike check missed backslash entries,
+    duplicating PATH on every re-run.
+    """
+    runner = SpyRunner()
+    with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
+        _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
+
+    script = runner.commands[-1][-1]
+    assert "DoNotExpandEnvironmentNames" in script
+    assert "ExpandString" in script
+    assert "-ieq" in script
+    assert "$dir = 'C:\\Users\\test\\tool'" in script
+    assert "SendMessageTimeout" in script  # notify running shells of the change
