@@ -975,6 +975,22 @@ def _install_cargo_tool(
     )
 
 
+def _github_latest_release_snippet(repo: str) -> str:
+    """Return a shell snippet that resolves ``$release`` to a repo's latest tag.
+
+    Validates the result: unauthenticated api.github.com calls are limited to
+    60/hour, and an empty tag would otherwise build a malformed download URL
+    that fails later with an opaque curl error. Expects ``$tmp`` to exist.
+    """
+    return (
+        f"release=$(curl -fsSL https://api.github.com/repos/{repo}/releases/latest | "
+        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
+        '[ -n "$release" ] || { echo "'
+        f"{repo}: could not resolve the latest release (GitHub API rate limit?)"
+        '" >&2; rm -rf "$tmp"; exit 1; }; '
+    )
+
+
 def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
     """Download the fzf binary to ~/.local/bin."""
     script = (
@@ -982,9 +998,8 @@ def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> Non
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
         "tmp=$(mktemp -d); "
-        "release=$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest | "
-        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
-        "version=${release#v}; "
+        + _github_latest_release_snippet("junegunn/fzf")
+        + "version=${release#v}; "
         'url="https://github.com/junegunn/fzf/releases/download/${release}/'
         'fzf-${version}-linux_${arch}.tar.gz"; '
         "curl -fsSL -o $tmp/fzf.tar.gz $url; "
@@ -1055,9 +1070,8 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=x86_64;; aarch64) arch=aarch64;; esac; "
         "tmp=$(mktemp -d); "
-        "release=$(curl -s https://api.github.com/repos/koalaman/shellcheck/releases/latest | "
-        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
-        'url="https://github.com/koalaman/shellcheck/releases/download/${release}/'
+        + _github_latest_release_snippet("koalaman/shellcheck")
+        + 'url="https://github.com/koalaman/shellcheck/releases/download/${release}/'
         'shellcheck-${release}.linux.${arch}.tar.xz"; '
         "curl -fsSL -o $tmp/sc.tar.xz $url; "
         "tar -xf $tmp/sc.tar.xz -C $tmp; "
@@ -1079,9 +1093,8 @@ def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> 
         "arch=$(uname -m); "
         "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
         "tmp=$(mktemp -d); "
-        "release=$(curl -s https://api.github.com/repos/git-lfs/git-lfs/releases/latest | "
-        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
-        "version=${release#v}; "
+        + _github_latest_release_snippet("git-lfs/git-lfs")
+        + "version=${release#v}; "
         'pkg="git-lfs-linux-${arch}-${release}.tar.gz"; '
         'base="https://github.com/git-lfs/git-lfs/releases/download/${release}"; '
         'curl -fsSL -o "$tmp/$pkg" "$base/$pkg"; '

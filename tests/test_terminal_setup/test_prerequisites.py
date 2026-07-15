@@ -13,6 +13,9 @@ from terminal_setup.prerequisites import (
     TARGET_NODE_MAJOR,
     PrerequisiteStatus,
     SystemVersionPolicy,
+    _install_fzf_binary,
+    _install_gitlfs_binary,
+    _install_shellcheck_binary,
     check_all,
     check_command,
     check_package_manager,
@@ -1065,3 +1068,20 @@ def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
     assert any("starship.rs/install.sh" in script for script in scripts), (
         "expected a WSL guest starship install"
     )
+
+
+def test_release_lookup_installers_validate_the_resolved_tag() -> None:
+    """Installers resolving a latest release must fail loudly on an empty tag.
+
+    An unauthenticated api.github.com call is rate limited; without the guard
+    an empty tag builds a malformed URL that dies with an opaque curl error.
+    """
+    runner = SpyRunner()
+    for installer in (_install_fzf_binary, _install_shellcheck_binary, _install_gitlfs_binary):
+        installer(cast(Runner, runner))
+
+    scripts = [command[-1] for command in runner.commands]
+    assert len(scripts) == 3
+    for script in scripts:
+        assert "curl -fsSL https://api.github.com" in script
+        assert "could not resolve the latest release" in script
