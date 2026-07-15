@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/skill.schema.json",
+  "title": "basicly skill source",
+  "description": "A skill authored as skill.yaml, projected to SKILL.md at target roots.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "description", "instructions"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Source-format version; bump only when the loader contract changes."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Skill slug/name; must match the containing directory name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line trigger description used for discovery."
+    },
+    "instructions": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Markdown body rendered into the projected SKILL.md."
+    }
+  }
+}

@@ -1,67 +1,96 @@
 {
   "version": "1",
-  "generated_at": "2026-07-13T16:55:42.196525+00:00",
+  "generated_at": "2026-07-15T20:34:22.542281+00:00",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:ef2509da0320ecfa88f120d33190f51b135de0281046d27375f6d2c2013ac850",
+      "hash": "sha256:63f39f63b5e95149217451012d2b1387ed0abd18d8f62c722a4eb5a84ed9dfda",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
         "secure-coding",
+        "git-discipline",
         "decision-protocol",
         "core-rules",
+        "harness-loop",
+        "overlay-authoring",
         "quality-gate",
         "use",
-        "python-style",
         "claude-defaults",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell"
+        "non-interactive-shell",
+        "tool-usage"
+      ]
+    },
+    ".claude/rules/python-style.md": {
+      "hash": "sha256:cc533c1528b80a915942dccd063e67ce20bbe6a718e167b40046d708a46b125e",
+      "source_fragments": [
+        "python-style"
+      ]
+    },
+    ".claude/rules/test-discipline.md": {
+      "hash": "sha256:1be3775a094c66c8f67ba06e0f3034950014617159bac5348b762186fbb6bf34",
+      "source_fragments": [
+        "test-discipline"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:245211d4565ac4a8e95eb9f99d91e05ed5c347babfe3fe8a12df10d305213f66",
+      "hash": "sha256:fb695a9ec8c3ff275cba379c4aff82fbee548c8572e4f378b9ba79301c297823",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
         "secure-coding",
+        "git-discipline",
         "decision-protocol",
         "core-rules",
+        "harness-loop",
+        "overlay-authoring",
         "quality-gate",
         "use",
         "python-style",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell"
+        "test-discipline",
+        "non-interactive-shell",
+        "tool-usage"
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:4bdd3b18d95b8a4582d0203e66ee2152798d8898012b354e47d8acfb7b669bfa",
+      "hash": "sha256:5e8acd6778461540bb0aa5fa9b2565d740c13d4ca5e46bd05ce282df89e94889",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
         "project-defaults",
         "no-user-path-leakage",
         "secure-coding",
+        "git-discipline",
         "decision-protocol",
         "core-rules",
+        "harness-loop",
+        "overlay-authoring",
         "quality-gate",
         "use",
-        "python-style",
         "copilot-defaults",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell"
+        "non-interactive-shell",
+        "tool-usage"
       ]
     },
     ".github/instructions/python-style.instructions.md": {
       "hash": "sha256:1360eec789db244508fe63da8acccd360ab8ad5601c8a480dada4795b386a915",
       "source_fragments": [
         "python-style"
+      ]
+    },
+    ".github/instructions/test-discipline.instructions.md": {
+      "hash": "sha256:a896824ebf4da462d6451405693b3e5514a1b11845e536c692bae8b9170d6839",
+      "source_fragments": [
+        "test-discipline"
       ]
     }
   }

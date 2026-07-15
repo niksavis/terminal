@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: knowledge-priming
+description: How to load repo-specific context before acting.
+category: project
+priority: critical
+applies_to:
+- all
+tags:
+- priming
+- context
+status: active
+body: |
+  - Before non-trivial work, load repo-specific context (README, architecture/CONTRIBUTING docs, local overlay) and treat it as ground truth; when it conflicts with general best practice, repo evidence wins — flag the conflict, don't silently override.
+  - If no repo-specific context exists for a decision, say so explicitly and proceed on stated assumptions; do not block on missing priming material alone.

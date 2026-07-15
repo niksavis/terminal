@@ -1,29 +1,49 @@
 repos:
-  - repo: local
-    hooks:
-      - id: pre-commit-script
-        name: pre-commit-script
-        entry: uv run python .scripts/git-hooks/pre-commit.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-commit]
-
-  - repo: local
-    hooks:
-      - id: commit-msg-script
-        name: commit-msg-script
-        entry: uv run python .scripts/git-hooks/commit-msg.py
-        language: system
-        stages: [commit-msg]
-        pass_filenames: true
-
-  - repo: local
-    hooks:
-      - id: pre-push-script
-        name: pre-push-script
-        entry: uv run python .scripts/git-hooks/pre-push.py
-        language: system
-        pass_filenames: false
-        always_run: true
-        stages: [pre-push]
+- repo: local
+  hooks:
+  - id: identity-guard
+    name: identity-guard
+    entry: uv run python .basicly/core/hooks/identity-guard.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: pre-commit-script
+    name: pre-commit-script
+    entry: uv run python .basicly/core/hooks/pre-commit.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: catalog-lint
+    name: catalog-lint
+    entry: uv run python .basicly/core/hooks/catalog-lint.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: commit-msg-script
+    name: commit-msg-script
+    entry: uv run python .basicly/core/hooks/commit-msg.py
+    language: system
+    stages:
+    - commit-msg
+    pass_filenames: true
+  - id: beads-commit-msg-script
+    name: beads-commit-msg-script
+    entry: uv run python .basicly/core/hooks/beads-commit-msg.py
+    language: system
+    stages:
+    - commit-msg
+    pass_filenames: true
+  - id: pre-push-script
+    name: pre-push-script
+    entry: uv run python .basicly/core/hooks/pre-push.py
+    language: system
+    stages:
+    - pre-push
+    pass_filenames: false
+    always_run: true

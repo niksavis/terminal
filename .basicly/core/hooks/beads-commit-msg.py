@@ -72,13 +72,15 @@ def validate(message: str, known_ids: set[str] | None) -> tuple[bool, str]:
     if first_line.startswith(("Merge ", 'Revert "')):
         return True, ""
 
+    if known_ids is None:
+        # No beads workspace in this repo (no .beads/issues.jsonl) — nothing to
+        # validate against, so skip entirely; a beads-less consumer must be able
+        # to commit without an issue id. Enable tracking with `br init`.
+        return True, ""
+
     candidates = set(ISSUE_ID_PATTERN.findall(message))
     if not candidates:
         return False, NO_ID_MESSAGE
-
-    if known_ids is None:
-        # No beads workspace in this repo; format-only check already passed.
-        return True, ""
 
     matched_ids = candidates & known_ids
     if not matched_ids:

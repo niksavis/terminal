@@ -1,0 +1,109 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: harness-loop
+description: Drive a unit of work through the basicly harness loop end-to-end (intake → classify → decompose → build → verify → ship → teardown → retro) using `basicly loop` + `br`, agent-agnostic across Claude/Codex/Copilot. Use when starting or resuming non-trivial development in a harness-enabled repo, when deciding what phase a tracked issue is in, or when coordinating the checkpoints, gates, and bounded rework the loop enforces.
+instructions: |
+  # Harness Loop
+
+  ## Scope
+
+  Owns driving one tracked unit of work through the whole development loop with the
+  `basicly loop` command group over the `br` (beads) tracker. The loop is
+  agent-agnostic: the same commands drive it under Claude, Codex, or Copilot — the
+  agent supplies the phase inputs (the work type, the child plan) and does the
+  coding in the worktree; the engine records state, gates, and advances.
+
+  It is **not** for the mechanics each phase delegates to — those have their own
+  skills: `tool-br` (create/claim/close issues), `worktree-isolation` (isolate a
+  node's build), `conventional-commits` (format the commit), `tool-git` (staging,
+  diffing). This skill sequences them; it does not replace them.
+
+  ## The tracker is the state — start by reading it
+
+  `br` is the single source of truth; the loop keeps no side-state, so it is
+  resumable across restarts and across agents. Whatever happened last session, begin
+  by reconstructing where a track is:
+
+  ```
+  basicly loop status <issue>     # phase, worktree binding, gates, checkpoints, rework, ready/blocked
+  ```
+
+  Pick the next actionable issue with `br ready` / `br scheduler --json`; `basicly
+  loop status` then tells you which phase it is parked in and what it is waiting on.
+
+  ## Advancing the loop
+
+  Each step is one resumable transition: the engine re-reads the phase from `br`,
+  does the phase's action (or blocks waiting on an input, a checkpoint, or a gate),
+  and returns the outcome. A blocked step exits non-zero so scripts and CI can
+  branch on it.
+
+  ```
+  basicly loop advance <issue> [--work-type T] [--children plan.toml] [--mode M]
+  basicly loop run <issue> [flags]   # advance repeatedly until it blocks or finishes
+  ```
+
+  The flags are the agent-supplied inputs a phase needs; pass the one the current
+  phase is asking for (`basicly loop status`/`advance` names it as `needs input`).
+
+  ## Phases and what each one needs
+
+  | Phase | What advances it | Command |
+  | --- | --- | --- |
+  | **intake** | agent proposes the `br` work type | `basicly loop advance <id> --work-type {bug\|chore\|task\|feature\|epic}` — records the type, then blocks for the classify checkpoint |
+  | **classify** *(human checkpoint)* | approve, then the Definition-of-Ready gate must pass | `basicly policy checkpoint <id> classify --approve`; check readiness with `basicly policy dor <id>` |
+  | **decompose** | features need an agent child plan; leaves (bug/chore/task) skip straight to build | `basicly decompose <feature> --plan plan.toml` (or `--children` on advance); preview with `basicly decompose <feature> --plan plan.toml --dry-run` |
+  | **decompose** *(human checkpoint)* | approve before fan-out | `basicly policy checkpoint <id> decompose --approve` |
+  | **build** | fan out one worktree per dependency-unblocked child (ranked by `br scheduler`, concurrency-capped), do the work, land through the serial merge queue | `basicly worktree list`; do the coding; `basicly loop advance <id>` lands it |
+  | **verify** | required deterministic gates must be green; then approve ship | `basicly verify --mode full --issue <id>`; `basicly policy gate <id>`; `basicly policy checkpoint <id> ship --approve` |
+  | **ship** | tear down the worktree and close the issue | `basicly loop advance <id>` (runs teardown + `br close`) |
+
+  Leaf types (bug/chore/task) build directly in their own worktree; features
+  decompose into children and land them through the merge queue once every child
+  closes. See `worktree-isolation` for the sibling-worktree placement and
+  provisioning rules the build phase relies on.
+
+  ## Gates: deterministic blocks, semantic advises
+
+  Deterministic checks (tests, lint, type, build) report a **required** gate via
+  `br gate report --status pass|fail`; a failed required gate blocks advancement.
+  AI-semantic verification reports a **non-required** gate — advisory, never
+  blocking. Inspect the decision with `basicly policy gate <id>`.
+
+  ## Rework and escalation
+
+  A failed node enters a bounded **rework loop (default n=2)**, tracked with gate
+  results and comments — not a status change (`br` has no `rework` status). At the
+  cap it escalates to a human. Inspect or record attempts with:
+
+  ```
+  basicly policy rework <id> --gate verify [--record]
+  ```
+
+  Any track can escalate a tier (carry work forward, re-hit only the decompose
+  checkpoint) without restarting.
+
+  ## Ship and retro
+
+  Ship merges to the entry branch recorded at intake (default: `main`), tears down
+  the worktree, and closes the issue. After an epic slice lands, capture a retro as
+  tracker comments and file a `br` issue for each finding the user does not choose
+  to ignore:
+
+  ```
+  br comments add <epic-id> "Retro: <finding>"
+  ```
+
+  ## One-shot vs task-by-task
+
+  Default is task-by-task (every checkpoint is a stop). One-shot mode collapses the
+  middle (decompose) checkpoint for small, well-scoped work; the classify and ship
+  checkpoints still hold.
+
+  ## Resuming after a switch
+
+  Because state lives in `br` (issue status, the worktree binding on
+  `external_ref`, recorded gate results, checkpoint/rework comments), resuming — after
+  a crash, or when switching from a rate-limited agent to another — is just
+  re-reading it: `basicly loop status <issue>`, reconcile against live worktrees
+  (`basicly worktree list`), and continue. Start on one agent, finish on another.

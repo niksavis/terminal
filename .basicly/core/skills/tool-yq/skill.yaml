@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: tool-yq
+description: Use yq for YAML and structured config queries, edits, and transforms. Trigger when CI configs, manifests, or YAML-based settings need precise changes.
+instructions: |
+  # tool-yq
+
+  ## When To Use
+
+  - Query and update YAML config files safely.
+  - Convert between YAML and JSON formats in pipelines.
+  - Merge and reshape config fragments without manual text editing.
+
+  ## Trusted Commands
+
+  ```bash
+  yq '.spec.replicas' file.yaml
+  yq -o json file.yaml
+  yq -P file.json
+  yq -i '.version = "2.0"' file.yaml
+  yq eval-all 'select(fi == 0) * select(fi == 1)' a.yaml b.yaml
+  ```
+
+  ## Safe Defaults
+
+  - Validate with read-only queries before in-place edits.
+  - Use explicit paths for targeted updates.
+  - Confirm tool variant expectations (Go yq syntax).
+
+  ## Common Pitfalls
+
+  - Multiple yq implementations use different syntax.
+  - `-i` modifies files directly and should be reviewed with git diff.
+  - Broad expressions can unintentionally reshape unrelated sections.
+
+  ## Output Interpretation
+
+  - YAML output by default.
+  - `-o json` outputs JSON for downstream tooling.
+  - `-P` pretty-prints YAML from any supported input.
+
+  ## Why It Matters For Agents
+
+  - yq gives precise config manipulation without brittle regex edits.
+  - It complements jq for non-JSON configuration ecosystems.
+
+  ## Repo Conventions
+
+  - Use yq for focused config changes, not full-file rewrites.
+  - Keep workflow edits minimal and reviewable.
+
+  ## Trigger Examples
+
+  - Should trigger: "Change a YAML workflow key without touching other lines."
+  - Should trigger: "Read the matrix entries from this CI config."
+  - Should not trigger: "Search all source files for a plain text token."

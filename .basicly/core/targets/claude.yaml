@@ -8,9 +8,10 @@ outputs:
     template: claude/claude_md.j2
     filter:
       applies_to: [all, claude]
+      exclude_scoped: true
   scoped_rules:
     path_template: .claude/rules/{fragment_id}.md
     template: claude/rule_md.j2
     filter:
-      applies_to: [claude]
+      applies_to: [all, claude]
       has_scope: true

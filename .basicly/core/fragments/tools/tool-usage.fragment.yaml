@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: tool-usage
+description: How to gather context efficiently before acting.
+category: tools
+priority: medium
+applies_to:
+- all
+tags:
+- context
+- retrieval
+- tooling
+status: active
+title: Tool Usage
+body: |
+  - Retrieval ladder: find files by name, localize with focused search, then read only the ranges you need — expand scope only as required; don't bulk-load unrelated files.

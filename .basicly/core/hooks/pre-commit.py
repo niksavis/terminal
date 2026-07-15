@@ -1,99 +1,25 @@
-"""Run all pre-commit checks.
+"""Run the configured fast checks before a commit.
 
-This script is invoked by the pre-commit hook (via pre-commit or lefthook).
-It exists so the hook logic is testable and portable across hook managers.
+Invoked by the pre-commit hook (via pre-commit or lefthook). Runs the
+``[[verify.checks]]`` declared for mode ``fast`` in the repo's basicly.toml —
+config-driven, so every consumer gates its own stack and a repo with no checks
+configured passes with a note (it never fails on tooling it doesn't have).
 """
 
 from __future__ import annotations
 
-import os
-import shutil
-import subprocess  # nosec B404
 import sys
-import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_runner import run_checks
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
-def markdownlint_args() -> tuple[str, ...]:
-    """Return a runnable markdownlint command across Windows, Linux, and WSL."""
-    markdownlint_mjs = PROJECT_ROOT / "node_modules" / "markdownlint-cli2" / "markdownlint-cli2.mjs"
-    lint_globs = ("**/*.md", "#node_modules")
-
-    if os.name == "nt":
-        return ("node", str(markdownlint_mjs), *lint_globs)
-
-    node_path = shutil.which("node")
-    if node_path:
-        return (node_path, str(markdownlint_mjs), *lint_globs)
-
-    # WSL setups may not expose `node` in PATH, but can run Windows Node directly.
-    wsl_node = Path("/mnt/c/Program Files/nodejs/node.exe")
-    if wsl_node.exists():
-        return (str(wsl_node), str(markdownlint_mjs), *lint_globs)
-
-    binary_path = PROJECT_ROOT / "node_modules" / ".bin" / "markdownlint-cli2"
-    return (str(binary_path), *lint_globs)
-
-
-def run(name: str, *args: str) -> tuple[int, float]:
-    """Run a command and report its result. Return exit code and elapsed seconds."""
-    print(f"==> {name}")
-    env = os.environ.copy()
-    env["PYTHONIOENCODING"] = "utf-8"
-    start = time.perf_counter()
-    result = subprocess.run(
-        ["uv", "run", *args],
-        cwd=PROJECT_ROOT,
-        check=False,
-        env=env,
-    )  # nosec
-    elapsed = time.perf_counter() - start
-    if result.returncode != 0:
-        print(f"FAILED: {name} ({elapsed:.2f}s)", file=sys.stderr)
-    return result.returncode, elapsed
-
-
 def main() -> int:
     """Entry point for the pre-commit hook."""
-    checks = [
-        ("ruff check", "ruff", "check", "."),
-        ("ruff format", "ruff", "format", "--check", "."),
-        ("pyright", "pyright", "."),
-        (
-            "bandit",
-            "bandit",
-            "-c",
-            "pyproject.toml",
-            "-r",
-            ".scripts",
-            ".basicly/core/hooks",
-        ),
-        ("markdownlint", *markdownlint_args()),
-    ]
-
-    total_start = time.perf_counter()
-    results: list[tuple[str, int, float]] = []
-    for name, *args in checks:
-        code, elapsed = run(name, *args)
-        results.append((name, code, elapsed))
-
-    total_elapsed = time.perf_counter() - total_start
-    failed = [name for name, code, _ in results if code != 0]
-    passed_count = len(results) - len(failed)
-
-    if failed:
-        summary = (
-            f"pre-commit failed: {passed_count}/{len(results)} checks passed "
-            f"in {total_elapsed:.2f}s"
-        )
-        print(summary, file=sys.stderr)
-        print(f"Failed checks: {', '.join(failed)}", file=sys.stderr)
-        return 1
-
-    print(f"pre-commit passed: {len(results)}/{len(results)} checks in {total_elapsed:.2f}s")
-    return 0
+    return run_checks(PROJECT_ROOT, "fast")
 
 
 if __name__ == "__main__":

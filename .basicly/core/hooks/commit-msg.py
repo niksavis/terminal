@@ -36,10 +36,14 @@ ALLOWED_TYPES = (
 # MIN_DESCRIPTION_LENGTH chars, and must not end with punctuation.
 # An optional trailing parenthetical referencing one or more beads (br) issue
 # ids is permitted syntactically here; beads-commit-msg.py validates that the
-# referenced id(s) actually exist.
+# referenced id(s) actually exist. A beads id is a kebab-case prefix plus a
+# hyphenated base, with optional dotted hierarchy levels (e.g. basicly-q49,
+# basicly-zrj.8, basicly-zrj.4.1) — the dots must be accepted here to match
+# beads' own id scheme.
+ISSUE_ID = r"[a-z][a-z0-9]*-[a-z0-9]+(?:\.[a-z0-9]+)*"
 HEADER_PATTERN = re.compile(
     r"^(" + "|".join(ALLOWED_TYPES) + r")(\([a-z0-9]+(?:-[a-z0-9]+)*\))?(!)?: "
-    r"(.+?)(?:\s+\(([a-z][a-z0-9]*-[a-z0-9]+(?:,\s*[a-z][a-z0-9]*-[a-z0-9]+)*)\))?$"
+    r"(.+?)(?:\s+\((" + ISSUE_ID + r"(?:,\s*" + ISSUE_ID + r")*)\))?$"
 )
 DESCRIPTION_PATTERN = re.compile(r"^[a-z][a-z0-9 -]*[a-z0-9]$")
 

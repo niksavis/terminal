@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: tool-tree
+description: Use tree to visualize directory layout quickly in a token-efficient form. Trigger when understanding project structure or summarizing file hierarchies.
+instructions: |
+  # tool-tree
+
+  ## When To Use
+
+  - Understand repository structure at a glance.
+  - Share compact hierarchy snapshots in terminal workflows.
+  - Verify output locations for generated files and folders.
+
+  ## Trusted Commands
+
+  ```bash
+  tree
+  tree -L 2
+  tree -d
+  tree -I 'node_modules|dist|__pycache__'
+  tree -sh
+  tree -J .
+  ```
+
+  ## Safe Defaults
+
+  - Limit depth (`-L`) to keep output concise.
+  - Exclude heavy or generated directories with `-I`.
+  - Use `--charset ascii` for plain-text CI logs.
+
+  ## Common Pitfalls
+
+  - Large trees can flood context and hide important paths.
+  - Hidden files may be missed without explicit options.
+  - Tree output does not represent git status semantics.
+
+  ## Output Interpretation
+
+  - Text output shows parent-child structure and totals.
+  - `-J` outputs structured JSON with type/name/children fields.
+
+  ## Why It Matters For Agents
+
+  - `tree -J` provides a one-call structural map for programmatic workflows.
+  - It is often the most token-efficient way to understand project shape.
+
+  ## Repo Conventions
+
+  - Prefer concise tree snapshots for architecture and layout discussions.
+  - Filter caches and generated directories unless task scope needs them.
+
+  ## Trigger Examples
+
+  - Should trigger: "Show me the top-level shape of this workspace."
+  - Should trigger: "Verify where generated skill files landed."
+  - Should not trigger: "Find every regex match inside Python files."

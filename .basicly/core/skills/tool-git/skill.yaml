@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: tool-git
+description: Use git for repository state inspection, safe staging, diff review, and history-aware change management. Trigger when the task involves commits, branches, diffs, or version control decisions.
+instructions: |
+  # tool-git
+
+  ## When To Use
+
+  - Inspect working tree state and commit history.
+  - Review and stage focused diffs before commit.
+  - Compare branches and verify what changed.
+
+  ## Trusted Commands
+
+  ```bash
+  git status --short
+  git --no-pager diff
+  git --no-pager diff --staged
+  git --no-pager log --oneline -n 20
+  git --no-pager show HEAD
+  git add path/to/file
+  git restore --staged path/to/file
+  ```
+
+  ## Safe Defaults
+
+  - Use `--no-pager` in non-interactive contexts.
+  - Stage only task-relevant files.
+  - Check status before and after edits to avoid accidental scope creep.
+
+  ## Common Pitfalls
+
+  - Mixing unrelated edits into one commit.
+  - Using destructive reset/checkout patterns without explicit approval.
+  - Misreading staged vs unstaged columns in short status output.
+
+  ## Output Interpretation
+
+  - `??` indicates untracked files.
+  - Left/right `M` columns in short status represent index/worktree changes.
+
+  ## Why It Matters For Agents
+
+  - Git state determines safe automation and review boundaries.
+  - High-signal diff workflows prevent accidental regressions.
+
+  ## Commit Identity (per remote host)
+
+  - Commits must carry the identity that matches the remote; set it **per repo**, not
+    globally. Leaving the global `user.email` unset is deliberate — with no email git
+    silently commits a `…@hostname.local` address, which pollutes and de-anonymizes history.
+  - Before committing, verify `git config user.email` is set for this repo; if empty or a
+    `.local`/`(none)` hostname value, set `git config --local user.name/user.email` first.
+  - Automate it with git conditional includes so identity follows the remote URL:
+
+    ```gitconfig
+    # ~/.gitconfig  (email is set only inside the includes; global email stays unset)
+    [includeIf "hasconfig:remote.*.url:https://github.com/**"]
+        path = ~/.gitconfig-github
+    [includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
+        path = ~/.gitconfig-work
+    ```
+
+    Scaffold this with `.scripts/setup_git_identity.py add --host <host> --name <n> --email <e>`.
+  - Enforcement: the `identity-guard` pre-commit hook blocks a commit whose identity is
+    missing or auto-generated. Optionally require a domain per repo with
+    `git config basicly.identityAllowEmail '@example\.com$'`.
+
+  ## Repo Conventions
+
+  - Never rewrite history or run destructive git commands without explicit confirmation.
+  - Keep diffs minimal and avoid unrelated reformatting.
+
+  ## Trigger Examples
+
+  - Should trigger: "Review my staged diff for regressions before commit."
+  - Should trigger: "Show what changed in this branch compared to main."
+  - Should not trigger: "Lint this shell script for POSIX issues."

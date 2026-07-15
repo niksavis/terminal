@@ -1,0 +1,19 @@
+schema_version: 1
+id: python-style
+title: Python Style
+description: Python style conventions for this repo.
+category: code-style
+priority: medium
+applies_to:
+- all
+scope:
+  paths:
+  - "**/*.py"
+tags:
+- python
+- style
+status: active
+body: |
+  - Use type hints for public functions.
+  - Prefer `pathlib` over `os.path`.
+  - Format with `ruff`.

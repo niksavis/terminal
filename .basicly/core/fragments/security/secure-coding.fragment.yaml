@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: secure-coding
+description: Secure-coding checklist covering trust boundaries, secrets, and data leakage.
+category: security
+priority: critical
+applies_to:
+- all
+tags:
+- security
+- privacy
+- data-leakage
+status: active
+body: |
+  - Validate and sanitize all external input at trust boundaries before it reaches business logic.
+  - Parameterize shell commands and any queries; never build them by concatenating untrusted input.
+  - Never commit secrets (keys, tokens, passwords, connection strings); use env vars or a secret manager and keep them out of logs.
+  - Don't leak internal detail (stack traces, paths) in user-facing errors; log the detail, return a generic message.
+  - Never commit user- or machine-specific paths, usernames, or hostnames; keep repo defaults generic and portable.

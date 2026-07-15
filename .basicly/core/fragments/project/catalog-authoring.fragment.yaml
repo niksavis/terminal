@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: catalog-authoring
+description: How catalog content (skills and fragments) is authored and projected.
+category: project
+priority: medium
+applies_to: [all]
+tags: [catalog, authoring]
+status: active
+body: |
+  - Author catalog content as YAML sources (`skill.yaml`, `<id>.fragment.yaml`), never a discoverable `.md`; scaffold with `basicly skills-new` / `basicly fragment-new`, follow the `catalog-authoring` skill, and let `basicly catalog-lint` enforce the format.

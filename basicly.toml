@@ -9,3 +9,20 @@ overlay_fragments = [".basicly-local/fragments"]
 targets = ".basicly/core/targets"
 templates = ".basicly/core/templates"
 manifest = ".basicly/generated-manifest.json"
+
+# Deterministic verify gate (run by the projected pre-commit/pre-push hooks and
+# `basicly verify`). Fast checks gate commits; full adds the test suite on push.
+[[verify.checks]]
+name = "ruff"
+command = ["uv", "run", "ruff", "check"]
+modes = ["fast", "full"]
+
+[[verify.checks]]
+name = "ruff-format"
+command = ["uv", "run", "ruff", "format", "--check"]
+modes = ["fast", "full"]
+
+[[verify.checks]]
+name = "pytest"
+command = ["uv", "run", "pytest", "-q", "tests"]
+modes = ["full"]

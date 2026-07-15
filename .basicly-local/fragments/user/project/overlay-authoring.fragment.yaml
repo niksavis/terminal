@@ -1,0 +1,19 @@
+schema_version: 1
+id: overlay-authoring
+title: Overlay Authoring
+description: How this repo customizes its basicly harness without touching managed files.
+category: project
+priority: high
+applies_to:
+- all
+tags:
+- overlay
+- customization
+source: user
+override: true
+replaces:
+- catalog-authoring
+status: active
+body: |
+  - Customize agent guidance only via YAML fragments under `.basicly-local/fragments/user/` (`basicly fragment-new` scaffolds one); never edit `.basicly/core/` or any generated file.
+  - After editing the overlay, rebuild with the `basicly: build` VS Code task or `uvx --from git+https://github.com/niksavis/basicly@main basicly build`.

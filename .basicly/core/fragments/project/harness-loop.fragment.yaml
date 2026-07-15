@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: harness-loop
+description: How non-trivial development runs through the basicly harness loop.
+category: project
+priority: high
+applies_to:
+- all
+tags:
+- harness
+- loop
+- workflow
+status: active
+body: |
+  - Drive non-trivial work through the harness loop, not ad hoc: intake → classify → decompose → build → verify → ship → teardown → retro. `br` is the single source of truth (the loop keeps no side-state, so it is resumable); the `harness-loop` skill is the runbook.
+  - Start by reconstructing a track with `basicly loop status <issue>`, then step it with `basicly loop advance <issue>` / `basicly loop run <issue>`; a blocked step exits non-zero and names the input it needs.
+  - The three human checkpoints (classify, decompose, ship) and the bounded rework loop are engine-enforced — approve with `basicly policy checkpoint <issue> <name> --approve`.

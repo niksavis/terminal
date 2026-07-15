@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: worktree-isolation
+description: Isolate non-trivial work in a sibling git worktree using `basicly worktree`, covering sibling placement on a harness branch, dependency + git-hook provisioning, and safe cleanup. Use when starting a unit of work that should not touch the main checkout, when parallel tracks would collide, or when deciding whether a change needs its own worktree.
+instructions: |
+  # Worktree Isolation
+
+  ## Scope
+
+  Owns running a unit of work in an isolated **sibling** git worktree via the
+  `basicly worktree` commands: where the worktree goes, how it is provisioned so its gates
+  actually run, and how it is torn down without endangering the main checkout.
+
+  It is not for:
+
+  - Merging a finished worktree branch back or resolving conflicts (that is the merge
+    orchestrator's job — not yet part of `basicly worktree`).
+  - Creating or claiming the beads issue the work tracks (see `tool-br`).
+  - Git staging, diffing, or commit-message formatting (see `tool-git`, `conventional-commits`).
+
+  ## When to isolate
+
+  - **Isolate** any non-trivial change: multi-file work, anything that runs the gates, or
+    work that could run in parallel with another track.
+  - **Skip** trivial mechanical edits (a typo, a one-line doc fix) — those go straight to the
+    source branch. A worktree has a real setup cost; do not pay it for throwaway work.
+
+  ## Placement rule (non-negotiable)
+
+  A worktree lives at the **sibling** path `<repo>.worktrees/<name>` on branch
+  `harness/<name>`, forked from the configured base branch (`[worktree].base_branch` in
+  `basicly.toml`, or the current branch).
+
+  Never create work worktrees **inside** the repo (e.g. in-repo `.claude/worktrees/`): an
+  in-repo worktree pollutes the repo's own file walk and is not provisioned, so its git hooks
+  fall back to a system toolchain and **run no gates** — the exact failure that lets unguarded
+  commits through.
+
+  ## Lifecycle
+
+  1. **Create + provision** — `basicly worktree create <name> [--base <branch>]`. This adds the
+     sibling worktree, provisions its own standalone `.venv` (`uv sync`) and `node_modules`
+     (`npm install`), and installs the repo's git hooks for every stage. The dependency trees
+     are freshly installed (never symlinked to main), so the worktree is self-contained and
+     teardown is safe. Creation is refused once `[worktree].concurrency` (default 4) is reached.
+  2. **Work** — do the change in the worktree; its hooks gate commits exactly as on main.
+  3. **Cleanup** — `basicly worktree cleanup <name>` removes the worktree, prunes the registry,
+     and deletes the `harness/<name>` branch once it is merged. The base branch is never
+     touched. An unmerged branch is kept (with a note) unless you pass `--force`; a worktree
+     whose directory vanished is still reclaimable.
+
+  Use `basicly worktree list` to see active sessions (stale ones are marked).
+
+  ## Claude Code note
+
+  Claude Code's `worktree.bgIsolation` guard (default on) would force a background agent into
+  its own `.claude/worktrees/` before editing, conflicting with this sibling-worktree scheme.
+  Run `basicly worktree bg-isolation` once per repo to set it to `none` (consent-gated; writes
+  the committed `.claude/settings.json`). Codex and Copilot have no equivalent setting.

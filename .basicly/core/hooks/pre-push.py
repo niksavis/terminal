@@ -1,36 +1,25 @@
-"""Run all pre-push checks.
+"""Run the configured full checks before a push.
 
-This script is invoked by the pre-push hook (via pre-commit or lefthook).
-It runs the test suite and any other checks that should block a push.
+Invoked by the pre-push hook (via pre-commit or lefthook). Runs the
+``[[verify.checks]]`` declared for mode ``full`` in the repo's basicly.toml —
+the same deterministic gate the harness loop's verify phase uses, so a push is
+held to exactly what the repo configures (and nothing it doesn't have).
 """
 
 from __future__ import annotations
 
-import subprocess  # nosec B404
 import sys
-import time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from check_runner import run_checks
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 def main() -> int:
     """Entry point for the pre-push hook."""
-    print("==> pytest")
-    start = time.perf_counter()
-    result = subprocess.run(
-        ["uv", "run", "pytest", "tests/"],
-        cwd=PROJECT_ROOT,
-        check=False,
-    )  # nosec
-    elapsed = time.perf_counter() - start
-
-    if result.returncode == 0:
-        print(f"pre-push passed in {elapsed:.2f}s")
-    else:
-        print(f"pre-push failed in {elapsed:.2f}s", file=sys.stderr)
-
-    return result.returncode
+    return run_checks(PROJECT_ROOT, "full")
 
 
 if __name__ == "__main__":

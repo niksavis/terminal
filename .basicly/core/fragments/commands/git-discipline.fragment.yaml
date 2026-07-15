@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+id: git-discipline
+description: How to commit safely in a hook-gated repo.
+category: commands
+priority: high
+applies_to:
+- all
+tags:
+- git
+- commits
+- hooks
+status: active
+title: Git Discipline
+body: |
+  - Run `git commit` as its own command; never chain state-dependent follow-ups (issue-tracker updates, tagging, `git push`) after it on one line — a hook rejection leaves the chain half-run.
+  - Commits are gated by `commit-msg` hooks (Conventional Commits + a trailing beads issue id) — use the `conventional-commits` skill to format one, and the `tool-br` skill to claim the issue first.
+  - When a hook rejects a commit, fix the reported cause and re-commit.
