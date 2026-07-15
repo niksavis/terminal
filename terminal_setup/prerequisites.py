@@ -1064,7 +1064,12 @@ def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
 
 
 def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the shellcheck binary to ~/.local/bin."""
+    """Download the shellcheck binary to ~/.local/bin.
+
+    shellcheck publishes no checksum file alongside its release archives, so —
+    like direnv and the xh/uv/rustup/starship vendor installers — the download
+    is trusted over HTTPS with no separate sha256 step.
+    """
     script = (
         "set -e; "
         "arch=$(uname -m); "
