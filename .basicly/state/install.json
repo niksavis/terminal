@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.1.0",
+  "basicly_version": "0.1.2",
   "core": {
     "fragments/boundaries/require-explicit-confirmation.fragment.yaml": "sha256:ffcf84e223f5bd6c43844f7758648578b3ca802837bf62567637262431f01816",
     "fragments/commands/git-discipline.fragment.yaml": "sha256:835254dff755bec182b3f9ced2f9daf64f25ab605f0a3bc3f6ff8c0cf514e042",
@@ -68,6 +68,6 @@
     "templates/copilot/copilot_instructions_md.j2": "sha256:3da1411b46aaf3501bf5c5b9bc63d590ae1a12d60cc3cf87b067e8a6da970759",
     "templates/copilot/instruction_md.j2": "sha256:0610d49d883565f79b472399b4255d2086c78eb128ef945e948c696b20532a02"
   },
-  "installed_at": "2026-07-16T06:45:08.634816+00:00",
+  "installed_at": "2026-07-16T07:05:21.093035+00:00",
   "schema_version": 1
 }

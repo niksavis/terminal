@@ -1,9 +1,9 @@
 {
   "version": "1",
-  "generated_at": "2026-07-16T06:45:08.652667+00:00",
+  "generated_at": "2026-07-16T07:05:21.110161+00:00",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:299aa948848b7889c1a007a8cd411f8c2c37444ec2abe9504a30c06380104dfb",
+      "hash": "sha256:2c2248dbd379098db08016139435a3d94a5ad72e72d7332e4b17c81a00ef0f8c",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -25,19 +25,19 @@
       ]
     },
     ".claude/rules/python-style.md": {
-      "hash": "sha256:cc533c1528b80a915942dccd063e67ce20bbe6a718e167b40046d708a46b125e",
+      "hash": "sha256:c0924dabab4faafe418ba7b346191e7c879bd1323d4cad07f1da432a814683c5",
       "source_fragments": [
         "python-style"
       ]
     },
     ".claude/rules/test-discipline.md": {
-      "hash": "sha256:1be3775a094c66c8f67ba06e0f3034950014617159bac5348b762186fbb6bf34",
+      "hash": "sha256:9186bbc1fc64cc179a7327f1fde87705871d0d6360ceb2c077282c86fa8deeca",
       "source_fragments": [
         "test-discipline"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:c4ced6d035b9a7d9f32f4cbefd79776f4ee57764d1d96b184de36f66cac4b57f",
+      "hash": "sha256:127db9b1566a922b10fd69afb3ab1206198c564d3db34daf8e971fb1048641c1",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -60,7 +60,7 @@
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:f9511f0f77e54d199445508900661d2937bc75acce093cdd4247b6be566c755b",
+      "hash": "sha256:e8b6b9396d0f3076e6e636a13ded929caf56eb2c7a90cf3fa5848c344687b8c0",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -82,13 +82,13 @@
       ]
     },
     ".github/instructions/python-style.instructions.md": {
-      "hash": "sha256:1360eec789db244508fe63da8acccd360ab8ad5601c8a480dada4795b386a915",
+      "hash": "sha256:56b715345deb1873f55c76abbafe0f8e16201b7d0aad69d07fe1ccb811201046",
       "source_fragments": [
         "python-style"
       ]
     },
     ".github/instructions/test-discipline.instructions.md": {
-      "hash": "sha256:a896824ebf4da462d6451405693b3e5514a1b11845e536c692bae8b9170d6839",
+      "hash": "sha256:d73e043c413b1d3a73cb3f520beb0d3d7cd4f48bfef52ab72287fe61d0d0c10c",
       "source_fragments": [
         "test-discipline"
       ]
