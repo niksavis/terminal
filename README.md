@@ -2,6 +2,26 @@
 
 Cross-platform terminal environment setup for developers using coding agents. Install WezTerm, WSL2 Ubuntu tooling, zsh, tmux, starship, and an agent-first CLI toolchain with one idempotent setup flow.
 
+## Quick install
+
+Prerequisites: [uv](https://docs.astral.sh/uv/) and Python 3.14+. On Windows, install WSL2 Ubuntu.
+
+Install everything (tools + configs) directly from `main` — no clone required:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
+```
+
+Already installed? Re-apply only the configs (fast, no package installs) — for example after a config update:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only config
+```
+
+For a reproducible install pinned to a version, use the command shown on the [latest release](https://github.com/niksavis/terminal/releases/latest) page.
+
+No admin rights are needed on Windows, WSL, or macOS: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
+
 ## Overview
 
 If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
@@ -12,20 +32,6 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v24), matching the Windows versions.
 - Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
 - No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
-
-## Quick install (users)
-
-Prerequisites: [uv](https://docs.astral.sh/uv/) and Python 3.14+. On Windows, install WSL2 Ubuntu.
-
-Use the latest setup directly from `main` (no clone required):
-
-```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
-```
-
-No admin rights are needed on Windows, WSL, or macOS: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
-
-For reproducible installs, use the pinned command shown on each GitHub release page.
 
 ## Contributor setup (required once after clone)
 
@@ -90,7 +96,7 @@ Press `Ctrl + Shift + l` for the launch menu to switch shells: **Ubuntu (WSL)** 
 
 The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
 
-Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Space` then `x`.
+Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Shift + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Shift + Space` then `x`.
 
 ### WSL2 Ubuntu
 
@@ -124,47 +130,53 @@ wezterm
 
 ### WezTerm
 
-| Action                    | Shortcut                                            |
-| ------------------------- | --------------------------------------------------- |
-| New tab                   | `Ctrl + Shift + t`                                  |
-| Close tab                 | `Ctrl + Shift + w`                                  |
-| Close window              | `Ctrl + Shift + q`                                  |
-| Copy selection            | `Ctrl + Shift + c`                                  |
-| Paste                     | `Ctrl + Shift + v`                                  |
-| Search in scrollback      | `Ctrl + Shift + f`                                  |
-| Quick-select URL/text     | `Ctrl + Shift + p`                                  |
-| Launcher (profiles/tabs)  | `Ctrl + Shift + l`                                  |
-| Copy with mouse           | Select text and release left button                 |
-| Paste with mouse          | Right-click                                         |
-| Split horizontal (direct) | `Ctrl + Alt + backslash`                            |
-| Split vertical (direct)   | `Ctrl + Alt + -`                                    |
-| Close pane (direct)       | `Ctrl + Alt + x`                                    |
-| Next tab                  | `Ctrl + Tab`                                        |
-| Previous tab              | `Ctrl + Shift + Tab`                                |
-| Split vertical            | `Ctrl + Space` then `-` or `s`                      |
-| Split horizontal          | `Ctrl + Space` then `backslash`, `pipe`, or `v`     |
-| Move between panes        | `Shift + Ctrl + arrow` or `Ctrl + Space` then arrow |
-| Rename tab                | `Ctrl + Space` then `,`                             |
-| Switch workspace          | `Ctrl + Space` then `w`                             |
-| Toggle fullscreen         | `Alt + Enter`                                       |
-| Increase font size        | `Ctrl + Shift + =`                                  |
-| Decrease font size        | `Ctrl + Shift + -`                                  |
-| Reset font size           | `Ctrl + 0`                                          |
-| Open config               | `Ctrl + Space` then `.`                             |
+| Action                    | Shortcut                                                        |
+| ------------------------- | --------------------------------------------------------------- |
+| New tab                   | `Ctrl + Shift + t`                                              |
+| Close tab                 | `Ctrl + Shift + w`                                              |
+| Copy selection            | `Ctrl + Shift + c`                                              |
+| Paste                     | `Ctrl + Shift + v`                                              |
+| Search in scrollback      | `Ctrl + Shift + f`                                              |
+| Jump to previous prompt   | `Ctrl + Shift + Up`                                             |
+| Jump to next prompt       | `Ctrl + Shift + Down`                                           |
+| Quick-select URL/text     | `Ctrl + Shift + p`                                              |
+| Launcher (profiles/tabs)  | `Ctrl + Shift + l`                                              |
+| Copy with mouse           | Select text and release left button                             |
+| Paste with mouse          | Right-click                                                     |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                                        |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                                |
+| Close pane (direct)       | `Ctrl + Alt + x`                                                |
+| Next tab                  | `Ctrl + Tab`                                                    |
+| Previous tab              | `Ctrl + Shift + Tab`                                            |
+| Split vertical            | `Ctrl + Shift + Space` then `-` or `s`                          |
+| Split horizontal          | `Ctrl + Shift + Space` then `backslash`, `pipe`, or `v`         |
+| Move between panes        | `Ctrl + Shift + Left/Right` or `Ctrl + Shift + Space` then `h`/`j`/`k`/`l` |
+| Zoom pane                 | `Ctrl + Shift + Space` then `z`                                 |
+| Close pane                | `Ctrl + Shift + Space` then `x`                                 |
+| Rename tab                | `Ctrl + Shift + Space` then `,`                                 |
+| Switch workspace          | `Ctrl + Shift + Space` then `w`                                 |
+| Toggle fullscreen         | `Alt + Enter`                                                   |
+| Increase font size        | `Ctrl + Shift + =`                                              |
+| Decrease font size        | `Ctrl + Shift + -`                                              |
+| Reset font size           | `Ctrl + 0`                                                      |
+| Open config               | `Ctrl + Shift + Space` then `.`                                 |
 
-`Ctrl + Space` is a WezTerm leader key with a 3-second timeout. Press and release `Ctrl + Space`, then press the second key. It was chosen over `Ctrl + A` so the standard shell shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) keep working.
+`Ctrl + Shift + Space` is the WezTerm leader key with a 3-second timeout. Press and release `Ctrl + Shift + Space`, then press the second key. Plain `Ctrl + Space` is the tmux prefix, so the leader must not shadow it, and the readline shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) stay untouched. Jump to previous/next prompt needs the OSC 133 prompt marks emitted by the deployed zshrc.
 
 ### tmux
 
-| Action           | Shortcut                 |
-| ---------------- | ------------------------ |
-| Prefix key       | `Ctrl + Space`           |
-| New window       | `Ctrl + Space` then `c`  |
-| Next window      | `Ctrl + Space` then `n`  |
-| Previous window  | `Ctrl + Space` then `p`  |
-| Reload config    | `Ctrl + Space` then `r`  |
-| Split vertical   | `Ctrl + Space` then `\|` |
-| Split horizontal | `Ctrl + Space` then `-`  |
+| Action             | Shortcut                                |
+| ------------------ | --------------------------------------- |
+| Prefix key         | `Ctrl + Space`                          |
+| New window         | `Ctrl + Space` then `c`                 |
+| Next window        | `Ctrl + Space` then `n`                 |
+| Previous window    | `Ctrl + Space` then `p`                 |
+| Reload config      | `Ctrl + Space` then `r`                 |
+| Split vertical     | `Ctrl + Space` then `\|`                |
+| Split horizontal   | `Ctrl + Space` then `-`                 |
+| Move between panes | `Ctrl + Space` then `h`/`j`/`k`/`l`     |
+| Resize pane        | `Ctrl + Space` then `H`/`J`/`K`/`L`     |
+| Zoom pane          | `Ctrl + Space` then `m`                 |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
