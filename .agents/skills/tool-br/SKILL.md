@@ -92,6 +92,12 @@ br sync --merge                           # 3-way merge of .beads/issues.jsonl a
   SQLite/JSONL sync contract).
 - Forgetting the beads id in a commit message — the `beads-commit-msg` git hook
   rejects commits without a known issue id referenced in the message.
+- Committing with a guessed or pre-assumed issue id — `br create` assigns a random
+  base (you cannot predict it), so never chain `br create` and `git commit` in one
+  command line with an id you invented; the hook rejects the unknown id, and a
+  trailing `|| true` silently swallows that rejection. Run `br create` alone, read
+  the generated id from its output (`✓ Created <id>: ...`), then commit separately
+  referencing that exact id.
 - Assuming `br` commits, pushes, or installs hooks automatically — it never does;
   `git add`/`git commit` for `.beads/` files is always the user/agent's responsibility.
 - Closing an issue in a separate follow-up commit instead of folding the close into

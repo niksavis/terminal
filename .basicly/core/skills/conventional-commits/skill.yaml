@@ -40,7 +40,9 @@ instructions: |
     nouns and acronyms get lowercased too ("json", "conventional commits", not "JSON",
     "Conventional Commits"). Letters/digits/space/hyphen only — **no underscores** (write
     `test-cli`, not `test_cli`) and no other punctuation. No trailing punctuation, at
-    least 3 characters.
+    least 3 characters. This means version strings and filenames (`v0.1.0`,
+    `AGENTS.md`) can never appear verbatim — dots and uppercase are rejected; reword
+    them ("the first release", "agents-md", "the readme").
   - `(issue-id[, issue-id...])` — required by this repo's `beads-commit-msg` hook: one or
     more known beads (`br`) issue ids, comma-separated in a single trailing parenthetical.
     An id is `<prefix>-<base>` with optional dotted hierarchy levels — e.g. `basicly-q49`,
@@ -75,6 +77,8 @@ instructions: |
     noun mid-string; must be `feat: support conventional commits marker`.
   - `fix: fix test_cli mutation bug` — underscore isn't allowed; must be
     `fix: fix test-cli mutation bug`.
+  - `docs: update AGENTS.md for v0.1.0` — dots and uppercase aren't allowed; must be
+    reworded, e.g. `docs: update agents-md for the first release`.
   - `fix: correct sorting order (not an id)` — trailing parenthetical isn't an issue-id list.
   - `chore(word description): message` — scope contains a space.
 
