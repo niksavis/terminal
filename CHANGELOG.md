@@ -2,6 +2,29 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.1 - 2026-07-16
+
+Delta: v0.4.0..v0.4.1
+
+### Highlights
+
+- **Mouse wheel scrolling is back to WezTerm defaults.** The custom 6-line wheel bindings and alternate-screen scroll speed introduced in v0.3.1 are removed: they showed no benefit in real agentic sessions and risked odd interactions with full-screen apps. The wheel now scrolls the standard 3 lines per tick everywhere.
+- README usability: the quick install and config-only commands now lead the page, with a direct link to the latest release for pinned installs, and the keybinding tables match the v0.4.0 scheme (leader `Ctrl+Shift+Space`, jump-to-prompt on `Ctrl+Shift+Up/Down`, tmux pane navigation rows).
+- Internal housekeeping, no effect on installed terminals: the packaged basicly harness converged to 0.1.2, the legacy CI workflows were retired in favor of the basicly gates, and the retired hand-rolled commit-message validator was deleted.
+- Re-apply with `terminal-setup --only config` and restart WezTerm.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-mp4) (b176312)
+- chore(basicly): restamp the install at the fixed release (term-pak) (a3732f0)
+- docs(readme): put quick install first and fix stale keybindings (term-5ng) (a3f7815)
+- chore(scripts): remove the retired commit message validator (term-v1v) (da60c82)
+- ci(workflows): retire the legacy gates superseded by basicly-gates (term-hg3) (988a0dc)
+- chore(basicly): converge the packaged harness to the newest release (term-hg3) (32815b9)
+- chore(beads): close the wheel scroll removal (term-1q7) (22eb489)
+- chore(wezterm): remove custom mouse wheel scroll speed (term-1q7) (2dee690)
+- chore(beads): file the basicly update track (term-hg3) (ac50104)
+- chore(beads): close the release track (term-k9e) (100972d)
+
 ## v0.4.0 - 2026-07-15
 
 Delta: v0.3.1..v0.4.0
