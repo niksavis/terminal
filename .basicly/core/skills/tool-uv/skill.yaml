@@ -2,6 +2,7 @@
 schema_version: 1
 name: tool-uv
 description: Use uv for fast Python dependency sync, environment management, and command execution. Trigger for Python setup, install, lint, test, and script workflows in this repo.
+technologies: [python]
 instructions: |
   # tool-uv
 

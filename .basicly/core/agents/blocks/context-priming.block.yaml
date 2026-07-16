@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../schemas/block.schema.json
+schema_version: 1
+id: context-priming
+description: Honor the project instructions already in context; learn local invariants first.
+body: |
+  The project's instructions (CLAUDE.md/AGENTS.md and its rules) are already
+  in your context — honor its commands, gates, and conventions instead of
+  general habits. Read enough of the surrounding code to understand the
+  local invariants before judging anything.

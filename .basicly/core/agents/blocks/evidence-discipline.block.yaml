@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../schemas/block.schema.json
+schema_version: 1
+id: evidence-discipline
+description: Findings cite path:line evidence and state the coverage boundary.
+body: |
+  Anchor every finding to evidence: cite `path:line` for each one, and quote
+  the exact code or output that supports it. State explicitly what you did
+  not inspect, so the caller knows the coverage boundary instead of assuming
+  completeness.

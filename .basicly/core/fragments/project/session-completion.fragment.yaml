@@ -11,5 +11,5 @@ tags:
 - handoff
 status: active
 body: |
-  - Leave the repo in a state a fresh session could pick up cleanly: no partial edits, no stray debug output, no unexplained changes.
-  - Summarize what changed, what was verified, and what — if anything — remains open before ending the turn.
+  - Leave the repo pickup-clean: no partial edits, stray debug output, or unexplained changes.
+  - Summarize what changed, what was verified, and what remains open before ending.

@@ -2,6 +2,7 @@
 schema_version: 1
 name: tool-starship
 description: Use Starship for prompt configuration, module tuning, and cross-shell prompt consistency. Trigger when prompt rendering, startup latency, or shell prompt content needs changes.
+technologies: [starship]
 instructions: |
   # tool-starship
 

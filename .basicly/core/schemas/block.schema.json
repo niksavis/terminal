@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/block.schema.json",
+  "title": "basicly agent block source",
+  "description": "A shared agent building block authored as <id>.block.yaml, composed into agent bodies by slot reference.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "description", "body"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Source-format version; bump only when the loader contract changes."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Block identifier (lowercase kebab-case); must match the file name stem."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One line stating what this block contributes to an agent body."
+    },
+    "source": {"enum": ["core", "user"]},
+    "override": {
+      "type": "boolean",
+      "description": "Required true when an overlay block replaces a core block of the same id."
+    },
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Markdown composed verbatim into agent bodies that reference this block."
+    }
+  }
+}

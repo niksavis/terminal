@@ -13,6 +13,6 @@ tags:
 status: active
 title: Git Discipline
 body: |
-  - Run `git commit` as its own command; never chain state-dependent follow-ups (issue-tracker updates, tagging, `git push`) after it on one line — a hook rejection leaves the chain half-run.
-  - Commits are gated by `commit-msg` hooks (Conventional Commits + a trailing beads issue id) — use the `conventional-commits` skill to format one, and the `tool-br` skill to claim the issue first.
+  - Run `git commit` as its own command; never chain follow-ups (tracker updates, tagging, `git push`) after it — a hook rejection leaves the chain half-run.
+  - Commits are gated by `commit-msg` hooks (Conventional Commits + a trailing beads issue id) — the `conventional-commits` skill formats one, the `tool-br` skill claims the issue first.
   - When a hook rejects a commit, fix the reported cause and re-commit.

@@ -1,0 +1,15 @@
+schema_version: 1
+id: project-overview
+description: What this project is - purpose, stack, entry points.
+category: project
+priority: critical
+applies_to: [all]
+tags: [overview, priming]
+# Draft until you fill it in: set `status: active` and run `basicly build`.
+status: draft
+title: Project Overview
+body: |
+  - Purpose: TODO - what this project does and who uses it, in 1-2 lines.
+  - Stack: TODO - the languages, frameworks, and versions that matter (e.g. Python 3.14 + uv).
+  - Entry points: TODO - the main binary/module/service and where it lives.
+  - Architecture docs: TODO - pointer to the authoritative doc; do not embed a directory map here.

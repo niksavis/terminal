@@ -2,6 +2,7 @@
 schema_version: 1
 name: tool-zsh
 description: Use zsh for shell startup, profile troubleshooting, and non-interactive command validation. Trigger when the task touches shell behavior, aliases, completions, or prompt startup.
+technologies: [zsh]
 instructions: |
   # tool-zsh
 

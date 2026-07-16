@@ -11,9 +11,9 @@ tags:
 - review
 status: active
 body: |
-  - Review the diff before finishing; do not mark complete with "should work" — verify.
-  - Run the checks this repo already enforces (tests, lint, type check, hooks/CI config) for anything the change touches, and re-run them after your final edit — a later change can break what passed earlier. Point at existing gates; don't restate what they check.
-  - Confirm a check passed from its explicit pass/fail summary line; never infer success from truncated or partial output (a cut-off `tail` can hide a failure).
-  - Before calling a change done, exercise it as it will really be used — run the command, read the output, and run any new or changed check against this repo itself (the dogfood consumer); passing tests is not the same as having used the feature.
-  - Docs must state the verification scope actually exercised; never upgrade "expected to work" to "works".
-  - If a gate can't be run, say so explicitly instead of skipping it silently.
+  - Review the diff before finishing; verify instead of declaring "should work".
+  - Run the repo's existing checks for anything touched, and re-run after the final edit — a later change can break what passed earlier. Point at gates; don't restate what they check.
+  - Confirm success from the explicit pass/fail summary line; truncated output can hide a failure.
+  - Exercise the change as it will really be used — run it and read the output; passing tests is not the same as having used the feature.
+  - Docs state the verification scope actually exercised; never upgrade "expected to work" to "works".
+  - If a gate can't be run, say so instead of skipping it silently.

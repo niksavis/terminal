@@ -25,12 +25,18 @@ diffing). This skill sequences them; it does not replace them.
 resumable across restarts and across agents. Whatever happened last session, begin
 by reconstructing where a track is:
 
-```
+```sh
 basicly loop status <issue>     # phase, worktree binding, gates, checkpoints, rework, ready/blocked
 ```
 
 Pick the next actionable issue with `br ready` / `br scheduler --json`; `basicly
 loop status` then tells you which phase it is parked in and what it is waiting on.
+
+Tracker state and worktrees do not mix: claim the bead and commit
+`.beads/issues.jsonl` in the base checkout *before* `loop advance` provisions
+the worktree, and never commit that file on a harness branch (restore it
+before staging) — provisioning syncs it from base, so committing it on both
+sides makes the landing rebase conflict.
 
 ## Advancing the loop
 
@@ -39,7 +45,7 @@ does the phase's action (or blocks waiting on an input, a checkpoint, or a gate)
 and returns the outcome. A blocked step exits non-zero so scripts and CI can
 branch on it.
 
-```
+```sh
 basicly loop advance <issue> [--work-type T] [--children plan.toml] [--mode M]
 basicly loop run <issue> [flags]   # advance repeatedly until it blocks or finishes
 ```
@@ -60,9 +66,12 @@ phase is asking for (`basicly loop status`/`advance` names it as `needs input`).
 | **ship** | tear down the worktree and close the issue | `basicly loop advance <id>` (runs teardown + `br close`) |
 
 Leaf types (bug/chore/task) build directly in their own worktree; features
-decompose into children and land them through the merge queue once every child
-closes. See `worktree-isolation` for the sibling-worktree placement and
-provisioning rules the build phase relies on.
+decompose into children and, once every child closes, land the child worktrees
+that are still live through the merge queue. A child driven through its own
+loop self-lands (its ship phase tears the worktree down), so the parent fan-in
+counts it as already merged instead of failing. See `worktree-isolation` for
+the sibling-worktree placement and provisioning rules the build phase relies
+on.
 
 ## Gates: deterministic blocks, semantic advises
 
@@ -77,7 +86,7 @@ A failed node enters a bounded **rework loop (default n=2)**, tracked with gate
 results and comments — not a status change (`br` has no `rework` status). At the
 cap it escalates to a human. Inspect or record attempts with:
 
-```
+```sh
 basicly policy rework <id> --gate verify [--record]
 ```
 
@@ -91,7 +100,7 @@ the worktree, and closes the issue. After an epic slice lands, capture a retro a
 tracker comments and file a `br` issue for each finding the user does not choose
 to ignore:
 
-```
+```sh
 br comments add <epic-id> "Retro: <finding>"
 ```
 

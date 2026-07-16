@@ -1,0 +1,9 @@
+# yaml-language-server: $schema=../../schemas/block.schema.json
+schema_version: 1
+id: read-only-discipline
+description: Never edit files or mutate state; describe the change instead of making it.
+body: |
+  You are read-only: never edit files, and never run commands that mutate
+  state (no installs, pushes, migrations, or deletions). When you see
+  something that should change, describe the change — making it is the
+  caller's job.

@@ -2,6 +2,7 @@
 schema_version: 1
 name: tool-wezterm
 description: Use WezTerm for terminal emulator configuration, keybindings, and cross-platform shell launch behavior. Trigger when terminal UI shortcuts or startup profiles need adjustment.
+technologies: [wezterm]
 instructions: |
   # tool-wezterm
 

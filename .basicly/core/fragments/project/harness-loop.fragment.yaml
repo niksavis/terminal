@@ -12,6 +12,6 @@ tags:
 - workflow
 status: active
 body: |
-  - Drive non-trivial work through the harness loop, not ad hoc: intake → classify → decompose → build → verify → ship → teardown → retro. `br` is the single source of truth (the loop keeps no side-state, so it is resumable); the `harness-loop` skill is the runbook.
-  - Start by reconstructing a track with `basicly loop status <issue>`, then step it with `basicly loop advance <issue>` / `basicly loop run <issue>`; a blocked step exits non-zero and names the input it needs.
-  - The three human checkpoints (classify, decompose, ship) and the bounded rework loop are engine-enforced — approve with `basicly policy checkpoint <issue> <name> --approve`.
+  - Drive non-trivial work through the harness loop (intake → classify → decompose → build → verify → ship → teardown → retro); `br` is the single source of truth and the `harness-loop` skill is the runbook.
+  - Reconstruct a track with `basicly loop status <issue>`, step it with `basicly loop advance <issue>`; a blocked step exits non-zero and names the input it needs.
+  - Checkpoints (classify, decompose, ship) and bounded rework are engine-enforced — approve with `basicly policy checkpoint <issue> <name> --approve`.

@@ -12,7 +12,7 @@ tags:
 status: active
 title: Copilot-specific notes
 body: |
-  - Put path-scoped instructions in `.github/instructions/*.instructions.md` (activated by `applyTo:`).
-  - Put prompts in `.github/prompts/*.prompt.md`.
+  - Path-scoped rules live in `.claude/rules/*.md` only; `.github/instructions/` twins double-load.
+  - Prefer skills over prompt files — VS Code is migrating `*.prompt.md` to skills.
   - Put custom agents in `.github/agents/*.agent.md`.
-  - Keep shared skills in `.claude/skills/` for Claude + Copilot reuse.
+  - Shared skills in `.claude/skills/` are read by Claude and Copilot alike.

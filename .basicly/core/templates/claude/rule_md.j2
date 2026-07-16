@@ -1,8 +1,9 @@
-{{ header }}---
+---
 description: {{ fragments[0].description }}
 paths: [{% for path in fragments[0].scope_paths %}"{{ path }}"{% if not loop.last %}, {% endif %}{% endfor %}]
 ---
 
+{{ header }}
 # {{ fragments[0].title }}
 
 {{ fragments[0].body }}

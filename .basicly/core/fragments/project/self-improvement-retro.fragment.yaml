@@ -11,7 +11,8 @@ tags:
 - self-improvement
 status: active
 body: |
-  - If this session hit a real rejection or user-corrected mistake, find the root cause before ending, not just the fix.
-  - Propose the exact fragment/skill/hook file and wording change that would have prevented it; skip vague "be careful" notes.
-  - Present each proposal for explicit approval; never self-apply a fragment/skill/hook edit from a retro.
-  - Skip the retro when nothing concrete surfaced; inventing gaps to look thorough is the anti-pattern this exists to prevent.
+  - If the session hit a real rejection or user-corrected mistake, find the root cause before ending.
+  - Propose the exact fragment/skill/hook change that would have prevented it; skip vague "be careful" notes.
+  - An environment/timing/platform trap belongs in a quirks fragment: one incident, one bullet, trap plus avoidance.
+  - Present each proposal for explicit approval; never self-apply a retro edit.
+  - Skip the retro when nothing concrete surfaced; inventing gaps to look thorough is the anti-pattern.

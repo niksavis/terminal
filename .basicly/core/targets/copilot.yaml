@@ -9,9 +9,6 @@ outputs:
     filter:
       applies_to: [all, copilot]
       exclude_scoped: true
-  scoped_instructions:
-    path_template: .github/instructions/{fragment_id}.instructions.md
-    template: copilot/instruction_md.j2
-    filter:
-      applies_to: [all, copilot]
-      has_scope: true
+# Scoped fragments are single-sourced to .claude/rules/ (claude target): VS Code
+# loads both roots without dedup, so a .github/instructions/ twin double-loads.
+# Trade-off, accepted: github.com-side Copilot keeps only the root baseline.

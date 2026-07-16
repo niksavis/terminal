@@ -11,9 +11,9 @@ tags:
 - confirmation
 status: active
 body: |
-  - Force-push, history rewrite, or destructive git resets.
+  - Force-push, history rewrite, destructive resets, `rm -rf`, and `.env*` reads/writes — hard-denied in `.claude/settings.json` for Claude Code; this rule covers other agents, so treat a blocked command as the answer.
   - Deleting files/branches/data beyond explicit task scope.
-  - Editing CI/CD, deployment, infra-as-code, ignore/secrets files, or `.env*`.
+  - Editing CI/CD, deployment, infra-as-code, or ignore/secrets files.
   - Adding/removing/upgrading dependencies.
   - New network calls outside task scope.
-  - Defeating a gate to force success — skipping or weakening tests, lint, or type checks, or bypassing hooks (`--no-verify`, `--no-gpg-sign`). Fix the failing gate instead.
+  - IMPORTANT: never defeat a gate to force success — skipping or weakening tests, lint, or type checks, or bypassing hooks (`--no-verify`, `--no-gpg-sign`). Fix the failing gate instead.

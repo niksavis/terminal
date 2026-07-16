@@ -11,5 +11,5 @@ tags:
 - context
 status: active
 body: |
-  - Before non-trivial work, load repo-specific context (README, architecture/CONTRIBUTING docs, local overlay) and treat it as ground truth; when it conflicts with general best practice, repo evidence wins — flag the conflict, don't silently override.
-  - If no repo-specific context exists for a decision, say so explicitly and proceed on stated assumptions; do not block on missing priming material alone.
+  - Before non-trivial work, load repo-specific context (README, architecture docs, local overlay); when it conflicts with general best practice, repo evidence wins — flag the conflict, don't silently override.
+  - If no repo context covers a decision, say so and proceed on stated assumptions; don't block on missing priming alone.

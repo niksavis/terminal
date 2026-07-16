@@ -13,4 +13,4 @@ tags:
 status: active
 title: Tool Usage
 body: |
-  - Retrieval ladder: find files by name, localize with focused search, then read only the ranges you need — expand scope only as required; don't bulk-load unrelated files.
+  - Retrieval ladder: find files by name, localize with focused search, read only the ranges you need; don't bulk-load unrelated files.

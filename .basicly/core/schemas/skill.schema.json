@@ -25,6 +25,11 @@
       "type": "string",
       "minLength": 1,
       "description": "Markdown body rendered into the projected SKILL.md."
+    },
+    "technologies": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal."
     }
   }
 }

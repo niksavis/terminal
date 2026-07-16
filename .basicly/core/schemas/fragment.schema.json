@@ -26,12 +26,14 @@
         "skills",
         "testing",
         "tools",
-        "ci-cd"
+        "ci-cd",
+        "quirks"
       ]
     },
     "priority": {"enum": ["critical", "high", "medium", "low"]},
     "applies_to": {"type": "array", "items": {"type": "string"}, "minItems": 1},
     "tags": {"type": "array", "items": {"type": "string"}},
+    "technologies": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "status": {"enum": ["active", "draft", "deprecated"]},
     "title": {"type": "string"},
     "scope": {

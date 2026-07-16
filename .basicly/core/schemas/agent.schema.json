@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/agent.schema.json",
+  "title": "basicly agent source",
+  "description": "A subagent authored as agent.yaml, composed from slot blocks and projected to .claude/agents/<slug>.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "purpose", "triggers", "returns", "posture", "tools", "slots"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Source-format version; bump only when the loader contract changes."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Agent identifier (lowercase kebab-case); must match the containing directory name."
+    },
+    "purpose": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the agent does; first sentence of the composed description."
+    },
+    "triggers": {
+      "type": "string",
+      "minLength": 1,
+      "description": "When to delegate to it ('Use proactively when/after ...'); drives automatic delegation."
+    },
+    "returns": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the agent hands back, so the parent can delegate without reading output dumps."
+    },
+    "posture": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Permission posture ('Read-only.'); linted for coherence against the tools list."
+    },
+    "tools": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "minItems": 1,
+      "description": "Explicit tool allowlist; agents never silently inherit every tool."
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model alias, full ID, or 'inherit' (the default)."
+    },
+    "claude": {
+      "type": "object",
+      "description": "Claude-only frontmatter passthrough (memory, maxTurns, ...); other readers ignore these keys."
+    },
+    "source": {"enum": ["core", "user"]},
+    "override": {
+      "type": "boolean",
+      "description": "Required true when an overlay agent replaces a core agent of the same slug."
+    },
+    "technologies": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal."
+    },
+    "slots": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "startup", "process", "output_contract", "constraints"],
+      "properties": {
+        "role": {"$ref": "#/$defs/slot"},
+        "startup": {"$ref": "#/$defs/slot"},
+        "process": {"$ref": "#/$defs/slot"},
+        "output_contract": {"$ref": "#/$defs/slot"},
+        "constraints": {"$ref": "#/$defs/slot"}
+      }
+    }
+  },
+  "$defs": {
+    "slot": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/slot_item"}
+    },
+    "slot_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "maxProperties": 1,
+      "properties": {
+        "block": {"type": "string", "minLength": 1},
+        "text": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

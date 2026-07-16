@@ -1,0 +1,36 @@
+schema_version: 1
+id: commands
+description: Verbatim-runnable commands for everyday development.
+category: commands
+priority: high
+applies_to: [all]
+tags: [commands, build, test]
+# Draft until you fill it in: set `status: active` and run `basicly build`.
+status: draft
+title: Commands
+body: |
+  Commands in code fences are exact - run them verbatim instead of improvising variants.
+
+  Setup:
+
+  ```sh
+  # TODO: dependency install (e.g. uv sync --group dev)
+  ```
+
+  Test:
+
+  ```sh
+  # TODO: full test suite (e.g. uv run pytest -q)
+  ```
+
+  Single test:
+
+  ```sh
+  # TODO: one test file or case (e.g. uv run pytest tests/test_x.py -q)
+  ```
+
+  Lint / format:
+
+  ```sh
+  # TODO: linter and formatter (e.g. uv run ruff check)
+  ```
