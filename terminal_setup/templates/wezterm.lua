@@ -312,24 +312,6 @@ table.insert(config.mouse_bindings, {
   action = act.CompleteSelectionOrOpenLinkAtMouseCursor("ClipboardAndPrimarySelection"),
 })
 
--- Scroll the scrollback twice as fast as the 3-line default per wheel tick.
--- alt_screen = false keeps full-screen apps (less, tmux, editors) on the
--- default wheel handling, and the alternate-screen speed is doubled to match.
-local wheel_scroll_lines = 6
-table.insert(config.mouse_bindings, {
-  event = { Down = { streak = 1, button = { WheelUp = 1 } } },
-  mods = "NONE",
-  action = act.ScrollByLine(-wheel_scroll_lines),
-  alt_screen = false,
-})
-table.insert(config.mouse_bindings, {
-  event = { Down = { streak = 1, button = { WheelDown = 1 } } },
-  mods = "NONE",
-  action = act.ScrollByLine(wheel_scroll_lines),
-  alt_screen = false,
-})
-config.alternate_buffer_wheel_scroll_speed = wheel_scroll_lines
-
 -- Key bindings. The leader is Ctrl+Shift+Space: plain Ctrl+Space is the tmux
 -- prefix (deployed tmux.conf), so the leader must not shadow it, and readline
 -- shortcuts such as Ctrl+A/Ctrl+E stay untouched. Ctrl+Shift+Space is free on
