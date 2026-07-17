@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.2 - 2026-07-17
+
+Delta: v0.4.1..v0.4.2
+
+### Highlights
+
+- **The status line renders on every Nerd Font again.** The per-model icons now use classic Font Awesome v4 glyphs (Opus → star, Sonnet → pencil, Haiku → leaf) instead of Nerd Fonts v3-only codepoints. This fixes WezTerm's "no fonts contain glyphs for these codepoints `\u{ed62}`" notification that appeared when switching the model to Opus on machines whose bundled Nerd Font predates v3 — no font install or WezTerm update required. The default (unknown model) microchip glyph was already portable and is unchanged.
+- Internal housekeeping, no effect on installed terminals: the packaged basicly install was refreshed.
+- Re-apply with `terminal-setup --only config`; no WezTerm restart is needed — Claude Code re-reads the status line on its next render.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-trp) (90abe8f)
+- fix(statusline): use portable font awesome v4 glyphs for model icons (term-86x) (eaf8c3f)
+- chore(basicly): refresh the install at the third release (term-20c) (7e0b396)
+
 ## v0.4.1 - 2026-07-16
 
 Delta: v0.4.0..v0.4.1
