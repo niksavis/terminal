@@ -118,8 +118,9 @@ GA_F=$'▮▮▮▮▮'; GA_E=$'▯▯▯▯▯'  # ▮ / ▯ gauge
 if [ "$NERDFONT" = 1 ]; then
   G_BRANCH=$' '; G_REPO=$' '; G_CLOCK=$' '        #
   case $model in
-    Opus*)   G_MODEL=$' ';;  Sonnet*) G_MODEL=$' ';;
-    Haiku*)  G_MODEL=$' ';;  *)       G_MODEL=$' ';;    # microchip fallback
+    Opus*)   G_MODEL=$' ';;  Sonnet*) G_MODEL=$' ';;
+    Haiku*)  G_MODEL=$' ';;  Fable*)  G_MODEL=$' ';;
+    *)       G_MODEL=$' ';;    # microchip fallback
   esac
 else
   G_BRANCH=$'⎇ '; G_REPO=''; G_CLOCK=$'⟳'; G_MODEL=$'✱ '   # ⎇ ⟳ ✱
