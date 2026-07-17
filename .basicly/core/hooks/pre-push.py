@@ -12,14 +12,12 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_runner import run_checks
-
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+from check_runner import project_root, run_checks
 
 
 def main() -> int:
     """Entry point for the pre-push hook."""
-    return run_checks(PROJECT_ROOT, "full")
+    return run_checks(project_root(), "full")
 
 
 if __name__ == "__main__":

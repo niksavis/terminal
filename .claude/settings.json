@@ -50,6 +50,17 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run python .basicly/core/hooks/tool-usage.py"
+          }
+        ]
+      }
     ]
   }
 }

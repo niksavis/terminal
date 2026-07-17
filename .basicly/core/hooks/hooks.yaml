@@ -1,7 +1,8 @@
 # Manifest of catalog hook scripts, described independently of any hook
 # manager. `basicly hooks-build` renders these into each manager's native
-# config: `manager: git` (the default) goes to pre-commit's config, and
-# `manager: claude` goes to the agent-hook section of .claude/settings.json.
+# config: `manager: git` (the default) goes to pre-commit's config,
+# `manager: claude` goes to the agent-hook section of .claude/settings.json,
+# and `manager: copilot` goes to a managed .github/hooks/basicly-<id>.json.
 # The fields stay tool-agnostic so another manager (e.g. lefthook) can be
 # projected later. See docs/architecture.md §4.2, §11.6.
 hooks:
@@ -37,3 +38,15 @@ hooks:
     script: protect-generated.py
     stage: pretooluse
     manager: claude
+  # Token-free tool-usage telemetry: counts pipeline heads of every executed
+  # shell command and every Skill invocation into the self-ignored
+  # .basicly/usage/tool-usage.json.
+  - id: tool-usage
+    script: tool-usage.py
+    stage: posttooluse
+    manager: claude
+    matcher: Bash|Skill
+  - id: tool-usage-copilot
+    script: tool-usage.py
+    stage: posttooluse
+    manager: copilot

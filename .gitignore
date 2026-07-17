@@ -47,3 +47,5 @@ htmlcov/
 # Node.js
 node_modules/
 # package.json and package-lock.json are tracked to pin markdownlint-cli2.
+# Per-machine basicly overrides; harness keys win over basicly.toml.
+basicly.local.toml

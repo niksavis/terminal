@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "uv run python .basicly/core/hooks/tool-usage.py",
+        "powershell": "uv run python '.basicly/core/hooks/tool-usage.py'"
+      }
+    ]
+  }
+}

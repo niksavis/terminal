@@ -74,10 +74,13 @@ br sync --merge                           # 3-way merge of .beads/issues.jsonl a
 - Run `br sync --flush-only` before staging `.beads/` so the JSONL export matches the
   SQLite state (mutating commands auto-flush by default, but this is a cheap final
   check).
-- Prefer `br update <id> --status in_progress` before starting work. Close the issue
-  with `br close <id> --reason "..."` _before_ making the commit that resolves it, then
-  stage `.beads/issues.jsonl` together with the code in that same commit — never a
-  separate trailing `chore: close <id>` commit with no other content.
+- Prefer `br update <id> --status in_progress` before starting work. For work done
+  directly in the base checkout, close the issue with `br close <id> --reason "..."`
+  _before_ making the commit that resolves it, then stage `.beads/issues.jsonl`
+  together with the code in that same commit — never a separate trailing
+  `chore: close <id>` commit with no other content. For loop-tracked work the
+  tracker is zero-touch: the loop engine commits tracker state itself at landing
+  and at ship — never `git add .beads` yourself (see the `harness-loop` skill).
 - Use `--json` for any programmatic/agent-driven query (`br ready --json`, `br list
 --json`, `br show <id> --json`).
 - Stage `.beads/issues.jsonl`, `.beads/config.yaml`, and `.beads/metadata.json` with
@@ -101,7 +104,8 @@ br sync --merge                           # 3-way merge of .beads/issues.jsonl a
 - Assuming `br` commits, pushes, or installs hooks automatically — it never does;
   `git add`/`git commit` for `.beads/` files is always the user/agent's responsibility.
 - Closing an issue in a separate follow-up commit instead of folding the close into
-  the commit that resolves it — creates a no-value trailing commit. If you forgot and
+  the commit that resolves it (base-checkout work only; the loop's closing commit is
+  structurally separate) — creates a no-value trailing commit. If you forgot and
   the resolving commit isn't pushed yet, `git commit --amend` it instead of adding a
   new one; if it's already pushed, amending needs explicit confirmation (history
   rewrite), so weigh that against just accepting the small trailing commit.

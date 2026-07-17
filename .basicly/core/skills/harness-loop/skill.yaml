@@ -31,11 +31,41 @@ instructions: |
   Pick the next actionable issue with `br ready` / `br scheduler --json`; `basicly
   loop status` then tells you which phase it is parked in and what it is waiting on.
 
-  Tracker state and worktrees do not mix: claim the bead and commit
-  `.beads/issues.jsonl` in the base checkout *before* `loop advance` provisions
-  the worktree, and never commit that file on a harness branch (restore it
-  before staging) — provisioning syncs it from base, so committing it on both
-  sides makes the landing rebase conflict.
+  ## Tracker state is zero-touch — the engine commits it, you never do
+
+  One tracker, everywhere: a loop-provisioned worktree shares the base
+  checkout's `.beads` via br's git-ignored `redirect` file, so `br` commands
+  (create, update, comments, gates) work identically from base or any
+  worktree and always hit the one real DB/JSONL. There is no worktree tracker
+  copy to diverge and nothing to reconcile at landing.
+
+  The engine makes the only tracker commits, at the three natural points:
+
+  1. **At provisioning**, the claim (status, work type, classify approval) is
+     committed before the worktree is created, so the claim is in git history
+     from the moment work starts — a teammate who pulls sees it immediately.
+  2. **At landing**, `loop advance` rolls the `.beads/**` dirt accumulated
+     since (checkpoints, gate records) into one `chore(beads)` commit before
+     merging. A base that is dirty with anything *outside* `.beads/` still
+     blocks — that is someone's uncommitted work.
+  3. **At ship**, after `br close`, the engine commits the closing tracker
+     state itself.
+
+  So: never `git add .beads` yourself for loop-tracked work, and never commit
+  `.beads/issues.jsonl` on a harness branch (restore it if something staged
+  it).
+
+  **Push cadence** — tracker-only pushes are CI-free by design (`paths-ignore
+  .beads/**`; the local commit-msg hooks are the deterministic floor), so the
+  choice is purely about who is watching the remote:
+
+  - **Solo repo**: push once per track, after ship — one CI run for the real
+    change, none for the tracker noise.
+  - **Team repo** (other agents or humans pull the same tracker): push each
+    engine tracker commit as soon as it lands — especially the provisioning
+    claim commit, so nobody starts work someone already claimed. Cross-machine
+    races that still slip through are caught by `br scheduler
+    --stale-claim-hours` and `br coordination`.
 
   ## Advancing the loop
 
@@ -61,7 +91,7 @@ instructions: |
   | **decompose** | features need an agent child plan; leaves (bug/chore/task) skip straight to build | `basicly decompose <feature> --plan plan.toml` (or `--children` on advance); preview with `basicly decompose <feature> --plan plan.toml --dry-run` |
   | **decompose** *(human checkpoint)* | approve before fan-out | `basicly policy checkpoint <id> decompose --approve` |
   | **build** | fan out one worktree per dependency-unblocked child (ranked by `br scheduler`, concurrency-capped), do the work, land through the serial merge queue | `basicly worktree list`; do the coding; `basicly loop advance <id>` lands it |
-  | **verify** | required deterministic gates must be green; then approve ship | `basicly verify --mode full --issue <id>`; `basicly policy gate <id>`; `basicly policy checkpoint <id> ship --approve` |
+  | **verify** | the landing already ran verify and recorded the required gate; inspect it, then approve ship | `basicly policy gate <id>`; `basicly policy checkpoint <id> ship --approve`. Re-run gates (e.g. after rework) with `basicly verify --mode full --issue <id>` — from the base checkout only |
   | **ship** | tear down the worktree and close the issue | `basicly loop advance <id>` (runs teardown + `br close`) |
 
   Leaf types (bug/chore/task) build directly in their own worktree; features
@@ -78,6 +108,14 @@ instructions: |
   `br gate report --status pass|fail`; a failed required gate blocks advancement.
   AI-semantic verification reports a **non-required** gate — advisory, never
   blocking. Inspect the decision with `basicly policy gate <id>`.
+
+  Gates recorded from a loop-provisioned worktree are safe: its `.beads`
+  redirects to the base checkout, so the record lands in the one real tracker.
+  `basicly verify --issue` refuses only from a linked worktree *without* that
+  redirect (a throwaway tracker copy — the record would be discarded at
+  landing). During build you never need to record the gate manually anyway:
+  the landing advance verifies the rebased tree in the worktree and records
+  the required gate itself.
 
   ## Rework and escalation
 

@@ -11,9 +11,7 @@ tags:
 - review
 status: active
 body: |
-  - Review the diff before finishing; verify instead of declaring "should work".
-  - Run the repo's existing checks for anything touched, and re-run after the final edit — a later change can break what passed earlier. Point at gates; don't restate what they check.
+  - Review the diff before finishing, then exercise the change as it will really be used — run it and read the output; passing tests is not the same as using the feature.
+  - Run the repo's existing checks on anything touched, and re-run after the final edit — a later change can break what passed. Point at gates, don't restate them.
   - Confirm success from the explicit pass/fail summary line; truncated output can hide a failure.
-  - Exercise the change as it will really be used — run it and read the output; passing tests is not the same as having used the feature.
-  - Docs state the verification scope actually exercised; never upgrade "expected to work" to "works".
-  - If a gate can't be run, say so instead of skipping it silently.
+  - State only the verification scope actually exercised — say what you did not run; never upgrade "expected to work" to "works".

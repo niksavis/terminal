@@ -15,9 +15,20 @@ import re
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-BEADS_DIR = PROJECT_ROOT / ".beads"
-ISSUES_JSONL = BEADS_DIR / "issues.jsonl"
+
+def _project_root() -> Path:
+    """Repo root: git runs hooks with cwd at the top of the working tree.
+
+    Never derived from this file's location — the managed core may be
+    relocated via ``basicly.toml [paths]``. Walking up covers direct
+    invocation from a subdirectory.
+    """
+    cwd = Path.cwd()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return cwd
+
 
 # Beads issue ids look like <prefix>-<short-code>, e.g. "basicly-idr" or
 # "br-a1b2c3". Prefix and code are both lowercase alnum.
@@ -45,13 +56,33 @@ Check valid ids with:
 """
 
 
+def _beads_dir() -> Path:
+    """The active beads dir, following br's git-ignored ``redirect`` file.
+
+    A harness worktree shares the base checkout's tracker via a one-line
+    ``.beads/redirect`` (written at provisioning); a fresh id then only exists
+    in the redirected JSONL, so the hook must read the same dir ``br`` does.
+    """
+    beads = _project_root() / ".beads"
+    redirect = beads / "redirect"
+    if redirect.is_file():
+        try:
+            target = Path(redirect.read_text(encoding="utf-8").strip())
+        except OSError:
+            return beads
+        if target.is_dir():
+            return target
+    return beads
+
+
 def _load_known_issue_ids() -> set[str] | None:
     """Return the set of known issue ids, or None if no beads workspace exists."""
-    if not ISSUES_JSONL.exists():
+    issues_jsonl = _beads_dir() / "issues.jsonl"
+    if not issues_jsonl.exists():
         return None
 
     known_ids: set[str] = set()
-    for raw_line in ISSUES_JSONL.read_text(encoding="utf-8").splitlines():
+    for raw_line in issues_jsonl.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line:
             continue

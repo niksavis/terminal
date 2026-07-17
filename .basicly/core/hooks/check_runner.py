@@ -18,6 +18,21 @@ from pathlib import Path
 CONFIG_FILE = "basicly.toml"
 
 
+def project_root() -> Path:
+    """Repo root for a hook invocation.
+
+    Git runs hooks with cwd at the top of the working tree, so cwd is
+    authoritative; walking up covers direct invocation from a subdirectory.
+    Never derived from this file's location — the managed core may be
+    relocated via ``basicly.toml [paths]``.
+    """
+    cwd = Path.cwd()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / ".git").exists():
+            return candidate
+    return cwd
+
+
 def load_checks(repo_root: Path, mode: str) -> list[tuple[str, list[str]]]:
     """Return ``(name, command)`` pairs configured for *mode*.
 
