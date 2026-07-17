@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.3 - 2026-07-17
+
+Delta: v0.4.2..v0.4.3
+
+### Highlights
+
+- **Refined status-line model icons.** The per-model glyphs now match the models' literary/musical naming: Opus is a music note (an "opus" is a musical work), and Fable gets a book. Haiku (leaf), Sonnet (pencil), and the unknown-model microchip fallback are unchanged. All icons stay in the portable Font Awesome v4 range, so they render on every Nerd Font version.
+- Internal housekeeping, no effect on installed terminals: the packaged basicly install was re-stamped for the upstream 0.2.0 harness release.
+- Re-apply with `terminal-setup --only config`; no WezTerm restart is needed — Claude Code re-reads the status line on its next render.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-zpj) (82dcaf0)
+- feat(statusline): use music note for opus and add fable book icon (term-6m7) (e2078c5)
+- chore(basicly): restamp the install for the harness upgrade (term-8kv) (f113ecb)
+
 ## v0.4.2 - 2026-07-17
 
 Delta: v0.4.1..v0.4.2
