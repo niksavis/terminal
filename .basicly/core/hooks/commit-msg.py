@@ -46,6 +46,7 @@ HEADER_PATTERN = re.compile(
     r"(.+?)(?:\s+\((" + ISSUE_ID + r"(?:,\s*" + ISSUE_ID + r")*)\))?$"
 )
 DESCRIPTION_PATTERN = re.compile(r"^[a-z][a-z0-9 -]*[a-z0-9]$")
+_ALLOWED_DESCRIPTION_CHAR = re.compile(r"[a-z0-9 -]")
 
 ERROR_MESSAGE = """ERROR: Commit message does not follow conventional commit format.
 
@@ -95,6 +96,26 @@ def validate(message: str) -> bool:
     return bool(DESCRIPTION_PATTERN.fullmatch(description))
 
 
+def _description_of(message: str) -> str | None:
+    """Return the parsed description of the header, or None if it doesn't parse."""
+    first_line = message.splitlines()[0] if message else ""
+    match = HEADER_PATTERN.match(first_line)
+    return match.group(4) if match else None
+
+
+def disallowed_description_chars(description: str) -> list[str]:
+    """Return the distinct out-of-charset characters, in first-seen order.
+
+    The charset is lowercase letters, digits, spaces, and hyphens; capitals and
+    dots (version numbers, filenames, proper nouns) are the usual offenders.
+    """
+    bad: list[str] = []
+    for char in description:
+        if not _ALLOWED_DESCRIPTION_CHAR.fullmatch(char) and char not in bad:
+            bad.append(char)
+    return bad
+
+
 def main() -> int:
     """Entry point for the commit-msg hook."""
     if len(sys.argv) < 2:
@@ -109,6 +130,17 @@ def main() -> int:
         return 0
 
     print(ERROR_MESSAGE, file=sys.stderr)
+    description = _description_of(message)
+    if description:
+        bad = disallowed_description_chars(description)
+        if bad:
+            rendered = ", ".join(repr(char) for char in bad)
+            print(
+                f"\nDescription has disallowed character(s): {rendered}. "
+                "Use only lowercase letters, digits, spaces, and hyphens; put version "
+                "numbers, filenames, and proper-noun capitalization in the commit body.",
+                file=sys.stderr,
+            )
     return 1
 
 

@@ -40,9 +40,12 @@ instructions: |
     nouns and acronyms get lowercased too ("json", "conventional commits", not "JSON",
     "Conventional Commits"). Letters/digits/space/hyphen only — **no underscores** (write
     `test-cli`, not `test_cli`) and no other punctuation. No trailing punctuation, at
-    least 3 characters. This means version strings and filenames (`v0.1.0`,
-    `AGENTS.md`) can never appear verbatim — dots and uppercase are rejected; reword
-    them ("the first release", "agents-md", "the readme").
+    least 3 characters. This means version strings, filenames, and proper nouns
+    (`0.2.0`, `AGENTS.md`, `Font Awesome`) can never appear verbatim in the subject —
+    dots and uppercase are rejected. Keep the exact form in the free-form commit **body**
+    (the hooks validate only the subject line), or reword the subject ("the first
+    release", "agents-md", "font awesome"). A rejected commit prints the offending
+    character(s) — lowercase them or move them to the body.
   - `(issue-id[, issue-id...])` — required by this repo's `beads-commit-msg` hook: one or
     more known beads (`br`) issue ids, comma-separated in a single trailing parenthetical.
     An id is `<prefix>-<base>` with optional dotted hierarchy levels — e.g. `basicly-q49`,
@@ -79,6 +82,10 @@ instructions: |
     `fix: fix test-cli mutation bug`.
   - `docs: update AGENTS.md for v0.1.0` — dots and uppercase aren't allowed; must be
     reworded, e.g. `docs: update agents-md for the first release`.
+  - `feat: add Font Awesome v4 icons` — capitals aren't allowed; lowercase the subject
+    (`feat: add font awesome v4 icons`) and keep the exact "Font Awesome v4" in the body.
+  - `chore: restamp the install to 0.2.0` — the dots aren't allowed; move the version to
+    the body, e.g. `chore: restamp the install` with `Restamp to 0.2.0.` in the body.
   - `fix: correct sorting order (not an id)` — trailing parenthetical isn't an issue-id list.
   - `chore(word description): message` — scope contains a space.
 

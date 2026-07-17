@@ -1,7 +1,11 @@
 name: claude
 enabled: true
 tone: terse_directive
-max_size_warning: 8000
+# Soft, non-blocking warning on `basicly build` (not a gate). The baseline is
+# ~50 chars/line, so this fires ~1000 chars before the ~200-line (~10000-char)
+# point where always-on context starts to dilute attention. Codex sits higher
+# (12000) because it inlines scoped fragments.
+max_size_warning: 9000
 outputs:
   claude_wrapper:
     path: .claude/CLAUDE.md

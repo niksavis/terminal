@@ -61,11 +61,57 @@ SKIP_TOKENS = {
 # both uv and pytest).
 WRAPPER_TOKENS = {"uv", "uvx", "npx", "sudo", "xargs", "command", "exec", "nohup", "time"}
 
-_OPERATORS = re.compile(r"(?:\|\||&&|;|\||\n)")
-
 # `cmd <<TAG` / `cmd <<-'TAG'`: everything until the terminator line is data,
 # not commands — counting heredoc body lines as tools was basicly-587.
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)\1")
+
+
+def _split_pipeline_segments(command: str) -> list[str]:
+    """Split on the pipeline operators ``|| && ; |`` and newlines outside quotes.
+
+    Splitting the raw string with a regex would shatter a quoted argument that
+    contains an operator or newline — a multi-line ``git commit -m`` body, a
+    ``--title "add x; ship it"`` — into fake segments whose first word is then
+    miscounted as a command head (basicly-zcvo). Tracking quote state keeps
+    quoted-string contents inside a single segment.
+    """
+    segments: list[str] = []
+    buf: list[str] = []
+    quote: str | None = None
+    i, n = 0, len(command)
+    while i < n:
+        ch = command[i]
+        # A backslash escapes the next char everywhere except inside '...'.
+        if ch == "\\" and quote != "'" and i + 1 < n:
+            buf.append(ch)
+            buf.append(command[i + 1])
+            i += 2
+            continue
+        if quote is not None:
+            buf.append(ch)
+            if ch == quote:
+                quote = None
+            i += 1
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if command[i : i + 2] in ("||", "&&"):
+            segments.append("".join(buf))
+            buf = []
+            i += 2
+            continue
+        if ch in (";", "|", "\n"):
+            segments.append("".join(buf))
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    segments.append("".join(buf))
+    return segments
 
 
 def _strip_heredocs(command: str) -> str:
@@ -112,7 +158,7 @@ def _skill_from_payload(payload: dict) -> str | None:
 def tools_in_command(command: str) -> list[str]:
     """Head tokens (basenames) of every pipeline segment, wrappers unwrapped."""
     tools: list[str] = []
-    for segment in _OPERATORS.split(_strip_heredocs(command)):
+    for segment in _split_pipeline_segments(_strip_heredocs(command)):
         try:
             tokens = shlex.split(segment, posix=True)
         except ValueError:

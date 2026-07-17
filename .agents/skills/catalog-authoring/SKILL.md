@@ -25,12 +25,12 @@ Coding agents auto-discover context by **filename/extension** — `SKILL.md`,
 `AGENTS.md`, `CLAUDE.md`, `*.instructions.md`, `*.mdc`, `GEMINI.md`. So catalog
 **sources** are authored as YAML (`skill.yaml`, `<id>.fragment.yaml`) and the
 discoverable `.md` is emitted only at the target roots by the projector. Never
-add a `SKILL.md` or `*.fragment.md` under `.basicly/core/`; the `catalog-lint`
+add a `SKILL.md` or `*.fragment.md` under `.basicly/core/`; the `catalog lint`
 gate rejects it.
 
 ## Author a skill
 
-1. Scaffold: `basicly skills-new <slug>` writes `core/skills/<slug>/skill.yaml`.
+1. Scaffold: `basicly catalog new skill <slug>` writes `core/skills/<slug>/skill.yaml`.
 2. Fill in `name` (must equal the slug), a strong one-line `description` (the
    discovery trigger — state *when* to use it), and the `instructions` body as
    a `|` literal block scalar (markdown, indented two spaces).
@@ -38,7 +38,7 @@ gate rejects it.
 
 ## Author a fragment
 
-1. Scaffold: `basicly fragment-new <id> --category <category>` writes
+1. Scaffold: `basicly catalog new fragment <id> --category <category>` writes
    `core/fragments/<category>/<id>.fragment.yaml`.
 2. Fill in `id`, `description`, `category`, `applies_to` (e.g. `[all]`), and the
    `body` block scalar. Optional: `priority`, `tags`, `status`, `title`,
@@ -52,7 +52,7 @@ A source that only makes sense for one stack or environment tool declares
 `technologies: [python]` (skills, fragments, agents, and hooks all accept it);
 an untagged source is universal and always ships. Values come from the
 controlled vocabulary in `basicly.schema.TECHNOLOGIES` (stack tags plus
-environment tools like `zsh`/`tmux`) — `catalog-lint` rejects anything else.
+environment tools like `zsh`/`tmux`) — `catalog lint` rejects anything else.
 Consumers narrow what they receive with `basicly install --technologies ...`;
 don't tag a source unless it is genuinely useless outside that technology.
 
@@ -93,6 +93,6 @@ instructions: |
 
 ## Gate
 
-`basicly catalog-lint` schema-validates every source, forbids `.md`-named
+`basicly catalog lint` schema-validates every source, forbids `.md`-named
 sources under the catalog, and forbids non-`.yaml` YAML there. It runs on
 commit and in CI — run it locally before committing.

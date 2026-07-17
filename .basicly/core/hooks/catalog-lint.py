@@ -1,4 +1,4 @@
-"""Pre-commit hook: validate catalog YAML sources via ``basicly catalog-lint``.
+"""Pre-commit hook: validate catalog YAML sources via ``basicly catalog lint``.
 
 Runs the CLI so the hook and the command share one implementation. Blocks a
 commit that introduces a schema-invalid source, a discoverable-name source
@@ -23,20 +23,20 @@ DIST_SOURCE = "git+https://github.com/niksavis/basicly@main"
 
 
 def _cli_command() -> list[str] | None:
-    """Resolve a runnable catalog-lint command, or None when unavailable."""
+    """Resolve a runnable ``catalog lint`` command, or None when unavailable."""
     basicly = shutil.which("basicly")
     if basicly:
-        return [basicly, "catalog-lint"]
+        return [basicly, "catalog", "lint"]
     if importlib.util.find_spec("basicly") is not None:
-        return [sys.executable, "-m", "basicly.cli", "catalog-lint"]
+        return [sys.executable, "-m", "basicly.cli", "catalog", "lint"]
     uvx = shutil.which("uvx")
     if uvx:
-        return [uvx, "--from", DIST_SOURCE, "basicly", "catalog-lint"]
+        return [uvx, "--from", DIST_SOURCE, "basicly", "catalog", "lint"]
     return None
 
 
 def main() -> int:
-    """Run ``basicly catalog-lint`` from the repository root."""
+    """Run ``basicly catalog lint`` from the repository root."""
     command = _cli_command()
     if command is None:
         print(
