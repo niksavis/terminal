@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -18,15 +20,39 @@ pytestmark = pytest.mark.skipif(
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
+# statusline.sh shells out to these. A hardcoded "/usr/bin:/bin" is Linux-only:
+# on Windows these ship via winget / Git Bash and live outside /usr/bin, so
+# pinning that PATH hides them and the script fails. Derive each tool's real
+# directory instead, keeping the PATH minimal but portable.
+_REQUIRED_TOOLS = ("bash", "jq", "awk", "cat", "date", "git", "sed", "tr")
+
+
+def _minimal_tool_path() -> str:
+    """Build a minimal PATH from the real locations of the tools statusline.sh needs."""
+    directories: list[str] = []
+    for tool in _REQUIRED_TOOLS:
+        found = shutil.which(tool)
+        if found is None:
+            continue
+        directory = str(Path(found).parent)
+        if directory not in directories:
+            directories.append(directory)
+    return os.pathsep.join(directories)
+
 
 def render(payload: dict | str, **env: str) -> str:
     """Run statusline.sh with a JSON payload and return the color-stripped output."""
+    # Invoke bash by absolute path: the bare name "bash" resolves to the
+    # Windows WSL launcher stub, not Git Bash. Decode as UTF-8 explicitly since
+    # the status line emits Nerd Font glyphs the Windows default (cp1252) rejects.
+    bash = shutil.which("bash")
     result = subprocess.run(
-        ["bash", str(template_path("statusline.sh"))],
+        [bash, str(template_path("statusline.sh"))],
         input=payload if isinstance(payload, str) else json.dumps(payload),
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin", "STATUSLINE_WIDTH": "300", **env},
+        encoding="utf-8",
+        env={"PATH": _minimal_tool_path(), "STATUSLINE_WIDTH": "300", **env},
         check=True,
         timeout=30,
     )

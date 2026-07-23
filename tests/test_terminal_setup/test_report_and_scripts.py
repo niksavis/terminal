@@ -98,7 +98,8 @@ def test_runner_dry_run_safe_commands_execute_for_real(tmp_path: Path) -> None:
     """dry_run_safe probes must run even in dry-run so reports reflect reality."""
     marker = tmp_path / "ran"
     runner = Runner(dry_run=True, reporter=ConsoleReporter())
-    runner.run(["sh", "-c", f"touch {marker}"], dry_run_safe=True)
+    # Feed sh a POSIX path: a Windows backslash path is mangled by the shell.
+    runner.run(["sh", "-c", f"touch {marker.as_posix()}"], dry_run_safe=True)
     assert marker.exists()
 
 
