@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.4 - 2026-07-23
+
+Delta: v0.4.3..v0.4.4
+
+### Highlights
+
+- **No more "Scanning current directory timed out" warnings on shell startup.** Starship's `scan_timeout` was at the 30ms default, which is too low wherever directory scanning is slow — WSL drvfs (`/mnt/c`), large repos, or a cold filesystem cache — so Starship aborted the module-detection scan and printed the warning (seen in WSL and Git Bash). The timeout is now 500ms, letting the scan finish; the fast path is unaffected since the ceiling only bites when a scan is genuinely slow. Mirrors the earlier `command_timeout` fix.
+- Internal, no effect on installed terminals: the statusline and runner tests are now portable on Windows (they had assumed Linux tool paths, the WSL `bash` stub, and a non-UTF-8 encoding), and the packaged basicly install was re-stamped for a harness upgrade.
+- Re-apply with `terminal-setup --only config`; no WezTerm restart is needed.
+
+### Commit delta (auto-generated)
+- fix(tests): make statusline and runner tests portable on windows (term-h65) (bc89c2a)
+- chore(release): bump package version for next release (term-f0z) (f7b9095)
+- fix(starship): raise scan timeout to stop directory scan warnings (term-f0z) (842befd)
+- chore(beads): close restamp tracker issue (term-1r0) (1a0eba1)
+- chore(basicly): restamp the install for the harness upgrade (term-1r0) (641428a)
+
 ## v0.4.3 - 2026-07-17
 
 Delta: v0.4.2..v0.4.3
