@@ -25,6 +25,14 @@ repos:
     - pre-commit
     pass_filenames: false
     always_run: true
+  - id: secret-scan
+    name: secret-scan
+    entry: uv run python .basicly/core/hooks/secret-scan.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
   - id: commit-msg-script
     name: commit-msg-script
     entry: uv run python .basicly/core/hooks/commit-msg.py
@@ -45,5 +53,13 @@ repos:
     language: system
     stages:
     - pre-push
+    pass_filenames: false
+    always_run: true
+  - id: protect-generated-commit
+    name: protect-generated-commit
+    entry: uv run python .basicly/core/hooks/protect-generated-commit.py
+    language: system
+    stages:
+    - pre-commit
     pass_filenames: false
     always_run: true

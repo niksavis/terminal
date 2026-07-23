@@ -11,5 +11,4 @@ tags:
 - handoff
 status: active
 body: |
-  - Leave the repo pickup-clean: no partial edits, stray debug output, or unexplained changes.
-  - Summarize what changed, what was verified, and what remains open before ending.
+  - Before ending, close out per the `session-finish` skill: leave the repo pickup-clean (no partial edits or stray output) and summarize what changed, what was verified, and what remains open.

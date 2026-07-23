@@ -118,6 +118,14 @@ br sync --merge                           # 3-way merge of .beads/issues.jsonl a
   stale line and recreates the issue. Delete durably with `br delete <id> --hard` (it
   prunes the record from the JSONL immediately), then confirm with `br show <id>` (not
   found) and by grepping `.beads/issues.jsonl`.
+- **Probing the live tracker leaves tombstones the loop commits.** Investigating br
+  behavior by creating throwaway beads and `br delete`-ing them leaves tombstone rows
+  in `.beads/issues.jsonl`; the harness loop's tracker-state commit then captures that
+  junk into project history. Prune every probe bead with `br delete <id> --hard`
+  (there is no `br compact`/`purge`/`gc` — `--hard` is the only clean prune), or avoid
+  probing the live tracker at all. `--ephemeral` is not a workaround: ephemeral beads
+  do not export to JSONL, but `br lint` also will not lint them (`total:0`), so any
+  lint probe needs a real bead.
 - **Trusting a DB-only change.** `.beads/issues.jsonl` is the sync source of truth and
   `br` auto-imports it on the next command, so a change made only to the DB can be
   silently reverted. Make sure the JSONL reflects the change (`br sync --flush-only`,

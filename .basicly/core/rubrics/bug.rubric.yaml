@@ -1,0 +1,19 @@
+# Behavioral rubric for a bug-fix track (basicly-0122).
+# Selected when a bead's work type is `bug`. Checks are yes/no: `deterministic`
+# ones are answered by a command's exit code (0 = yes), `judged` ones by an agent
+# with quoted evidence. Reported as an advisory `rubric` gate by default.
+id: bug-behaviors
+description: Behaviors expected of a bug-fix change.
+applies_to:
+  - bug
+checks:
+  - id: regression-test-added
+    question: Does the change add or update a test that fails without the fix?
+    kind: judged
+  - id: root-cause-not-symptom
+    question: Does the change address the root cause rather than only masking the symptom?
+    kind: judged
+  - id: suite-passes
+    question: Does the repository test suite pass?
+    kind: deterministic
+    command: uv run pytest -q

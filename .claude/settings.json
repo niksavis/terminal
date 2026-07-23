@@ -33,7 +33,11 @@
       "Read(.env.*)",
       "Read(**/.env)",
       "Read(**/.env.*)",
-      "Read(**/.env.local)"
+      "Read(**/.env.local)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)"
     ],
     "ask": [
       "Bash(git push *)"
@@ -42,7 +46,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "matcher": "Edit|Write|NotebookEdit",
         "hooks": [
           {
             "type": "command",

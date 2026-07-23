@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: test-discipline
+description: >-
+  Write isolated order-independent automated tests that assert on observable
+  behavior rather than private internals. Use when writing reviewing or debugging
+  any test (unit integration or end-to-end) in any language especially when tests
+  share fixtures touch global or filesystem state flake depending on run order or
+  reach into implementation details.
+instructions: |
+  # Test Discipline
+
+  Keep a test suite trustworthy as it grows. These are judgment rules, not lint —
+  the deterministic floor (formatters, type checkers, the test runner itself)
+  cannot catch a test that passes today but lies. Apply them when authoring or
+  reviewing any automated test, in any language.
+
+  ## Isolation and ownership
+
+  - A test owns its inputs. Build the fixtures it needs and tear them down; never
+    read or assert on state that another test, a previous run, or the developer's
+    machine happened to leave behind — a test that reads state it did not create is
+    broken even when it passes today.
+  - A test must pass alone, in any order, and in parallel: no shared mutable state,
+    no reliance on execution order, no hidden dependency on a sibling running first.
+
+  ## Assert on behavior, not internals
+
+  - Assert on observable behavior and public contracts — return values, emitted
+    output, externally visible side effects — not private fields, call counts, or
+    internal structure a refactor should be free to change.
+  - A test that breaks on a pure refactor is testing the implementation, not the
+    contract. Prefer the coarsest assertion that still proves the behavior.
+
+  ## Determinism
+
+  - Remove nondeterminism at the source: pin the clock, seed randomness, stub the
+    network and the filesystem. A flaky test is a broken test, not a "sometimes"
+    test — fix or quarantine it, never mask it with a blind retry.
+  - When you fix a bug, add the regression test that would have caught it first, and
+    watch it fail before the fix so you know it exercises the defect.

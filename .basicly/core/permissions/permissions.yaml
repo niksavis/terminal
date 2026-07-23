@@ -1,0 +1,83 @@
+# Baseline agent-permissions deny-list, projected per target (basicly-u0zg).
+#
+# Each entry is a semantic guardrail. `claude` lists the native
+# `permissions.deny` patterns Claude Code enforces at tool time, projected into
+# every consumer's co-owned agent config by `basicly permissions-build`.
+# `copilot` (basicly-lqz5) lists native `--deny-tool` specs the copilot runner
+# injects at invocation time, since Copilot has no config-file deny
+# (github/copilot-cli#2398). Both are authored here once so a consumer inherits
+# the guardrail on install instead of only the dogfooding repo having it.
+#
+# Copilot mapping is best-effort: `--deny-tool='shell(<prefix>)'` matches a
+# command by token PREFIX with no infix wildcard (verified against copilot CLI
+# v1.0.70), so it cannot express the claude globs faithfully — flag-reordered or
+# variant spellings (e.g. `rm -r -f`) slip through, and the `.env` file
+# read/edit rules have no copilot form at all, so they carry no `copilot` list.
+# Codex sandbox/approval defaults remain invocation-only too (basicly-t0kt,
+# --sandbox/-a), not yet wired.
+deny:
+  - id: destructive-rm
+    description: block recursive force-remove of files
+    claude:
+      - "Bash(rm -rf*)"
+      - "Bash(rm -fr*)"
+      - "Bash(rm -r -f*)"
+      - "Bash(rm -f -r*)"
+    copilot:
+      - "shell(rm -rf)"
+      - "shell(rm -fr)"
+  - id: force-push
+    description: block force / lease-force pushes that rewrite remote history
+    claude:
+      - "Bash(git push --force*)"
+      - "Bash(git push --force-with-lease*)"
+      - "Bash(git push -f*)"
+      - "Bash(git push*--force*)"
+    copilot:
+      - "shell(git push --force)"
+      - "shell(git push --force-with-lease)"
+      - "shell(git push -f)"
+  - id: bypass-gates
+    description: block skipping the commit/push gates (no-verify / no-gpg-sign)
+    claude:
+      - "Bash(git push*--no-verify*)"
+      - "Bash(git push*--no-gpg-sign*)"
+      - "Bash(git commit*--no-verify*)"
+      - "Bash(git commit*--no-gpg-sign*)"
+    copilot:
+      - "shell(git commit --no-verify)"
+      - "shell(git commit --no-gpg-sign)"
+      - "shell(git push --no-verify)"
+      - "shell(git push --no-gpg-sign)"
+  - id: destructive-git
+    description: block hard reset, force clean, and history rewrites
+    claude:
+      - "Bash(git reset --hard*)"
+      - "Bash(git clean*-f*)"
+      - "Bash(git filter-branch*)"
+      - "Bash(git filter-repo*)"
+    copilot:
+      - "shell(git reset --hard)"
+      - "shell(git clean -f)"
+      - "shell(git filter-branch)"
+      - "shell(git filter-repo)"
+  - id: env-read
+    description: block reading dotenv secret files
+    claude:
+      - "Read(.env)"
+      - "Read(.env.*)"
+      - "Read(**/.env)"
+      - "Read(**/.env.*)"
+      - "Read(**/.env.local)"
+  - id: env-edit
+    description: block mutating dotenv secret files via any file-writing tool
+    claude:
+      # `Edit(path)` file-permission rules cover every Claude Code file-mutation
+      # tool (Edit, Write, NotebookEdit), so `.env` cannot be created or
+      # overwritten through any write path. Do not add Write(...)/NotebookEdit(...)
+      # variants: they are not matched by file permission checks and are rejected
+      # with a warning at startup.
+      - "Edit(.env)"
+      - "Edit(.env.*)"
+      - "Edit(**/.env)"
+      - "Edit(**/.env.*)"

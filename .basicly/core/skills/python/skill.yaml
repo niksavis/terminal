@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+name: python
+technologies: [python]
+description: >-
+  Write and edit Python for this repo — type hints pathlib and cross-platform
+  subprocess and shell-out. Use when creating or changing .py files wiring up a
+  subprocess call or chasing a test that passes on POSIX but fails only on Windows
+  CI (a WinError 2 or a mangled backslash path).
+instructions: |
+  # Python
+
+  Guidance for writing and editing Python in this ecosystem. Formatting, import
+  order, lint, and typing are enforced by the deterministic gates (`ruff format`,
+  `ruff check`, `pyright`) in the pre-commit hook — never restate a linter's rules
+  here or send an agent to do a formatter's job. This skill carries the judgment
+  those gates cannot.
+
+  ## Style
+
+  - Type-hint public functions, methods, and dataclass fields; let inference cover
+    obvious locals. A public signature is a contract — annotate it.
+  - Prefer `pathlib.Path` over `os.path` string munging for filesystem work.
+  - Do not hand-format to match the formatter. Run `ruff format` / `ruff check`
+    (they run in pre-commit) and let them own whitespace, quotes, and import order.
+
+  ## Type test doubles and helpers precisely
+
+  `pyright` runs as a commit gate, so a loosely-typed test helper blocks the
+  commit itself, not just CI. Annotate test doubles, fakes, and helper return
+  values with the real type they stand in for — never a bare `object`:
+
+  - Return the concrete type, not `object` — `def _fake_args() ->
+    argparse.Namespace:`, not `-> object`. An `object` returned where a concrete
+    type is expected trips `reportArgumentType` at the first call site that
+    passes it on.
+  - Type a captured container to its real value type — `captured: dict[str,
+    list[str]]`, not `dict[str, object]`. A `dict[str, object]` value trips
+    `reportOperatorIssue` the moment the test indexes, iterates, or compares it.
+
+  ## Cross-platform shell-out (fails only on Windows CI)
+
+  Two subprocess mistakes pass every local POSIX run and surface *only* on Windows
+  CI, so they read as "flaky" when they are deterministic. Both, with reproductions
+  and fixes, are in [references/cross-platform.md](references/cross-platform.md):
+
+  - **Building the child env** — inherit `os.environ` (keep `PATH`). A bare env dict
+    drops `PATH`, which still finds `git` and friends on POSIX but raises
+    `[WinError 2]` on Windows.
+  - **Embedding an OS path in a shell string** — POSIX `shlex.split` treats `\` as an
+    escape, so a Windows path like `sys.executable` is mangled. Pass an argv list, or
+    normalize with `Path(...).as_posix()`; never concatenate a path into a shell
+    string.
+
+  Read the reference before touching any code that spawns a process or builds a
+  command line.

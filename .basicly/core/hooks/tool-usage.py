@@ -61,9 +61,11 @@ SKIP_TOKENS = {
 # both uv and pytest).
 WRAPPER_TOKENS = {"uv", "uvx", "npx", "sudo", "xargs", "command", "exec", "nohup", "time"}
 
-# `cmd <<TAG` / `cmd <<-'TAG'`: everything until the terminator line is data,
-# not commands — counting heredoc body lines as tools was basicly-587.
-_HEREDOC = re.compile(r"<<-?\s*(['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)\1")
+# `cmd <<TAG` / `cmd <<-'TAG'` / `cmd <<\TAG`: everything until the terminator
+# line is data, not commands — counting heredoc body lines as tools was
+# basicly-587. The optional backslash disables expansion (`<<\EOF`); missing it
+# left those bodies unstripped and leaked their keywords/terminator (basicly-v7eu).
+_HEREDOC = re.compile(r"<<-?\s*\\?(['\"]?)(?P<tag>[A-Za-z_][A-Za-z0-9_]*)\1")
 
 
 def _split_pipeline_segments(command: str) -> list[str]:
@@ -163,10 +165,14 @@ def tools_in_command(command: str) -> list[str]:
             tokens = shlex.split(segment, posix=True)
         except ValueError:
             tokens = segment.split()
-        while tokens and ("=" in tokens[0] or tokens[0] in SKIP_TOKENS):
-            head = tokens.pop(0)
-            if head in SKIP_TOKENS and "=" not in head:
-                tokens = []  # a builtin head ends the segment's interest
+        while tokens:
+            head = tokens[0]
+            if "=" in head and not head.startswith("-"):
+                tokens.pop(0)  # VAR=val prefix: skip it and keep scanning for the head
+                continue
+            if head in SKIP_TOKENS or head.startswith("-"):
+                tokens = []  # a builtin or a stray flag head names no tool (basicly-v7eu)
+            break
         while tokens:
             name = Path(tokens[0]).name
             if not name or not re.match(r"^[A-Za-z0-9._-]+$", name):

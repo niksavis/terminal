@@ -90,9 +90,27 @@ instructions: |
   | **classify** *(human checkpoint)* | approve, then the Definition-of-Ready gate must pass | `basicly policy checkpoint <id> classify --approve`; check readiness with `basicly policy dor <id>` |
   | **decompose** | features need an agent child plan; leaves (bug/chore/task) skip straight to build | `basicly decompose <feature> --plan plan.toml` (or `--children` on advance); preview with `basicly decompose <feature> --plan plan.toml --dry-run` |
   | **decompose** *(human checkpoint)* | approve before fan-out | `basicly policy checkpoint <id> decompose --approve` |
-  | **build** | fan out one worktree per dependency-unblocked child (ranked by `br scheduler`, concurrency-capped), do the work, land through the serial merge queue | `basicly worktree list`; do the coding; `basicly loop advance <id>` lands it |
+  | **build** | fan out one worktree per dependency-unblocked child (ranked by `br scheduler`, concurrency-capped), do the work, **commit it on the branch**, then land through the serial merge queue | `basicly worktree list`; do the coding; **`git commit` the work on the harness branch** (referencing the bead — `conventional-commits`); `basicly loop advance <id>` lands it |
   | **verify** | the landing already ran verify and recorded the required gate; inspect it, then approve ship | `basicly policy gate <id>`; `basicly policy checkpoint <id> ship --approve`. Re-run gates (e.g. after rework) with `basicly verify --mode full --issue <id>` — from the base checkout only |
   | **ship** | tear down the worktree and close the issue | `basicly loop advance <id>` (runs teardown + `br close`) |
+
+  > **Never record the verify gate by hand during build.** The build→verify
+  > `loop advance` is the *only* step that merges the worktree back to base
+  > (`_verify_and_land`); it runs verify and records the gate itself. Recording
+  > the gate out-of-band (`basicly verify --issue`, `br gate report verify`)
+  > makes the derived phase jump to verify with the merge skipped, and the loop
+  > then ships and closes the bead with the code stranded on the harness branch.
+  > Let `loop advance` record it; re-run `basicly verify --issue` only *after*
+  > the landing has merged (e.g. rework), never before. Ship refuses to close a
+  > node whose worktree branch has not landed, as a deterministic backstop.
+  >
+  > **Commit the build's work on the branch before you advance.** Landing
+  > rebases the harness branch, so the agent (or, in manual/handoff mode, you)
+  > must `git commit` the changes on the branch first — the loop never
+  > auto-commits the agent's work. Leaving the worktree dirty (or the branch
+  > with no commit) makes the landing block with "commit the work on
+  > `<branch>` before landing"; it no longer misreports it as a rebase
+  > conflict or spends a rework attempt on it (basicly-4psl).
 
   Leaf types (bug/chore/task) build directly in their own worktree; features
   decompose into children and, once every child closes, land the child worktrees
@@ -116,6 +134,13 @@ instructions: |
   landing). During build you never need to record the gate manually anyway:
   the landing advance verifies the rebased tree in the worktree and records
   the required gate itself.
+
+  ## Blocked on a missing fact — don't guess
+
+  When a dispatched agent cannot resolve a required fact, it must not guess.
+  Write `.basicly/usage/needs-input.json` (`{"fact": ..., "detail": ...}`) and
+  stop — the loop blocks and surfaces the missing fact instead of landing a
+  wrong answer.
 
   ## Rework and escalation
 

@@ -31,8 +31,25 @@ def _project_root() -> Path:
 
 
 # Beads issue ids look like <prefix>-<short-code>, e.g. "basicly-idr" or
-# "br-a1b2c3". Prefix and code are both lowercase alnum.
-ISSUE_ID_PATTERN = re.compile(r"\b[a-z][a-z0-9]*-[a-z0-9]+\b")
+# "br-a1b2c3", with optional dotted child levels ("basicly-zrj.4.1"). br's own
+# commit scanner (``br orphans``) matches ids prefix-anchored by word boundary
+# anywhere in the message, so ordinary hyphenated words are never ids. We mirror
+# that shape below instead of a loose ``word-word`` regex, which mis-flagged
+# phrases like "fork-drove-the-loop" as unknown ids (basicly-jms0).
+def _candidate_ids(message: str, known_ids: set[str]) -> set[str]:
+    """Return the issue-id tokens in *message*, restricted to known prefixes.
+
+    The prefix set is derived from *known_ids* (no extra config), so detection
+    tracks whatever prefixes the workspace actually uses and matches br's own
+    prefix-anchored scanner.
+    """
+    prefixes = {pid.split("-", 1)[0] for pid in known_ids if "-" in pid}
+    if not prefixes:
+        return set()
+    alternation = "|".join(re.escape(prefix) for prefix in sorted(prefixes))
+    pattern = re.compile(rf"\b(?:{alternation})-[a-z0-9]+(?:\.[0-9]+)*\b")
+    return set(pattern.findall(message))
+
 
 NO_ID_MESSAGE = """ERROR: Commit message does not reference a beads issue id.
 
@@ -109,7 +126,7 @@ def validate(message: str, known_ids: set[str] | None) -> tuple[bool, str]:
         # to commit without an issue id. Enable tracking with `br init`.
         return True, ""
 
-    candidates = set(ISSUE_ID_PATTERN.findall(message))
+    candidates = _candidate_ids(message, known_ids)
     if not candidates:
         return False, NO_ID_MESSAGE
 

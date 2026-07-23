@@ -51,7 +51,11 @@ type(scope)!: description (issue-id[, issue-id...])
   more known beads (`br`) issue ids, comma-separated in a single trailing parenthetical.
   An id is `<prefix>-<base>` with optional dotted hierarchy levels — e.g. `basicly-q49`,
   `basicly-zrj.8`, `basicly-zrj.4.1` — where `<prefix>` is your repo's configured beads
-  prefix. The dotted forms are how `br` names child issues and are accepted here.
+  prefix. The dotted forms are how `br` names child issues and are accepted here. The hook
+  matches the id **prefix-anchored, by word boundary anywhere in the message** (mirroring
+  `br`'s own commit scanner), so ordinary hyphenated words in the description are never
+  mistaken for ids, and a git-trailer footer (`Refs: basicly-q49`) is recognized too — the
+  trailing parenthetical above stays the default.
 
 ## Workflow
 

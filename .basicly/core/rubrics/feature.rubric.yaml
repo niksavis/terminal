@@ -1,0 +1,17 @@
+# Behavioral rubric for a feature track (basicly-0122).
+# Selected when a bead's work type is `feature`. See bug.rubric.yaml for the
+# check-kind conventions.
+id: feature-behaviors
+description: Behaviors expected of a feature change.
+applies_to:
+  - feature
+checks:
+  - id: acceptance-criteria-addressed
+    question: Does the change address every acceptance criterion recorded on the bead?
+    kind: judged
+  - id: tests-added
+    question: Does the change add tests exercising the new behavior?
+    kind: judged
+  - id: docs-updated
+    question: Is user- or architecture-facing documentation updated where the feature warrants it?
+    kind: judged

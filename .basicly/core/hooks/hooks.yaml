@@ -21,6 +21,11 @@ hooks:
     stage: pre-commit
     always_run: true
     pass_filenames: false
+  - id: secret-scan
+    script: secret-scan.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
   - id: commit-msg-script
     script: commit-msg.py
     stage: commit-msg
@@ -38,6 +43,15 @@ hooks:
     script: protect-generated.py
     stage: pretooluse
     manager: claude
+  # Deterministic, agent-independent commit-time backstop for the fail-open,
+  # Claude-only protect-generated PreToolUse guard (basicly-yw28): blocks a
+  # commit that stages a generated output whose content diverges from the
+  # projection manifest.
+  - id: protect-generated-commit
+    script: protect-generated-commit.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
   # Token-free tool-usage telemetry: counts pipeline heads of every executed
   # shell command and every Skill invocation into the self-ignored
   # .basicly/usage/tool-usage.json.

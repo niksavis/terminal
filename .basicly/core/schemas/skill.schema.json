@@ -29,7 +29,28 @@
     "technologies": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
-      "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal."
+      "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal. basicly-internal; NOT emitted into SKILL.md frontmatter."
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional Agent Skills frontmatter: license name or bundled license file reference."
+    },
+    "compatibility": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "Optional Agent Skills frontmatter: environment requirements (product, packages, network)."
+    },
+    "allowed-tools": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional Agent Skills frontmatter (experimental): space-separated pre-approved tools."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "Optional Agent Skills frontmatter: arbitrary string key/value map."
     }
   }
 }

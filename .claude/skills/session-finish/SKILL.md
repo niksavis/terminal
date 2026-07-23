@@ -34,7 +34,7 @@ basicly usage report
 
 ## 2) Self-improvement retro
 
-Follow the repo's retro rules (projected into the always-on instructions):
+Follow the repo's retro rules:
 
 - Only when the session hit a real rejection or a user-corrected mistake:
   find the root cause and propose the exact fragment/skill/hook change
