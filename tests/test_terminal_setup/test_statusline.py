@@ -46,6 +46,7 @@ def render(payload: dict | str, **env: str) -> str:
     # Windows WSL launcher stub, not Git Bash. Decode as UTF-8 explicitly since
     # the status line emits Nerd Font glyphs the Windows default (cp1252) rejects.
     bash = shutil.which("bash")
+    assert bash is not None  # guaranteed by the module-level skipif
     result = subprocess.run(
         [bash, str(template_path("statusline.sh"))],
         input=payload if isinstance(payload, str) else json.dumps(payload),
