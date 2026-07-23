@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.5 - 2026-07-23
+
+Delta: v0.4.4..v0.4.5
+
+### Highlights
+
+- Internal only, no effect on installed terminals: the packaged basicly harness was restamped from 0.3.0 to 0.5.1 (regenerated `CLAUDE.md` / `AGENTS.md` / copilot-instructions, new secret-scan and protect-generated-commit hooks, refreshed permissions and skills), converging `basicly check` in CI. A follow-up to v0.4.4, which shipped the starship `scan_timeout` fix but landed just before this restamp.
+- Also internal: a Windows-portability test fix (bash path narrowed to satisfy pyright), completing the v0.4.4 test work.
+- Nothing to re-apply — no change to any deployed terminal config.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-irs) (b09322f)
+- chore(beads): close the harness restamp tracker issue (term-irs) (e3864f7)
+- fix(tests): narrow bash path to satisfy pyright (term-h65) (a4d0412)
+- chore(basicly): restamp the install for the 0-5-1 harness upgrade (term-irs) (3ea38c0)
+- chore(beads): close starship and test-portability issues (term-f0z) (d12ae68)
+
 ## v0.4.4 - 2026-07-23
 
 Delta: v0.4.3..v0.4.4
