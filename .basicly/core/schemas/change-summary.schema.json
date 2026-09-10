@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/change-summary.schema.json",
+  "title": "basicly change-summary handoff artifact",
+  "description": "What BUILD hands VERIFY (factory loop requirements 8). One artifact per landing, recorded on the unit that built. Every field is derived from the branch and the landing verdict rather than authored by the agent: an output contract a model has to compose is the least standardised element in this design, and nothing here needs a judgement to fill in.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "why",
+    "commit",
+    "self_check"
+  ],
+  "if": {
+    "required": [
+      "changed"
+    ]
+  },
+  "then": {
+    "description": "A summary recorded before basicly-gvlpxm carries the path list itself and no digest; it is still accepted, because a stored artifact cannot be re-derived after the fact and refusing it would refuse the population this contract already has."
+  },
+  "else": {
+    "required": [
+      "changed_count",
+      "changed_digest"
+    ]
+  },
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit of work this build was dispatched for."
+    },
+    "why": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What the change is for, in the requirement's own words: the bead's title."
+    },
+    "commit": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The head of the branch the build committed on, read before the landing merges it. This is also where the changed paths come from now that the list is not stored: `git show --name-only <commit>` for a build that committed once, `git log --name-only <base>..<commit>` otherwise, checked against `changed_digest`."
+    },
+    "changed_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How many distinct paths the branch changed against its base. At least one: a build that changed nothing has nothing for VERIFY to check."
+    },
+    "changed_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$",
+      "description": "sha256 of those paths, sorted and newline-joined (`handoff._changed_facts`). What a reader derives from `commit` is complete when it hashes to this and incomplete when it does not, which is the whole reason a count alone was not enough."
+    },
+    "changed": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The retired form: the path list itself, written until basicly-gvlpxm and read from stored artifacts only. It is what made this the largest artifact population - 4096 of the biggest recorded summary's 18555 bytes were sorted paths and nothing else - and it grew with the diff, which no bound on diff size may punish.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "self_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "passed",
+        "detail"
+      ],
+      "description": "The landing's own verify verdict - the self-check BUILD's exit gate names, run inside the worktree by merge.merge_worktree before anything reached base.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The landing status the self-check produced (merged, verify-failed, ...)."
+        },
+        "passed": {
+          "type": "boolean",
+          "description": "Whether the self-check left the work clean enough to land."
+        },
+        "detail": {
+          "type": "string",
+          "description": "The landing's own rendering of the verdict; empty when it had nothing to add."
+        }
+      }
+    }
+  }
+}

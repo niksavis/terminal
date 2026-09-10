@@ -1,0 +1,718 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/board-snapshot.schema.json",
+  "title": "harness-board/v1 snapshot",
+  "description": "NOTE: wired_or_deleted reads this file for the positions that can name a field - every object key, and the string values under required, enum, const and $ref - and reads no description at all, which is what basicly-r343 narrowed it to. So a key or a permitted value repeating a name declared elsewhere can retire that name's finding and the prose here cannot; run the gate when adding either. What a harness emits so a board can render what it is doing. Unlike the handoff artifacts beside it this schema is deliberately NOT strict: no object sets additionalProperties false, because the versioning rule is the one .basicly/core/kit/tracker/SPEC.md \u00a74.5 already fixes for the ledger - never change a key's meaning, never reuse a key name, only add keys and optional sections - and a consumer meeting an undeclared key counts and reports it rather than erroring or dropping it. Three keys are required and every section is optional, so a foreign harness adopts the contract with a four-line file and adds sections as it can populate them. An absent section is a supported state that renders as absent, never as zero. Field-selected, never record-shaped: the whole event log is 6396125 B against 40952 B for the 236 active rows at six selected fields, 156.2x from field selection alone (re-derived 2026-08-20; it read 132.5x on 2026-08-14, so the ratio a reader should trust is the dated one and the conclusion has only grown), so no property here admits a bead description, its acceptance criteria, or a raw comment body, and every free-text property is length-bounded to keep it that way. The snapshot is derived and disposable; the ledger remains the truth. Sections are ruled on one at a time: only the three required keys can refuse the document, and a violation inside an optional section withholds that one section while the rest still draws - so a length bound costs a panel, never the screen. COMPATIBILITY RULE, and it is not the ledger's: keys may be added within a major, permitted values may never be widened within a major. An undeclared key is counted and reported, so adding one is compatible; a value outside a closed set is refused, so widening a set, loosening a pattern or raising a length bound produces documents that an already shipped consumer of the same major refuses. The ledger's additive-only rule does not transfer whole, because every ledger reader is ours and a board's readers are not. The sets here were widened once, before any release carried this file (it landed 2026-08-16, after the v0.9.0 tag of 2026-08-14); from the first release that carries it, a new permitted value takes a new major.",
+  "type": "object",
+  "required": [
+    "schema",
+    "generated_at",
+    "freshness"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "pattern": "^harness-board/v[1-9][0-9]*$",
+      "description": "The contract this document claims to be, as harness-board/vN. A pattern rather than a const on purpose: a consumer has to be able to read the declared major off a document it will refuse, so that it can name both versions instead of reporting a generic type error. N changes only on a break."
+    },
+    "generated_at": {
+      "$ref": "#/$defs/instant",
+      "description": "When the producer folded this snapshot. Required so that no value can be displayed without its age; that requirement is what keeps a rebuilt-on-write board from being described as real time. A consumer parses it to an instant and never compares two of these as strings, because two spellings of the same moment are both valid."
+    },
+    "freshness": {
+      "type": "object",
+      "description": "How this document comes to be refreshed, so a viewer can tell a live screen from a frozen one. Required for the same reason generated_at is: age alone says how old the document is, and this says how old it is allowed to get.",
+      "required": [
+        "source",
+        "cadence_s",
+        "stale_after_s"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "supervisor-tick",
+            "self-refresh",
+            "state-change",
+            "one-shot"
+          ],
+          "description": "What re-writes the document: a running supervisor's tick, a viewer that rebuilds on a timer, a producer that writes when its own state changes and therefore has no cadence, or a single on-demand build that will never change again. Closed because a consumer that cannot classify the refresh has to choose between claiming liveness it has not got and refusing to render. state-change was added before any release carried this file; under the compatibility rule above a fifth member now takes a new major."
+        },
+        "cadence_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Seconds between rebuilds, or null when the source is one-shot. Required and nullable rather than optional: null is the producer answering that there is no cadence, whereas an absent key cannot be told from a producer that never considered the question."
+        },
+        "stale_after_s": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Age past which the viewer must mark the whole document stale. Set by the producer because only the producer knows what its own cadence makes normal."
+        }
+      }
+    },
+    "generator": {
+      "type": "object",
+      "description": "What produced the document. Present so that a board rendering a foreign snapshot can say whose numbers it is showing.",
+      "required": [
+        "tool"
+      ],
+      "properties": {
+        "tool": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 60
+        }
+      }
+    },
+    "repo": {
+      "type": "object",
+      "description": "Which working tree the rest of the document is about. A wall display showing the wrong checkout is worse than a blank one, so the identifying facts travel with the numbers.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "The repository's own name. Never a filesystem path: a path carries the operator's username, and this document is published the moment anyone commits it."
+        },
+        "branch": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "head": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "The commit the tree is on, abbreviated or full."
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "session": {
+      "type": "object",
+      "description": "The factory run in flight, if one is. Absent means no run is being observed, which is a different statement from a run with nothing in it.",
+      "required": [
+        "root"
+      ],
+      "properties": {
+        "root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "The work item the run is rooted at."
+        },
+        "root_status": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "supervised": {
+          "type": "boolean",
+          "description": "Whether a supervisor process holds the run. False with a session present is the ordinary case for a one-shot build."
+        },
+        "holder": {
+          "type": "object",
+          "description": "The supervisor holding the run lock, with the age of its last heartbeat, so a viewer can tell a working supervisor from a dead one that never released.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "heartbeat_age_s": {
+              "type": "number",
+              "minimum": 0
+            },
+            "stale": {
+              "type": "boolean"
+            }
+          }
+        },
+        "grant_level": {
+          "type": "string",
+          "maxLength": 16,
+          "description": "The autonomy grant the run is operating under."
+        },
+        "token_budget": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "spent_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Tokens the run has spent. Deliberately not paired with token_budget by the schema: a producer that knows the spend and not the ceiling still has the more important half, and the consumer renders the raw number without a bar."
+        },
+        "human_wait_s": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Seconds the run has spent waiting on a person. The one number a display in a room exists to move."
+        },
+        "delegated_wait_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "dispatch_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "lanes": {
+      "type": "array",
+      "description": "The units in flight, one entry each. An empty array is a run with nothing running; an absent section is a producer that cannot see lanes at all.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "phase"
+        ],
+        "dependentRequired": {
+          "context_used": [
+            "context_window"
+          ],
+          "context_window": [
+            "context_used"
+          ]
+        },
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "phase": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "Where the unit is in the harness's own lifecycle. An open string rather than an enum because a foreign harness has its own phase names and the consumer only renders this; basicly emits one of intake, classify, decompose, build, verify, validate, ship, done."
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "waits-to-land",
+              "landing",
+              "landed",
+              "refused",
+              "parked"
+            ],
+            "description": "Where the lane stands in the pass, as against `phase` (where its unit stands in the harness lifecycle) and `live` (whether an agent is inside it right now). Closed at seven because the consumer colours it, and the failure this key exists for is that `live` true-or-false had nothing between: a lane whose agent had exited with work committed, one the supervisor was landing, and one the WIP bound had refused all rendered as an idle build, so a pass doing four things read as nothing happening. `landed` was the seventh: a worktree whose commits base already holds answers the same commits-ahead count as one that has done nothing, and drawing both `queued` made a wall of finished work read as a factory waiting to start. A producer that cannot place a lane omits the key rather than guessing `queued`, which would state the one thing every absent lane is not."
+          },
+          "state_detail": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Why the lane is in that state, in the producer's own words and bounded: the bound that refused it, its position in the landing queue. Separate from `note`, which is what the lane's own agent last said - the two have different authors and a reader has to be able to tell a refusal from a progress line."
+          },
+          "state_since": {
+            "$ref": "#/$defs/instant",
+            "description": "When the lane entered `state`. The duration a reader wants is of the *state*, not of the dispatch: a landing that has run eight minutes and a landing that started ten seconds ago are the same `landing` and a different thing to watch. Derived by the consumer from this stamp rather than published as a number, on the rule `generated_at` already sets - no figure may be shown without its age."
+          },
+          "agent": {
+            "type": "string",
+            "maxLength": 60
+          },
+          "model": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "live": {
+            "type": "boolean",
+            "description": "Whether the lane was still running when the snapshot was folded, as against last known to have been."
+          },
+          "provisioned": {
+            "type": "boolean",
+            "description": "Whether the lane's worktree exists, which is a different fact from `live` and was the two of them sharing one key (basicly-ze0po3): a lane whose agent exited hours ago and whose worktree nobody cleaned up was drawn as work in flight. A lane waiting for its next dispatch is a real, distinct state, so the worktree fact travels apart. Declared late - the producer emitted it from basicly-ze0po3 and this file did not name it, which `board_schema` counted as an undeclared key on every document carrying a lane row; found by the first test to validate one (basicly-ncday7)."
+          },
+          "started_at": {
+            "$ref": "#/$defs/instant"
+          },
+          "elapsed_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "tokens": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cost_usd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "context_used": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Occupancy of the model's context window. Paired with context_window by dependentRequired, so a producer knowing only one emits neither and no bar is drawn: a declared window has already been wrong here by a factor of five, and a bar against a wrong ceiling is worse than no bar."
+          },
+          "context_window": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "The window the occupancy is measured against. See context_used for why the two travel together."
+          },
+          "rework_attempt": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rework_allowance": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "branch": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The lane's branch, redacted at the producer. Branch names and worktree paths are the known carriers of a machine username into a published document."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200,
+            "description": "One derived line about why this lane looks the way it does. Bounded, and never a marker or comment body."
+          }
+        }
+      }
+    },
+    "asks": {
+      "type": "array",
+      "description": "What is waiting on a person right now, pending only. Paired entries rather than a count, because a number cannot be acted on and the point of the display is that somebody in the room can answer one.",
+      "items": {
+        "type": "object",
+        "required": [
+          "wait_id",
+          "kind",
+          "requested_at"
+        ],
+        "properties": {
+          "wait_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "The identity of this wait, so an answer can be matched back to it and a viewer never offers to answer the same one twice."
+          },
+          "issue": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "What sort of wait this is; basicly emits checkpoint or decision. Open because the consumer only renders it - what it is permitted to do about it is in actions, and that is closed."
+          },
+          "subject": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "requested_at": {
+            "$ref": "#/$defs/instant",
+            "description": "When the harness asked. Required: an ask without an age cannot be sorted by how long a person has been keeping it waiting, which is the one ordering this panel needs."
+          },
+          "waiting_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "question": {
+            "type": "string",
+            "maxLength": 500,
+            "description": "The question in the words it was asked, bounded. The bound is the contract: this is a prompt, not the marker body it was parsed out of."
+          },
+          "actions": {
+            "type": "array",
+            "description": "What a viewer may offer to do about this ask. One entry per offer: the producer's own wording for it, and - where the producer knows which basicly verb sits behind it - that verb under a key named for basicly. Open on the wording and closed on the verb, because the wording is the producer's to choose while a consumer can execute only verbs it implements. An offer this consumer cannot execute is ignored, drawn without a button rather than refused: the closed table this replaced turned one unfamiliar offer into a refusal of the producer's whole document.",
+            "items": {
+              "type": "object",
+              "required": [
+                "offer"
+              ],
+              "properties": {
+                "offer": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 60,
+                  "description": "What the offer is called, in the producer's words, bounded so that it stays a caption on a control rather than becoming the question again."
+                },
+                "basicly": {
+                  "type": "string",
+                  "enum": [
+                    "loop-answer",
+                    "checkpoint-approve",
+                    "lane-kill"
+                  ],
+                  "description": "The basicly verb this offer maps to, where the producer knows one. Namespaced under a key named for basicly rather than mixed into the wording above, so a producer inventing an offer can never collide with a verb. Closed because a consumer has no mechanism to execute a verb it does not implement, and would either ignore it or guess at it."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "description": "The last recorded verdict of the repository's own checks. Carries when it was recorded because a green board over an hour-old pass is the failure this section exists to prevent.",
+      "required": [
+        "recorded_at"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Which set of checks ran, so a viewer is not shown a fast pass as though it were the full one."
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/instant"
+        },
+        "passed": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "status"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "not_run"
+                ],
+                "description": "Closed at three because those are the outcomes a viewer can colour, and a check that did not run must be distinguishable from one that passed. An undeclared fourth value would be rendered as some colour, and every wrong choice reads as reassurance."
+              },
+              "detail": {
+                "type": "string",
+                "maxLength": 200
+              }
+            }
+          }
+        }
+      }
+    },
+    "spend": {
+      "type": "object",
+      "description": "What the harness has cost. Carries no figure of its own: this is the contract a foreign producer conforms to, and a spend total is not derivable from anything a gate here can read - `.basicly/usage/` is git-ignored and worktree-local, so nothing tracked would ever notice a number stated here drifting. The measurement that motivated the section is dated and attributed in `docs/requirements/harness-board.md`. See `scope` for why a figure read from that directory is one operator's history and never a team total.",
+      "required": [
+        "scope"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "machine-local",
+            "aggregated",
+            "unknown"
+          ],
+          "description": "Whose spend this is. Required whenever the section is present and rendered on the page verbatim: basicly's own usage directory is self-ignored, so the honest answer here is machine-local - one operator's history - and a board that let that read as a team's total would be the same overclaim in the money domain."
+        },
+        "lifetime_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "largest_dispatch_usd": {
+          "type": "number",
+          "minimum": 0,
+          "description": "The single most expensive dispatch in scope. A maximum rather than a mean because the failure mode is one runaway lane, which a mean hides."
+        },
+        "input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cache_read_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kept apart from the billed counters above rather than folded into them: cache traffic is moved, not billed at the same rate, and summing the four produces a number that is not any real quantity."
+        },
+        "cache_write_tokens": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "health": {
+      "type": "array",
+      "description": "Per-agent outcome rates over the producer's own window. Answers whether an agent's failure rate has moved, which no single run shows.",
+      "items": {
+        "type": "object",
+        "required": [
+          "agent",
+          "runs"
+        ],
+        "properties": {
+          "agent": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "runs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many runs the rates below are over. Required beside them because a rate without its denominator invites reading noise as a trend."
+          },
+          "score": {
+            "type": "number"
+          },
+          "failure_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "drift": {
+            "type": "number",
+            "description": "Change in score against the previous window, signed."
+          }
+        }
+      }
+    },
+    "backlog": {
+      "type": "object",
+      "description": "The shape of the whole tracker as counts. Counts and not rows: this section answers whether work is moving, and it stays cheap enough that a producer with a large tracker can always emit it.",
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "active": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ready": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many items have no unmet dependency. The units section carries which ones."
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "in_progress": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "closed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "closed_today": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Distinct items the producer closed on the day this document is dated, which is the one figure that answers whether the work is moving rather than how big the pile is. A counted figure and never an event row: the events tail is capped at 50, a day's closes can exceed that cap, and the cap is the contract. Dated against this document's own generated_at, so a page opened after midnight does not read the producer's yesterday as an empty today. Absent means the producer does not measure it, which a consumer must not draw as nought; present and 0 is a measured day on which nothing closed. Never above closed, because an item must still be closed to be counted."
+        },
+        "by_priority": {
+          "type": "object",
+          "description": "Count per priority label, the producer's own labels as keys. A map rather than fixed properties because priority vocabularies differ between harnesses and a fixed set would silently drop a label.",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "units": {
+      "type": "array",
+      "description": "Selected fields of the items worth showing, which is what makes the ready set inspectable rather than merely counted. Field-selected: the 236 active rows of this repo's ledger at six fields are 40952 B against 6396125 B for the whole log (re-derived 2026-08-20), and the fields left out are precisely the prose ones. A producer chooses what worth showing means - typically the open items - and says so by what it emits; the section is optional because a large backlog may reasonably send counts alone.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The item's one-line title, bounded. The only prose that crosses this wire, and it is bounded so it cannot become the body."
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "priority": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "type": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "phase": {
+            "type": "string",
+            "maxLength": 40,
+            "description": "Lifecycle phase for an item that is not in flight; lanes carries the same fact for one that is. Both exist because a board has to show where a unit stopped, not only where a lane is running."
+          },
+          "ready": {
+            "type": "boolean",
+            "description": "Whether every dependency of this item is met. A flag on the row and not a separate list, so the ready set cannot come to disagree with the rows it is drawn from."
+          },
+          "owes": {
+            "type": "array",
+            "description": "The required body sections this item does not state, by name. Distinct from ready, which answers only whether anything blocks it: an item can have every dependency met and still be refused at dispatch for owing a trigger, and reading ready as dispatchable is what drew a start control on 244 records the gate would refuse. Section names only - a body on a units row is the payload regression this section is field-selected against. Absent means the producer did not compute the verdict, and a consumer reads that as unknown rather than as nothing owed. Empty means nothing owed.",
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          }
+        }
+      }
+    },
+    "detail": {
+      "type": "array",
+      "description": "The per-item facts a reader opens one item to see, which units deliberately leaves out: units is the row a wall draws for the whole population and is field-selected against a 132.5x payload, while these are read one item at a time. A separate section rather than more properties on a units row, so a producer that draws only a wall pays nothing for them. A producer that reports a row at all knows its checkpoints, its rework and whether a working copy is bound, so those keys are emitted even when empty - an empty worktree is no binding and an empty missing list is nothing outstanding. A key absent from a row is a producer that does not hold that fact, and a consumer renders it as absent rather than as a default.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120,
+            "description": "The item this row details, joining it to a units row of the same id."
+          },
+          "worktree": {
+            "type": "string",
+            "maxLength": 80,
+            "description": "The working copy the item is being built in, where the harness binds one."
+          },
+          "branch": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The branch that working copy holds, which is what stands between the item and the trunk."
+          },
+          "checkpoints_held": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "description": "The human approvals recorded on the item."
+          },
+          "checkpoints_missing": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            },
+            "description": "The approvals the producer's own checkpoint roster still asks of the item. Emitted beside the held list rather than left to be subtracted, because a consumer cannot know the producer's roster."
+          },
+          "rework": {
+            "type": "object",
+            "description": "Attempts recorded per gate, keyed by gate name. A gate with no attempt is emitted as 0 where the producer knows the gate is required of this item, and omitted where it does not.",
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          "next_command": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "The command the producer's own engine names as the one that moves this item. A consumer prints it and never composes one: a board that spells a command itself is a second answer to what the harness does next."
+          }
+        }
+      }
+    },
+    "graph": {
+      "type": "object",
+      "description": "The dependency edges among the items, as triples. Separate from units so that a producer can emit rows without a graph, and because edges are the answer to why an item is not ready - the one question a count of blocked items raises and cannot settle.",
+      "required": [
+        "edges"
+      ],
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "kind": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "What sort of edge; basicly emits blocks, parent-child, related or discovered-from. Open because the consumer draws it rather than acting on it."
+              }
+            }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "description": "The most recent things that happened, newest last. Capped, and the cap is the contract rather than a limit: an unbounded event list is how a derived, disposable document turns into the second source of truth this design refuses. Anything longer than a tail belongs to the usage reports.",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": [
+          "at",
+          "kind"
+        ],
+        "properties": {
+          "at": {
+            "$ref": "#/$defs/instant"
+          },
+          "issue": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 40
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "A derived one-line label for the event, bounded. Never a marker payload or a comment body: the producer reduces a marker to its parsed fields before it reaches here."
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "instant": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "One RFC3339 point in time: a literal Z or an explicit numeric offset, fractional seconds optional. The offset form is admitted because Python's own datetime.now(UTC).isoformat() emits it, and a producer whose first honest attempt is refused writes nothing instead. Single-sourced under $defs because five properties carry this rule and a pattern copied five times drifts in four."
+    }
+  }
+}

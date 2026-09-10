@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-sd
-description: Use sd for fast, readable search-and-replace in files with safer defaults than sed. Trigger when batch textual replacements are needed across files.
+invocation: user
 instructions: |
   # tool-sd
 

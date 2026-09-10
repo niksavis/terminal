@@ -1,5 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
+token_cost:
+  claude: 213
+  codex: 213
+  copilot: 212
 id: quality-gate
 description: Quality gate rules before finishing work.
 category: project
@@ -11,7 +15,9 @@ tags:
 - review
 status: active
 body: |
-  - Review the diff before finishing, then exercise the change as it will really be used — run it and read the output; passing tests is not the same as using the feature.
-  - Run the repo's existing checks on anything touched, and re-run after the final edit — a later change can break what passed. Point at gates, don't restate them.
-  - Confirm success from the explicit pass/fail summary line; truncated output can hide a failure.
-  - State only the verification scope actually exercised — say what you did not run; never upgrade "expected to work" to "works".
+  - Review the diff, then exercise the change as it will really be used — run it, read the output. Tests passing ≠ feature working.
+  - Run the repo's checks on anything touched, re-run after the final edit — a later change breaks what passed. Point at gates, don't restate them.
+  - Confirm success from the explicit pass/fail summary line; truncated output hides failures.
+  - State only the scope actually exercised. Say what you did not run. Never "expected to work" → "works".
+  - In a plan awaiting approval, mark parts resting on unread code as assumptions, not design — an approval spent on a false premise costs the checkpoint + the rework budget behind it.
+  - Same for a capability claim on a consumer surface (README · release notes · repo description): exercise before publishing — `docs-claims` catches only an invented command.

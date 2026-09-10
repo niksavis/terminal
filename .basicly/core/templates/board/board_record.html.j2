@@ -1,0 +1,312 @@
+{#- A record named by its title, addressed by its id. Four sites print another record's id -
+    the parent line and three lists - and one macro is what stops them becoming four spellings
+    of the rule (basicly-lc2bd3v.2, gated by tests/test_board_titles.py). #}
+{%- macro named(ident) -%}
+<a href="{{ ident }}{{ href_suffix }}">{{ ident }}</a>{% if titles.get(ident) %} <span class="what">{{ titles[ident] }}</span>{% endif %}
+{%- endmacro -%}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ record }} — basicly board</title>
+    <link rel="stylesheet" href="{{ stylesheet }}" />
+    <style>
+{% include "board_theme.css.j2" %}
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      /* This page scrolls, unlike the wall: it is read at a desk and answers one record,
+         so a clipped section here would hide the field somebody opened it for. */
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.5;
+        padding: 24px;
+      }
+      main {
+        margin: 0 auto;
+        max-width: 900px;
+      }
+      a {
+        color: var(--indigo);
+      }
+      h1 {
+        color: var(--text-bright);
+        font-family: var(--mono);
+        font-size: 22px;
+      }
+      h2 {
+        border-bottom: 1px solid var(--border);
+        color: var(--text-dim);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        margin: 24px 0 8px;
+        padding-bottom: 4px;
+        text-transform: uppercase;
+      }
+      .title {
+        color: var(--text-bright);
+        font-size: 17px;
+        margin-top: 4px;
+      }
+      .age {
+        color: var(--text-dim);
+        font-size: 13px;
+      }
+      dl {
+        display: grid;
+        gap: 4px 16px;
+        grid-template-columns: 160px 1fr;
+      }
+      dt {
+        color: var(--text-dim);
+      }
+      dd {
+        color: var(--text-bright);
+        font-family: var(--mono);
+      }
+      /* Absence is on the glyph and on the colour, never on the colour alone: the wall's
+         own three-channel rule, so a monochrome print still tells the two apart. */
+      .absent {
+        color: var(--text-dim);
+        font-family: var(--sans);
+        font-style: italic;
+      }
+      .note {
+        color: var(--amber);
+      }
+      .held {
+        color: var(--green);
+      }
+      .missing {
+        color: var(--text-dim);
+      }
+      code {
+        background: var(--bg-sunk);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        color: var(--text-bright);
+        display: inline-block;
+        font-family: var(--mono);
+        padding: 4px 8px;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        font-family: var(--mono);
+      }
+      .glyph {
+        font-family: var(--mono);
+      }
+      /* The record's own words, rendered. This page scrolls, so the body is not capped: a
+         reader who opened one record wants all of it, and the Definition of Ready's headings
+         only read as headings if they are drawn as headings (basicly-lc2bd3v.2). */
+      .body {
+        max-width: 92ch;
+      }
+      .body h2 {
+        color: var(--text-bright);
+        font-size: 15px;
+        margin: 18px 0 6px;
+      }
+      .body h3 {
+        color: var(--text-bright);
+        font-size: 14px;
+        margin: 14px 0 4px;
+      }
+      .body p,
+      .body li {
+        line-height: 1.5;
+        margin-bottom: 6px;
+      }
+      /* The page's bare `ul`/`li` rules are the tree and the edge lists: monospace ids with
+         no marker. A rendered body is prose and needs both back (basicly-lc2bd3v.2). */
+      .body ul,
+      .body ol {
+        list-style: disc;
+        padding-left: 22px;
+      }
+      .body ol {
+        list-style: decimal;
+      }
+      .body li {
+        font-family: var(--sans);
+      }
+      .body code {
+        background: var(--bg-sunk);
+        border-radius: 3px;
+        font-family: var(--mono);
+        font-size: 12px;
+        padding: 1px 4px;
+      }
+      .body pre {
+        background: var(--bg-sunk);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        overflow-x: auto;
+        padding: 8px 10px;
+      }
+      .body pre code {
+        background: none;
+        padding: 0;
+      }
+      .body table {
+        border-collapse: collapse;
+        margin: 8px 0;
+      }
+      .body th,
+      .body td {
+        border: 1px solid var(--border);
+        padding: 3px 8px;
+        text-align: left;
+      }
+      .body blockquote {
+        border-left: 3px solid var(--indigo);
+        color: var(--text-dim);
+        margin: 8px 0;
+        padding-left: 12px;
+      }
+      /* The title beside an id in the tree and the edge lists. Dimmer than the link, because
+         the link is the way in and the title is what tells a reader whether to take it. */
+      .what {
+        color: var(--text-dim);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a href="{{ back }}">&larr; the board</a></p>
+      <h1>{{ record }}</h1>
+      <p class="title{% if title == absent_text %} absent{% endif %}">{{ title }}</p>
+      <p class="age">
+        snapshot {{ age.generated_at }} — {{ age.phrase }} — {{ schema }}
+      </p>
+
+      <h2>what this record says</h2>
+{%- if body %}
+      <div class="body">{{ body | markdown }}</div>
+{%- else %}
+      <p class="absent">this record carries no description</p>
+{%- endif %}
+
+      <h2>the record</h2>
+      <dl>
+{%- for cell in facts %}
+        <dt>{{ cell.label }}</dt>
+        <dd class="{% if cell.value == absent_text %}absent{% endif %}">
+          <span class="glyph">{{ cell.state.glyph }}</span> {{ cell.value }}
+        </dd>
+{%- endfor %}
+{%- if detail_note %}
+        <dt>worktree</dt>
+        <dd class="absent">{{ detail_note }}</dd>
+{%- else %}
+{%- for cell in binding %}
+        <dt>{{ cell.label }}</dt>
+        <dd class="{% if not cell.value %}absent{% endif %}">
+          {{ cell.value or "none bound" }}
+        </dd>
+{%- endfor %}
+{%- endif %}
+      </dl>
+
+      <h2>checkpoints</h2>
+{%- if checkpoints %}
+      <ul>
+{%- for name, held in checkpoints %}
+        <li class="{% if held %}held{% else %}missing{% endif %}">
+          {{ "held" if held else "not approved" }} — {{ name }}
+        </li>
+{%- endfor %}
+      </ul>
+{%- else %}
+      <p class="absent">{{ detail_note or absent_text }}</p>
+{%- endif %}
+
+      <h2>rework</h2>
+{%- if rework %}
+      <dl>
+{%- for cell in rework %}
+        <dt>{{ cell.label }}</dt>
+        <dd>{{ cell.value }}</dd>
+{%- endfor %}
+      </dl>
+{%- else %}
+      <p class="absent">{{ detail_note or absent_text }}</p>
+{%- endif %}
+
+      <h2>the lane</h2>
+{%- if lane %}
+      <dl>
+{%- for cell in lane %}
+        <dt>{{ cell.label }}</dt>
+        <dd class="{% if cell.value == absent_text %}absent{% endif %}">
+          <span class="glyph">{{ cell.state.glyph }}</span> {{ cell.value }}
+        </dd>
+{%- endfor %}
+      </dl>
+{%- if lane_progress %}
+      <p>{{ lane_progress }}</p>
+{%- endif %}
+{%- else %}
+      <p class="note">{{ lane_note }}</p>
+{#- The command the producer's engine named, printed verbatim. A board that composed one
+    would be a second answer to what the harness does next. #}
+{%- if next_command %}
+      <p>next: <code>{{ next_command }}</code></p>
+{%- else %}
+      <p class="absent">no next command — {{ detail_note or absent_text }}</p>
+{%- endif %}
+{#- Offered only where the record is ready and unheld, so a press cannot begin a second lane
+    on work already in flight. The command is the action's own, printed verbatim. #}
+{%- if start_command %}
+      <p>start: <code>{{ start_command }}</code></p>
+{%- endif %}
+{%- endif %}
+
+      <h2>the tree</h2>
+{%- if parent %}
+      <p>parent: {{ named(parent) }}</p>
+{%- else %}
+      <p class="absent">this record has no open parent</p>
+{%- endif %}
+{%- if children %}
+      <ul>
+{%- for ident in children %}
+        <li>{{ named(ident) }}</li>
+{%- endfor %}
+      </ul>
+{%- else %}
+      <p class="absent">no open record belongs to this one</p>
+{%- endif %}
+
+      <h2>blocked by</h2>
+{%- if blockers %}
+      <ul>
+{%- for ident in blockers %}
+        <li>{{ named(ident) }}</li>
+{%- endfor %}
+      </ul>
+{%- else %}
+      <p class="absent">nothing open blocks this record</p>
+{%- endif %}
+
+      <h2>blocking</h2>
+{%- if dependents %}
+      <ul>
+{%- for ident in dependents %}
+        <li>{{ named(ident) }}</li>
+{%- endfor %}
+      </ul>
+{%- else %}
+      <p class="absent">no open record waits on this one</p>
+{%- endif %}
+    </main>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `release-process`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "cut a new version of this repository"
+    - prompt: "prepare the notes and tag for the next version"
+    - prompt: "did the release actually publish"
+  negative:
+    - prompt: "what type should this commit subject use"
+      owner: conventional-commits
+    - prompt: "decompose this work before I build it"
+      owner: harness-loop

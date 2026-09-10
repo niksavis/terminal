@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 3
 name: tool-git-delta
-description: Use git-delta for syntax-highlighted, readable git diffs during review. Trigger when human review of patch content is the focus.
+invocation: user
 instructions: |
   # tool-git-delta
 

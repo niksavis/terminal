@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+token_cost:
+  claude: 0
+  codex: 80
+  copilot: 0
+id: release-fragments
+description: A consumer-visible change writes one short bulleted changelog fragment before its record closes.
+category: project
+priority: medium
+applies_to: [all]
+tags:
+- release
+- quality
+status: active
+scope:
+  paths:
+  - changelog.d/**
+  - src/**
+  - .basicly/core/**
+title: Release Fragments
+body: |
+  A change a consumer can see writes `changelog.d/<record-id>.<category>.md` before its
+  record closes: one dash-space bullet, under 400 characters. Write it in the lane — the
+  release reads the tagged commit, and a closed record with a shipped scope and no
+  fragment blocks the next commit on main.

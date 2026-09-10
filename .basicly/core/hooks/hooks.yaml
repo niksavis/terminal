@@ -4,7 +4,7 @@
 # `manager: claude` goes to the agent-hook section of .claude/settings.json,
 # and `manager: copilot` goes to a managed .github/hooks/basicly-<id>.json.
 # The fields stay tool-agnostic so another manager (e.g. lefthook) can be
-# projected later. See docs/architecture.md §4.2, §11.6.
+# projected later. See docs/architecture/architecture.md §10.2, §16.
 hooks:
   - id: identity-guard
     script: identity-guard.py
@@ -16,13 +16,50 @@ hooks:
     stage: pre-commit
     always_run: true
     pass_filenames: false
+  # Scoped, not always_run: it lints the whole catalog but only a change to a catalog
+  # source or to the config carrying its floors can alter the verdict. Unscoped, one
+  # validation bug blocked commits touching no catalog file at all. A custom overlay root
+  # is outside this regex; the CI step stays the unconditional backstop.
   - id: catalog-lint
     script: catalog-lint.py
     stage: pre-commit
-    always_run: true
+    files: ^(\.basicly/core/|\.basicly-local/|basicly\.toml$)
     pass_filenames: false
   - id: secret-scan
     script: secret-scan.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
+  # Sibling of secret-scan, for the tracker export. The export is committed and
+  # cloned by consumers, so a machine-specific absolute path or username in it is
+  # published, and it is a wrong answer on every machine but the one that wrote
+  # it (basicly-vkh0.5). The engine strips br's source_repo_path at its own
+  # tracker commits; this is the gate for whatever that misses.
+  - id: tracker-path-scan
+    script: tracker-path-scan.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
+  # Sibling of secret-scan for internal-only identifiers (a company domain, an
+  # internal host, a machine username, a private repo name). Committed content is
+  # published, and these read as ordinary text to anyone who does not already know
+  # they are internal (basicly-0n3d). The denylist lives in the gitignored
+  # basicly.local.toml, never here: a gate that hard-codes the strings it
+  # suppresses publishes them itself, into this repo and into every consumer that
+  # installs the catalog. Inert until configured.
+  - id: internal-info-scan
+    script: internal-info-scan.py
+    stage: pre-commit
+    always_run: true
+    pass_filenames: false
+  # The one-way kit boundary (basicly-vkh0.16). A hook rather than only a
+  # `[[verify.checks]]` entry because this is the wiring that travels: the kit is
+  # copied into consumer repos by `basicly install`, and a consumer's basicly.toml
+  # is its own — it would never declare the check. The verify entry covers this
+  # repo's CI (`full`, run by pre-push.py); this covers commit time, here and
+  # there, so the two wirings do not duplicate each other's work.
+  - id: kit-boundary
+    script: kit-boundary.py
     stage: pre-commit
     always_run: true
     pass_filenames: false
@@ -30,8 +67,8 @@ hooks:
     script: commit-msg.py
     stage: commit-msg
     pass_filenames: true
-  - id: beads-commit-msg-script
-    script: beads-commit-msg.py
+  - id: tracker-commit-msg-script
+    script: tracker-commit-msg.py
     stage: commit-msg
     pass_filenames: true
   - id: pre-push-script
@@ -41,6 +78,38 @@ hooks:
     pass_filenames: false
   - id: protect-generated
     script: protect-generated.py
+    stage: pretooluse
+    manager: claude
+  # The always-on `non-interactive-shell` rule against `for x in $SCALAR` was in context
+  # and was violated anyway, and the failure is silent by construction: the loop runs once
+  # and exits 0 (basicly-m2g3). Guidance that must bind becomes a hook.
+  - id: unsplit-loop-guard
+    script: unsplit-loop-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  # `$?` after `cmd | tail` is tail's status, so a failing gate reports success. Prose
+  # has been tried: the rule is already always-on and it recurred twice on 2026-08-20,
+  # plus once as a background run notifying "exit code 0" over a failed gate. `head` and
+  # `tail` are the 1st and 3rd most-used tools here (16394 / 13960), so the trap sits on
+  # the most travelled path and the note against it competes with the whole always-on
+  # budget. Fires only where the status is actually read (basicly-xkqxp9), never on the
+  # idiom, or it becomes noise and gets switched off.
+  - id: pipe-status-guard
+    script: pipe-status-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  # `module-size` and `comment-density` are budgets, not rules: prose can say the gate
+  # exists and cannot say a module has 456 tokens left. `.scripts/headroom.py` is the read
+  # that answers it before the code is written, and the `python` skill gives the command -
+  # skipped three times on 2026-08-14 (basicly-co64) and three more on 2026-09-04, every
+  # time paid for by trimming prose after the gate refused. Allows every call and injects
+  # the figures, which the vendor docs make the only non-blocking outcome the model sees;
+  # silent on a module with room, so it earns its place on the write path
+  # (basicly-zq9i2m.4). Empty matcher = the manager's default write-tools set.
+  - id: headroom-guard
+    script: headroom-guard.py
     stage: pretooluse
     manager: claude
   # Deterministic, agent-independent commit-time backstop for the fail-open,
@@ -63,4 +132,19 @@ hooks:
   - id: tool-usage-copilot
     script: tool-usage.py
     stage: posttooluse
+    manager: copilot
+  # The always-on layer asks an agent to open with `basicly session start`, so it runs only
+  # when the agent obeys that line or the human asks (basicly-1ciu6w). At session open the
+  # orientation reaches the context before the first turn instead. Two entries for one
+  # script: Claude's SessionStart matcher filters the session *source*, where `*` is the
+  # documented match-all and the default write-tools matcher would never fire, while
+  # Copilot's sessionStart takes no matcher at all.
+  - id: session-start
+    script: session-start.py
+    stage: sessionstart
+    manager: claude
+    matcher: "*"
+  - id: session-start-copilot
+    script: session-start.py
+    stage: sessionstart
     manager: copilot

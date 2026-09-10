@@ -50,7 +50,34 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .basicly/core/hooks/protect-generated.py"
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/protect-generated.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/unsplit-loop-guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/pipe-status-guard.py\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/headroom-guard.py\""
           }
         ]
       }
@@ -61,7 +88,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run python .basicly/core/hooks/tool-usage.py"
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/tool-usage.py\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/session-start.py\""
           }
         ]
       }

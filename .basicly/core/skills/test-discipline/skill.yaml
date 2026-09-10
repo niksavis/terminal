@@ -1,6 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 91
 name: test-discipline
+invocation: model
 description: >-
   Write isolated order-independent automated tests that assert on observable
   behavior rather than private internals. Use when writing reviewing or debugging
@@ -39,3 +42,71 @@ instructions: |
     test — fix or quarantine it, never mask it with a blind retry.
   - When you fix a bug, add the regression test that would have caught it first, and
     watch it fail before the fix so you know it exercises the defect.
+  - Wait for the condition, never for a duration: poll the predicate with a generous
+    timeout so the assertion says the thing happened, not when. Where elapsed time is
+    the claim, measure it on a monotonic clock, and set any wall-clock cap to clear the
+    slowest runner in the CI matrix by 2x — a 3.0 s cap measured 0.48 s locally and
+    3.1 s on windows-latest, and was a flake generator, not a flake (basicly-7aler3).
+
+  ## Set up the condition the code actually reads
+
+  - When the code under test loads its own configuration, settings, or environment,
+    put those values where that code reads them from — the file, the directory, the
+    environment variable. A config object built in the test and handed to a helper
+    never reaches a function that calls its own loader, so the test exercises the
+    defaults and passes whatever you changed.
+  - Then prove the condition is live rather than merely arranged: assert that the
+    input you set up actually moves the value the code branches on. A threshold left
+    at its default, a window too small to trigger, a flag read from somewhere else —
+    each leaves a test that stages a scenario the code never sees.
+  - The tell is a test that passes with the fix removed. Whenever a test is written
+    after the fix it pins, delete the fix and watch it fail for the stated reason
+    before trusting it.
+
+  ## Mutate the fix in both directions, not just off
+
+  - Deleting the fix proves the tests notice it is gone. It does not prove they
+    describe what it *does*. So run the second mutation too: make the check fire on
+    everything — always warn, always refuse, always report the same verdict — and
+    watch a control fail. If nothing fails, the suite pins "it reacts" and not "it
+    discriminates", and a check that fires on every input passes every test you wrote
+    while being useless.
+  - This is the direction that finds the missing test, and it has done so every time
+    it was run. A per-lane report that labelled each lane refused passed the whole
+    file, because every case in it was a refused lane; the over-trigger mutation is
+    what showed the admitted-lane control was never written.
+  - Say which direction found what when recording the result, so the next reader can
+    tell a check that was verified from one that was merely exercised.
+  - **Restore from a copy, never `git checkout -- <file>`.** A mutation is applied to
+    a working tree that usually holds the very change being verified, and `git
+    checkout` restores from the index — silently discarding all of it. Copy the file
+    aside first and copy it back. (Recovering from this mid-session cost a full
+    re-apply of an uncommitted module.)
+
+  ## A zero result needs a positive control
+
+  - A search, scan or query that finds nothing proves nothing by itself. It is
+    evidence only if the same method, run the same way, finds a control you already
+    know is present; without that control the honest finding is "the method was
+    inconclusive", not "the thing is absent".
+  - The incident: `strings` over the copilot CLI binary found no hook identifiers,
+    and that was reported as the capability being absent. A control retracted it —
+    strings the CLI had been directly observed emitting (`allow-all-tools`,
+    `premiumRequests`) also returned zero matches, because the payload is a
+    compressed JS bundle.
+  - The same trap in a test: an assertion that something is *absent* passes just as
+    happily when the locator is wrong, so pin the locator with a case that must
+    match before trusting the case that must not.
+
+  ## A seam is not duplication
+
+  - A module-level alias or thin wrapper around an external dependency — a CLI, a
+    clock, an HTTP client — is usually a deliberate test seam: it is the thing tests
+    replace. Several modules each holding their own is not accidental repetition.
+  - So before consolidating duplicated access behind one shared helper, look at what
+    the tests patch. Moving the call behind a new module silently bypasses every patch
+    of the old alias, and the suite fails en masse for a reason unrelated to the
+    refactor's intent.
+  - If the consolidation is still right, migrate the seam deliberately: move the patch
+    points in the same commit, and keep one seam per module rather than one for the
+    whole codebase.

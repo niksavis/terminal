@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `harness-client`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "attach to the supervisor that is already running"
+    - prompt: "a lane is waiting on a human judgment, unblock it"
+    - prompt: "what is the factory doing right now"
+  negative:
+    - prompt: "cut a version of this repository"
+      owner: release-process
+    - prompt: "cut this feature into children that can each be landed"
+      owner: decompose-plan

@@ -1,0 +1,24 @@
+bootstrap-icons, vendored.
+
+package   bootstrap-icons
+version   1.13.1
+licence   MIT, verbatim in LICENSE beside this file
+upstream  https://github.com/twbs/icons
+tarball   https://registry.npmjs.org/bootstrap-icons/-/bootstrap-icons-1.13.1.tgz
+integrity sha512-ijombt4v6bv5CLeXvRWKy7CuM3TRTuPEuGaGKvTV5cz65rQSY8RQ2JcHt6b90cBBAC7s8fsf2EkQDldzCoXUjw==
+
+The same version is pinned as a dev dependency in `package.json`, and the integrity above is
+the `integrity` field `package-lock.json` records for it. The two were derived by different
+paths - the lock line came from npm, the digest from `hashlib.sha512` over the downloaded
+tarball - so they agree on provenance rather than on one reading of it.
+
+Seven of the 2,078 icons in the release are committed here, and nothing else. The board is
+one self-contained HTML file that a wall opens from disk, so an icon font, a stylesheet and
+a sprite URL are all refused by `tests/test_board_render.py`; the page carries each mark as
+an inline `path` instead. `src/basicly/board_icons.py` holds the copy the page draws and
+names the mark each icon answers for. `tests/test_board_icons.py` asserts that copy against
+these files, so a hand edit to either side fails rather than diverging in silence.
+
+To refresh: bump the pin in `package.json`, `npm install`, then copy the named files out of
+`node_modules/bootstrap-icons/icons/` and re-run `uv run pytest tests/test_board_icons.py`.
+The test names every path that moved.

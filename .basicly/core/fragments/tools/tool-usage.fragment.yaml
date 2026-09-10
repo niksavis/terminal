@@ -1,7 +1,11 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
+token_cost:
+  claude: 0
+  codex: 0
+  copilot: 0
 id: tool-usage
-description: How to gather context efficiently before acting.
+description: Retired 2026-08-22 - its retrieval ladder taught the habit that hid a live config key.
 category: tools
 priority: medium
 applies_to:
@@ -10,7 +14,7 @@ tags:
 - context
 - retrieval
 - tooling
-status: active
+status: deprecated
 title: Tool Usage
 body: |
   - Retrieval ladder: find files by name, localize with focused search, read only the ranges you need; don't bulk-load unrelated files.

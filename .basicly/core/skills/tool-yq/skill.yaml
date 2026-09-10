@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-yq
-description: Use yq for YAML and structured config queries, edits, and transforms. Trigger when CI configs, manifests, or YAML-based settings need precise changes.
+invocation: user
 instructions: |
   # tool-yq
 

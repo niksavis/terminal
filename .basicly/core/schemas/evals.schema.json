@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/evals.schema.json",
+  "title": "basicly catalog eval case",
+  "description": "Tier-2 routing evidence for one catalog entry, colocated with its source so a reviewer sees the entry and its evidence in one diff. The invocation axis is NOT repeated here: it is declared once on skill.yaml, and a second copy could only ever drift from it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "trigger"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Source-format version; bump only when the loader contract changes."
+    },
+    "trigger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positive",
+        "negative"
+      ],
+      "properties": {
+        "positive": {
+          "type": "array",
+          "minItems": 3,
+          "description": "Realistic prompts this entry must own. Paraphrase how a user actually talks; copying the description into the prompt games the eval and measures nothing.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "prompt"
+            ],
+            "properties": {
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "top_k": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Rank the owner must reach. Defaults to 3; an entry's signature ask declares 1."
+              }
+            }
+          }
+        },
+        "negative": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Prompts owned by a DIFFERENT entry. The assertion is that the named owner outranks this entry - not merely that this entry fails to rank first, which passes vacuously when the prompt matches nothing.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "prompt",
+              "owner"
+            ],
+            "properties": {
+              "prompt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Slug of the model-invoked entry that should answer this prompt."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

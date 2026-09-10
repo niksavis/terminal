@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/validation-transcript.schema.json",
+  "title": "basicly validation-transcript handoff artifact",
+  "description": "What VALIDATE hands SHIP, and REPAIR when the verdict is not-met (factory loop requirements 8). One artifact per validated unit, recorded on that unit. It carries the commands as typed, the output as printed, and a verdict against the original requirement rather than against the change summary - because the summary is the builder's account of the work, and a transcript that could have been produced without the change validated nothing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "requirement",
+    "environment",
+    "steps",
+    "verdict"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit that was exercised, so this transcript can be joined to the verification evidence that admitted it to VALIDATE."
+    },
+    "requirement": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The original requirement this was checked against, named so it can be re-read. The whole state exists to answer a question about the requirement, so a transcript that does not say which one is unfalsifiable."
+    },
+    "environment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The operational environment the commands were run in. Required because a consumer has no worktree, no fixtures and no knowledge of the implementation, and a transcript from inside the lane's worktree silently answers an easier question."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "description": "What was run, in the order it was run. At least one: validation is the act of running the thing, so a transcript with no step is an opinion.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command",
+          "output"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The command exactly as a consumer would type it - one line, not an argv list, because what is under test here includes whether the surface is typeable at all."
+          },
+          "output": {
+            "type": "string",
+            "description": "What it printed, pasted rather than described. Empty is a real result for a command that prints nothing, and it is a different claim from a command that printed something the writer chose to summarise."
+          }
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "met",
+        "not-met"
+      ],
+      "description": "Whether the original requirement is met. Two values only: REPAIR's entry predicate is validate failed, so an artifact that hedges cannot route the unit. Executing without error is not met - that distinction is the failure mode this state exists to catch."
+    }
+  }
+}

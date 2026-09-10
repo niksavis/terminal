@@ -1,5 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
+token_cost:
+  claude: 0
+  codex: 0
+  copilot: 86
 id: copilot-defaults
 description: Copilot-specific defaults and file layout conventions.
 category: project
@@ -12,7 +16,6 @@ tags:
 status: active
 title: Copilot-specific notes
 body: |
-  - Path-scoped rules live in `.claude/rules/*.md` only; `.github/instructions/` twins double-load.
+  - Author skills and rules at `.basicly/core/` (or `.basicly-local/`); `.claude/skills/` and `.claude/rules/*.md` are projected output; no `.github/instructions/` twins (double-load).
   - Prefer skills over prompt files — VS Code is migrating `*.prompt.md` to skills.
   - Put custom agents in `.github/agents/*.agent.md`.
-  - Shared skills in `.claude/skills/` are read by Claude and Copilot alike.

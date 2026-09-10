@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/release-record.schema.json",
+  "title": "basicly release-record handoff artifact",
+  "description": "NOTE: prose here is indexed by wired_or_deleted as field references (basicly-r343); avoid dataclass field names in descriptions until that is fixed. What SHIP hands the owner who pushes (factory loop requirements 8). One artifact per shipped unit, recorded on that unit, written by the curator once verify and validate are green. Version bump, changelog, tag and push are a command the engine runs; what is left is the judgement this artifact carries - every claim bound to the evidence for it, every claim that has none named rather than quietly removed, and the post-ship action declared before the tag moves. A false claim in code is caught by CI; a false claim on a consumer surface is caught by a consumer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "claims",
+    "unsupported",
+    "post_ship_action"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit being shipped, so the record can be read back against the validation transcript and verification evidence that admitted it to SHIP."
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The claims this release makes, each with the evidence for it. At least one: a release that tells a consumer nothing has nothing to curate, and an empty list would be indistinguishable from a curator that never read the notes.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "evidence"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The claim in the words it will reach a consumer in. Quoted rather than paraphrased, because the sentence a reader is held to is the sentence that has to be evidenced."
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "description": "What binds the claim. At least one entry, or the claim belongs under unsupported - that is the split this whole artifact encodes.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "reference"
+              ],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "test",
+                    "command",
+                    "gate"
+                  ],
+                  "description": "Which of the three things is doing the binding: the test that exercises it, the command that demonstrates it, or the gate that binds it. Closed as an enum on purpose - a closed bead proves code exists, not that a gate binds, and there is no value here it can be filed under."
+                },
+                "reference": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The citation itself - the test id, the command, the gate name - so a second reader can re-run it. Evidence that cannot be pointed at is a recollection."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "unsupported": {
+      "type": "array",
+      "description": "Claims that could not be evidenced, named here and dropped from the notes. Required and allowed to be empty: empty is a declared answer, whereas an absent key is exactly the quiet omission this field exists to prevent. A release that documents an unmet criterion is honest; one that omits it is not.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "claim",
+          "why"
+        ],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The claim as it was written before it was dropped, so the drop is reviewable rather than invisible."
+          },
+          "why": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What was looked for and not found. Without it the entry is a veto; with it, the next release knows what evidence would settle the claim."
+          }
+        }
+      }
+    },
+    "post_ship_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What happens after the tag moves, declared before it moves. Pre-declared because an action chosen after a release has already been shaped by how the release went, and because the push itself is the owner's - the record has to tell them what they are pushing into."
+    }
+  }
+}

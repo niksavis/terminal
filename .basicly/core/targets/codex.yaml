@@ -1,9 +1,29 @@
 name: codex
 enabled: true
 tone: terse_directive
-# Higher than claude/copilot (8000): scoped fragments are inlined here for glob
-# fidelity (architecture §7.4); Codex's real budget is project_doc_max_bytes (32 KiB).
-max_size_warning: 12000
+# Higher than claude/copilot (9000): scoped fragments are inlined here because Codex
+# has no glob-based instruction scoping and a nested AGENTS.md below the cwd is never
+# loaded (architecture §12.2). Counted in characters, not bytes. Codex's real budget is
+# project_doc_max_bytes (32 KiB default, configurable).
+#
+# Raised from 12000/200 on 2026-08-09, after the basicly-a3ab.1 audit measured where the
+# overrun actually comes from. The always-on layer is 8462 characters and is NOT the
+# cause: claude renders 8628 and copilot 8727, both under their 9000. The extra 5091 here
+# is the scoped tier, which the other two receive as separate `paths:`-carrying rules
+# files and Codex cannot. So the overrun is structural to this target, and evicting
+# baseline lines would have cost all three families to fix one - while leaving the cause.
+# 12000 was our own conservative pick against a 32 KiB real budget, so the number moved
+# rather than the content.
+#
+# What this trades away, stated because it is not free: the cap also stood proxy for the
+# vendor's claim that adherence degrades with length, which this repo has never measured.
+# basicly-agzx.1 is the bead that would. Until it runs, this is a budget we know we fit
+# and an adherence cost we do not.
+#
+# Lines track characters at the ~50 chars/line ratio the paragraph above assumes, so the
+# two caps keep saying the same thing rather than one firing alone at an arbitrary point.
+max_lines_warning: 320
+max_size_warning: 16000
 outputs:
   agents_baseline:
     path: AGENTS.md

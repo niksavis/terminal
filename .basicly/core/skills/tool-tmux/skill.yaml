@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-tmux
-description: Use tmux for session orchestration, pane/window control, and resilient long-running terminal workflows. Trigger when the task needs terminal multiplexing or keybinding troubleshooting.
+invocation: user
 technologies: [tmux]
 instructions: |
   # tool-tmux

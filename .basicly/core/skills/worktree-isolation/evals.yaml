@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `worktree-isolation`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "keep this change out of my main checkout"
+    - prompt: "two parallel tracks would collide, isolate them"
+    - prompt: "set up a sibling checkout on a harness branch"
+  negative:
+    - prompt: "what work is ready to pick up"
+      owner: work-tracker
+    - prompt: "advance this issue past its checkpoint"
+      owner: harness-loop

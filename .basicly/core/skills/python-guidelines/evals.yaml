@@ -1,0 +1,20 @@
+# Tier-2 routing evidence for `python-guidelines`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+#
+# The negatives are `python`'s own positive prompts on purpose: the two entries are
+# the deterministic and non-deterministic halves of the same language, so the pair
+# that would contend is exactly the pair worth asserting on.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "the size gate says this file is too big but not where to cut it"
+    - prompt: "am i allowed to silence this warning or is that just hiding it"
+    - prompt: "does pulling these lines into a new wrapper actually earn its keep"
+  negative:
+    - prompt: "add type hints and pathlib to this module"
+      owner: python
+    - prompt: "a subprocess call raises winerror 2 on the windows runner"
+      owner: python
+    - prompt: "this except clause looks wrong for an older interpreter"
+      owner: python

@@ -128,7 +128,7 @@ def main() -> int:
     print(
         "These files are generated. Edit the catalog source (fragment/skill/agent YAML "
         "under .basicly/core or the .basicly-local overlay), run `basicly build` to "
-        "regenerate them, and stage the result (see docs/architecture.md §3.4).",
+        "regenerate them, and stage the result (see docs/architecture/architecture.md §11).",
         file=sys.stderr,
     )
     return BLOCK_EXIT_CODE

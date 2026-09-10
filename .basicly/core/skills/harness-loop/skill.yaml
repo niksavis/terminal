@@ -1,103 +1,215 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 139
 name: harness-loop
-description: Drive a unit of work through the basicly harness loop end-to-end (intake → classify → decompose → build → verify → ship → teardown → retro) using `basicly loop` + `br`, agent-agnostic across Claude/Codex/Copilot. Use when starting or resuming non-trivial development in a harness-enabled repo, when deciding what phase a tracked issue is in, or when coordinating the checkpoints, gates, and bounded rework the loop enforces.
+invocation: model
+description: Drive a unit of work through the basicly harness loop end-to-end (intake → classify → decompose → build → verify → validate → ship → done) with `basicly loop` over the owned tracker ledger, agent-agnostic across Claude/Codex/Copilot. Teardown is folded into the ship advance and the retro is a tracker comment; neither is a phase. Use when starting or resuming non-trivial development in a harness-enabled repo, when deciding what phase a tracked issue is in, or when coordinating the checkpoints, gates, and bounded rework the loop enforces.
 instructions: |
   # Harness Loop
 
   ## Scope
 
-  Owns driving one tracked unit of work through the whole development loop with the
-  `basicly loop` command group over the `br` (beads) tracker. The loop is
-  agent-agnostic: the same commands drive it under Claude, Codex, or Copilot — the
-  agent supplies the phase inputs (the work type, the child plan) and does the
-  coding in the worktree; the engine records state, gates, and advances.
+  Owns driving tracked work through the whole development loop with the `basicly
+  loop` command group over the owned tracker ledger — one unit at a time with
+  `loop run`, or many lanes at once with `loop preflight` + `loop supervise`. The
+  loop is agent-agnostic: the same commands drive it under Claude, Codex, or
+  Copilot — the agent supplies the phase inputs (the work type, the child plan) and
+  does the coding in the worktree; the engine records state, gates, and advances.
 
   It is **not** for the mechanics each phase delegates to — those have their own
-  skills: `tool-br` (create/claim/close issues), `worktree-isolation` (isolate a
+  skills: `work-tracker` (create/claim/close records), `worktree-isolation` (isolate a
   node's build), `conventional-commits` (format the commit), `tool-git` (staging,
   diffing). This skill sequences them; it does not replace them.
 
   ## The tracker is the state — start by reading it
 
-  `br` is the single source of truth; the loop keeps no side-state, so it is
-  resumable across restarts and across agents. Whatever happened last session, begin
+  The tracker ledger is the single source of truth; the loop keeps no side-state, so it
+  is resumable across restarts and across agents. Whatever happened last session, begin
   by reconstructing where a track is:
 
   ```sh
   basicly loop status <issue>     # phase, worktree binding, gates, checkpoints, rework, ready/blocked
   ```
 
-  Pick the next actionable issue with `br ready` / `br scheduler --json`; `basicly
-  loop status` then tells you which phase it is parked in and what it is waiting on.
+  That one command also prints the **ranked ready set and the blocked set**, so it is
+  where you pick the next issue as well as where you read the current one's phase. See
+  `work-tracker` for reading a record's own body.
 
   ## Tracker state is zero-touch — the engine commits it, you never do
 
-  One tracker, everywhere: a loop-provisioned worktree shares the base
-  checkout's `.beads` via br's git-ignored `redirect` file, so `br` commands
-  (create, update, comments, gates) work identically from base or any
-  worktree and always hit the one real DB/JSONL. There is no worktree tracker
-  copy to diverge and nothing to reconcile at landing.
+  One tracker, everywhere: the ledger's location follows the git-ignored
+  `.basicly/ledger/redirect` file, so a loop-provisioned worktree and the base checkout
+  resolve to the **same** event log and every write (create, update, comments,
+  gates) lands in it identically from either. There is no worktree tracker copy
+  to diverge and nothing to reconcile at landing.
+
+  **The log is append-only, so read the shape of the diff before committing tracker
+  state.** If `git diff --cached --stat` shows *deletions* under `.basicly/ledger/`,
+  stop and find out what rewrote a file that is only ever appended to.
 
   The engine makes the only tracker commits, at the three natural points:
 
   1. **At provisioning**, the claim (status, work type, classify approval) is
      committed before the worktree is created, so the claim is in git history
      from the moment work starts — a teammate who pulls sees it immediately.
-  2. **At landing**, `loop advance` rolls the `.beads/**` dirt accumulated
+  2. **At landing**, `loop advance` rolls the `.basicly/ledger/**` dirt accumulated
      since (checkpoints, gate records) into one `chore(beads)` commit before
-     merging. A base that is dirty with anything *outside* `.beads/` still
+     merging. A base that is dirty with anything *outside* the ledger still
      blocks — that is someone's uncommitted work.
-  3. **At ship**, after `br close`, the engine commits the closing tracker
-     state itself.
+  3. **At ship**, after the closing write, the engine commits the closing
+     tracker state itself.
 
-  So: never `git add .beads` yourself for loop-tracked work, and never commit
-  `.beads/issues.jsonl` on a harness branch (restore it if something staged
-  it).
+  So: never stage tracker state yourself for loop-tracked work, and never commit
+  the ledger on a harness branch (restore it if something staged it).
+
+  **The base clean-tree check counts untracked files.** Landing mutates the
+  shared base checkout, so it runs `git status --porcelain` there with
+  untracked paths included — unlike the worktree readiness check, which passes
+  `--untracked-files=no` because `git rebase` does not abort on untracked
+  files. So a stray untracked file in base blocks the landing exactly like a
+  modified tracked one. Check base before every landing:
+
+  ```sh
+  git -C <base-checkout> status --short
+  ```
+
+  When the dirt is not yours — one shared base checkout with a second
+  concurrent session in it is the usual cause — **hold the branch** until that
+  session commits its own work, then land. Never `git clean`, `git checkout --`
+  or stash another session's files to unblock your merge; the branch waits, the
+  other session's work does not survive being cleared.
+
+  **The other side of that rule: while a pass holds the lock, the base is read-only to
+  you.** The paragraph above tells a blocked lane what to do about someone else's dirt;
+  this is how not to be that someone. Editing the base during a pass cost two things on
+  2026-09-01: `basicly-mfavrh` recorded a verify failure produced by two uncommitted
+  files it had never heard of and spent a round asking a human who may clear them, and
+  every `git push` was refused with `files were modified by this hook`, because the
+  128-second pre-push suite cannot outrun the supervisor's 15-second ledger beat. Read
+  in the base, write in a worktree of your own, and do not push until `loop stop`
+  returns.
 
   **Push cadence** — tracker-only pushes are CI-free by design (`paths-ignore
-  .beads/**`; the local commit-msg hooks are the deterministic floor), so the
+  .basicly/ledger/**`; the local commit-msg hooks are the deterministic floor), so the
   choice is purely about who is watching the remote:
 
   - **Solo repo**: push once per track, after ship — one CI run for the real
     change, none for the tracker noise.
   - **Team repo** (other agents or humans pull the same tracker): push each
     engine tracker commit as soon as it lands — especially the provisioning
-    claim commit, so nobody starts work someone already claimed. Cross-machine
-    races that still slip through are caught by `br scheduler
-    --stale-claim-hours` and `br coordination`.
+    claim commit, so nobody starts work someone already claimed. A race that
+    still slips through shows up as a claimed record with no live worktree —
+    `basicly loop status <id>` against `basicly worktree list` is the read that
+    finds it.
 
-  ## Advancing the loop
+  ## Advancing the loop — one command per phase boundary
 
-  Each step is one resumable transition: the engine re-reads the phase from `br`,
-  does the phase's action (or blocks waiting on an input, a checkpoint, or a gate),
-  and returns the outcome. A blocked step exits non-zero so scripts and CI can
-  branch on it.
+  Drive the loop with `basicly loop run`. It is one command per *boundary*, not per
+  step: it advances until it needs an agent or a human, resolving every checkpoint
+  it is authorized to resolve on the way. A leaf bead therefore takes two
+  invocations, one at each boundary, plus one relay of the confirm code each:
+
+  ```sh
+  basicly loop run <issue> --work-type task   # intake -> awaiting the agent's work
+  #   ... do the coding in the worktree and COMMIT it on the harness branch ...
+  basicly loop run <issue>                    # land, verify, ship, close
+  ```
+
+  Without an interactive terminal it stops once per boundary with a one-time
+  confirm code and reprints the whole command to re-run — relay the code on *that*
+  command, not on a bare `policy checkpoint --approve`, or the checkpoint is
+  approved and the loop stays parked. A covering autonomy grant (`basicly policy
+  grant`, with `--root <epic>` on the run) resolves the checkpoint with no relay at
+  all. Nothing here widens what may be self-approved: a TTY, a covering grant, or a
+  relayed code are still the only three ways past a checkpoint.
+
+  ### Size a grant's token budget from the ledger
+
+  Read the budget off recorded dispatches, never off an estimate of how much work it
+  looks like:
+
+  ```sh
+  uv run python -c "
+  import json, statistics
+  d = json.load(open('.basicly/usage/run-records.json'))
+  ok = [r.get('tokens') or 0 for rs in d.values() for r in rs
+        if r.get('agent') != 'manual' and r.get('outcome') == 'executed']
+  print('lanes', len(ok), 'mean', f'{statistics.mean(ok):,.0f}', 'max', f'{max(ok):,}')"
+  ```
+
+  Then budget `mean x lanes`, plus headroom for **one** lane that dies at
+  `[runner] runner_timeout` — a killed lane still spends everything it burned before
+  the kill, and those have measured 16-21M each.
+
+  Two ways the estimate goes wrong, both recorded. **"I will do the coding myself" is
+  not a budget.** A grant issued on that assumption was set at 20M and spent
+  22,164,783, because `loop run` dispatches a metered runner rather than leaving the
+  work to the driving session — the level covers the *checkpoints*, it does not decide
+  who writes the code. And **the ceiling cannot stop a dispatch it has already
+  started**: `spend_status` is consulted before a pass and recorded after it, so an
+  overshoot is only visible once the tokens are gone (`basicly-rupz` is the fix).
+  Budget for the overshoot instead of expecting the ceiling to catch it.
+
+  ### Answering a confirm-code challenge
+
+  The challenge protects the human **decision**, not the keystrokes. So do not hand
+  the command over and wait for someone to type it — that wastes a round trip and
+  races the code's 15-minute TTL, and a ship code has expired mid-ask before. The
+  protocol is:
+
+  1. **Show the exact command**, including the code.
+  2. **Say what approving it does** in one line — which bead, which checkpoint, and
+     what happens next. The challenge itself now prints this per checkpoint, so
+     read it off the prompt rather than paraphrasing from the phase name: a
+     classify approval provisions a worktree, and a ship approval tears the
+     worktree down and closes the bead. **Ship does not merge and does not
+     publish** — the merge already happened at the build→verify landing, and
+     `ship` naming it otherwise is what caused the recorded mis-approval
+     (`basicly-jr0l.39`).
+  3. **Get an explicit yes.** Silence, "sounds good" about something else, or an
+     earlier approval of a different checkpoint is not one. Approval covers the one
+     checkpoint in front of you, never the next.
+  4. **Then run it yourself.**
+
+  Ask when the challenge appears, not after finishing other work — the code expires
+  whether or not you are ready for it. If it has expired, re-run the command with no
+  `--confirm` to mint a fresh one and ask again.
 
   ```sh
   basicly loop advance <issue> [--work-type T] [--children plan.toml] [--mode M]
-  basicly loop run <issue> [flags]   # advance repeatedly until it blocks or finishes
   ```
+
+  `loop advance` is the single-step form — reach for it to inspect one transition
+  in isolation, or when a boundary stopped somewhere you want to step through by
+  hand. Both exit non-zero when the track stopped short, so scripts and CI can
+  branch on it.
 
   The flags are the agent-supplied inputs a phase needs; pass the one the current
   phase is asking for (`basicly loop status`/`advance` names it as `needs input`).
 
   ## Phases and what each one needs
 
+  A reference for what each phase is waiting on — not a checklist to type out.
+  `loop run` performs every engine step in this table itself; what it cannot do is
+  the agent's own column: propose the work type, write the child plan, do the
+  coding, and commit it.
+
   | Phase | What advances it | Command |
   | --- | --- | --- |
-  | **intake** | agent proposes the `br` work type | `basicly loop advance <id> --work-type {bug\|chore\|task\|feature\|epic}` — records the type, then blocks for the classify checkpoint |
-  | **classify** *(human checkpoint)* | approve, then the Definition-of-Ready gate must pass | `basicly policy checkpoint <id> classify --approve`; check readiness with `basicly policy dor <id>` |
-  | **decompose** | features need an agent child plan; leaves (bug/chore/task) skip straight to build | `basicly decompose <feature> --plan plan.toml` (or `--children` on advance); preview with `basicly decompose <feature> --plan plan.toml --dry-run` |
-  | **decompose** *(human checkpoint)* | approve before fan-out | `basicly policy checkpoint <id> decompose --approve` |
-  | **build** | fan out one worktree per dependency-unblocked child (ranked by `br scheduler`, concurrency-capped), do the work, **commit it on the branch**, then land through the serial merge queue | `basicly worktree list`; do the coding; **`git commit` the work on the harness branch** (referencing the bead — `conventional-commits`); `basicly loop advance <id>` lands it |
-  | **verify** | the landing already ran verify and recorded the required gate; inspect it, then approve ship | `basicly policy gate <id>`; `basicly policy checkpoint <id> ship --approve`. Re-run gates (e.g. after rework) with `basicly verify --mode full --issue <id>` — from the base checkout only |
-  | **ship** | tear down the worktree and close the issue | `basicly loop advance <id>` (runs teardown + `br close`) |
+  | **intake** | agent proposes the work type | `basicly loop advance <id> --work-type {bug\|chore\|task\|feature\|epic}` — records the type, then blocks for the classify checkpoint. **The type decides whether the loop asks for children, so classify by shape, not by ambition:** one coherent change is a `task` (or `bug`/`chore`), and only work that genuinely fans out into separately landable children is a `feature`. A `feature` blocks at decompose demanding a child plan and provisions no worktree, so a leaf-shaped bead filed as one stalls before any code is written. Recovering costs a `basicly tracker write -- update <id> -t task` and a re-run; the type is the record's own type field, so changing it is enough |
+  | **classify** *(human checkpoint)* | approve, then the Definition-of-Ready gate must pass | relay the confirm code on the reprinted `basicly loop run <id> --confirm <code>` — `basicly policy checkpoint <id> classify` is **inspection-only** (it prints APPROVED/PENDING; approving there parks the loop). Check readiness with `basicly policy dor <id>`. Never guess which sections the DoR wants — `basicly policy scaffold --type <work-type>` prints the body with every required heading (a `bug` also owes `## Steps to Reproduce`, an `epic` `## Success Criteria`); fill the `TODO`s and pass it to `basicly tracker write -- create ... -d` / `basicly tracker write -- update <id> -d`. The scaffold also emits `## Scope`, which no gate requires and everything downstream reads — **a scope entry is one backticked glob on its own line, `` - `src/basicly/cli.py` ``**. A bare path, or a path with a trailing note, parses to nothing and leaves the bead indistinguishable from one declaring no scope at all; `basicly policy dor <id>` warns when a `## Scope` heading parsed to zero globs |
+  | **decompose** | features need an agent child plan; leaves (bug/chore/task) skip straight to build | `basicly decompose <feature> --plan plan.toml` (or `--children` on advance); preview with `basicly decompose <feature> --plan plan.toml --dry-run`. Each child is `{title, acceptance, scope, depends_on, budget_tokens, integrity, demonstration}` and the **plan gate** refuses the plan unless every one of the six is declared, naming what is missing — `depends_on` lists **sibling titles** (an empty list is a declaration, an absent key is not) and each declared edge is recorded as a `blocks` dependency, so the graph carries ordering the scopes cannot express; `budget_tokens` is what the unit is worth spending; `integrity` is `L1` (docs/comments/test-only), `L2` (engine code, no consumer surface) or `L3` (a consumer surface); `demonstration` says how the child is exercised end to end — a command, a request or a test through the consumer surface, with the runnable part backticked, and prose naming nothing runnable is refused too. A child that cannot name one was sliced horizontally ("add the model", "add the service", "add the CLI"), has no consumer-visible behaviour, and leaves verify nothing to derive a check from; re-cut the plan rather than writing a sentence. A cycle in the declared graph is refused naming its members, before any issue is created. Also list in `shared` any literal path from its `scope` the child only *appends its own entry to* (a manifest, a lockfile) — otherwise that one path serializes every child that declares it, and a plan that is honest about its manifests groups worse than one that hides them. The preview names any path that collapsed the grouping, declared or not. A path *no* child declares because the repo's conventions have every lane append to it cannot be handled by that declaration at all; it belongs in `[worktree] append_only_paths`, which serializes the children that would collide on it and makes `loop preflight` warn before a lane starts (`contend:`). Without it the collision is invisible until the merge queue bounces the later lanes, which is a rework retry each. Serializing is the *second-best* answer, so reach for it only when the shared file cannot be split: the changelog was this list's whole content until one file per lane replaced it (`basicly-4746`) |
+  | **decompose** *(human checkpoint)* | approve before fan-out | relay the confirm code on the reprinted `basicly loop run <id> --confirm <code>`; `basicly policy checkpoint <id> decompose` is **inspection-only** (approving there parks the loop) |
+  | **build** | fan out one worktree per dependency-unblocked child (ranked by the scheduler, concurrency-capped), do the work, **commit it on the branch**, then land through the serial merge queue | `basicly worktree list`; do the coding; record any user-facing change as **`changelog.d/<bead-id>.<category>.md`, never by editing `CHANGELOG.md`**, and any new verify check or ratchet delta as **`basicly.d/<bead-id>.toml`, never by editing `basicly.toml` or `pyproject.toml`** (both below); **`git commit` the work on the harness branch** (referencing the bead — `conventional-commits`); `basicly loop advance <id>` lands it |
+  | **verify** | the landing already ran verify and recorded the required gate; inspect it, then approve ship | `basicly policy gate <id>` to inspect, then relay the ship code on the reprinted `basicly loop run <id> --confirm <code>` — not on a bare `basicly policy checkpoint <id> ship --approve`, which approves the checkpoint and leaves the loop parked. Re-run gates (e.g. after rework) with `basicly verify --mode full --issue <id>` — from the base checkout only |
+  | **validate** | the merged unit owes the consumer check its integrity level requires — every unit passes through this state and only an L3 unit owes the gate; the engine dispatches a validator against the *merged* checkout and blocks with `needs input: validation` until a verdict is recorded | `basicly policy gate <id>` to inspect. A recorded FAIL is repaired in the lane's own worktree and re-landed, not reworked from scratch (see `validate-as-consumer`, `repair-in-place`) |
+  | **ship** | tear down the worktree and close the record | `basicly loop advance <id>` (runs teardown + the closing write). Two guards run first and both block with no side effects — no close, teardown or tracker commit: the demonstration the bead recorded must still select something (`needs input: demonstration`), and the branch must already be merged |
 
   > **Never record the verify gate by hand during build.** The build→verify
   > `loop advance` is the *only* step that merges the worktree back to base
   > (`_verify_and_land`); it runs verify and records the gate itself. Recording
-  > the gate out-of-band (`basicly verify --issue`, `br gate report verify`)
+  > the gate out-of-band (`basicly verify --issue`, or a hand-recorded gate)
   > makes the derived phase jump to verify with the merge skipped, and the loop
   > then ships and closes the bead with the code stranded on the harness branch.
   > Let `loop advance` record it; re-run `basicly verify --issue` only *after*
@@ -111,6 +223,36 @@ instructions: |
   > with no commit) makes the landing block with "commit the work on
   > `<branch>` before landing"; it no longer misreports it as a rebase
   > conflict or spends a rework attempt on it (basicly-4psl).
+  >
+  > **A change to the landing-scoring code is scored by the pre-merge version.**
+  > `loop run` imports `merge`/`verify`/`loop` from base at process start and
+  > never reloads them, so the landing that merges your fix to those modules ran
+  > the *old* code. Do not read that verdict as evidence the fix is broken, and
+  > do not spend rework retrying it — on basicly-kjc5.56 that burned the whole
+  > budget proving nothing. Exercise the new behaviour by calling it from base
+  > *after* the merge, then record the gate with
+  > `basicly verify --mode full --issue <id>` from base and `loop advance`.
+  >
+  > **Never edit `CHANGELOG.md` from a lane.** Write the entry to
+  > `changelog.d/<bead-id>.<category>.md` — category one of `added`, `changed`,
+  > `deprecated`, `removed`, `fixed`, `security`; body only, no `###` heading.
+  > The bead id makes the filename unique by construction, so two lanes cannot
+  > touch one file and the collision is *impossible* rather than detected;
+  > `basicly release` assembles the fragments into the dated section and deletes
+  > them. Three of four unattended runs died on two lanes at one anchor, each in
+  > a different unenumerated file, which is why declaring the path was never
+  > going to finish (basicly-4746).
+  >
+  > **Never append to `[[verify.checks]]` in `basicly.toml`, or to a ratchet
+  > table in `pyproject.toml`, from a lane.** Write `basicly.d/<bead-id>.toml`
+  > instead: a `[[verify.checks]]` entry for a gate the lane wires, and
+  > `[ratchet.<gate>] count_delta` / `[ratchet.<gate>.frozen]` for a ratchet
+  > number the lane's change moved. Those are **deltas, never new totals** — two
+  > lanes each adding one suppression both measure the total as 16 and both
+  > record 16, then the merged tree holds 17 and fails a gate neither rebase
+  > conflicted on. The engine and the pre-commit hook both append the fragments
+  > in filename order. Three of five lanes bounced on those two anchors on
+  > 2026-08-08 (basicly-ef7t; `basicly.d/README.md`).
 
   Leaf types (bug/chore/task) build directly in their own worktree; features
   decompose into children and, once every child closes, land the child worktrees
@@ -122,18 +264,69 @@ instructions: |
 
   ## Gates: deterministic blocks, semantic advises
 
-  Deterministic checks (tests, lint, type, build) report a **required** gate via
-  `br gate report --status pass|fail`; a failed required gate blocks advancement.
+  Deterministic checks (tests, lint, type, build) report a **required** gate result;
+  a failed required gate blocks advancement.
   AI-semantic verification reports a **non-required** gate — advisory, never
   blocking. Inspect the decision with `basicly policy gate <id>`.
 
-  Gates recorded from a loop-provisioned worktree are safe: its `.beads`
-  redirects to the base checkout, so the record lands in the one real tracker.
+  Gates recorded from a loop-provisioned worktree are safe: its ledger `redirect`
+  points at the base checkout, so the result lands in the one real ledger.
   `basicly verify --issue` refuses only from a linked worktree *without* that
   redirect (a throwaway tracker copy — the record would be discarded at
   landing). During build you never need to record the gate manually anyway:
   the landing advance verifies the rebased tree in the worktree and records
   the required gate itself.
+
+  ## Re-verify a bead's third-party claims before building on them
+
+  A bead reads as authoritative because it passed the Definition-of-Ready gate, but
+  that gate checks structure, not facts: a claim about a third-party API, CLI or
+  schema can be wrong when filed and stale by the time the node is dispatched. So in
+  build, before implementing against one, measure it against the real endpoint or
+  binary, then record it on the bead (`basicly tracker write -- comments add <id>
+  "verified: ..."`) so the next reader inherits it instead of repeating it.
+
+  `basicly-kjc5.61` asserted that models.dev "decisively" carries a `base_model`
+  field joining a provider serving id to the underlying model. Measured against the
+  live endpoint: present on **0 of 5911** records, and absent from the record schema
+  entirely. Dispatching on that text would have had the implementer build against a
+  phantom field and either fail or silently invent a fallback.
+
+  ## A remainder bead is a claim about unfinished work
+
+  A bead filed because a lane hit the context ceiling — "Follow-up: …", "Continues
+  `<id>`: its run overran" — records what the *overrun* left, not what the code
+  lacks. The parent often finished the work before it stopped, and the remainder was
+  written from the lane's last known position rather than from the merged result. So
+  treat it exactly like any other third-party claim: **verify it against the code
+  before building, and be willing to close it with no diff.**
+
+  Check it clause by clause, and non-vacuously — a function existing is not the same
+  as a behaviour reaching a surface. Revert the mechanism you believe already
+  delivers each clause and watch named tests fail; if nothing fails, the clause is
+  unproven whoever wrote it. Then exercise the real command, because a clause phrased
+  as "the output names X" is satisfied by output, not by a helper that could produce
+  it. Record the evidence on the bead when closing, so the next reader inherits the
+  check instead of re-opening the question.
+
+  Two in consecutive sessions needed no code at all. `basicly-jr0l.53` was already
+  delivered by `jr0l.35`; `basicly-jr0l.55` by `jr0l.45`, whose `shared` declaration
+  and `collapsing_paths` note covered both its clauses — reverting each failed 3 and
+  8 named tests, and a real `decompose --dry-run` showed 3 parallel groups and named
+  the path. The error runs both ways, so this is not licence to assume a remainder is
+  empty: `basicly-vz78` was closed with its band half wide open.
+
+  ## Read the brief before you spend a lane on it
+
+  `basicly brief <issue-id>` prints what the loop would dispatch for that issue,
+  without dispatching it. It shares the engine's own assembler, so what you read is
+  what the agent gets — a second rendering would drift and a preview that differs
+  from the dispatch is worse than none.
+
+  Use it when a lane built the wrong thing: a requirement that reads clearly to its
+  author and ambiguously to an agent is invisible until you read the two together.
+  Cross-lane records and answered decisions are folded in at dispatch time, so a
+  preview cannot carry them without dating itself.
 
   ## Blocked on a missing fact — don't guess
 
@@ -145,7 +338,7 @@ instructions: |
   ## Rework and escalation
 
   A failed node enters a bounded **rework loop (default n=2)**, tracked with gate
-  results and comments — not a status change (`br` has no `rework` status). At the
+  results and comments — not a status change (the tracker has no `rework` status). At the
   cap it escalates to a human. Inspect or record attempts with:
 
   ```sh
@@ -155,15 +348,43 @@ instructions: |
   Any track can escalate a tier (carry work forward, re-hit only the decompose
   checkpoint) without restarting.
 
+  ### The four routes out of an escalation
+
+  An escalation offers a route and the engine acts on the answer's **leading token**,
+  so a rationale may follow it (`"park - the upstream fix lands next week"`):
+
+  | Answer | What the engine does |
+  | --- | --- |
+  | `retry` | grants exactly one further attempt on that gate (additive, never a reset). A delegated answer does **not** grant — extending the budget that bounds a model's own retries is not a call it makes for itself |
+  | `re-dispatch` | nothing here; the supervisor re-runs the lane on the next pass |
+  | `park` (or `hold`) | sets the lane `deferred` and records the reason, so `is_dispatchable` refuses it and it stops holding its parent open. Human-only, for that second reason |
+  | `land anyway` | on an unreliable-gate escalation only: the *next landing* skips that gate once. Human-only |
+
+  Answer with `basicly loop answer <decision-id> "<route> - <why>"`; the command prints
+  what it carried out, so an answer that changed nothing is visible as such.
+
+  **Kill** is the fourth verb and is not an answer — it removes a requirement rather
+  than routing work, so it has its own command and always needs a human:
+
+  ```sh
+  basicly loop kill <id> --reason "<why this work is not being done>"
+  ```
+
+  Run bare first: it refuses, mints a one-time code, and writes nothing. Relay the
+  reprinted command to complete it — no autonomy grant and no TTY substitutes. It tears
+  the worktree down and closes the bead; committed work is left on the `harness/` branch
+  unless `--discard` is passed, which deletes that branch too. There is no un-kill.
+
   ## Ship and retro
 
-  Ship merges to the entry branch recorded at intake (default: `main`), tears down
-  the worktree, and closes the issue. After an epic slice lands, capture a retro as
-  tracker comments and file a `br` issue for each finding the user does not choose
+  Ship tears down the worktree and closes the issue. It does **not** merge — the
+  merge already happened at the build→verify landing, and ship refuses to close a
+  node whose branch has not landed. After an epic slice lands, capture a retro as
+  tracker comments and file a record for each finding the user does not choose
   to ignore:
 
   ```sh
-  br comments add <epic-id> "Retro: <finding>"
+  basicly tracker write -- comments add <epic-id> "Retro: <finding>"
   ```
 
   ## One-shot vs task-by-task
@@ -172,9 +393,151 @@ instructions: |
   middle (decompose) checkpoint for small, well-scoped work; the classify and ship
   checkpoints still hold.
 
+  ## Many lanes at once — `preflight` first, then `supervise`
+
+  `loop run` drives one bead. The factory's multi-lane path is a different pair of
+  commands over an epic, and it is what a parallel run actually uses. **It is the
+  default, not an option to ask about** (owner, 2026-08-18): there is no upper limit on
+  lanes or agents, only a human may set one, and cost is bounded by sizing the work,
+  never by running fewer lanes. The binding constraint is isolation — two or fewer
+  agents in the base checkout, every further one in its own worktree, because the
+  whole-tree ratchets refuse every commit once base carries two lanes' edits.
+
+  ```sh
+  basicly loop preflight <epic>    # read-only: would a pass start, and what would it cost
+  basicly loop supervise <epic>    # provision worktrees, dispatch lanes, land via a serial merge queue
+  ```
+
+  **Always run `preflight` first.** It writes nothing and it answers, in one screen,
+  every question that otherwise costs a failed pass: whether the base checkout is
+  clean, how many worktrees are live, which runner and timeout apply, the active
+  grant and its remaining budget, the per-lane assumption for an unsizeable lane, the
+  forecast if every lane starts, the band table below, unpushed commits, and a final
+  `VERDICT`. Run it **from the base checkout**: `.basicly/usage/` is git-ignored, so a
+  worktree sees no run records and the forecast loses its measured prior.
+
+  One `VERDICT: not ready - ...` line joins **every** blocker into a single
+  semicolon-separated list, so read all of it: a dirty base, a metered runner with no
+  token budget (`basicly policy grant <epic> --level L2/L3 --token-budget N`), a
+  grant spent or unmeterable, the root's own checkpoint blocking provisioning, no
+  open child left to provision from, every open child refused by the band. Two
+  cases return earlier with a verdict of their own: an unrecognised config name,
+  and a lane selector naming no bead.
+
+  ### The band table — four verdicts, one of which refuses
+
+  Every open child is sized and gets exactly one verdict (`working_set.py:_band_verdict`):
+
+  - `in band` — dispatches.
+  - `in band, but its scope matched no file` — dispatches, but the scope globs matched
+    nothing on disk. Either a broken path or a genuinely greenfield package; the
+    estimate is bare overhead either way, so check which before trusting it.
+  - `under the floor - dispatches, but merge it with a sibling` — dispatches, carrying
+    the band's advice that it is too small to be worth its own lane.
+  - `REFUSED - too large, split it` — **the only verdict that refuses.** Only the
+    ceiling blocks dispatch; the floor never does.
+
+  **A refusal is a property of the files, not of the change.** The estimate is
+  `decompose.scope_read_cost(repo_root, [globs])` over everything the scope matches, so
+  a one-line fix in a large module and a rewrite of it are indistinguishable. Never
+  argue from the band that a change is large. A `--runner manual` lane still
+  provisions the worktree and raises a `needs input: scope` escalation you release
+  with `basicly loop answer <decision-id> "<why>"` — answer it with the size of the
+  *change* you measured, and say that a manual handoff has no agent context window for
+  the ceiling to protect.
+
+  ### Reading a pass
+
+  - `lanes: 0 dispatchable now` counts *adopted* lanes. Before any worktree exists it
+    reads zero and that is not a blocker — the supervisor provisions from the ranked
+    open children at pass start.
+  - The epic's own `decompose` checkpoint must be approved or the pass ends
+    `seed-blocked` with no lanes, even when children already exist. A covering grant
+    does not serve this by itself: approve it once with `basicly policy checkpoint
+    <epic> decompose --approve --root <epic>`.
+  - Confirm a landing from the `[merged]` line, never the exit code — `loop run` and
+    `supervise` both exit non-zero at any checkpoint, which is not a failure.
+  - Every grant, checkpoint and answer writes a tracker marker, which dirties the
+    ledger and makes the next landing refuse on a dirty base. Commit it between steps.
+
+  ### Start it where no tool ceiling can reach it
+
+  A round runs 20 to 40 minutes; an agent's shell tool kills a background job at its own
+  ceiling (600 s on one host), and a supervisor killed mid-round takes its lanes with it
+  (2026-08-28: three lanes, dirty worktrees, ~25M tokens). `--detach` is the engine's
+  answer (basicly-uhrji9): its own session on all three platforms, a pid and a log path
+  printed, and a return at once — so the launching shell may close, or be killed with its
+  whole process group, and the round still lands.
+
+  ```sh
+  basicly loop supervise <epic> --max-passes 3 --detach
+  ```
+
+  Read the log it printed — `^routed:`, `[merged]`, `^blocked:`, `supervise exit=`; a
+  launch that refuses (lock held, empty lane selection) refuses *there*, on that file's
+  last line. Commit the ledger before any relaunch; a killed process committed nothing.
+
+  ### Ending a pass on purpose — `--max-passes`, or `stop`
+
+  A supervisor otherwise runs until the session is done or nothing can progress. Two
+  bounds end it earlier, and neither is a signal: the lanes are `claude -p`
+  subprocesses of the supervisor, so signalling the parent leaves them killed
+  mid-write or orphaned against a grant nothing is metering.
+
+  ```sh
+  basicly loop supervise <epic> --max-passes 3          # commit to 3 rounds at launch
+  basicly loop stop <epic> --reason "<why>" --by <name>  # ask a running one to finish
+  ```
+
+  `stop` writes a marker the supervisor reads **between rounds**, so the round in
+  flight completes: every dispatched lane lands, no further lane is seeded, and the
+  command prints the lanes it is waiting on and returns when the session does. Both
+  bounds exit non-zero and name themselves on the pass narrative (`stopped: …`),
+  which is where the requester and the reason are recoverable afterwards.
+
+  A stop is **refused when nothing is supervising that root** — an unread marker would
+  end the next session started there before it ran a round. Lock takeover is not a
+  stop either: a lock is stolen only from a holder whose heartbeat has gone stale, so
+  a working supervisor cannot be handed over.
+
+  ### Watching a lane — use these commands, do not invent one
+
+  A dispatched lane is a `claude -p` subprocess of the engine, not a subagent of your
+  session, so nothing in your own tooling lists it. These four reads answer every
+  question about it, and re-deriving them per session is how the traps below get
+  re-discovered:
+
+  ```sh
+  basicly loop status <id>                       # phase, worktree binding, gates, rework
+  basicly worktree list                          # what is provisioned right now
+  git -C <repo>.worktrees/<name> status --short  # is the agent editing
+  git -C <repo>.worktrees/<name> log --oneline main..HEAD   # has it committed
+  ```
+
+  A worktree name replaces dots with hyphens: `basicly-jr0l.65` provisions
+  `basicly-jr0l-65`. Watching the dotted path reports "no worktree" forever.
+
+  **Never poll for the process.** `pgrep -f <pattern>` and `pkill -f <pattern>` match the
+  *caller's own command line*, so both self-match:
+
+  - `pkill -f "loop run <id>"` SIGTERMs the invoking shell — exit 144, and the target
+    survives.
+  - `until ! pgrep -f "loop run <id>"; do sleep …; done` can never exit, because the
+    waiter's own command line contains the pattern. It spins until timeout **and reports
+    the job as still running long after it succeeded**, which is the damaging half.
+
+  Guard the pattern (`[l]oop run`) or resolve a PID first — but prefer not asking about
+  processes at all. The loop keeps no side-state, so `loop status` plus the worktree's
+  git state is the authoritative read, and it stays correct after a crash or a restart.
+
+  **Read a landing from its own summary line, never from a filtered tail.** `grep`-ing a
+  run's output for `[merged]` hides a failure whose message you did not predict; a
+  `tail -n` of hook output cuts the one line naming the failing gate. Capture the run to
+  a file and read the summary block.
+
   ## Resuming after a switch
 
-  Because state lives in `br` (issue status, the worktree binding on
+  Because state lives in the ledger (record status, the worktree binding on
   `external_ref`, recorded gate results, checkpoint/rework comments), resuming — after
   a crash, or when switching from a rate-limited agent to another — is just
   re-reading it: `basicly loop status <issue>`, reconcile against live worktrees

@@ -1,0 +1,187 @@
+{#- Only an id the document lists a unit for is a link, for `board_page.html.j2`'s reason:
+    the page behind one is drawn from that unit row, so any other id would print a link to a
+    page nobody writes. #}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>the loop — basicly board</title>
+    <link rel="stylesheet" href="{{ stylesheet }}" />
+    <style>
+{% include "board_theme.css.j2" %}
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 14px;
+        padding: 16px 20px 28px;
+      }
+      a {
+        color: inherit;
+      }
+      .top {
+        align-items: baseline;
+        display: flex;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .top h1 {
+        color: var(--text-bright);
+        font-size: 18px;
+      }
+      .age,
+      .schema {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .note {
+        border-left: 3px solid var(--amber);
+        color: var(--amber);
+        margin-bottom: 12px;
+        padding-left: 10px;
+      }
+      /* One row of columns that scrolls sideways rather than wrapping. Seven phases wrapped
+         to a second row put `ship` above `build`, which reads as the loop running backwards. */
+      .board {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .phase {
+        background: var(--bg-sunk);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        display: flex;
+        /* Share the width rather than take a fixed slice: seven fixed 232px columns need
+           1696px, so `ship` sat off the right at 1400 and the flow a kanban exists to show
+           ended in a scrollbar. They still scroll below about 1250. */
+        flex: 1 1 0;
+        min-width: 168px;
+        flex-direction: column;
+        gap: 8px;
+        padding: 10px;
+      }
+      .phase > header {
+        align-items: baseline;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        padding-bottom: 6px;
+      }
+      .phase .name {
+        color: var(--text-bright);
+        font-family: var(--mono);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .phase .count {
+        color: var(--text-dim);
+        font-family: var(--mono);
+      }
+      /* Bootstrap's card on the raised surface, with the left edge as the held channel. */
+      .card {
+        --bs-card-bg: var(--bg-raise);
+        border-left-width: 3px;
+        display: block;
+        padding: 7px 9px;
+        text-decoration: none;
+      }
+      .card:hover {
+        border-color: var(--indigo);
+      }
+      /* The owner's ordering: "the real titles of features and tasks are more important than
+         IDs. IDs should be there but focus is on titles". So the title leads at full weight
+         and the id sits under it at the dim size the other secondary facts use. */
+      .card .title {
+        color: var(--text-bright);
+        display: block;
+        line-height: 1.35;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .card .meta {
+        align-items: baseline;
+        color: var(--text-dim);
+        display: flex;
+        flex-wrap: wrap;
+        font-family: var(--mono);
+        font-size: 11px;
+        gap: 8px;
+        margin-top: 5px;
+      }
+      .card .ident {
+        color: var(--indigo);
+      }
+      .card.held {
+        border-left-color: var(--green);
+      }
+      .card .inside {
+        color: var(--green);
+      }
+      .empty,
+      .more {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <a href="{{ back }}">&larr; the board</a>
+      <h1>the loop</h1>
+      <span class="age">{{ age.text }}</span>
+      <span class="schema">{{ schema }}</span>
+    </div>
+{%- if note %}
+    <p class="note">{{ note }}</p>
+{%- endif %}
+    <div class="board">
+{%- for col in columns %}
+      <section class="phase">
+        <header>
+          <span class="name">{{ col.name }}</span>
+{#- The ratio, not the total alone. A header reading `272` over twelve cards states the
+    phase truthfully and says nothing about the gap, and the `+N more` line under the last
+    card is below the fold on a tall column - which is exactly where a reader stops looking. #}
+          <span class="count">{% if col.more %}{{ col.cards | length }} of {% endif %}{{ col.count }}</span>
+        </header>
+{%- for card in col.cards %}
+{#- The whole card is the link, not a word inside it: a phase is a way in, and a reader who
+    has to find the one clickable token in a card has been given a dead end with a door. #}
+        <{% if card.ident in linkable %}a class="card{% if card.held %} held{% endif %}" href="{{ record_dir }}/{{ card.ident }}{{ record_ext }}"{% else %}span class="card{% if card.held %} held{% endif %}"{% endif %}>
+          <span class="title">{{ card.title or card.ident }}</span>
+          <span class="meta">
+            <span class="ident">{{ card.ident }}</span>
+{%- if card.priority %}
+            <span class="pri">{{ card.priority }}</span>
+{%- endif %}
+{%- if card.kind %}
+            <span class="kind">{{ card.kind }}</span>
+{%- endif %}
+{%- if card.held %}
+            <span class="inside">worktree</span>
+{%- endif %}
+          </span>
+        </{% if card.ident in linkable %}a{% else %}span{% endif %}>
+{%- endfor %}
+{%- if not col.cards %}
+        <span class="empty">nothing here</span>
+{%- endif %}
+{%- if col.more %}
+        <span class="more">{{ col.more }}</span>
+{%- endif %}
+      </section>
+{%- endfor %}
+    </div>
+  </body>
+</html>

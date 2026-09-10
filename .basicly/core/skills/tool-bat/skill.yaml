@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-bat
-description: Use bat for syntax-highlighted file viewing with line numbers and git context. Trigger when readable terminal code inspection is needed.
+invocation: user
 instructions: |
   # tool-bat
 

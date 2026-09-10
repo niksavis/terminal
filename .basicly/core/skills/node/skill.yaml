@@ -1,6 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 61
 name: node
+invocation: model
 technologies: [node]
 description: >-
   Use Node and npm in this repo for the markdownlint git hook and other node

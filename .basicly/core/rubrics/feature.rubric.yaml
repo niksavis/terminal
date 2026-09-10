@@ -15,3 +15,7 @@ checks:
   - id: docs-updated
     question: Is user- or architecture-facing documentation updated where the feature warrants it?
     kind: judged
+  - id: gates-green
+    question: Do the repository's configured verify checks pass?
+    kind: deterministic
+    verify_mode: full

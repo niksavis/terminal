@@ -1,12 +1,16 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 100
 name: python
+invocation: model
 technologies: [python]
 description: >-
   Write and edit Python for this repo — type hints pathlib and cross-platform
   subprocess and shell-out. Use when creating or changing .py files wiring up a
-  subprocess call or chasing a test that passes on POSIX but fails only on Windows
-  CI (a WinError 2 or a mangled backslash path).
+  subprocess call chasing a test that passes on POSIX but fails only on Windows CI
+  (a WinError 2 or a mangled backslash path) or second-guessing syntax that looks
+  wrong for an older Python (an unparenthesized multi-exception except clause).
 instructions: |
   # Python
 
@@ -24,11 +28,30 @@ instructions: |
   - Do not hand-format to match the formatter. Run `ruff format` / `ruff check`
     (they run in pre-commit) and let them own whitespace, quotes, and import order.
 
+  ## `except A, B:` is valid here — leave it alone
+
+  This repo's floor is Python 3.14 (`requires-python = ">=3.14"`), where PEP 758
+  makes an unparenthesized multi-exception clause legal:
+  `except ValueError, OSError:` catches either type. It is **not** the Python 2
+  `except Error, name:` capture form and not a syntax error — `src/basicly/decompose.py`
+  uses it and imports fine. Do not add parentheses to "fix" it; that is a no-op
+  diff, and stopping to re-verify that the module parses costs a whole detour.
+
+  Parentheses are still required when the clause binds the exception —
+  `except (ValueError, OSError) as err:`. Dropping them there raises
+  `SyntaxError: multiple exception types must be parenthesized when using 'as'`.
+
   ## Type test doubles and helpers precisely
 
-  `pyright` runs as a commit gate, so a loosely-typed test helper blocks the
-  commit itself, not just CI. Annotate test doubles, fakes, and helper return
-  values with the real type they stand in for — never a bare `object`:
+  The pre-commit gate is much more than `ruff`: it runs every check declared for
+  mode `fast` in `basicly.toml` — `pyright`, `bandit`, `lint-imports`, `vulture`,
+  `docs-claims` and the projection gates among them. So a worktree with `ruff` and
+  `pytest` both green can still be rejected at commit time, and a mistyped test
+  helper blocks the commit itself rather than CI. Commit early and let the hook
+  name the mismatch instead of inferring it from a clean `ruff check`.
+
+  Be precise about the type a helper *produces*, and structural about the slot a
+  double *fills*:
 
   - Return the concrete type, not `object` — `def _fake_args() ->
     argparse.Namespace:`, not `-> object`. An `object` returned where a concrete
@@ -37,6 +60,30 @@ instructions: |
   - Type a captured container to its real value type — `captured: dict[str,
     list[str]]`, not `dict[str, object]`. A `dict[str, object]` value trips
     `reportOperatorIssue` the moment the test indexes, iterates, or compares it.
+  - Annotate a parameter that *receives* a double with a structural type —
+    `Callable[..., _Proc]` or a `Protocol` — never a sibling fake class. A helper
+    typed `def _install(monkeypatch, fake: _FakeBr)` checks clean until a second
+    fake or a `lambda` reaches it, and then pyright rejects those call sites with
+    `"_FakeBrShow" is not assignable to "_FakeBr" (reportArgumentType)`. The same
+    helper typed `Callable[..., _Proc]` accepts every one of them — `_install`
+    in `tests/test_decompose.py`, which is fed `_FakeBr`, `_FakeBrShow`, and a
+    bare `lambda`.
+
+  ## Measure headroom before you place code
+
+  Two ratchets gate every module and pull opposite ways: `module-size` refuses growth on
+  a module at its frozen token baseline, and `comment-density` refuses a prose share
+  over its cap, so trimming a docstring to pay one raises the other. Paying them after
+  the code is written is the slowest order (four successive trims on one file, measured
+  2026-08-16). Before writing a line, measure every file the change will touch:
+
+  ```sh
+  uv run python .scripts/headroom.py <file> [<file> ...]   # tokens left, prose points left
+  ```
+
+  A file with under ~200 tokens left wants the extraction decided now, not after the
+  gate refuses. A new module is never free: it needs `tests/test_<module>.py` for the
+  naming gate, a layer in `.importlinter`, and a `git add` before pytest can import it.
 
   ## Cross-platform shell-out (fails only on Windows CI)
 

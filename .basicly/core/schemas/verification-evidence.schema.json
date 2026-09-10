@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/verification-evidence.schema.json",
+  "title": "basicly verification-evidence handoff artifact",
+  "description": "What VERIFY hands VALIDATE (factory loop requirements 8). One artifact per verified unit, recorded on that unit. VERIFY has no persona, so every field here is composed by the engine from the checks it ran: each required gate contributes the check, the command and the result, and each acceptance criterion contributes the check derived from it and that check's result. VALIDATE's entry predicate is this artifact green, so it has to state its own verdict rather than leave it to be recomputed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "passed",
+    "gates",
+    "criteria"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit that was verified, so the transcript VALIDATE writes next can be joined to the evidence that admitted it."
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "Whether the run was green as a whole. Stated once here because VALIDATE is gated on it, and a consumer that has to fold the entries itself can fold them wrong."
+    },
+    "gates": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per required gate for this unit's integrity level. At least one: a level with no gate run against it has not been verified, whatever the summary says.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "check",
+          "command",
+          "result"
+        ],
+        "properties": {
+          "check": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The configured check's name, which is the handle a rework round and the gate-failure ledger both key on."
+          },
+          "command": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The argv actually executed, not a prose rendering of it. Recorded as a list because that is what the runner passes and because a re-run has to be reproducible without re-parsing a shell string.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "skip"
+            ],
+            "description": "The outcome the runner reported. skip is a distinct answer from pass: a gate that did not run is not a gate that held, and collapsing the two is how a fail-open gate looks green."
+          }
+        }
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per acceptance criterion on this unit, with the check derived from it. At least one, because the plan gate already refused a child with no testable criterion - so a unit reaching VERIFY with nothing to derive is a defect upstream, not an empty case.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "criterion",
+          "check",
+          "result"
+        ],
+        "properties": {
+          "criterion": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The acceptance criterion in the words the plan stated it in, so the derived check can be disputed against what was actually asked."
+          },
+          "check": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The check derived from that criterion - the test, assertion or command that stands for it. Required because a criterion with no derived check is a criterion nobody measured."
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "skip"
+            ],
+            "description": "What that derived check returned. Same three-valued answer as a gate: an unrun criterion has to be visible as unrun."
+          }
+        }
+      }
+    }
+  }
+}

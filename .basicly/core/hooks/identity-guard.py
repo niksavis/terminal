@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 # Emails git fabricates from the hostname when identity is unset end in these
-# machine-local suffixes (e.g. ``visicni@at-work.local``, ``user@host.(none)``).
+# machine-local suffixes (e.g. ``user@workstation.local``, ``user@host.(none)``).
 FALLBACK_EMAIL_PATTERN = re.compile(r"\.(local|lan|localdomain)$|\.?\(none\)$", re.IGNORECASE)
 
 # ``git var GIT_{AUTHOR,COMMITTER}_IDENT`` renders as ``Name <email> unixtime +tz``.

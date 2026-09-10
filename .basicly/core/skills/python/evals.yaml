@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `python`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "a subprocess call raises winerror 2 on the windows runner"
+    - prompt: "add type hints and pathlib to this module"
+    - prompt: "this except clause looks wrong for an older interpreter"
+  negative:
+    - prompt: "npx resolves the wrong binary inside my git hook"
+      owner: node
+    - prompt: "my tests leak state into each other and fail when reordered"
+      owner: test-discipline

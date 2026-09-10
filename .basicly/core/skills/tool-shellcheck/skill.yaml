@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 4
 name: tool-shellcheck
-description: Use shellcheck to statically analyze shell scripts for bugs, portability issues, and quoting mistakes. Trigger whenever shell scripts are created or modified.
+invocation: user
 instructions: |
   # tool-shellcheck
 

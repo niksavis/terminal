@@ -1,7 +1,11 @@
 # Behavioral rubric for a bug-fix track (basicly-0122).
 # Selected when a bead's work type is `bug`. Checks are yes/no: `deterministic`
-# ones are answered by a command's exit code (0 = yes), `judged` ones by an agent
-# with quoted evidence. Reported as an advisory `rubric` gate by default.
+# ones are answered mechanically — either by `verify_mode` (the repo's own
+# configured verify checks, which is the portable form a shipped rubric should
+# use) or by an explicit `command`'s exit code (0 = yes) — and `judged` ones by
+# an agent with quoted evidence. Reported as an advisory `rubric` gate by
+# default. Every rubric must carry at least one deterministic check, or its gate
+# could never fail (basicly-kjc5.19).
 id: bug-behaviors
 description: Behaviors expected of a bug-fix change.
 applies_to:
@@ -13,7 +17,7 @@ checks:
   - id: root-cause-not-symptom
     question: Does the change address the root cause rather than only masking the symptom?
     kind: judged
-  - id: suite-passes
-    question: Does the repository test suite pass?
+  - id: gates-green
+    question: Do the repository's configured verify checks pass?
     kind: deterministic
-    command: uv run pytest -q
+    verify_mode: full

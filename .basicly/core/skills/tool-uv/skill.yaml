@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-uv
-description: Use uv for fast Python dependency sync, environment management, and command execution. Trigger for Python setup, install, lint, test, and script workflows in this repo.
+invocation: user
 technologies: [python]
 instructions: |
   # tool-uv

@@ -5,6 +5,7 @@ tone: concise_checklist
 # ~50 chars/line, so this fires ~1000 chars before the ~200-line (~10000-char)
 # point where always-on context starts to dilute attention. Codex sits higher
 # (12000) because it inlines scoped fragments.
+max_lines_warning: 200
 max_size_warning: 9000
 outputs:
   copilot_baseline:
@@ -16,3 +17,11 @@ outputs:
 # Scoped fragments are single-sourced to .claude/rules/ (claude target): VS Code
 # loads both roots without dedup, so a .github/instructions/ twin double-loads.
 # Trade-off, accepted: github.com-side Copilot keeps only the root baseline.
+#
+# Subagents are NOT projected through this file. They are rendered by
+# `agents-build` from .basicly/core/agents into .github/agents/<slug>.agent.md
+# (agents.COPILOT_AGENTS_ROOT, basicly-8sxf), because an agent file is composed
+# from slot blocks rather than rendered from a fragment template. Unlike the
+# scoped-fragment twin above, the second agent root does not double-load: GitHub
+# documents the config file name minus .md/.agent.md as the deduplication key, so
+# .claude/agents/<slug>.md and .github/agents/<slug>.agent.md collapse to one.

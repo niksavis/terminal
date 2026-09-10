@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `tier-injection`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "my subagent ignores the tier its definition declares"
+    - prompt: "install the kit that pins a spawned agent's model"
+    - prompt: "can this host pin which model a spawn resolves to"
+  negative:
+    - prompt: "advance this issue to the next phase"
+      owner: harness-loop
+    - prompt: "check the vendor's current model ids"
+      owner: interface-facts

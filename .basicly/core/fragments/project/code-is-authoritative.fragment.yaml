@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+token_cost:
+  claude: 0
+  codex: 132
+  copilot: 0
+id: code-is-authoritative
+description: Code is the authoritative source; a comment carries only what code cannot say.
+category: project
+priority: high
+applies_to: [all]
+tags:
+- quality
+- style
+status: active
+scope:
+  paths:
+  - src/**
+  - tests/**
+  - .scripts/**
+  - .basicly/core/hooks/**
+  - .basicly/core/kit/**
+title: Code Is Authoritative
+body: |
+  Code is the authority; a comment is a claim about it. Write only what the code cannot
+  say — why this branch and not the other, what a unit is, which measurement a threshold
+  came from, which incident a guard exists for. Never restate the statement below it.
+
+  One sentence, not a paragraph: the same fact fits in a line, and `comment-density`
+  ratchets prose share (comments plus docstrings) per module. Needing a comment to explain
+  *what* the code does is a defect in the code, not a missing comment.

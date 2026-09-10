@@ -1,0 +1,1729 @@
+{#- Every record id on this page is the way into that record's page (basicly-62h3x9).
+    The href is relative, so it resolves beside a `--out` file and under the server's root
+    alike; `board_record` owns both halves of it and this template spells neither. #}
+{#- Only an id the document lists a unit for is a link: the page behind one is drawn from
+    that unit row, so linking any other id would print a link to a page nobody writes. The
+    event strip is where that bites - a marker can name a record that has since closed. #}
+{%- macro rec(ident) -%}
+{%- if ident in linkable %}<a class="rec" href="{{ record_dir }}/{{ ident }}{{ record_ext }}">{{ ident }}</a>{% else %}{{ ident }}{% endif -%}
+{%- endmacro -%}
+{%- macro rec_text(ident, text) -%}
+{%- if ident in linkable %}<a class="rec" href="{{ record_dir }}/{{ ident }}{{ record_ext }}">{{ text }}</a>{% else %}{{ text }}{% endif -%}
+{%- endmacro -%}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>basicly board — {{ schema }}</title>
+    <link rel="stylesheet" href="{{ stylesheet }}" />
+    <style>
+{% include "board_theme.css.j2" %}
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      /* No animation to reduce, and the block is here anyway: a later region that gains one
+         inherits the honoured setting rather than shipping without it. */
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+          animation: none !important;
+        }
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        /* Six metres, not a laptop: the floor is well above site/index.html's 16px. */
+        font-size: 19px;
+        height: 100vh;
+        line-height: 1.3;
+        /* The page never scrolls and neither does a region. Anything that does not fit was
+           dropped by the model, which said how many and of what. */
+        overflow: hidden;
+        padding: 8px;
+      }
+      /* Fixed columns, and rows that reflow only when a *capacity* changes. A wall display
+         that moves when a number changes is unreadable, so every region caps what it draws at
+         a slot count the model states and reports the rest. */
+      .wall {
+        display: grid;
+        gap: 7px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+          "head"
+          "band"
+          "acts"
+          "loop"
+          "flight"
+          "ready"
+          "inv"
+          "foot"
+          "tick";
+        /* Each row is the height of what it holds, and never a pixel measured against the
+           tallest content of the day. A hand-tuned row is one line short the moment a
+           producer emits one more of anything, so the row is bounded by its content and the
+           content is bounded by the model's own slot counts. `flight` takes the slack. */
+        grid-template-rows: auto auto auto auto auto minmax(0, 1fr) auto auto auto;
+        min-height: 100%;
+      }
+      /* No lane dispatched: the running row is one line and the ready list takes the whole
+         width and the whole of the slack. This is the state the wall is in most of the day, so
+         it is the state the layout is tuned for - six dashed frames announcing nothing three
+         times was 40% of the screen, and the list beside them truncated every title. */
+      /* `calm` no longer changes the grid: one column means `flight` and `ready` are always
+         separate rows, so the wall's two shapes collapse into one. The class survives because
+         `.flight.quiet` still restyles the row itself. */
+      /* Rank by weight, not by uniform outline. Only the alarm and the running lanes carry a
+         lit border; everything the reader consults rather than reacts to recedes into the
+         page and is separated by a rule instead of a box. */
+      .region {
+        min-width: 0;
+        overflow: hidden;
+      }
+      .region.framed {
+        padding: 5px 10px;
+      }
+      h2 {
+        color: var(--text-dim);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+      .label {
+        color: var(--text-dim);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      .value,
+      .mono {
+        font-family: var(--mono);
+      }
+      /* A state glyph carries the border-style channel, so it is a bordered inline box and it
+         stands taller than the text beside it - a 16px value on a 1.3 line box is 21px while a
+         glyph with a 3px border is 24px, and a `.clip` line holding one then holds 3px more
+         than it shows. Sized under its line rather than widening every line that might carry
+         one: the border stays 3px, because `double` needs three to read as double and that is
+         the channel that distinguishes withheld from renderable. */
+      .glyph {
+        font-family: var(--mono);
+        font-size: 0.82em;
+        line-height: 1;
+        margin-right: 5px;
+      }
+      a.rec {
+        color: inherit;
+        text-decoration: none;
+      }
+      /* A link inside an `h2` inherits its uppercase and its dim grey, so `columns` read as
+         the third word of the heading rather than as the way to another page. This is the
+         only channel left once colour and case are the heading's: the second surface has to
+         announce itself (basicly-lc2bd3v.6). */
+      a.rec.way {
+        color: var(--indigo);
+        letter-spacing: normal;
+        text-transform: none;
+      }
+      a.rec:hover,
+      a.rec:focus {
+        color: var(--indigo);
+        text-decoration: underline;
+      }
+      .clip {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .note {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+
+      /* --- head: one status line, and the gate set is one token of it ------------------ */
+      /* Two columns rather than one wrapping row. The freshness sentence is the page's single
+         reading of its own age and it belongs top right at every width, so it gets a column
+         of its own; the facts wrap under themselves in the other. A row that wraps as one
+         flex line sends the sentence to the bottom right of a second line the moment the
+         first is full, which is exactly the width where a reader most needs to find it. */
+      .head {
+        display: grid;
+        grid-area: head;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 0 18px;
+      }
+      .facts {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 18px;
+        min-width: 0;
+      }
+      .facts .brand {
+        color: var(--indigo);
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      /* One cell is one line: the label sits beside its value, not above it. */
+      .facts .cell {
+        align-items: baseline;
+        display: flex;
+        gap: 7px;
+        min-width: 0;
+      }
+      .facts .cell .value {
+        font-size: 16px;
+      }
+      /* The gate token. The only thing in the status bar drawn at headline weight, because it
+         is the only thing in it that can be an exception. Its caption takes a line of its own
+         - which suite said `GREEN`, and when - and the bar is already two lines tall for the
+         freshness sentence, so that line is free. */
+      .facts .token {
+        flex-wrap: wrap;
+      }
+      /* A badge on purpose: the border style and colour come from the state class, which is
+         the second and third channel under the glyph inside it. */
+      .facts .token .value {
+        border-width: 2px;
+        border-radius: 4px;
+        font-size: 21px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 0 9px;
+      }
+      .facts .token .note {
+        min-width: 0;
+      }
+      /* The freshness sentence, once for the whole page rather than once per panel. Every
+         value on the wall is drawn under it, which is what makes one enough. */
+      .fresh {
+        align-self: start;
+        font-family: var(--mono);
+        font-size: 15px;
+        margin-left: auto;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      /* The age reads first and the stamp beneath it reads second, which the old cell had the
+         other way round, opening with a three-word preamble before the figure. */
+      .fresh-age {
+        align-items: center;
+        display: inline-flex;
+        font-size: 17px;
+        gap: 6px;
+      }
+
+      .fresh .note {
+        font-size: 12px;
+      }
+
+      /* `.icon` is sized where it is used: the band's rule is scoped to its headline, and the
+         `.facts .brand` rule above styles a *text* wordmark, so an svg here inherits neither a
+         fill nor a height and draws nothing at all. Same two properties as the band's. */
+      .fresh .icon {
+        fill: currentColor;
+        height: 0.82em;
+      }
+
+      /* --- band: the alarm, and the only orange on the page ---------------------------- */
+      /* `site/index.html` ships no red, so orange is this page's alarm channel and the band
+         is its only site - and only once a wait has outlasted normal attended turnaround
+         (`board_regions.BAND_ALARM_AFTER_S`); a shorter wait stays the generic amber
+         `state-waiting` border below (basicly-v8jwf0). A **fill** rather than a text colour,
+         because a failing gate is amber text and the two hues are close: an amber outline is
+         a red tree, an orange field is a person in the room waiting past that threshold. */
+      .band.state-stuck,
+      .band.state-stuck .headline,
+      .band.state-stuck .lines,
+      .band.state-stuck .kicker,
+      .band.state-stuck .stale,
+      .band.state-stuck .note {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: var(--bg-sunk);
+      }
+      .band {
+        align-items: center;
+        border-width: 4px;
+        display: flex;
+        /* Stated, because the card it now is lays its children out as a column. */
+        flex-direction: row;
+        gap: 22px;
+        grid-area: band;
+        /* The one stated height on the page, and it is a floor rather than a fixture: the
+           alarm has to be the same size whether or not anybody is waiting, or the region
+           below it moves every time somebody answers. */
+        min-height: 64px;
+      }
+      /* The age, and it is the largest text on the wall. `6 DAYS`, not `148h 52m`: a reader
+         six metres back ranks by magnitude, and the exact phrase is on the line beneath. */
+      .band .headline {
+        font-size: 44px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        line-height: 1.05;
+        white-space: nowrap;
+      }
+      /* The alarm's state as a shape, sized in `em` so it keeps its proportion against both
+         headline sizes - 44px for an age, 30px for the three quiet states below. Filled with
+         `currentColor`, which is what puts it on the state's own hue without a rule per
+         state and carries it through the `state-stuck` inversion. */
+      .band .headline .icon {
+        fill: currentColor;
+        height: 0.82em;
+        vertical-align: -0.1em;
+        width: 0.82em;
+      }
+      .band.state-calm .headline,
+      .band.state-withheld .headline,
+      .band.state-absent .headline {
+        font-size: 30px;
+      }
+      .band .lines {
+        font-family: var(--mono);
+        font-size: 18px;
+        min-width: 0;
+      }
+      .band .kicker {
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+      .band .stale {
+        color: var(--amber);
+        font-family: var(--mono);
+        font-size: 16px;
+        margin-left: auto;
+        max-width: 300px;
+        text-align: right;
+      }
+
+      /* --- acts: what a person is being asked for, prefilled ---------------------------
+         The only interactive region. It draws only when something is pending, so it costs
+         the wall nothing the rest of the time - and when it draws, it takes its height from
+         the `1fr` ready row, which is correct: a human decision the factory is stopped on
+         outranks a list of what could be started next. */
+      .acts {
+        --bs-card-border-color: var(--amber);
+        grid-area: acts;
+        padding: 5px 9px 7px;
+      }
+      .acts h2 {
+        color: var(--amber);
+      }
+      .act {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        padding: 3px 0;
+      }
+      .act + .act {
+        border-top: 1px solid var(--border);
+      }
+      .act .who {
+        align-items: baseline;
+        display: flex;
+        flex: 1 1 100%;
+        gap: 8px;
+        min-width: 0;
+      }
+      .act .subject {
+        color: var(--text-bright);
+        font-weight: 600;
+      }
+      .act .issue {
+        color: var(--indigo);
+        font-family: var(--mono);
+      }
+      .act .question {
+        color: var(--text-dim);
+        min-width: 0;
+      }
+      /* The command, always drawn. A board with no server behind it still owes the line. */
+      .act .command {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .act form {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .act label {
+        color: var(--text-dim);
+        font-size: 11px;
+      }
+      .act input {
+        background: var(--bg);
+        border: 1px solid var(--border-lit);
+        border-radius: 3px;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 13px;
+        padding: 2px 5px;
+      }
+      /* What the board already knew against what the operator still owes. Two channels, the
+         label's colour and the input's border, because a form whose filled and empty inputs
+         look alike is one an operator has to read field by field. */
+      .act label.known input {
+        color: var(--text-dim);
+      }
+      .act label.typed {
+        color: var(--amber);
+      }
+      .act label.typed input {
+        border-color: var(--amber);
+      }
+      /* The kill form on a lane card. It borrows the `.act` input and button rules by
+         repeating only what differs: it sits at the card's foot, it is amber rather than
+         indigo because stopping work is not the ordinary action on a running lane, and its
+         one typed field is the reason, which the ledger keeps (basicly-x1h1dl5). */
+      .card .kill {
+        margin-top: 3px;
+      }
+      .card .kill summary {
+        color: var(--amber);
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .card .kill form {
+        align-items: baseline;
+        display: flex;
+        gap: 6px;
+        margin-top: 3px;
+      }
+      .card .kill label {
+        color: var(--amber);
+        font-size: 11px;
+      }
+      .card .kill input {
+        background: var(--bg);
+        border: 1px solid var(--amber);
+        border-radius: 3px;
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 12px;
+        min-width: 0;
+        padding: 1px 4px;
+      }
+      .card .kill .btn {
+        flex: 0 0 auto;
+      }
+      /* No server to post to, so the operator is owed the line to type. */
+      .card .command {
+        color: var(--text-dim);
+        display: block;
+        font-family: var(--mono);
+        font-size: 11px;
+        margin-top: 4px;
+      }
+      /* Where the CLI's own output lands, so a submission never navigates the wall away. */
+      .acts iframe {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 3px;
+        height: 46px;
+        margin-top: 4px;
+        width: 100%;
+      }
+
+      /* --- loop: the workflow drawn as a single row of eight nodes -------------------- */
+      .loop {
+        grid-area: loop;
+      }
+      /* --- the drawn loop: stations, edges, artifacts, and the two human marks ---------
+         Every mark here is a `path`, `rect` or `circle` and never a codepoint. That is the
+         owner's tofu report answered at the root: a glyph renders as a box wherever the wall
+         display's font lacks the character, and a shape has no font to lack it. */
+      /* No `max-height`, and that absence is the fix. A clamp is what letterboxed the
+         drawing: `preserveAspectRatio` fits it to whichever axis binds, so a ceiling shorter
+         than the region's own aspect ratio scaled every figure down and left the width empty
+         - 43% of it at 1920, with the station labels at 13.6px under a 17px ready row. At
+         9.7:1 the width binds instead, so the height is simply the width over the ratio:
+         196px at 1920, 147px at 1440. Both are less than the 260px clamp they replace, which
+         is what let the three clamps below go rather than be re-tuned (basicly-ubwp49). */
+      .flow {
+        display: block;
+        height: auto;
+        width: 100%;
+      }
+      /* The one state that still cannot afford a picture: a wall shorter than 1080 while a
+         pass runs or a person is being asked something. There the lane cards take 488px of
+         1440x900 on their own and the page is already 285px past its box, so the drawing is
+         withheld rather than shrunk - a letterboxing clamp is the defect this record exists
+         to remove, and reintroducing it in one state reintroduces it. Withheld and not
+         re-tuned: hiding it puts this case 81px *below* where it was found, where a 147px
+         drawing would have put it 70px above (basicly-ubwp49, measured on `dense-v1`).
+         What is lost here that the retired census used to keep is the phase counts. The
+         lane cards carry each running phase by name, and `the queue` carries the shape of
+         what is waiting, so the loss is the resting counts alone. */
+      @media (max-height: 1000px) {
+        .loop:not(.quiet) .flow,
+        .acts ~ .loop .flow {
+          display: none;
+        }
+      }
+      .flow text {
+        font-family: var(--sans);
+      }
+      .flow .station rect {
+        fill: var(--bg-sunk);
+        stroke: var(--border);
+        stroke-width: 1;
+      }
+      .flow .station.working rect {
+        fill: var(--indigo-deep);
+        stroke: var(--indigo);
+      }
+      .flow .station.waiting rect {
+        stroke: var(--amber);
+        stroke-width: 2;
+      }
+      .flow .station .count {
+        fill: var(--text-bright);
+        font-family: var(--mono);
+        font-size: 22px;
+        font-weight: 700;
+        text-anchor: middle;
+      }
+      /* 15 units, and the scale turns that into 17.8px at 1440 and 23.8px at 1920 - at or
+         above the 17px of a `next up` row, which is the whole of basicly-ubwp49. */
+      .flow .station .name {
+        fill: var(--text);
+        font-size: 15px;
+        letter-spacing: 0.04em;
+        text-anchor: middle;
+      }
+      /* The magnitude, inside the box it belongs to. It is the one channel the census strip
+         had that the drawing did not, and it is why that strip could go rather than simply
+         be deleted: seven digits drawn twice said nothing twice. The denominator is the
+         units *inside* the loop, so `intake` holding 91% of them cannot flatten it. */
+      .flow .mag {
+        fill: var(--indigo);
+      }
+      .flow .agent {
+        fill: var(--text-dim);
+        font-size: 11px;
+      }
+      .flow .lane {
+        fill: var(--text-dim);
+      }
+      /* This lane moved within the document's own beat. It is the one mark that separates a
+         working factory from a wedged one, because a still picture of positions cannot. */
+      .flow .lane.moved {
+        fill: var(--green);
+      }
+      /* A lane nobody is moving. Hollow rather than a second hue: the palette's four are
+         spent, and a ring against a disc reads at six metres where two greens do not. Amber
+         and never `--orange` - the alarm hue has exactly one site, the watch band, and a
+         wall carrying it in five places has no alarm (`test_board_render` pins this). */
+      .flow .lane.stuck {
+        fill: none;
+        stroke: var(--amber);
+        stroke-width: 2;
+      }
+      .flow .waits {
+        fill: var(--amber);
+      }
+      .flow .waits-age {
+        fill: var(--amber);
+        font-family: var(--mono);
+        font-size: 11px;
+      }
+      .flow .terminal path {
+        fill: none;
+        stroke: var(--border-lit);
+        stroke-dasharray: 4 3;
+        stroke-width: 1;
+      }
+      .flow .terminal .count {
+        fill: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 20px;
+        text-anchor: middle;
+      }
+      .flow .terminal .name,
+      .flow .terminal .detail {
+        fill: var(--text-dim);
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .flow .flow-edge .line {
+        fill: none;
+        stroke: var(--border-lit);
+        stroke-width: 2;
+      }
+      /* The loop's one merge, `build -> verify`, where children land into their parent and
+         where the landing gate binds. Thicker because it is the edge that fails. */
+      .flow .flow-edge.merge .line {
+        stroke: var(--text-dim);
+        stroke-width: 4;
+      }
+      /* Amber for the same reason the wedged lane is: this edge failing is the next thing
+         that will go wrong, which wants attention, and it is not a person waiting. */
+      .flow .flow-edge.failing .line {
+        stroke: var(--amber);
+      }
+      .flow .artifact {
+        fill: var(--text-dim);
+        font-size: 11px;
+        text-anchor: middle;
+      }
+      .flow .verdict {
+        fill: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+        text-anchor: middle;
+      }
+      .flow .flow-edge.failing .verdict {
+        fill: var(--amber);
+        font-weight: 700;
+      }
+      /* A human approval, drawn as a person on the edge it gates. Three exist: classify,
+         decompose and ship (`config.CHECKPOINTS`). It was a diamond, and a diamond named no
+         actor - the reader's question at a checkpoint is *who* is expected to act, which a
+         rotated square cannot answer and a person shape can (basicly-e1c4pct). `fill` is
+         inherited in SVG, so this reaches the path inside the group. */
+      .flow .checkpoint {
+        fill: var(--amber);
+      }
+
+      /* --- claimed: taken by somebody, driven by no lane -------------------------------
+         Rows rather than cards, and above them: a claimed record has no agent, no branch and
+         no spend, and it is the population the page counted three times and never named. */
+      .claimed {
+        margin-bottom: 5px;
+      }
+      .claimed h3 {
+        color: var(--amber);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .claim {
+        align-items: baseline;
+        border-left: 2px solid var(--amber);
+        display: flex;
+        gap: 10px;
+        min-width: 0;
+        padding: 1px 0 1px 7px;
+      }
+      .claim .pri {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      .claim .ident {
+        color: var(--indigo);
+        font-family: var(--mono);
+        font-size: 15px;
+      }
+      .claim .at {
+        color: var(--text-bright);
+        font-size: 14px;
+        letter-spacing: 0.04em;
+      }
+      .claim .what {
+        color: var(--text);
+        font-size: 15px;
+        min-width: 0;
+      }
+
+      /* --- the queue: parallel or sequential, off the edges the footer counted ---------
+         Three lines where a bare `DEP EDGES 846` was. The bands answer the owner's own
+         question at a glance - 261 with nothing behind them against 32 that wait is a
+         different plan from the one `BLOCKED 56` suggests. */
+      .queue .bands {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+      }
+      .queue .band {
+        align-items: baseline;
+        display: flex;
+        gap: 6px;
+      }
+      .queue .n {
+        color: var(--text-bright);
+        font-family: var(--mono);
+        font-size: 15px;
+        font-weight: 700;
+      }
+      .queue .what {
+        color: var(--text-dim);
+        font-size: 12px;
+      }
+      .queue .track {
+        width: 60px;
+      }
+      .queue .unblocks,
+      .queue .chain {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        margin-top: 2px;
+      }
+      /* An id and, where it has one, the count of what waits on it. `--indigo` because every
+         other id on this page is that colour and a reader follows them by hue. */
+      .queue .who {
+        color: var(--indigo);
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      /* The unblocks-most row names three records by title on one line, so each is bounded
+         and the whole title rides on the `title` attribute (basicly-lc2bd3v.8). The chain's
+         own `.who` carries a bare id by declared exemption and needs no bound. */
+      .queue .unblocks .who {
+        display: inline-block;
+        max-width: 26ch;
+        vertical-align: bottom;
+      }
+      .queue .who .n {
+        color: var(--amber);
+        font-size: 13px;
+        margin-left: 4px;
+      }
+      /* The chain reads as a sequence, so each hop but the first is announced. Drawn as a
+         path and not as `content: "\2192"`: that was a codepoint spelled as a CSS escape,
+         so it was the one tofu site a search of the rendered bytes could not find, and the
+         page's own no-codepoint rule had already missed it (basicly-e1c4pct). */
+      /* Centred rather than baseline-aligned, and no taller than the 13px ids it separates.
+         An SVG has no baseline, so a browser sits its bottom edge on one: at 15px in this
+         `align-items: baseline` row the arrow stood 3px above the line and grew the page by
+         exactly that, measured on `dense-v1` at 1920x1080. */
+      .queue .chain .hop {
+        align-self: center;
+        fill: var(--text-dim);
+        flex: none;
+        height: 13px;
+        width: 13px;
+      }
+      /* On a wall shorter than 1080 the chain line goes and the note keeps its figure: the
+         ready list is already at its one-row floor there, so the height has to come from a
+         line rather than from a row. The chain is the least actionable of the three - `the
+         chain runs 4 deep` in the note is the part a reader acts on. */
+      @media (max-height: 1000px) {
+        .queue .chain {
+          display: none;
+        }
+      }
+
+      /* --- flight: one card per running lane, and one line when there are none --------- */
+      /* A card is the height of what it says and the rows stack from the top. Rows that shared
+         the region's height stretched a 90px card over 350px, which is the dead space this
+         redraw removes wearing a border - and the space below the last card is the only honest
+         thing that space means: room for another lane. */
+      .flight {
+        align-content: start;
+        display: grid;
+        gap: 6px;
+        grid-area: flight;
+        grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
+      }
+      .flight > h2,
+      .flight > .note {
+        grid-column: 1 / -1;
+      }
+      /* The collapsed state: no rows to reserve, no columns to divide, one line of text. */
+      .flight.quiet {
+        align-items: baseline;
+        display: flex;
+        gap: 14px;
+      }
+      .flight .card {
+        border-width: 3px;
+        padding: 9px 12px 10px;
+      }
+      /* The activity line is the field with no substitute (basicly-0xtzf1): the summary
+         carries the one-line clip so a card still fits collapsed, and the disclosure
+         beneath it is the same text again, unclipped, for a reader who wants it in full. */
+      .card > .note {
+        border-top: 1px solid var(--border);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.35;
+        margin-top: 7px;
+        padding-top: 6px;
+      }
+      .card > .note summary {
+        cursor: pointer;
+      }
+      /* Authored rather than left to the UA sheet: a headless probe's DOM dump measured a
+         closed `.full` at its full box regardless (basicly-0xtzf1), so this is stated rather
+         than assumed. */
+      .card > .note:not([open]) .full {
+        display: none;
+      }
+      .card > .note .full {
+        margin-top: 4px;
+        white-space: pre-wrap;
+      }
+      /* A still card and a wedged card look identical, so a lane reporting a live stream
+         carries a moving mark. Motion is the one channel a frozen page cannot fake. */
+      .card.working .phase-name::after {
+        animation: pulse 1.6s ease-in-out infinite;
+        background: var(--indigo);
+        border-radius: 50%;
+        content: "";
+        display: inline-block;
+        height: 8px;
+        margin-left: 8px;
+        width: 8px;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.15; }
+      }
+      .miss {
+        color: var(--text-dim);
+        font-size: 13px;
+        margin-right: 14px;
+      }
+      /* The title and the phase share one line. A card is the region that takes the wall's
+         slack - every other row is bounded by a capacity and this one absorbs what is left -
+         so a second heading line saying as much as the first is one it cannot afford. */
+      .card .title {
+        align-items: baseline;
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+      /* The unit title (basicly-0xtzf1's `units[].title` join, id demoted to a dim cell
+         below), never the id itself - a card no longer leads with the one line a human
+         cannot recognise on sight. */
+      .card .title-text {
+        color: var(--text-bright);
+        font-family: var(--sans);
+        font-size: 17px;
+        font-weight: 600;
+        min-width: 0;
+      }
+      /* The headline leads with the lane's pass state (`waits to land`, `landing`,
+         `refused`), so it takes the card's own state colour instead of one fixed hue -
+         that is the third channel basicly-ncday7's AC5 asks for beside the word and the
+         border, and a card wears no glyph. A fixed indigo here meant the border was the
+         only channel the state reached, and a dashed grey border was what a finished lane,
+         a landing lane and a refused lane all looked like. */
+      .card .phase-name {
+        color: inherit;
+        flex: none;
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      /* Two pairs to a line, halving how many rows a card's figures cost. */
+      .card dl {
+        column-gap: 8px;
+        display: grid;
+        grid-template-columns: repeat(2, auto minmax(0, 1fr));
+        line-height: 1.15;
+      }
+      .card dt {
+        color: var(--text-dim);
+        font-size: 14px;
+      }
+      .card dd {
+        font-family: var(--mono);
+        font-size: 14px;
+        margin: 0;
+        min-width: 0;
+      }
+
+      /* --- ready: the ranked set, priority then id then title -------------------------- */
+      /* The list draws the model's slot count and the *pitch* is the layout's, which is how
+         one capacity fits two very different boxes. A fixed pitch cannot: sized for the 385px
+         the reclaimed row has at 1440x900 it leaves 300px blank at 1920x1080, and sized for
+         1920 it clips at 1440 - the dead space this redraw exists to remove, reintroduced one
+         region over. So the rows share the height they are given and the text stays put. */
+      .ready {
+        display: flex;
+        flex-direction: column;
+        grid-area: ready;
+      }
+      .ready .table {
+        table-layout: fixed;
+      }
+      /* The wall's pitch, not the document's: `.table-sm` pads a cell 4px and the list would
+         lose three rows at 1440x900 to it. The row's own border is the feature rule below. */
+      .ready .table > :not(caption) > * > * {
+        border-bottom-width: 0;
+        box-shadow: none;
+        padding: 1px 0;
+      }
+      /* Only in the reclaimed row, where the height is the list's to use. Beside the lanes the
+         same rule spread eight rows over 700px, which is the dead space one column over. */
+      .wall.calm .ready .table {
+        flex: 1 1 auto;
+      }
+      .ready td {
+        font-family: var(--mono);
+        font-size: 17px;
+        padding: 1px 0;
+      }
+      /* The widths live on the columns, not on the first row's cells: `table-layout: fixed`
+         reads row one, and row one is a group heading whose single cell spans all three, so
+         cell-borne widths stopped applying the moment grouping landed and the title column
+         collapsed to the right-hand edge. A colgroup states them independently of any row. */
+      .ready col.pri {
+        width: 46px;
+      }
+      .ready col.id {
+        width: 158px;
+      }
+      /* One size down, because `overflow: hidden` on a `td` does not reliably clip and an
+         18-character id at 17px needs 173px of a 158px column - measured as an 11x20px overlap
+         of the id over the title on two rows by `check_render_overflow.py`. Taken out of the id
+         rather than out of the title: the id is the address and the title is the name
+         (basicly-lc2bd3v.8). */
+      .ready td.id {
+        font-size: 15px;
+      }
+      .ready col.act {
+        width: 62px;
+      }
+      /* The controls are `.btn-board`, quiet until pointed at (the theme says why). */
+      .ready td.act {
+        text-align: right;
+      }
+      .parked {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        margin-top: 5px;
+      }
+      .parked .one {
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .parked .ident {
+        color: var(--indigo);
+      }
+      .parked .pri,
+      .parked .at {
+        color: var(--text-dim);
+      }
+      /* Bounded here rather than by a shorter clip in the producer: the strip reserves a
+         fixed height (`board_regions.PARKED_STRIP_PX`) and a long title that wrapped the line
+         would spend a ready row. The untruncated title stays on the row's `title` attribute. */
+      .parked .what {
+        display: inline-block;
+        max-width: 14ch;
+        vertical-align: bottom;
+      }
+      .parked form {
+        display: inline;
+      }
+      .ready .pri {
+        color: var(--amber);
+      }
+      .ready .id {
+        color: var(--indigo);
+      }
+      /* The heading a row is read *through*: it has to win against the rows without taking
+         a row's worth of height, so it pays in weight and colour rather than in leading. The
+         rule above it is what separates two features at six metres once the list is dense. */
+      .ready .feature td {
+        border-top: 1px solid var(--border);
+        color: var(--text);
+        font-family: var(--sans);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        padding: 7px 0 1px;
+      }
+      /* The flex row is a div inside the cell, never the cell itself: `display: flex` on a
+         `td` of a fixed-layout table left the name with no width to lay out in and the wall
+         drew five counts with no feature beside them. A block child takes the cell's width. */
+      .ready .feature .heading {
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+      }
+      .ready .feature .name {
+        min-width: 0;
+      }
+      .ready tr.feature:first-child td {
+        border-top: 0;
+        padding-top: 1px;
+      }
+      /* Right-aligned so the counts stack into a column the eye can compare down, which is
+         what makes "42 unattached against 9 anywhere else" legible without reading titles. */
+      .ready .feature .count {
+        color: var(--text-dim);
+        flex: 0 0 auto;
+        font-family: var(--mono);
+        font-weight: 400;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      /* --- foot: the backlog on one line, the agents beside it ------------------------- */
+      .foot {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 18px;
+        grid-area: foot;
+      }
+      .strip {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 14px;
+        line-height: 1.2;
+        min-width: 0;
+      }
+      .strip .cell {
+        align-items: baseline;
+        display: flex;
+        gap: 6px;
+        min-width: 0;
+      }
+      .strip .cell .value {
+        font-family: var(--mono);
+        font-size: 16px;
+      }
+      .foot .agents {
+        margin-left: auto;
+      }
+      .foot .agents .cell .value {
+        font-size: 13px;
+      }
+
+      /* --- tick: the only region that reads as prose, and it is one line --------------- */
+      .tick {
+        align-items: baseline;
+        display: flex;
+        /* The server's own notes wrap onto their own line when they carry a fault, and ride
+           the events line when they do not. Both need this. */
+        flex-wrap: wrap;
+        gap: 14px;
+        grid-area: tick;
+      }
+      .tick .lines {
+        color: var(--text-dim);
+        /* Takes the row's remaining width instead of its own content's. `min-width: 0` was
+           already here for this, but with no basis the box still grew to fit and wrapped the
+           notes beside it onto further rows - 18px became 49px the moment an event line
+           carried a title instead of an id (basicly-lc2bd3v.8). Its `.clip` child can only
+           clip against a bounded parent. */
+        flex: 1 1 0;
+        font-family: var(--mono);
+        font-size: 14px;
+        min-width: 0;
+      }
+      /* The producer's own notes, filled by `board_serve` and empty in every page rendered
+         without a server behind it. Inside this row rather than after the grid: the body is
+         `100vh; overflow: hidden`, so anything appended past the grid was drawn 9px below the
+         fold and no reader ever saw it (basicly-qwqd35). */
+      .tick .notes:empty {
+        display: none;
+      }
+      /* First in the row, and deliberately not pushed right. `margin-left: auto` on a *first*
+         flex item absorbs the free space to its left, so on a page with room to spare it would
+         shift the whole events row off the left margin. First also means the notes can never
+         wrap below the events line, at any width, which is what a fault needs. */
+      .tick .notes {
+        min-width: 0;
+      }
+      /* A fault says the page is lying, so it takes the whole line above the events rather
+         than the gap beside them. The 100% basis is what makes the row wrap. */
+      .tick .notes.fault {
+        flex: 1 0 100%;
+      }
+
+      /* --- inv: the verdict's whole section roster, so nothing is silently dropped ----- */
+      .inv {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 12px;
+        grid-area: inv;
+        overflow: hidden;
+      }
+      .inv .chip {
+        font-family: var(--mono);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      /* A bar is drawn only where the model gave one, which is only where both of its terms
+         were measured. There is no markup here for a bar without a number. */
+      .track {
+        background: var(--bg);
+        border: 1px solid var(--border-lit);
+        display: inline-block;
+        height: 9px;
+        vertical-align: middle;
+        width: 84px;
+      }
+      .fill {
+        background: var(--indigo);
+        display: block;
+        height: 100%;
+      }
+      .fill.over {
+        background: var(--amber);
+      }
+      /* Three channels per state: a glyph in the markup, a border style here, and colour.
+         Generated from board_wall.STATES so the CSS cannot name a state the code does not. */
+{%- for state in states %}
+      .state-{{ state.key }} {
+        border-style: {{ state.border_style }};
+        border-color: {{ state.colour }};
+        color: {{ state.colour }};
+      }
+{%- endfor %}
+      /* Below 1280px the wall stops being a wall: one column, and the page may scroll,
+         because a laptop reader is close enough to scroll and far too close to read a
+         1920-wide grid squeezed into 1200. */
+      @media (max-width: 1279px) {
+        body {
+          height: auto;
+          overflow: auto;
+        }
+        .wall,
+        .wall.calm {
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas: "head" "band" "loop" "flight" "ready" "foot" "tick" "inv";
+          grid-template-rows: none;
+        }
+        .head,
+        .band,
+        .foot,
+        .flight {
+          flex-wrap: wrap;
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .flight {
+          grid-template-rows: none;
+        }
+        .fresh,
+        .band .stale,
+        .foot .agents {
+          margin-left: 0;
+          text-align: left;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wall{% if not cards %} calm{% endif %}">
+      <section class="region head">
+        <div class="facts">
+        <span class="brand">basicly</span>
+{%- for cell in head %}
+        <div class="cell">
+          <div class="label">{{ cell.label }}</div>
+          <div class="value clip">
+{{ cell.value }}
+{%- if cell.bar %}
+            <span class="track"
+              ><span
+                class="fill{% if cell.bar.over %} over{% endif %}"
+                style="width: {{ cell.bar.width }}%"
+              ></span
+            ></span>
+            {{ cell.bar.label }}
+{%- endif %}
+          </div>
+        </div>
+{%- endfor %}
+        <div class="cell token">
+          <div class="label">{{ gates.label }}</div>
+          <div class="value clip state-{{ gates.state.key }}">
+            {{ gates.value }}
+          </div>
+{%- if gates_note %}
+          <div class="note clip">{{ gates_note }}</div>
+{%- endif %}
+        </div>
+        <div class="cell">
+          <div class="label">{{ spend.label }}</div>
+          <div class="value clip">
+{{ spend.value }}
+          </div>
+        </div>
+        <div class="cell">
+          <div class="label">{{ throughput.label }}</div>
+          <div class="value clip">
+            {{ throughput.value }}
+          </div>
+        </div>
+        </div>
+{#- The corner an operator glances at, cut to the two facts they act on: is this fresh, and
+    how old. The mark carries the first so the age does not have to be read to learn it, and
+    it replaces a bare bullet that meant nothing on its own. The absolute stamp stays beneath
+    because a wall photographed at a distance needs it; the staleness threshold appears only
+    once it is crossed, since a bound nobody is near is not news; and the producer and its
+    version move to the title, recoverable by hover and by every consumer of the snapshot,
+    without spending the page's most valuable cell on two facts nobody acts on
+    (basicly-a8jy77 defect 7). #}
+        <p
+          class="fresh state-{{ age.state.key }}"
+          title="{{ producer.label }} {{ producer.value }} · stale after {{ age.stale_after }}"
+        >
+{#- `age.state.key` is a freshness state and `icons` is keyed by mark, so the two are joined
+    here rather than a "live" icon being vendored for one site: a fresh snapshot is the same
+    fact `calm` already draws, and a stale one is the same fact `waiting` draws. #}
+{%- set age_mark = "calm" if age.state.key == "live" else "waiting" %}
+          <span class="fresh-age"
+            ><svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"
+              ><path d="{{ icons[age_mark].path }}" /></svg
+            >{{ age.phrase }}</span
+          ><br />
+          <span class="note">{{ age.generated_at }}</span>
+{%- if age.state.key != "live" %}
+          <span class="note">· stale after {{ age.stale_after }}</span>
+{%- endif %}
+        </p>
+      </section>
+
+      <section class="region band framed card raised state-{{ band.state.key }}">
+        <div class="headline state-{{ band.state.key }}">
+{#- `aria-hidden`, because the headline beside it states the same fact in words and a
+    screen reader announcing both reads the alarm twice. #}
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"
+            ><path d="{{ icons[band.state.key].path }}" /></svg
+          >
+          {{ band.headline }}
+        </div>
+        <div class="lines">
+{%- if band.kicker %}
+          <div class="kicker">{{ band.kicker }}</div>
+{%- endif %}
+{%- for line in band.lines %}
+          <div class="clip">{{ line }}</div>
+{%- endfor %}
+        </div>
+{%- if band.stale %}
+        <div class="stale">{{ band.stale }}</div>
+{%- endif %}
+      </section>
+
+{#- What a person is being asked for, each row prefilled and one button from done. A region
+    in the grid and never an append after `</main>`: the body is `100vh` with
+    `overflow: hidden`, so the panel this replaces sat 274px past the fold on a page that
+    never scrolls (basicly-ua9o5g; basicly-qwqd35 ruled the same append a defect for the
+    tick notes). Drawn only when there is something to act on - a standing form on a wall
+    whose question is "does it need me?" answers it wrongly every hour nothing is pending. #}
+{%- if acts %}
+      <section class="region acts card">
+        <h2>needs a person{% if acts_more %} — {{ acts_more }}{% endif %}</h2>
+{%- for act in acts %}
+        <div class="act">
+          <div class="who">
+            <span class="label">{{ act.kind }}</span>
+            <span class="subject">{{ act.subject }}</span>
+            <span class="issue">{{ rec(act.issue) }}</span>
+{%- if act.question %}
+            <span class="question clip">{{ act.question }}</span>
+{%- endif %}
+          </div>
+{#- The exact command, always, whether or not a form is reachable. An operator who would
+    rather use a terminal is owed the line to type, and it is built through the action's own
+    argv so it can never name a different command from the one the button runs. #}
+          <code class="command">{{ act.command }}</code>
+{%- if act.token %}
+          <form method="post" action="{{ act.route }}" target="{{ act.frame }}">
+            <input type="hidden" name="token" value="{{ act.token }}">
+            <input type="hidden" name="action" value="{{ act.action }}">
+{%- for field in act.fields %}
+            <label class="{% if field.typed %}typed{% else %}known{% endif %}"
+              >{{ field.label }}
+{#- No `value` attribute at all where the field is unfilled, rather than an empty one.
+    `value=""` and a missing attribute render identically, and only the absence says no code
+    path could have put a confirm code there - which is what `test_board_actions` asserts. #}
+              <input
+                name="{{ field.name }}"
+{%- if field.value %}
+                value="{{ field.value }}"
+{%- endif %}
+                size="{{ field.size }}"
+                autocomplete="off"
+                required
+              ></label
+            >
+{%- endfor %}
+            <button type="submit" class="btn btn-board btn-board-fill">{{ act.offer }}</button>
+          </form>
+{%- if act.confirmed %}
+          <p class="note clip">a one-time code is typed here and never read by the board — get it from a terminal</p>
+{%- endif %}
+{%- else %}
+          <p class="note clip">this board answers GET only, so run the line above</p>
+{%- endif %}
+        </div>
+{%- endfor %}
+        <iframe name="{{ acts[0].frame }}" title="what the last action printed"></iframe>
+      </section>
+{%- endif %}
+
+      <section class="region loop{% if not pass_running %} quiet{% endif %}">
+{#- The diagram says what the loop is; it cannot say which records sit in a phase. That is
+    the second surface, and a heading nobody can click leaves it unreachable from the wall
+    that names it (basicly-lc2bd3v.6). #}
+        <h2>the loop{% if pass_running %} — this pass{% endif %} <a class="rec way" href="{{ kanban_href }}">columns &rarr;</a></h2>
+{#- The workflow, drawn (basicly-6c97zx). The owner asked for a diagram of the factory and
+    got seven counted boxes, which say how many units sit somewhere and nothing about what
+    the loop IS. Every element below is emitted from `board_diagram`'s model and never from
+    a string that module assembled: autoescape is on, and a producer's `agent` reaches this
+    page the same way every other producer string does. No `|safe` appears in this file. #}
+        <svg
+          class="flow"
+          viewBox="0 0 {{ diagram.width }} {{ diagram.height }}"
+          preserveAspectRatio="xMidYMid meet"
+          role="img"
+          aria-label="the factory loop: {{ diagram.hopper.name }} through
+            {% for station in diagram.stations %}{{ station.name }} {% endfor %}to
+            {{ diagram.sink.name }}"
+        >
+{#- Edges first, so a station box paints over the line that reaches it. #}
+{%- for flow in diagram.flows %}
+          <g
+            class="flow-edge{% if flow.merge %} merge{% endif %}{% if flow.verdict and flow.verdict != 'green' %} failing{% endif %}"
+            aria-label="{{ flow.frm }} to {{ flow.to }}{% if flow.artifact %}, producing {{ flow.artifact }}{% endif %}"
+          >
+            <path class="line" d="{{ flow.path }}" />
+{%- if flow.artifact %}
+            <text class="artifact" x="{{ flow.label_x }}" y="{{ flow.label_y }}"
+              >{{ flow.artifact }}</text
+            >
+{%- endif %}
+{%- if flow.verdict %}
+            <text class="verdict" x="{{ flow.label_x }}" y="{{ flow.label_y - 15 }}"
+              >gate {{ flow.verdict }}</text
+            >
+{%- endif %}
+{#- A checkpoint is a drawn path and never a codepoint: the tofu the owner reported is a
+    font-coverage failure, and a shape has no font. The path is bootstrap-icons' `person-fill`
+    read off the vendored file beside this template, so nothing is fetched to draw it. #}
+{#- On the edge line and not beside it: one row leaves a 20-unit gap between boxes, and a mark
+    centred in that gap is unambiguously on the transition it gates. The icon is 16 units on
+    a side, so translating to `label_y + 27` centres it on `label_y + 35` - where the diamond
+    it replaces was centred - and it still clears the 20-unit gap. #}
+{%- if flow.checkpoint %}
+            <g
+              class="checkpoint"
+              transform="translate({{ flow.label_x - 8 }} {{ flow.label_y + 27 }})"
+            >
+              <path d="{{ icons.checkpoint.path }}" />
+            </g>
+{%- endif %}
+          </g>
+{%- endfor %}
+{#- The hopper and the sink, drawn as open shapes because neither is a phase: `intake` is
+    the derivation's default rung and `done` is terminal. #}
+{%- for end in [diagram.hopper, diagram.sink] %}
+          <g class="terminal">
+            <path
+              d="M {{ end.x - 65 }} {{ end.y - 28 }} h 130 l -14 56 h -102 z"
+            />
+            <text class="count" x="{{ end.x }}" y="{{ end.y - 4 }}"
+              >{% if end.count is none %}—{% else %}{{ end.count }}{% endif %}</text
+            >
+            <text class="name" x="{{ end.x }}" y="{{ end.y + 15 }}">{{ end.name }}</text>
+{%- if end.detail %}
+            <text class="detail" x="{{ end.x }}" y="{{ end.y + 41 }}">{{ end.detail }}</text>
+{%- endif %}
+          </g>
+{%- endfor %}
+{%- for station in diagram.stations %}
+          <g
+            class="station{% if station.lanes %} working{% endif %}{% if station.waiting %} waiting{% endif %}"
+            aria-label="{{ station.name }}"
+          >
+            <rect
+              x="{{ station.x - 65 }}" y="{{ station.y - 28 }}"
+              width="130" height="56" rx="5"
+            />
+{#- Stacked and centred. The two shared one baseline while the box was 210 units wide; at 130
+    a three-digit count beside `decompose` overruns it, so the count takes the upper line and
+    the phase the lower. `check_render_overflow.py` at three widths is what settles this. #}
+            <text class="count" x="{{ station.x }}" y="{{ station.y - 9 }}"
+              >{% if station.count is none %}—{% else %}{{ station.count }}{% endif %}</text
+            >
+            <text class="name" x="{{ station.x }}" y="{{ station.y + 15 }}"
+              >{{ station.name }}</text
+            >
+{#- The magnitude, over the units inside the loop and never over the backlog: `intake` holds
+    91% of the records, so a share counting it draws every station flat. #}
+{%- if station.fill %}
+            <rect class="mag"
+              x="{{ station.x - 61 }}" y="{{ station.y + 20 }}"
+              width="{{ station.fill }}" height="3"
+            />
+{%- endif %}
+{#- A lane an agent is inside: a dot in the box, its crew named beneath. A unit merely
+    resting at this phase is in the count and has no dot, which is the distinction the
+    record asks for. The name sits outside because 130 units of box do not hold an agent
+    and its model beside a count. #}
+{%- for lane in station.lanes %}
+            <circle
+              class="lane{% if lane.moved %} moved{% endif %}{% if lane.stuck %} stuck{% endif %}"
+              cx="{{ station.x + 54 }}" cy="{{ station.y - 18 + loop.index0 * 15 }}" r="4.5"
+            />
+{%- endfor %}
+{#- Two lines beneath the box, and a station with neither draws neither: the wait takes the
+    first, so the model gives the crew its row rather than the template guessing it. #}
+{%- if station.crew %}
+            <text class="agent" x="{{ station.x - 61 }}"
+              y="{{ station.y + 41 + station.crew_row * 14 }}">{{ station.crew }}</text
+            >
+{%- endif %}
+{#- A person is the blocker: an hourglass carrying the age, on the node they block. It was a
+    triangle, and a triangle says only "something"; an hourglass says the factory is stopped
+    and that time is running, which is what the age beside it counts (basicly-e1c4pct). 12
+    units on a side - `scale(0.75)` of the icon's 16 - so it occupies the same box as the
+    triangle and its foot sits on the age's baseline. #}
+{%- if station.waiting %}
+            <g
+              class="waits"
+              transform="translate({{ station.x - 61 }} {{ station.y + 29 }}) scale(0.75)"
+            >
+              <path d="{{ icons.waiting.path }}" />
+            </g>
+            <text class="waits-age" x="{{ station.x - 45 }}" y="{{ station.y + 41 }}"
+              >{{ station.waiting }}</text
+            >
+{%- endif %}
+          </g>
+{%- endfor %}
+        </svg>
+{%- if diagram.note %}
+        <p class="note clip">{{ diagram.note }}</p>
+{%- endif %}
+{%- if loop_note %}
+        <p class="note clip">{{ loop_note }}</p>
+{%- endif %}
+{#- The census strip that stood here drew the diagram's own seven digits verbatim - `263 1
+    26 0 0 0 0` in both, because `backlog_phases` and the diagram's `_counts` differ only by
+    the units a lane holds and the drawing marks those with a dot instead. Its one unique
+    channel was the magnitude bar, which is now inside each station box, so the strip is
+    gone rather than merely quieter (basicly-ubwp49). Its note stays: the parked and the
+    unphased are a population caveat the drawing does not carry. #}
+{%- if backlog_phases_note %}
+        <p class="note clip">{{ backlog_phases_note }}</p>
+{%- endif %}
+      </section>
+
+      <section class="region flight{% if not cards %} quiet{% endif %}">
+        <h2>running now{% if flight_more %} — {{ flight_more }}{% endif %}</h2>
+{%- if flight_note %}
+        <p class="note clip">{{ flight_note }}</p>
+{%- endif %}
+{#- Claimed and unheld: a record somebody took that no lane is driving. Rows, not cards -
+    it has no agent, no branch and no spend, so a card's frame would promise figures that do
+    not exist. Drawn above the cards because it is the thing the page could not say
+    (basicly-5jkxqk). #}
+{%- if claimed %}
+        <div class="claimed">
+          <h3>claimed, no lane{% if claimed_more %} — {{ claimed_more }}{% endif %}</h3>
+{%- for row in claimed %}
+          <div class="claim">
+            <span class="pri">{{ row.priority }}</span>
+            <span class="ident">{{ rec(row.id) }}</span>
+            <span class="at">{{ row.phase }}</span>
+            <span class="what clip" title="{{ titles.get(row.id, row.title) }}">{{ row.title }}</span>
+          </div>
+{%- endfor %}
+        </div>
+{%- endif %}
+{%- for card in cards %}
+        <div class="card state-{{ card.state.key }}{% if card.working %} working{% endif %}">
+          <div class="title">
+            <div class="title-text clip" title="{{ titles.get(card.ident, card.title) }}">
+              {{ rec_text(card.ident, card.title) }}
+            </div>
+            <div class="phase-name clip">{{ card.phase }}</div>
+          </div>
+          <dl>
+{%- for cell in card.cells %}
+            <dt>{{ cell.label }}</dt>
+            <dd class="clip">
+              {{- cell.value }}
+{%- if cell.bar %}
+              <span class="track"
+                ><span
+                  class="fill{% if cell.bar.over %} over{% endif %}"
+                  style="width: {{ cell.bar.width }}%"
+                ></span
+              ></span>
+              {{ cell.bar.label }}
+{%- endif %}
+            </dd>
+{%- endfor %}
+          </dl>
+{%- if card.note %}
+          <details class="note">
+            <summary class="clip">{{ card.note }}</summary>
+            <div class="full">{{ card.note }}</div>
+          </details>
+{%- endif %}
+{#- The one verb a running lane offers, on the lane it stops. `lane-kill` was in the action
+    table from the start and had no surface: `board_asks.pending` draws a row per *ask*, so
+    it was pressable exactly when something else happened to be waiting (basicly-x1h1dl5).
+    Looked up by `card.ident` rather than by position - the cards are a bounded slice of the
+    lanes and a positional join would arm the wrong card. #}
+{%- set kill = kills.get(card.ident) %}
+{%- if kill and kill.token %}
+{#- Behind a summary, and that is geometry rather than taste. Drawn open, a form row per card
+    cost 52px to 104px on a page already 300px to 570px past its box with asks pending
+    (`check_render_overflow.py`, both lane fixtures, three widths). Collapsed, an idle card
+    pays one line; a card an operator is acting on pays the rest, which is the moment height
+    is worth spending. #}
+          <details class="kill">
+            <summary>stop this lane</summary>
+          <form method="post" action="{{ kill.route }}" target="{{ kill.frame }}">
+            <input type="hidden" name="token" value="{{ kill.token }}">
+            <input type="hidden" name="action" value="{{ kill.action }}">
+{%- for field in kill.fields %}
+{%- if field.typed %}
+            <label class="typed"
+              >{{ field.label }}
+              <input
+                name="{{ field.name }}"
+                size="{{ field.size }}"
+                autocomplete="off"
+                required
+              ></label
+            >
+{%- else %}
+            <input type="hidden" name="{{ field.name }}" value="{{ field.value }}">
+{%- endif %}
+{%- endfor %}
+            <button type="submit" class="btn btn-board btn-board-stop">{{ kill.offer }}</button>
+          </form>
+          </details>
+{%- elif kill %}
+          <code class="command clip">{{ kill.command }}</code>
+{%- endif %}
+        </div>
+{%- endfor %}
+      </section>
+
+      <section class="region ready framed card raised">
+{#- The capped count is the way into the uncapped page: this list draws four of 237 and the
+    reader looking for the other 233 is already looking here (basicly-lc2bd3v.4). #}
+        <h2>next up{% if ready.more %} — <a class="rec" href="{{ backlog_href }}">{{ ready.more }}</a>{% endif %}</h2>
+        <table class="table table-sm">
+{#- A fourth column, and that is the whole reason this control fits: the ready list runs to
+    twenty rows at 1920, so a row *under* each one would cost twenty lines on a page already
+    past its box. A column costs width, which this table has (basicly-arxhshr). #}
+          <colgroup><col class="pri" /><col class="id" /><col /><col class="act" /></colgroup>
+{%- for group in ready.groups %}
+          <tr class="feature">
+            <td colspan="4">
+              <div class="heading">
+                <span class="name clip">{{ group.name }}</span>
+                <span class="count">{{ group.count }} ready</span>
+              </div>
+            </td>
+          </tr>
+{%- for item in group.rows %}
+          <tr>
+            <td class="pri">{{ item.priority }}</td>
+            <td class="id clip">{{ rec(item.ident) }}</td>
+            <td class="clip" title="{{ titles.get(item.ident, item.title) }}">{{ item.title }}</td>
+            <td class="act">
+{#- Start before park, because this is the ready list and starting is what a reader came to
+    do. Drawn only where `starting` holds the row: that map is `board_record.startable`'s
+    answer, so a record a lane already holds is offered nothing (basicly-fiow1sr). #}
+{%- set begin = starting.get(item.ident) %}
+{%- if begin and begin.token %}
+              <form method="post" action="{{ begin.route }}" target="{{ begin.frame }}">
+                <input type="hidden" name="token" value="{{ begin.token }}">
+                <input type="hidden" name="action" value="{{ begin.action }}">
+{%- for field in begin.fields %}
+                <input type="hidden" name="{{ field.name }}" value="{{ field.value }}">
+{%- endfor %}
+                <button type="submit" class="btn btn-board" title="{{ begin.command }}">{{ begin.offer }}</button>
+              </form>
+{%- endif %}
+{%- set park = parking.get(item.ident) %}
+{%- if park and park.token %}
+              <form method="post" action="{{ park.route }}" target="{{ park.frame }}">
+                <input type="hidden" name="token" value="{{ park.token }}">
+                <input type="hidden" name="action" value="{{ park.action }}">
+{%- for field in park.fields %}
+                <input type="hidden" name="{{ field.name }}" value="{{ field.value }}">
+{%- endfor %}
+                <button type="submit" class="btn btn-board">{{ park.offer }}</button>
+              </form>
+{%- endif %}
+            </td>
+          </tr>
+{%- endfor %}
+{%- endfor %}
+        </table>
+{#- Parked work. Nothing on this page drew a deferred record: it is out of the phase counts,
+    out of the claimed rows and out of the ready set, so the only trace was a bare number in
+    the loop note. A count with no member named is a count nobody can act on - the same
+    finding as basicly-5jkxqk one region over (basicly-arxhshr). #}
+{%- if parked %}
+        <div class="parked">
+{#- A wrapping line and not a row apiece. Four block rows cost 104px and took five rows off
+    the ready list at 1440x900 - measured - and five ready titles are worth more to a reader
+    than four parked ones. The id, the phase and the way back are what a person acts on. #}
+          <span class="label">parked{% if parked_more %} — {{ parked_more }}{% endif %}</span>
+{%- for row in parked %}
+          <span class="one">
+            <span class="pri">{{ row.priority }}</span>
+            <span class="ident">{{ rec(row.id) }}</span>
+            <span class="at">{{ row.phase }}</span>
+            <span class="what clip" title="{{ titles.get(row.id, row.title) }}">{{ row.title }}</span>
+{%- set back = parking.get(row.id) %}
+{%- if back and back.token %}
+            <form method="post" action="{{ back.route }}" target="{{ back.frame }}">
+              <input type="hidden" name="token" value="{{ back.token }}">
+              <input type="hidden" name="action" value="{{ back.action }}">
+{%- for field in back.fields %}
+              <input type="hidden" name="{{ field.name }}" value="{{ field.value }}">
+{%- endfor %}
+              <button type="submit" class="btn btn-board">{{ back.offer }}</button>
+            </form>
+{%- endif %}
+          </span>
+{%- endfor %}
+        </div>
+{%- endif %}
+{%- if ready.note %}
+        <p class="note state-{{ ready.state.key }}">
+          {{ ready.note }}
+        </p>
+{%- endif %}
+      </section>
+
+      <section class="region foot">
+        <span class="label"><a class="rec" href="{{ backlog_href }}">backlog</a>{% if priorities_more %} — {{ priorities_more }}{% endif %}</span>
+        <div class="strip">
+{%- for cell in backlog %}
+          <div class="cell">
+            <div class="label">{{ cell.label }}</div>
+            <div class="value clip">
+{{ cell.value }}
+{%- if cell.bar %}
+              <span class="track"
+                ><span
+                  class="fill{% if cell.bar.over %} over{% endif %}"
+                  style="width: {{ cell.bar.width }}%"
+                ></span
+              ></span>
+              {{ cell.bar.label }}
+{%- endif %}
+            </div>
+          </div>
+{%- endfor %}
+{%- for cell in priorities %}
+          <div class="cell">
+            <div class="label">{{ cell.label }}</div>
+            <div class="value">
+              {{- cell.value }}
+{%- if cell.bar %}
+              <span class="track" style="width: 48px"
+                ><span class="fill" style="width: {{ cell.bar.width }}%"></span
+              ></span>
+{%- endif %}
+            </div>
+          </div>
+{%- endfor %}
+        </div>
+{#- The shape of what is waiting. `DEP EDGES 846` beside `BLOCKED 56` was on this page and
+    settled nothing; these three lines answer "is the work parallel or sequential", "what
+    unblocks the most" and "how long is the worst chain" (basicly-pck9fx). #}
+        <div class="strip queue">
+          <span class="label"><a class="rec" href="{{ backlog_href }}">the queue</a></span>
+{%- if queue.bands %}
+          <div class="bands">
+{%- for band in queue.bands %}
+            <span class="band" title="{{ band.detail }}"
+              ><span class="n">{{ band.count }}</span
+              ><span class="what">{{ band.label }}</span
+{%- if band.share %}
+              ><span class="track"
+                ><span class="fill" style="width: {{ band.share.width }}%"></span
+              ></span
+{%- endif %}
+            ></span>
+{%- endfor %}
+          </div>
+{%- endif %}
+{%- if queue.blockers %}
+          <div class="unblocks">
+            <span class="what">unblocks most</span>
+{%- for blocker in queue.blockers %}
+            <span class="who clip" title="{{ titles.get(blocker.ident, blocker.ident) }}"
+              >{{ titles.get(blocker.ident, blocker.ident) }}<span class="n">{{ blocker.blocking }}</span></span
+            >
+{%- endfor %}
+{%- if queue.dropped %}
+            <span class="what">{{ queue.dropped }}</span>
+{%- endif %}
+          </div>
+{%- endif %}
+{%- if queue.chain|length > 1 %}
+          <div class="chain">
+            <span class="what">longest</span>
+{%- for node in queue.chain %}
+{%- if not loop.first %}
+            <svg class="hop" viewBox="0 0 16 16" aria-hidden="true" focusable="false"
+              ><path d="{{ icons.chain.path }}"
+{%- if icons.chain.even_odd %} fill-rule="evenodd"{% endif %} /></svg
+            >
+{%- endif %}
+            <span class="who">{{ node }}</span>
+{%- endfor %}
+          </div>
+{%- endif %}
+{%- if queue.note %}
+          <span class="note clip">{{ queue.note }}</span>
+{%- endif %}
+        </div>
+
+        <div class="strip agents">
+          <span class="label">agents{% if health_more %} — {{ health_more }}{% endif %}</span>
+{%- for cell in agents %}
+          <div class="cell">
+            <div class="label">
+{{ cell.label }}
+            </div>
+            <div class="value clip">{{ cell.value }}</div>
+          </div>
+{%- endfor %}
+        </div>
+      </section>
+
+      <section class="region tick">
+        <div class="notes"></div>
+        <span class="label">events{% if events_more %} — {{ events_more }}{% endif %}</span>
+        <div class="lines">
+{%- for line in events %}
+          <div class="clip">{% if line.ident %}{{ rec_text(line.ident, titles.get(line.ident, line.ident)) }} · {% endif %}{{ line.text }}</div>
+{%- endfor %}
+        </div>
+      </section>
+
+{%- if inventory %}
+      <section class="region inv">
+        <span class="label">not drawn</span>
+{%- for cell in inventory %}
+        <span class="miss state-{{ cell.state.key }}">{{ cell.label }} — {{ cell.value }}</span>
+{%- endfor %}
+      </section>
+{%- endif %}
+    </main>
+  </body>
+</html>

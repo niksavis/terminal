@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `conventional-commits`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "the commit-msg hook rejected my message"
+    - prompt: "what type and scope should this commit use"
+    - prompt: "does this change need a breaking marker in the subject"
+  negative:
+    - prompt: "keep this change out of my main checkout"
+      owner: worktree-isolation
+    - prompt: "which issues are ready to be claimed"
+      owner: work-tracker

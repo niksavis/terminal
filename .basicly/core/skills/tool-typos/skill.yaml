@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-typos
-description: Use typos to detect spelling mistakes in code, comments, and docs with low false positives. Trigger when proofreading source content or enforcing text quality.
+invocation: user
 instructions: |
   # tool-typos
 

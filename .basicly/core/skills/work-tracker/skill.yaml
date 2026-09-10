@@ -1,0 +1,278 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 108
+name: work-tracker
+invocation: model
+description: Use the owned work tracker - the append-only event ledger under .basicly/ledger/ - as the primary task/issue tracker for this repo, reading it through the kit CLI and writing it through the engine seam, and know what it refuses. Trigger when planning work, creating or claiming an issue, checking what is ready to work on, counting or querying issues in bulk, or preparing a commit that must reference a tracker issue id.
+instructions: |
+  # Work Tracker
+
+  ## When To Use
+
+  - Before starting non-trivial work: find actionable work, or file a record for it.
+  - When a task has no record: create one first, then reference its id in the commit.
+  - When checking what is blocked, in progress, or safe to pick up next.
+  - When preparing any commit message (a record id is required by the commit-msg hook).
+
+  ## What the tracker is
+
+  `basicly.toml` declares `[tracker] mode = "owned"`. The store is an **append-only
+  event log** under `.basicly/ledger/events-*.jsonl`: a record is the fold of its own
+  events, and nothing is edited in place. The engine reads and writes it directly — a
+  unit's walk through the loop spawns no external tracker process.
+
+  **One ledger per repo, never one per worktree.** Its location follows the git-ignored
+  `.basicly/ledger/redirect`, so a loop-provisioned worktree and the base checkout resolve
+  to the same log; a per-worktree ledger would lose every write a lane made at teardown
+  (`basicly-vkh0.8`).
+
+  ## Reporting a record to a person
+
+  **A bare id is unreadable, so never report one alone.** Name the record by its title and
+  carry the id as the address. Owner, on four separate occasions: *"the real titles of features
+  and tasks are more important than IDs"*.
+
+  **Where a board is serving, make the id a link.** `board serve` answers `/record/<id>` and
+  `board --out` writes `record/<id>.html` beside the page, so an id in a report costs one click
+  instead of a second lookup:
+
+  ```markdown
+  [basicly-e2mz.38](http://127.0.0.1:8787/record/basicly-e2mz.38) - open records with no
+  acceptance criteria
+  ```
+
+  Check the board is actually up before linking, and name the port. A link to a dead port is
+  worse than the bare id it replaced.
+
+  ## Reads
+
+  **Opening a session, start with the one report that takes no id.** It composes the
+  reads below with the live grants and the architecture decisions the tree does not yet
+  hold, every line derived — which is what retired the hand-written handover. Its first
+  line is the newest note tagged `[session handover <date>]`, on whichever root the last
+  session closed on (the `session-finish` skill writes it):
+
+  ```sh
+  basicly session start                     # last handover, ready, blocked, live grants, decision targets
+  ```
+
+  **Then the per-question reads.** These resolve the ledger's location themselves, so you
+  never name a path:
+
+  ```sh
+  basicly tracker ready --limit 10          # the ranked ready set: what to work on now
+  basicly tracker blocked                   # each dispatchable record that is not, and why
+  basicly tracker stats                     # the backlog's totals by status
+  basicly tracker show <id>                 # one record's folded state, as JSON
+  basicly tracker list --status open        # the set, as JSON
+  ```
+
+  `ready` is the ordered backlog: priority first, then how many records depend on it. A
+  record that is *blocked* names its open blockers; a record with children is an anchor
+  rather than the work, so it is blocked by construction.
+
+  The loop's own views answer about one unit:
+
+  ```sh
+  basicly loop status <id>                  # phase, worktree, gates, checkpoints, rework
+  basicly policy grant <id>                 # the session's integrity level and budget
+  basicly policy dor <id>                   # Definition-of-Ready readiness
+  ```
+
+  The kit's own CLI does the same with **no engine at all**, for a repo that copied the
+  kit and nothing else. Its ledger directory is the first positional, always:
+
+  ```sh
+  uv run python .basicly/core/kit/tracker/cli.py ready .basicly/ledger
+  uv run python .basicly/core/kit/tracker/cli.py show .basicly/ledger <id>
+  uv run python .basicly/core/kit/tracker/cli.py list .basicly/ledger --status open --limit 20
+  ```
+
+  ## Writes
+
+  Every write goes through the engine seam:
+
+  ```sh
+  basicly tracker write -- update <id> --status in_progress --assignee "$(git config user.email)"
+  basicly tracker write -- update <id> --acceptance-criteria "Given/When/Then ..."
+  basicly tracker write -- comments add <id> "Retro finding: ..."
+  basicly tracker write -- dep add <child-id> <parent-id> -t parent-child
+  basicly tracker write -- close <id> --reason "What was done"
+  basicly tracker write -- create "Title" -t task -p 1 -d "..." --json
+  basicly tracker write -- update <id> --add-label phase-7      # accumulates
+  basicly tracker write -- update <id> --remove-label phase-7
+  ```
+
+  `--add-label`/`--remove-label` accumulate against the record's own set, resolved under
+  the ledger lock; every other `update` flag replaces. A label is how a supervised pass
+  selects its lanes (`basicly loop supervise --label`), so it is the one field two lanes
+  may legitimately write at once.
+
+  **The argv after `--` is still the external tracker's argument grammar, and that is
+  not hidden:** `comments add`, `close --reason`, `dep add`, `update
+  --acceptance-criteria`. The seam translates that grammar into owned events, so the
+  external process is not run and its *vocabulary* has not left. Spell a write the way
+  the list above spells it; a cleaner-looking command does not exist, and inventing one
+  gets the argv refused.
+
+  ## Migrating from another tracker
+
+  A repo arriving with an existing export imports it rather than re-filing by hand:
+
+  ```sh
+  basicly tracker import .beads/issues.jsonl --source beads --dry-run   # writes nothing
+  basicly tracker import .beads/issues.jsonl --source beads
+  ```
+
+  **Source ids are preserved**, which is the property that matters: a commit message
+  referencing an old id still resolves, and the `tracker-commit-msg` hook still accepts
+  it. Unknown source fields carry over verbatim rather than being dropped, and every
+  event records where it came from.
+
+  Three refusals worth knowing before you run it. An **upsert, never a sync**: a record
+  the ledger already holds is not re-created, and a field disagreement is *reported* and
+  left alone. **Absence is never a deletion** — an export cannot express one, so a record
+  the snapshot no longer holds is named, not tombstoned; pass `--deleted <id>` for one you
+  confirmed out of band. And an id the commit gate would refuse is **rejected by name**
+  rather than renumbered, with the rest of the export still landing — so read the report
+  and the exit code, which is non-zero when anything was refused. A re-run is a replay, so
+  an import torn off at the tail completes instead of doubling the history.
+
+  ## Bulk queries: `jq` over the event log
+
+  Counting or auditing the whole tracker means reading the events with `jq`. Three
+  properties of the file have each produced a confident false result:
+
+  - **`record` holds the record id; `id` holds the *event* id** (`<record>#ev-<hash>`).
+    A filter written as `select(.id=="<record>")` matches nothing and reads as absence.
+  - **A record's body lives in its `created` event's payload**, not on every event. The
+    other kinds (`comment`, `status`, `field`, `edge`, `gate`) carry only their own fact.
+  - **A folded record nests its fields under `fields`** — that is the shape the kit CLI's
+    `show`/`list` return, and it is *not* the shape of the raw `created` payload.
+
+  ```sh
+  jq -c 'select(.record=="<id>" and .kind=="created").payload' .basicly/ledger/events-*.jsonl
+  jq -r 'select(.kind=="created")|.record' .basicly/ledger/events-*.jsonl | wc -l
+  jq -r '.kind' .basicly/ledger/events-*.jsonl | sort | uniq -c   # positive control
+  ```
+
+  Run the last one, or any query that must return rows, **before** reporting a zero from
+  one of the first two. An empty `jq` result is ambiguous between "the ledger holds none"
+  and "the filter names the wrong key", and the second is the common case here.
+
+  ## What the tracker refuses
+
+  - **A label write names exactly one record.** `--add-label`/`--remove-label` are
+    resolved against the named record's own set before translation, so an `update`
+    carrying a label flag and two ids is refused — *a label write accumulates against one
+    record's own set ... names 2; issue one write per record*. Every other `update` flag
+    still applies to as many ids as the argv names.
+  - **An untranslatable argv is refused before anything is written.** The translator runs
+    to completion before the append, so a write the ledger cannot record never reaches the
+    store half-done: `update --estimate 5` is refused with *--estimate has no owned-ledger
+    equivalent*, and `dep add <a> <b>` with no `-t` for the same reason — the edge type is
+    part of the fact, not a default.
+  - **A status the record once held is dropped as a replay.** Event ids are content
+    digests, so `update <id> --status open` on a deferred record matches the `open` it
+    was created with and appends nothing; the command still exits 0 and prints *already
+    recorded* (basicly-bj8kks). Reactivate with `--status in_progress`, which is in the
+    ready set, and read the status back with `show` — never the exit code.
+
+  ## Safe Defaults
+
+  - **Never hand-edit an event file, and never delete or reorder a line in one.** The log
+    is append-only and a record is the fold of its events; a hand edit silently changes
+    every derived answer (phase, gates, grants) with nothing to detect it. Correct a
+    record by appending the write that supersedes it.
+  - Always resolve or create a record before doing the work it represents; never
+    reference an id in a commit message that the ledger does not hold — the
+    `tracker-commit-msg` hook builds its id set from `.basicly/ledger/events-*.jsonl` and
+    rejects an unknown one.
+  - Claim with `update <id> --status in_progress` before starting. For work done directly
+    in the base checkout, close the record *before* making the commit that resolves it,
+    then stage the tracker state together with the code in that same commit — never a
+    separate trailing `chore: close <id>` commit with no other content.
+  - **For loop-tracked work the tracker is zero-touch:** the engine commits tracker state
+    itself at provisioning, at landing and at ship. Never stage or commit the ledger
+    yourself on a harness branch (see the `harness-loop` skill).
+  - Never chain a `create` and a `git commit` in one command line with an id you
+    invented: the minted id is random and unpredictable, the hook rejects the unknown
+    one, and a trailing `|| true` swallows that rejection. Run the `create` alone, read
+    the id from its reply, then commit referencing that exact id.
+
+  ## Common Pitfalls
+
+  - **Deciding tracker semantics by grepping the log.** The events are a record, not the
+    interpreter: grants, gate results and derived phase are computed from *ordered*
+    markers under rules a regex cannot see — the last grant or revocation wins, and a
+    grant on a closed root is dead whatever the markers say. A regex once reported
+    `basicly-jr0l` as an L1 grant with a 5M budget where `basicly policy grant
+    basicly-jr0l` reports **L3 with 4M**, because it surfaced an earlier marker. So:
+    **count from the file, interpret through the engine** (`basicly policy grant <id>`,
+    `basicly policy gate <id>`, `basicly loop status <id>`).
+  - **Probing the live tracker leaves events the loop commits.** There is no undo in an
+    append-only log: a throwaway record and its tombstone both stay, and the harness
+    loop's tracker-state commit captures them into project history. Probe against a
+    scratch ledger directory instead — the kit CLI takes the directory as its first
+    argument precisely so it can point somewhere else.
+  - **Expecting a second `dep add` to upgrade an edge's type.** The edge's type is fixed
+    by whichever call recorded it first; a repeat with a different `-t` is a duplicate,
+    not an upgrade, and it still exits `0`. Never read the exit status as "recorded" —
+    read the edge back. This is load-bearing for
+    `supervise.propose_coupling_edges`: a coupling edge first written while a lane was in
+    flight keeps its non-gating type afterwards.
+
+  ## Output Interpretation
+
+  - **Check a command's output shape before parsing it.** Four false conclusions in one
+    session came from reading an answer as data: `show` on an absent record returns
+    `{"found": false}`, whose `.fields.title` is null and reads exactly like a record whose
+    body was lost; and `tracker write -- create` prints prose unless the argv carries
+    `--json`, so piping it through `jq -r '.id'` yields nothing and looks like a create that
+    never ran. That one minted a duplicate record.
+  - Statuses are `open`, `in_progress`, `blocked`, `deferred`, `closed` — there is **no**
+    `rework` status. A rework cycle stays `in_progress` and is tracked by a failing gate
+    result plus a comment, not by a status change.
+  - The ready set is every record that is neither closed nor deferred, has no unclosed
+    blocking dependency and has no children, ranked by the scheduler — **`in_progress` is
+    in it**, because a claimed record is still the work (`differential.is_ready`).
+    `basicly loop status <id>` prints it alongside the blocked set.
+  - Record ids follow `<project-prefix>-<short-code>`; this repo's prefix is `basicly`.
+  - A folded record carries `record`, `status`, `fields`, `comments`, `max_seq`,
+    `tombstoned`, `totals`, `dependencies` and `dependents`. `totals` is the running
+    roll-up (events, attempts, spend) as of the last event, not a separate store. The two
+    edge keys carry **both** directions — what this record depends on, and what depends on
+    it — each edge naming its type and the other record's status. Both are always present,
+    so an empty list means no edge rather than a surface that does not render them.
+
+  ## Repo Conventions
+
+  - Every commit message must reference at least one valid record id (enforced by
+    `.basicly/core/hooks/tracker-commit-msg.py`); conventional commit format is still
+    required separately (enforced by `.basicly/core/hooks/commit-msg.py`).
+  - Reference an id as a parenthetical after the conventional commit description, e.g.
+    `feat(basicly): add fragment loader (basicly-idr)`.
+  - Ids must stay single-hyphen `basicly-<hash>`; a multi-hyphen slug id (e.g.
+    `basicly-my-thing-9li`) is rejected by the commit-msg hook and breaks the
+    id-parenthetical convention. Let the tracker generate the id.
+  - Priority scale (0=Critical, 4=Backlog): use `0`/`1` sparingly for release-blocking or
+    next-up work; `2` for normal work; `3`/`4` for low-urgency/backlog items. Default
+    priority is `2` and default type is `task`.
+  - **The type field has no enum** — it stores whatever string it is given, so a wrong
+    type is accepted silently at create and only bites later. The binding taxonomy is the
+    harness's — the harness work types are `bug`, `chore`, `epic`, `feature`, `task`;
+    anything outside that makes `basicly classify` raise, so the record can never advance
+    through the loop. File documentation work, a question, or a spike as `task`.
+  - A record a lane will build in its own worktree must be one of the leaf types `bug`,
+    `chore`, `task`; `epic` and `feature` decompose into children instead of building.
+  - There is no separate "story"/"sub-task" type. Express hierarchy with a
+    `parent-child` dependency edge instead of inventing a new type.
+
+  ## Trigger Examples
+
+  - Should trigger: "What should I work on next in this repo?"
+  - Should trigger: "Create a record for the flaky test and start working on it."
+  - Should trigger: "How many open records does the tracker hold?"
+  - Should trigger: "I'm about to commit — what tracker id should I reference?"
+  - Should not trigger: "Explain how git rebase works."

@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `test-discipline`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "this test only passes when it runs first"
+    - prompt: "my tests share a fixture and leak state between them"
+    - prompt: "should I assert on a private helper or on what the caller sees"
+  negative:
+    - prompt: "add type hints to this module"
+      owner: python
+    - prompt: "exercise this change the way a consumer would run it"
+      owner: validate-as-consumer

@@ -5,7 +5,7 @@
   "description": "A subagent authored as agent.yaml, composed from slot blocks and projected to .claude/agents/<slug>.md.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "name", "purpose", "triggers", "returns", "posture", "tools", "slots"],
+  "required": ["schema_version", "name", "purpose", "triggers", "returns", "posture", "tier", "tools", "slots"],
   "properties": {
     "schema_version": {
       "const": 1,
@@ -42,10 +42,14 @@
       "minItems": 1,
       "description": "Explicit tool allowlist; agents never silently inherit every tool."
     },
+    "tier": {
+      "enum": ["low", "medium", "high", "maximum"],
+      "description": "Model tier the agent needs, cheapest first (schema.MODEL_TIERS; a tripwire test keeps this enum in step). Required: an omitted tier does not fall back to a cheap model, it inherits the spawning session's, which is usually the most expensive one (factory-loop D26). The concrete model behind each tier is configuration, because a provider model id is not portable across agent families."
+    },
     "model": {
       "type": "string",
       "minLength": 1,
-      "description": "Model alias, full ID, or 'inherit' (the default)."
+      "description": "DEPRECATED: declare 'tier' instead. Kept as a known property (additionalProperties is false here) so catalog-lint can name the replacement rather than emit a bare 'additional properties are not allowed'."
     },
     "claude": {
       "type": "object",

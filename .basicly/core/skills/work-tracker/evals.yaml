@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `work-tracker`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "what work is ready to pick up"
+    - prompt: "claim this issue before I start on it"
+    - prompt: "file a new bug against this repo's tracker"
+  negative:
+    - prompt: "what type and scope belong in this commit subject"
+      owner: conventional-commits
+    - prompt: "keep this change out of my main checkout"
+      owner: worktree-isolation

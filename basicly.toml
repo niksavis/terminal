@@ -26,3 +26,12 @@ modes = ["fast", "full"]
 name = "pytest"
 command = ["uv", "run", "pytest", "-q", "tests"]
 modes = ["full"]
+
+# Skill routing regression gate. `basicly catalog lint` measures the rank-1 rate
+# — how often the intended skill is the top match — and refuses to guess a floor,
+# so this number comes from our own measured baseline of 41/46 = 89.1% at
+# basicly 0.12.0. Set below it to absorb a single route regression while still
+# catching two. The floor ratchets: lint refuses a later value below the
+# high-water mark, so raise it as routing improves, never lower it to go green.
+[catalog]
+rank1_floor = 0.85

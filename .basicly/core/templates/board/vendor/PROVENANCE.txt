@@ -1,0 +1,28 @@
+bootstrap, vendored (basicly-lywzp71).
+
+package   bootstrap
+version   5.3.8
+licence   MIT, verbatim in LICENSE beside this file
+upstream  https://github.com/twbs/bootstrap
+tarball   https://registry.npmjs.org/bootstrap/-/bootstrap-5.3.8.tgz
+integrity sha512-HP1SZDqaLDPwsNiqRqi5NcP0SSXciX2s9E+RyqJIIqGo+vJeN5AJVM98CXmW/Wux0nQ5L7jeWUdplCEf0Ee+tg==
+
+The same version is pinned as an exact dev dependency in `package.json`, and the integrity
+above is the `integrity` field `package-lock.json` records for it. `bootstrap.min.css` is
+`dist/css/bootstrap.min.css` from that release, byte for byte; its first comment names the
+version, and `tests/test_board_assets.py` asserts that version against the pin so a refresh
+that moves one and not the other fails.
+
+Only the compiled stylesheet is committed. No script: the board carries no JavaScript, so
+bootstrap's bundle, and popper it peers on, are not vendored. No source Sass either: the
+board keeps its own palette by overriding bootstrap's CSS custom properties in the page,
+which needs no build step.
+
+The page references the stylesheet by a relative path, never an origin: the server answers
+`/vendor/bootstrap.min.css` and `board --out` writes `vendor/` beside the pages, so a page
+opened from disk or from the server renders with no network.
+
+To refresh: bump the pin in `package.json`, `npm install`, copy
+`node_modules/bootstrap/dist/css/bootstrap.min.css` and `node_modules/bootstrap/LICENSE`
+here, update the version and integrity above, and re-run
+`uv run pytest tests/test_board_assets.py`.

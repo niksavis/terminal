@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+token_cost:
+  claude: 188
+  codex: 188
+  copilot: 187
+id: external-facts
+description: Fetch a third-party interface fact instead of recalling it, and never read your own empty probe as proof.
+category: decisions
+priority: high
+applies_to: [all]
+tags:
+- evidence
+- external
+status: active
+title: External Facts
+body: |
+  - **Your training data has a cutoff and third-party interfaces move.** A flag, field,
+    model id, price, limit or version may have changed. Never answer from recall: grep
+    our own adapter, then the vendor's live docs. `interface-facts` is the long form.
+  - **An empty probe is not evidence of absence.** A search returning nothing is
+    ambiguous between "absent" and "wrong probe", and the second is the common case.
+    Run a **positive control** that must return something before you report a zero; if
+    the control is empty too, the zero belongs to the probe.
+  - **A number in a claim is derived twice, by paths sharing no step.** One green test
+    on one path is still one path; treat a disagreement as an instrument fault first.

@@ -5,7 +5,12 @@
   "description": "A skill authored as skill.yaml, projected to SKILL.md at target roots.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "name", "description", "instructions"],
+  "required": [
+    "schema_version",
+    "name",
+    "invocation",
+    "instructions"
+  ],
   "properties": {
     "schema_version": {
       "const": 1,
@@ -16,19 +21,51 @@
       "minLength": 1,
       "description": "Skill slug/name; must match the containing directory name."
     },
+    "invocation": {
+      "type": "string",
+      "enum": [
+        "model",
+        "user"
+      ],
+      "description": "Who can reach this entry. 'model' keeps a description and is advertised to the agent, paying context load every turn. 'user' carries no description and is reached by a human typing it."
+    },
     "description": {
       "type": "string",
       "minLength": 1,
-      "description": "One-line trigger description used for discovery."
+      "description": "Agent Skills frontmatter: what the skill does and when to use it. Capped at 1536 characters because that is where Claude Code truncates a listing entry (measured 2.1.226, 2026-08-09) — past it the tail is silently cut, and the tail is the 'use when' half that does the routing.",
+      "maxLength": 1536
     },
     "instructions": {
       "type": "string",
       "minLength": 1,
       "description": "Markdown body rendered into the projected SKILL.md."
     },
+    "covers": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "description": "The unit work this skill covers, declared rather than inferred: the dispatch brief names a skill whose declaration matches the unit being dispatched. An absent key means 'any' on that axis, so at least one key is required \u2014 a covers matching everything would reach every brief and stop routing anything. basicly-internal; NOT emitted into SKILL.md frontmatter. The vocabularies are enforced by catalog-lint against basicly.config.WORK_TYPES and basicly.roles.ROLE_BY_PHASE.",
+      "properties": {
+        "work_types": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Tracker work types this skill covers (basicly.config.WORK_TYPES)."
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Dispatch phases this skill covers (the keys of basicly.roles.ROLE_BY_PHASE)."
+        }
+      }
+    },
     "technologies": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1},
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal. basicly-internal; NOT emitted into SKILL.md frontmatter."
     },
     "license": {
@@ -49,8 +86,20 @@
     },
     "metadata": {
       "type": "object",
-      "additionalProperties": {"type": "string"},
+      "additionalProperties": {
+        "type": "string"
+      },
       "description": "Optional Agent Skills frontmatter: arbitrary string key/value map."
+    },
+    "claude": {
+      "type": "object",
+      "description": "Claude-only frontmatter passthrough (paths, context, ...); projected into .claude/skills only, so the open-standard root keeps exactly the portable Agent Skills fields. Mirrors agent.schema.json's fence."
+    },
+    "token_cost": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "integer", "minimum": 0 },
+      "description": "Declared always-on token cost, one entry per surface this source projects to: a target name for a fragment, `listing` for a skill. Authoring metadata, never emitted into projected output. `basicly catalog lint` measures the real cost and fails a declaration that disagrees by more than its tolerance; an absent declaration is reported and not refused until the release named in basicly.catalog_token_cost.REQUIRED_FROM_VERSION, because the catalog schema is a contract other repositories author against. The zero is the informative half - a scoped fragment costs AGENTS.md its whole body and the other always-on files nothing, so one figure would be wrong for two targets out of three."
     }
   }
 }

@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `node`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "npx resolves the wrong binary inside my git hook"
+    - prompt: "install the npm packages this repo needs"
+    - prompt: "the markdownlint hook fails from a background job"
+  negative:
+    - prompt: "annotate this module's parameters and return types"
+      owner: python
+    - prompt: "mount access under /mnt/c is painfully slow"
+      owner: wsl

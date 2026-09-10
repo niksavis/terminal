@@ -1,5 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
+token_cost:
+  claude: 209
+  codex: 209
+  copilot: 208
 id: non-interactive-shell
 description: Avoid shell commands that hang waiting on interactive confirmation.
 category: tools
@@ -13,3 +17,5 @@ status: active
 body: |
   - Prefer cross-platform implementations over shell-specific behavior when a choice exists.
   - Use non-interactive flags (`cp -f`, `mv -f`, `rm -f`, package-manager `-y`, `ssh -o BatchMode=yes`) for ops that can hang on a prompt — some shells alias these to interactive mode.
+  - Never loop over an unquoted variable (`for x in $LIST`): zsh does not word-split, so it runs once with the whole string and the silent no-op looks like success. Use an inline list, an array (`for x in "${arr[@]}"`), or one batch command — then check the count actually changed.
+  - Name the expected site count before a scripted multi-site replace, and reconcile after. More sites than named means it also matched the definition the replacement refers to, rewriting it into a call to itself; a count delta is a stop, not a footnote.

@@ -1,0 +1,147 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 83
+name: release-process
+invocation: model
+description: Cut a release of this repository with `basicly release`, then do the three steps that command deliberately leaves to a human - deciding the version, pushing, and replacing the release page with the highlights. Use when asked to cut a release, tag a version, prepare release notes, or check whether a release published.
+instructions: |
+  # Release Process
+
+  ## Run `basicly release` — never hand-run the steps it performs
+
+  Everything up to and including the annotated tag is one command:
+
+  ```sh
+  basicly release 0.6.0 --issue <record-id> --dry-run   # pre-flight; writes nothing
+  basicly release 0.6.0 --issue <record-id>             # bump, pins, regen, changelog, commit, tag
+  ```
+
+  It bumps the single-sourced `__version__`, regenerates the version-stamped
+  projections, rewrites the `vX.Y.Z` install pins in `README.md`,
+  `site/index.html`, both `.scripts/bootstrap.*` shims and every page under
+  `docs/how-to/` — a glob, because the enumeration left two pages four releases
+  stale — assembles the `changelog.d/` fragments into the dated `CHANGELOG.md`
+  section, commits, and creates the annotated tag.
+
+  It refuses **before writing anything** on a dirty tree, a non-forward version,
+  an existing tag, a bad date, an unknown `--issue`, a commit subject the
+  `commit-msg` gate would reject, or a linked worktree (tags are shared with the
+  primary checkout, so a worktree release would tag unmerged code). A failure
+  after the first write restores the tree, so a half-released repo never needs a
+  `git reset --hard`.
+
+  ### Exercise every declared check first, in both modes
+
+  It also refuses a tag while any `[[verify.checks]]` entry has no recorded
+  execution (`basicly-irrm`), and the execution ledger is written by `basicly
+  verify` itself — a check is witnessed by the engine that ran it and watched it
+  pass, not by anyone having typed its executable (`basicly-3yi3`). So a fresh
+  clone, or any checkout whose git-ignored `.basicly/usage/` is empty, refuses the
+  tag until the gates have actually run.
+
+  **One mode is not enough**, because a check is witnessed only in a mode that
+  declares it:
+
+  ```sh
+  uv run basicly verify --mode full   # then
+  uv run basicly verify --mode fast   # pyright is declared only by fast and staged
+  ```
+
+  Confirm it cleared with the dry run, which reports every blocking reason at once
+  and writes nothing:
+
+  ```sh
+  uv run basicly release <next-version> --issue <record-id> --dry-run
+  ```
+
+  **The dry run checks preconditions, not the commit** (basicly-vwh3aq, open). The
+  assembled tree differs from the working tree — fragments deleted, version bumped,
+  projections re-stamped — and only the commit gates see it; a dry run reported zero
+  blocking reasons twice on 2026-08-28 while the real commit was refused twice. Until
+  that record lands, prove the release in a scratch clone before handing anyone the
+  command: clone, `uv sync --group dev`, copy `node_modules` from base, apply the
+  release steps, `git add -A`, `uv run pre-commit run --hook-stage pre-commit`, then
+  `uv run pytest -q`. Zero modified files after the hooks is part of the pass: the
+  framework fails a hook that edits a file even at exit 0. The whole suite is part of
+  it too: the workflow checks out the tag, so a test fixed one commit later never
+  reaches it.
+
+  Do **not** clear a refusal by running the named tool by hand: that mints a witness
+  for a capability the gate never observed working, which is the defect the
+  engine-side witness replaced. Fix it by running the mode that declares the check,
+  or by dropping the claim.
+
+  `--autonomous --root <epic>` is the delegated form. It needs an **L3** grant
+  inside its spend ceiling with green lights-out preconditions; pass
+  `--shipping <node>` to name the node whose gates are checked, because an open
+  epic's own verify gate is never green.
+
+  ### The notes come from `changelog.d/`, and they must be there first
+
+  Each lane leaves its entry in `changelog.d/<bead-id>.<category>.md` rather than
+  editing `CHANGELOG.md` — one file per lane, so two lanes can never collide on one
+  anchor (`basicly-4746`). The run folds every fragment into the `## [Unreleased]`
+  body under its Keep a Changelog heading, ordered by category then filename so the
+  section is byte-identical on any machine, promotes that body into the dated
+  `## vX.Y.Z - <date>` section, deletes the fragments in the same commit, and leaves
+  `[Unreleased]` empty. The commit-subject dump is only the fallback for a release
+  with neither fragments nor curated prose.
+
+  Check what will publish before you tag — the dry run lists the fragments in the
+  order they assemble:
+
+  ```sh
+  ls changelog.d/
+  uv run basicly release <next-version> --issue <record-id> --dry-run
+  ```
+
+  A **hand-curated `[Unreleased]` body still publishes**, beside the fragments and
+  keeping its position, so editing the changelog directly is never broken; a
+  fragment whose category the operator already opened is appended to that section
+  rather than opening a duplicate heading. Anything the run cannot place refuses the
+  tag before the first byte is written and names itself: an empty fragment, a
+  filename that is not `<bead-id>.<category>.md`, or a changelog with no
+  `[Unreleased]` heading. Do not tidy such a file away — a lane's release note is
+  never allowed to vanish quietly.
+
+  Writing the notes afterwards does not work and is the trap this replaced
+  (`basicly-m3od.1`): the commit and the annotated tag are one step, and
+  `.github/workflows/release.yml` reads `CHANGELOG.md` from the **tagged** commit,
+  so anything added in a later commit never reaches the published release body. A
+  re-run keeps an already-curated section rather than overwriting it.
+
+  ## The three steps it does not do
+
+  ### 1. Decide the version
+
+  Pass it explicitly. The command refuses one that does not move forward, but it
+  will not choose major, minor, or patch for you.
+
+  ### 2. Push
+
+  Publishing is irreversible, so the command never pushes. Run the two commands it
+  prints:
+
+  ```sh
+  git push origin main
+  git push origin vX.Y.Z
+  ```
+
+  The tag push triggers `.github/workflows/release.yml`, which builds the page from
+  the tag's `CHANGELOG.md` section - the summary, the counts, the link, the
+  `BREAKING` entries, the pinned `uvx` install line - and creates the GitHub release.
+  Confirm the run went green and the page reads under 6,000 characters.
+
+  ### 3. Nothing - the page is built from the summary you wrote before the cut
+
+  The workflow publishes the **summary**, never the section: the prose under
+  `## [Unreleased]` above its first `###` heading, the entry counts per category, a
+  link to the section at the tag, every entry whose bold lead starts with `BREAKING`,
+  and the pinned install line (`.scripts/generate_release_notes.py`, basicly-xsdvp6).
+  So the summary is written **before** `basicly release`, and the command refuses a
+  cut whose `[Unreleased]` carries none. Write it as v0.9.0's page reads: one
+  paragraph on what this release changes for a consumer, then themed bullets, under
+  ~6,000 characters, every highlight naming a fragment's record id. Never edit the
+  page afterwards with `gh release edit`; a page that disagrees with its changelog
+  section is the defect this step replaced.

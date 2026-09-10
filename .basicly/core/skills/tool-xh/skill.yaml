@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-xh
-description: Use xh as a user-friendly HTTP client for API testing and response inspection. Trigger when quick REST calls with clean defaults are needed.
+invocation: user
 instructions: |
   # tool-xh
 

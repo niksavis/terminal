@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `catalog-authoring`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "I want to add a new skill to the catalog"
+    - prompt: "should this guidance be an always-on fragment or an on-demand skill"
+    - prompt: "edit the yaml source behind a fragment and rebuild the projection"
+  negative:
+    - prompt: "format the subject line of my commit"
+      owner: conventional-commits
+    - prompt: "what phase is this tracked issue in"
+      owner: harness-loop

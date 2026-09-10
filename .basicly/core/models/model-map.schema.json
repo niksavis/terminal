@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/model-map.schema.json",
+  "title": "basicly model map",
+  "description": "A capability tier resolved per vendor to a concrete model, and per surface to that surface's own spelling of it with its own published cost and token limits. Availability, spelling and cost all vary by surface, so all three axes are present. A standalone artifact: consuming it needs a JSON parser and nothing else.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "concept",
+    "generated_by",
+    "tier_order",
+    "general_model_rule",
+    "vendors",
+    "surfaces",
+    "provenance",
+    "tiers"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Version of this artifact's shape, independent of the generator's version. Bumped only when a consumer must change.",
+      "const": 3
+    },
+    "concept": {
+      "description": "Self-describing prose so the idea travels with the data.",
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_by": {
+      "description": "Repository-relative path of the generator. The map is generated and must not be hand-edited.",
+      "type": "string",
+      "minLength": 1
+    },
+    "tier_order": {
+      "description": "The tier vocabulary, cheapest first.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "general_model_rule": {
+      "description": "The capability floor every anchor cleared. Without it a sweep can pick an image, TTS, embedding, realtime or video model as a tier.",
+      "type": "object",
+      "required": ["require_text_input", "require_text_only_output", "require_tool_call"],
+      "additionalProperties": false,
+      "properties": {
+        "require_text_input": { "type": "boolean" },
+        "require_text_only_output": { "type": "boolean" },
+        "require_tool_call": { "type": "boolean" }
+      }
+    },
+    "vendors": {
+      "description": "Each model publisher and the surfaces its models are resolved onto, keyed by models.dev provider id.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["name", "surfaces"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "surfaces": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "surfaces": {
+      "description": "Each surface described once, keyed by the models.dev provider id serving it. 'verified' states whether the id spelling was actually exercised against that surface or is taken from models.dev on trust.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["consumed_by", "accepts", "verified"],
+        "additionalProperties": false,
+        "properties": {
+          "consumed_by": { "type": "string", "minLength": 1 },
+          "accepts": { "type": "string", "minLength": 1 },
+          "verified": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "provenance": {
+      "description": "Upstream identity of the fetched document. models.dev publishes no git commit sha, so the payload digest plus the CDN etag is the strongest available stamp; no commit-sha field is claimed.",
+      "type": "object",
+      "required": ["source_url", "fetched_date", "payload_sha256", "payload_bytes", "note"],
+      "additionalProperties": false,
+      "properties": {
+        "source_url": { "type": "string", "format": "uri" },
+        "fetched_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "payload_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "payload_bytes": { "type": "integer", "minimum": 1 },
+        "etag": {
+          "description": "CDN entity tag when the response carried one.",
+          "type": "string",
+          "minLength": 1
+        },
+        "note": { "type": "string", "minLength": 1 }
+      }
+    },
+    "tiers": {
+      "description": "One entry per tier in tier_order.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["vendor_order", "vendors"],
+        "additionalProperties": false,
+        "properties": {
+          "vendor_order": {
+            "description": "The order this tier's vendors are tried when a spawn pins none. Walk it and take the first vendor whose cell for your surface is available; a tier with no available vendor resolves to nothing, never to another tier. Lists every key of 'vendors' exactly once.",
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "vendors": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": { "$ref": "#/$defs/vendorTier" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "vendorTier": {
+      "description": "One vendor's answer for one tier: the anchored model, and how each surface serves it.",
+      "type": "object",
+      "required": ["anchor", "model_name", "family", "reasoning", "surfaces"],
+      "additionalProperties": false,
+      "properties": {
+        "anchor": {
+          "description": "The reviewed anchor id, in the vendor's own spelling.",
+          "type": "string",
+          "minLength": 1
+        },
+        "model_name": {
+          "description": "The upstream display name the per-surface ids were joined on. The \" (latest)\" suffix is part of the key and is not stripped.",
+          "type": "string",
+          "minLength": 1
+        },
+        "family": {
+          "description": "Upstream model family, corroborating the name join.",
+          "type": ["string", "null"]
+        },
+        "reasoning": {
+          "description": "Recorded, deliberately not required: requiring it would exclude general tool-calling models such as gpt-4o.",
+          "type": ["boolean", "null"]
+        },
+        "collapse": {
+          "description": "Present when this vendor ships a shorter ladder and two tiers intentionally resolve to the same model. Declared in anchors.yaml and cross-checked against the ids, so it can never be a silent duplicate row.",
+          "type": "object",
+          "required": ["same_model_as_tier", "reason"],
+          "additionalProperties": false,
+          "properties": {
+            "same_model_as_tier": { "type": "string", "minLength": 1 },
+            "reason": { "type": "string", "minLength": 1 }
+          }
+        },
+        "surfaces": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "oneOf": [{ "$ref": "#/$defs/available" }, { "$ref": "#/$defs/unavailable" }]
+          }
+        }
+      }
+    },
+    "available": {
+      "description": "The surface serves this model. 'model' is the value to write into that surface's model field.",
+      "type": "object",
+      "required": ["status", "model", "cost_usd_per_mtok", "limit_tokens"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "const": "available" },
+        "model": { "type": "string", "minLength": 1 },
+        "cost_usd_per_mtok": {
+          "description": "This surface's own published price. It is NOT a per-vendor constant: a broker can resell the same model at a markup.",
+          "type": "object",
+          "required": ["input", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "input": { "type": "number", "minimum": 0 },
+            "output": { "type": "number", "minimum": 0 }
+          }
+        },
+        "limit_tokens": {
+          "type": "object",
+          "required": ["context", "output"],
+          "additionalProperties": false,
+          "properties": {
+            "context": { "type": "integer", "minimum": 1 },
+            "input": {
+              "description": "Provider-imposed input cap. Optional: only some providers publish one, and not for every model. Where it is absent, context governs the input side.",
+              "type": "integer",
+              "minimum": 1
+            },
+            "output": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "upstream_last_updated": { "type": ["string", "null"] }
+      }
+    },
+    "unavailable": {
+      "description": "The surface serves no model matching this tier's anchor. There is deliberately no 'model' key: a consumer reading it fails loudly instead of receiving a different tier's model, which would be a silent demotion.",
+      "type": "object",
+      "required": ["status", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "const": "unavailable" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

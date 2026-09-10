@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-wget
-description: Use wget for robust non-interactive downloads, retries, and mirror-style fetch operations. Trigger when reliable file retrieval or resumable downloads are needed.
+invocation: user
 instructions: |
   # tool-wget
 

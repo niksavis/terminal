@@ -1,5 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
+token_cost:
+  claude: 150
+  codex: 150
+  copilot: 150
 id: core-rules
 description: Core rules that apply to all work in this repo.
 category: project
@@ -11,11 +15,11 @@ tags:
 - quality
 status: active
 body: |
-  - Keep diffs minimal; avoid unrelated refactors.
-  - Solve the stated requirement only — no speculative abstractions or unrequested config.
-  - Reuse before reinventing: prefer an existing helper, tool, or skill over new code or a hand-rolled equivalent.
-  - Fix the root cause, not the symptom: check other call sites before calling a single-site patch complete.
-  - Back claims with evidence (files read, commands run, tests).
-  - Keep code clean: no dead code, debug prints, or silent error swallowing.
-  - Match existing style and naming conventions in touched files.
-  - Use deterministic tests; add regression tests for bug fixes.
+  - Minimal diffs; no unrelated refactors.
+  - Solve the stated requirement only — no speculative abstractions, no unrequested config.
+  - Reuse > reinvent: prove a capability absent before building it; the authority is the code that reads it, not the docs or `--help`.
+  - Root cause, not symptom: check other call sites before calling a single-site patch complete.
+  - Back claims with evidence: files read · commands run · tests.
+  - No dead code, debug prints, or silent error swallowing.
+  - Match the style + naming of touched files.
+  - Deterministic tests; a bug fix ships a regression test.

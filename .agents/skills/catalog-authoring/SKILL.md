@@ -34,7 +34,9 @@ gate rejects it.
 2. Fill in `name` (must equal the slug), a strong one-line `description` (the
    discovery trigger — state *when* to use it), and the `instructions` body as
    a `|` literal block scalar (markdown, indented two spaces).
-3. Project + verify: `basicly skills-build` then `basicly skills-check`.
+3. Project + verify: `basicly skills-build` then `basicly skills-check` —
+   bare, both write and check every default root, which is what the
+   `projection-skills` gate runs.
 
 ## Author a fragment
 
@@ -96,3 +98,34 @@ instructions: |
 `basicly catalog lint` schema-validates every source, forbids `.md`-named
 sources under the catalog, and forbids non-`.yaml` YAML there. It runs on
 commit and in CI — run it locally before committing.
+
+## Read the composed selection before hunting a projection by hand
+
+`basicly catalog dump` prints what the sources compose to: every planned output
+with the two axes the output itself declares, every item it selected with the
+core or `.basicly-local` file that item was read from, and each overlay
+override named beside the core source it shadows. A wrong projection is a
+selection question, and this is the answer — `build` prints only the files it
+wrote.
+
+## Verify against what the agent is told, not the file you edited
+
+The projected file is **not** the delivered artifact. A host may substitute or
+fall back, so a change that reads correctly in the projection can land
+differently in the agent's context — and a size claim measured on the source can
+be a fraction of the real one.
+
+The concrete case (`basicly-m4zv.1`): a user-invoked skill projects no
+`description:`, and Claude Code then fills that slot from the **first body
+line**, which is the generated drift marker. The measured 430-character saving
+was really 157, and the entry went on advertising a string — just a useless one.
+It surfaced only because the change showed up in the authoring session's own
+skill list, after the commit.
+
+So when a change alters what an agent is *told*:
+
+- Read it back where the agent reads it — the advertised skill list, the
+  always-on file as loaded, the rule as injected — not the file you edited.
+- Re-measure any size or cost claim on the delivered artifact before writing a
+  figure into a design document. A number measured on the source is a guess
+  about the host.

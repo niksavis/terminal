@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `session-finish`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "we are done for today, wrap up"
+    - prompt: "summarize what changed and what is still open"
+    - prompt: "run the retro before I stop working"
+  negative:
+    - prompt: "what is the supervisor waiting on"
+      owner: harness-client
+    - prompt: "prepare and tag the next version"
+      owner: release-process

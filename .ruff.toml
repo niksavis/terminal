@@ -2,6 +2,12 @@ target-version = "py314"
 line-length = 100
 indent-width = 4
 
+# .basicly/core is vendored upstream code, replaced wholesale by `basicly
+# install`. Linting it reports defects we cannot fix and that the next install
+# would undo: 0.12.0's hooks carry `# noqa: BLE001` for a rule this config does
+# not select, so RUF100 failed the verify gate on files we do not own.
+extend-exclude = [".basicly/core"]
+
 [lint]
 select = [
     "E",   # pycodestyle errors

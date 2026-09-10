@@ -4,17 +4,37 @@
 # `permissions.deny` patterns Claude Code enforces at tool time, projected into
 # every consumer's co-owned agent config by `basicly permissions-build`.
 # `copilot` (basicly-lqz5) lists native `--deny-tool` specs the copilot runner
-# injects at invocation time, since Copilot has no config-file deny
-# (github/copilot-cli#2398). Both are authored here once so a consumer inherits
+# injects at invocation time. A config file does exist — approvals are saved to
+# `~/.copilot/permissions-config.json` — but it cannot express a *deny*: GitHub's
+# own docs state it supports no deny rules, ask rules, default modes, URL rules,
+# tool filtering or repo-local shared policy, and directs you to `--deny-tool` for
+# all of them. github/copilot-cli#2398 asks for one and is still open (re-verified
+# 2026-08-06). Stated as "cannot express deny" rather than "has no config file"
+# deliberately: a reader who finds that file would otherwise read this note as
+# stale and drop the injection. Invocation-time injection is also the *stronger*
+# form, not merely the available one — a deny takes precedence over an allow even
+# under `--allow-all` and even over a matching saved approval, so a stale approval
+# on someone's machine cannot override it. Both are authored here once so a consumer inherits
 # the guardrail on install instead of only the dogfooding repo having it.
 #
 # Copilot mapping is best-effort: `--deny-tool='shell(<prefix>)'` matches a
 # command by token PREFIX with no infix wildcard (verified against copilot CLI
 # v1.0.70), so it cannot express the claude globs faithfully — flag-reordered or
 # variant spellings (e.g. `rm -r -f`) slip through, and the `.env` file
-# read/edit rules have no copilot form at all, so they carry no `copilot` list.
+# read/edit rules have no path-scoped copilot form, so they carry no `copilot`
+# list: `--deny-tool=read` is a real deny name (probed 2026-07-26, see
+# runner._DECIDER_DENY_COPILOT) but takes no path argument, so the only copilot
+# form of one `.env` rule would deny every read a working agent needs.
 # Codex sandbox/approval defaults remain invocation-only too (basicly-t0kt,
 # --sandbox/-a), not yet wired.
+#
+# So this list is a PARTIAL backstop, never the source of a prohibition
+# (basicly-tcmy.10). The `require-explicit-confirmation` fragment carries the
+# rule; entries here only block what a given target can express. Notably
+# `git checkout -- <path>`, `git restore` and `git stash` are equally
+# destructive and are not denied on any target — they need confirmation all the
+# same. Do not infer permission from the absence of an entry, and do not delete
+# a fragment bullet because no rule here mirrors it.
 deny:
   - id: destructive-rm
     description: block recursive force-remove of files

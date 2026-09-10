@@ -50,6 +50,12 @@
       "items": {"type": "string", "minLength": 1},
       "description": "Commands/tools that mechanically enforce this rule (§3.1); each must be cited in the body."
     },
-    "body": {"type": "string", "minLength": 1}
+    "body": {"type": "string", "minLength": 1},
+    "token_cost": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"type": "integer", "minimum": 0},
+      "description": "Declared always-on token cost, one entry per surface this source projects to: a target name for a fragment, `listing` for a skill. Authoring metadata, never emitted into projected output. `basicly catalog lint` measures the real cost and fails a declaration that disagrees by more than its tolerance; an absent declaration is reported and not refused until the release named in basicly.catalog_token_cost.REQUIRED_FROM_VERSION, because the catalog schema is a contract other repositories author against. The zero is the informative half - a scoped fragment costs AGENTS.md its whole body and the other always-on files nothing, so one figure would be wrong for two targets out of three."
+    }
   }
 }

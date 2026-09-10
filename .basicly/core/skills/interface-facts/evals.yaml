@@ -1,0 +1,15 @@
+# Tier-2 routing evidence for `interface-facts`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "check the vendor's current documentation before I hard-code this"
+    - prompt: "what flags does that third-party cli actually accept today"
+    - prompt: "confirm the price and limit rather than recalling them"
+    - prompt: "is there a machine readable version of this vendor documentation i can fetch"
+  negative:
+    - prompt: "cut a version of this repository"
+      owner: release-process
+    - prompt: "keep this change out of my main checkout"
+      owner: worktree-isolation

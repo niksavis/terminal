@@ -1,9 +1,9 @@
 {
   "version": "1",
-  "generated_at": "2026-07-23T06:36:49.855245+00:00",
+  "generated_at": "2026-09-10T21:30:27.212898+00:00",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:6dc1bcc9262deab9dd555d19d93b324e668ae6164c5197d18f769a3e36312443",
+      "hash": "sha256:83b058f7752a30317f639f91351ad320b0bfeb216c524f3d10dd39696d6caab1",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -12,6 +12,7 @@
         "secure-coding",
         "git-discipline",
         "decision-protocol",
+        "external-facts",
         "core-rules",
         "harness-loop",
         "overlay-authoring",
@@ -20,18 +21,53 @@
         "claude-defaults",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell",
-        "tool-usage"
+        "non-interactive-shell"
+      ]
+    },
+    ".claude/rules/model-tier-routing.md": {
+      "hash": "sha256:38ac3ee1e7e2f92ee368d3355cb64911ee16aae41ecfdc2a347a45f428f31324",
+      "source_fragments": [
+        "model-tier-routing"
+      ]
+    },
+    ".claude/rules/external-review.md": {
+      "hash": "sha256:128403121281681958ba1ffdbfab5a6672298fd27d11f43e5a576f2201240228",
+      "source_fragments": [
+        "external-review"
+      ]
+    },
+    ".claude/rules/code-is-authoritative.md": {
+      "hash": "sha256:30e39d718d8697190c970297d200f6a3b94f2fa9e3de4ba6f4a145be83f102c1",
+      "source_fragments": [
+        "code-is-authoritative"
+      ]
+    },
+    ".claude/rules/rendered-surfaces.md": {
+      "hash": "sha256:14631afb9634906888892dc3d62f088050eb53dfca9bf16a61bc2efc4367cad3",
+      "source_fragments": [
+        "rendered-surfaces"
+      ]
+    },
+    ".claude/rules/platform-hermetic-tests.md": {
+      "hash": "sha256:c9df53f8b982f03593df5b64b81dd40cba3ed889e744e962b3facc32039301d3",
+      "source_fragments": [
+        "platform-hermetic-tests"
       ]
     },
     ".claude/rules/python-style.md": {
-      "hash": "sha256:e9216b8ec87641844245836cd7318211744e6c7c31cc89cfa96b84042f39ec40",
+      "hash": "sha256:827487ce46f964f2fa01d9f82a4dba85fcdf1815de46c56fa5107f498128b02d",
       "source_fragments": [
         "python-style"
       ]
     },
+    ".claude/rules/release-fragments.md": {
+      "hash": "sha256:76e94271d789eeec59208a34335b11e508c2cf270daff2f2cad1f9da1aff574a",
+      "source_fragments": [
+        "release-fragments"
+      ]
+    },
     "AGENTS.md": {
-      "hash": "sha256:479751599181eaa54f575eea2696c04a28770c2a1c154d326ab04aa2a82a20d3",
+      "hash": "sha256:c1d09774ad1d4e4e64c2702159cab6fb4ccc6325115de08b2dfc608bd2f115d8",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -40,20 +76,26 @@
         "secure-coding",
         "git-discipline",
         "decision-protocol",
+        "external-facts",
+        "model-tier-routing",
+        "external-review",
+        "code-is-authoritative",
         "core-rules",
         "harness-loop",
         "overlay-authoring",
         "quality-gate",
+        "rendered-surfaces",
         "use",
+        "platform-hermetic-tests",
         "python-style",
+        "release-fragments",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell",
-        "tool-usage"
+        "non-interactive-shell"
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:ae2d1fa9c6e26e339b83bb3022d4ad3ed1a0628d2276b6a59158641cdd012853",
+      "hash": "sha256:fe14720683e54c9e3ef5472430e72020e46a9c09b545ef5a525bdf1e64591230",
       "source_fragments": [
         "require-explicit-confirmation",
         "knowledge-priming",
@@ -62,6 +104,7 @@
         "secure-coding",
         "git-discipline",
         "decision-protocol",
+        "external-facts",
         "core-rules",
         "harness-loop",
         "overlay-authoring",
@@ -70,8 +113,7 @@
         "copilot-defaults",
         "self-improvement-retro",
         "session-completion",
-        "non-interactive-shell",
-        "tool-usage"
+        "non-interactive-shell"
       ]
     }
   }

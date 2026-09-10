@@ -1,0 +1,28 @@
+# Behavioral rubric for a task track (basicly-kjc5.19).
+# Selected when a bead's work type is `task` — the most common leaf class, which
+# had no rubric at all, so a lane's required validate gate passed having
+# evaluated nothing. See bug.rubric.yaml for the check-kind conventions.
+id: task-behaviors
+description: Behaviors expected of a task change.
+applies_to:
+  - task
+checks:
+  - id: acceptance-criteria-evidenced
+    question: >-
+      Does the change evidence every acceptance criterion recorded on the bead,
+      without crediting a criterion the diff does not show?
+    kind: judged
+  - id: tests-cover-new-behavior
+    question: >-
+      Where the change alters behavior, does it add or update a test that would
+      fail without the change?
+    kind: judged
+  - id: within-declared-scope
+    question: >-
+      Does the change stay inside the bead's declared scope, with no unrelated
+      refactor carried along?
+    kind: judged
+  - id: gates-green
+    question: Do the repository's configured verify checks pass?
+    kind: deterministic
+    verify_mode: full

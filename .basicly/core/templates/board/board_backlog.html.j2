@@ -1,0 +1,186 @@
+{#- Only an id the document lists a unit for is a link, for `board_page.html.j2`'s reason:
+    the page behind one is drawn from that unit row, so any other id would print a link to a
+    page nobody writes. #}
+{%- macro rec(ident, text) -%}
+{%- if ident in linkable %}<a class="rec" href="{{ record_dir }}/{{ ident }}{{ record_ext }}">{{ text }}</a>{% else %}{{ text }}{% endif -%}
+{%- endmacro -%}
+<!doctype html>
+<html lang="en" data-bs-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>the backlog — basicly board</title>
+    <link rel="stylesheet" href="{{ stylesheet }}" />
+    <style>
+{% include "board_theme.css.j2" %}
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 14px;
+        padding: 16px 20px 40px;
+      }
+      a {
+        color: inherit;
+      }
+      a.rec {
+        color: var(--indigo);
+        text-decoration: none;
+      }
+      a.rec:hover,
+      a.rec:focus {
+        text-decoration: underline;
+      }
+      .top {
+        align-items: baseline;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 6px;
+      }
+      .top h1 {
+        color: var(--text-bright);
+        font-size: 18px;
+      }
+      .age,
+      .schema {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .totals {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 13px;
+        margin-bottom: 14px;
+      }
+      .totals b {
+        color: var(--text-bright);
+      }
+      .note {
+        border-left: 3px solid var(--amber);
+        color: var(--amber);
+        margin-bottom: 12px;
+        padding-left: 10px;
+      }
+      .feature {
+        margin-top: 18px;
+      }
+      .feature > h2 {
+        align-items: baseline;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-bright);
+        display: flex;
+        font-size: 15px;
+        gap: 10px;
+        justify-content: space-between;
+        padding-bottom: 4px;
+      }
+      .feature .of {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 400;
+        white-space: nowrap;
+      }
+      /* Auto layout, deliberately. Under `table-layout: fixed` a `width: 1%` column is
+         literally 1% and its content paints over the next cell - measured at 66 to 80px of
+         overlap on three rows by `check_render_overflow.py`, which is the only instrument
+         that sees it. Auto sizes each column to its content and the title takes the slack. */
+      .table {
+        --bs-table-border-color: var(--bg-raise);
+      }
+      /* The plan's pitch: `.table-sm` pads 4px all round, and the left edge here is flush. */
+      .table > :not(caption) > * > * {
+        padding: 4px 8px 4px 0;
+      }
+      /* The title takes the slack. Every other column is the width of what it holds, because a
+         plan is read down a column and a ragged one cannot be scanned. */
+      td.pri,
+      td.state,
+      td.at,
+      td.kind {
+        color: var(--text-dim);
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: nowrap;
+        width: 1%;
+      }
+      td.id {
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: nowrap;
+        width: 1%;
+      }
+      td.title {
+        color: var(--text-bright);
+        width: 100%;
+      }
+      .yes {
+        color: var(--green);
+      }
+      /* What holds this row, under its title rather than in a column of its own: a blocked row
+         has one to four blockers and a column wide enough for four wastes the width on every
+         row that has none. */
+      .waits {
+        color: var(--amber);
+        font-family: var(--mono);
+        font-size: 12px;
+      }
+      .waits a.rec {
+        color: var(--amber);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <a href="{{ back }}">&larr; the board</a>
+      <h1>the backlog</h1>
+      <span class="age">{{ age.text }}</span>
+      <span class="schema">{{ schema }}</span>
+    </div>
+{#- Summed over the rows drawn below and never read from a section: a header claiming a figure
+    its own body does not show is the defect this page exists to end. #}
+    <p class="totals">
+      <b>{{ totals.records }}</b> records &middot;
+      <b>{{ totals.ready }}</b> ready &middot;
+      <b>{{ totals.blocked }}</b> blocked &middot;
+      <b>{{ totals.parked }}</b> parked &middot;
+      <b>{{ totals.waiting }}</b> wait on a named blocker &middot;
+      <b>{{ totals.features }}</b> features
+    </p>
+{%- if note %}
+    <p class="note">{{ note }}</p>
+{%- endif %}
+{%- for group in groups %}
+    <section class="feature">
+      <h2>
+        <span>{% if group.ident %}{{ rec(group.ident, group.title) }}{% else %}{{ group.title }}{% endif %}</span>
+        <span class="of">{{ group.ready }} ready of {{ group.rows | length }}</span>
+      </h2>
+      <table class="table table-sm">
+{%- for row in group.rows %}
+        <tr>
+          <td class="pri">{{ row.priority }}</td>
+          <td class="id">{{ rec(row.ident, row.ident) }}</td>
+          <td class="title">
+            {{ row.title }}
+{%- if row.blockers %}
+            <div class="waits">waits on {% for held in row.blockers %}{{ rec(held, held) }}{% if not loop.last %}, {% endif %}{% endfor %}</div>
+{%- endif %}
+          </td>
+          <td class="state">{{ row.status }}</td>
+          <td class="at">{{ row.phase }}</td>
+          <td class="kind">{{ row.kind }}</td>
+          <td class="state">{% if row.ready %}<span class="yes">ready</span>{% endif %}</td>
+        </tr>
+{%- endfor %}
+      </table>
+    </section>
+{%- endfor %}
+  </body>
+</html>

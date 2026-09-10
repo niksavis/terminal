@@ -1,0 +1,23 @@
+# Behavioral rubric for a chore track (basicly-kjc5.19).
+# Selected when a bead's work type is `chore`. A chore's defining property is
+# that it should NOT change behavior, so its judged checks are shaped around
+# absence of change rather than presence of a feature.
+id: chore-behaviors
+description: Behaviors expected of a chore change.
+applies_to:
+  - chore
+checks:
+  - id: stated-goal-achieved
+    question: >-
+      Does the change achieve the maintenance goal the bead states, rather than
+      a nearby one the author preferred?
+    kind: judged
+  - id: behavior-unchanged
+    question: >-
+      Is observable behavior unchanged — no altered output, defaults, or public
+      signatures beyond what the bead asks for?
+    kind: judged
+  - id: gates-green
+    question: Do the repository's configured verify checks pass?
+    kind: deterministic
+    verify_mode: full

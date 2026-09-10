@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=../../schemas/block.schema.json
+schema_version: 1
+id: artifact-field-set
+description: A schema-validated artifact is a closed object; emit the fields its contract names and no others.
+body: |
+  The artifact you emit is validated against a **closed** schema. The field
+  set this contract names is exact: a key it does not name is refused, and
+  the consumer refuses the whole object rather than dropping the key. So a
+  helpful extra field — a suggestion, a confidence, a severity, a note — does
+  not enrich the artifact, it destroys it.
+
+  This is measured rather than imagined: a producer told to emit an artifact
+  and not told its field set invents one, and the natural invention is the
+  extra key that seemed useful.
+
+  Emit the named fields and nothing else. Where you have something to say
+  that no field holds, say it in your prose reply — that is what the reply is
+  for. If a field you need genuinely does not exist, say so and stop; the
+  schema is a contract to be changed deliberately, never routed around.

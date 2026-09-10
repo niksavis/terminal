@@ -34,8 +34,8 @@ ALLOWED_TYPES = (
 # nouns and acronyms get lowercased too), allows letters/digits/space/hyphen
 # only (no underscores or other punctuation), has at least
 # MIN_DESCRIPTION_LENGTH chars, and must not end with punctuation.
-# An optional trailing parenthetical referencing one or more beads (br) issue
-# ids is permitted syntactically here; beads-commit-msg.py validates that the
+# An optional trailing parenthetical referencing one or more tracker record
+# ids is permitted syntactically here; tracker-commit-msg.py validates that the
 # referenced id(s) actually exist. A beads id is a kebab-case prefix plus a
 # hyphenated base, with optional dotted hierarchy levels (e.g. basicly-q49,
 # basicly-zrj.8, basicly-zrj.4.1) — the dots must be accepted here to match

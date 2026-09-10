@@ -1,109 +1,41 @@
 {
+  // Scaffolded by `basicly install`; yours to edit — install never overwrites it.
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "lint: ruff",
+      "label": "basicly: build",
+      "detail": "Regenerate agent instruction files after editing overlay fragments",
       "type": "shell",
-      "command": "uv run ruff check .",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      },
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.12.0 basicly build",
       "problemMatcher": []
     },
     {
-      "label": "format: ruff",
+      "label": "basicly: skills-build",
+      "detail": "Re-project skills into every agent root",
       "type": "shell",
-      "command": "uv run ruff format .",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.12.0 basicly skills-build",
+      "problemMatcher": []
     },
     {
-      "label": "typecheck: pyright",
+      "label": "basicly: hooks-build",
+      "detail": "Re-project and activate the git hooks",
       "type": "shell",
-      "command": "uv run pyright .",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.12.0 basicly hooks-build",
+      "problemMatcher": []
     },
     {
-      "label": "test: pytest",
+      "label": "basicly: update",
+      "detail": "Install or upgrade: converge core, projections, skills, and hooks",
       "type": "shell",
-      "command": "uv run pytest tests/",
-      "group": {
-        "kind": "test",
-        "isDefault": true
-      },
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.12.0 basicly install",
+      "problemMatcher": []
     },
     {
-      "label": "security: bandit",
+      "label": "basicly: uninstall",
+      "detail": "Remove everything basicly manages (overlay and config survive)",
       "type": "shell",
-      "command": "uv run bandit -c pyproject.toml -r .scripts terminal_setup",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "security: pip-audit",
-      "type": "shell",
-      "command": "uv run pip-audit --desc",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "pre-commit: all",
-      "type": "shell",
-      "command": "uv run pre-commit run --all-files",
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "basicly: build",
-      "type": "shell",
-      "command": "uv run python -m basicly.cli build",
-      "options": {
-        "env": {
-          "PYTHONPATH": ".basicly"
-        }
-      },
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
-    },
-    {
-      "label": "basicly: check",
-      "type": "shell",
-      "command": "uv run python -m basicly.cli check",
-      "options": {
-        "env": {
-          "PYTHONPATH": ".basicly"
-        }
-      },
-      "group": "build",
-      "presentation": {
-        "reveal": "always",
-        "panel": "shared"
-      }
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.12.0 basicly uninstall",
+      "problemMatcher": []
     }
   ]
 }

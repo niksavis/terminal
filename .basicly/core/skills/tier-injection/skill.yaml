@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 84
+name: tier-injection
+invocation: model
+description: Install the portable tier injection kit so a subagent spawns on the model its declared tier resolves to, instead of the host default. Use when setting up tier injection in this or another repository, when a subagent ignores the tier its definition declares, or when deciding whether a host can pin a spawn's model at all.
+instructions: |
+  # Tier Injection
+
+  A subagent definition declares a portable `tier` (`low`, `medium`, `high`,
+  `maximum`) rather than a provider model id. The kit turns that into the model
+  the spawn actually runs on, at spawn time.
+
+  Three files under `.basicly/core/kit/`, and **nothing else** — no `basicly`
+  import, nothing on `PATH`, no third-party package, no network. Copy them plus
+  `.basicly/core/models/model-map.json` into any repository and it works there.
+
+  ## When To Use
+
+  - Setting tier injection up in this repository or in one that has no harness.
+  - A subagent ran on the wrong model though its definition declares a tier.
+  - Deciding whether a given host can pin a spawn's model at all.
+
+  ## Install
+
+  ```bash
+  python3 .basicly/core/kit/tier/install_hook.py --dry-run
+  python3 .basicly/core/kit/tier/install_hook.py
+  python3 .basicly/core/kit/tier/install_hook.py --user
+  ```
+
+  Default scope is this repository's `.claude/settings.json`. `--user` widens it
+  to every repository on the machine — safe, because the hook only answers for a
+  directory tree that has its own committed map, but it is a deliberate opt-in
+  rather than the default. Re-running converges: it never duplicates the hook and
+  never touches one you wrote yourself.
+
+  **The two scopes are written differently, on purpose.** The repository's file is
+  committed and shared, so it gets a command with nothing machine-specific in it —
+  the hook is named through `${CLAUDE_PROJECT_DIR}`, which the host expands to the
+  project root whatever the working directory is, and it runs under `uv`:
+
+  ```json
+  "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/kit/tier/claude_tier_hook.py\""
+  ```
+
+  The user's file is machine-local, so it keeps absolute paths and needs nothing on
+  `PATH`. Pass `--interpreter` if you have no `uv` — for example
+  `--interpreter "py -3"` on a Windows box.
+
+  **Relaunch only if the installer created a scope the host did not already have** —
+  the whole CLI process, not just the conversation. Hooks and agent definitions are
+  file-watched and reload within seconds of an edit (claude 2.1.226, 2026-08-09); the
+  exception is the first file in a directory that did not exist at startup, which is
+  exactly what a first install writes. Clearing the conversation reloads neither and
+  is the wrong lever — the hook then appears to do nothing while diagnostics pass.
+
+  ## What It Does And Does Not Cover
+
+  - **Claude Code**: installs a `PreToolUse` hook on the `Agent` tool.
+  - **Copilot CLI**: the installer still installs nothing, and the reason it
+    reports is **stale as of 1.0.78** (re-probed 2026-08-09). It read "no hook
+    surface fires for a spawn, so the working path is static frontmatter plus
+    `copilot --model`". Both halves have moved: copilot ships hooks — including
+    one that intercepts a subagent finishing *before its results reach the
+    parent* — and it carries per-subagent selection in **config**, at
+    `subagents.agents.<name>.{model, effortLevel, contextTier}`, which is
+    outside the agent file. So a spawn there is pinnable without a frontmatter
+    `model`, which is what D30 requires. Wiring it is `basicly-u2hl.41`; until
+    that lands the installer's message is a known-wrong explanation for a
+    correct no-op, and it should not be quoted as evidence.
+
+  ## Check A Resolution Without Spawning Anything
+
+  ```bash
+  python3 .basicly/core/kit/tier/tier_resolver.py --host claude --name my-agent
+  ```
+
+  Exit 0 with a `model` and an `alias`, or exit 1 with the `reason` it resolved
+  nothing. Never another tier's model.
+
+  ## Common Pitfalls
+
+  - `CLAUDE_CODE_SUBAGENT_MODEL` **outranks** the value the hook writes, so every
+    injection is inert while it is set. Check it first when a spawn ignores its
+    tier — the hook stays deliberately silent rather than pretending to work.
+  - The hook writes an **alias** (`opus`), not a model id (`claude-opus-5`): the
+    Agent tool's `model` field takes a four-value enum, while the definition
+    frontmatter takes a full id. Two surfaces, two vocabularies.
+  - A definition that pins its own `model`, or a spawn that already names one, is
+    left alone. Remove the pin if you want the tier to decide.
+  - A repository with no committed `model-map.json` in its own tree gets no
+    rewrite at all, by design.
+  - A tier the map marks `unavailable` resolves to **nothing**, never to a
+    neighbouring tier's model.

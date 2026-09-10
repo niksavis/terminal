@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/change-shape.schema.json",
+  "title": "basicly change-shape handoff artifact",
+  "description": "What CLASSIFY hands DECOMPOSE (factory loop requirements 8, 8.2). One artifact per decompose event - not per requirement - so a leaf has one and an epic has one at each level of its tree. Every field is derived from an AST, never authored: it exists because the decomposer can otherwise see only scope globs, and slicing by file adjacency is horizontal slicing, which produces children with no consumer-visible behaviour to demonstrate. A derivation cannot fail a judgement, so it either parses or reports that it could not.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "call_tree",
+    "file_tree",
+    "new_public_functions"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit about to be decomposed. One change-shape per decompose event, so the id is what distinguishes an epic's shape from its child's."
+    },
+    "call_tree": {
+      "type": "array",
+      "description": "What calls what, one edge per entry. This is the structure that lets the decomposer cut end to end instead of by directory. Empty is a declared answer - a change reaching no call site - and the key being absent is silence, which is why it is required.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "caller",
+          "callee"
+        ],
+        "properties": {
+          "caller": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The qualified name on the calling side. Named rather than pointed at by path, because the cut this informs follows behaviour and not files."
+          },
+          "callee": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The qualified name on the called side, so an edge read on its own still says which direction the dependency runs."
+          }
+        }
+      }
+    },
+    "file_tree": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "appears",
+        "moves"
+      ],
+      "description": "The file-tree diff the requirement names: what appears and what moves. Both halves are required because a move read as an appearance plus a disappearance invents a new file the plan would then slice around.",
+      "properties": {
+        "appears": {
+          "type": "array",
+          "description": "Paths this change introduces. Empty is a declared answer for a change that only edits what exists; absence would be indistinguishable from a derivation that never ran.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "moves": {
+          "type": "array",
+          "description": "Paths this change relocates, each with both ends. Empty is a declared answer, for the same reason appears carries one.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "to"
+            ],
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Where the file was, so a scope glob written against the old tree can be recognised as stale rather than as unmatched."
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Where the file lands, so the plan's scope globs are declared against the tree BUILD will actually see."
+              }
+            }
+          }
+        }
+      }
+    },
+    "new_public_functions": {
+      "type": "array",
+      "description": "The signatures this change adds to the public surface. Required because a new public signature is the thing the integrity downgrade reads and the thing a consumer eventually calls; empty is a declared answer for a change that adds none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "name",
+          "signature"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The file the definition lands in, so the signature can be checked against the tree rather than taken on trust."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The qualified name, which is how the call tree above refers to it; without it the two halves of this artifact cannot be joined."
+          },
+          "signature": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The declaration as the AST reports it. The signature and not a summary of it, because this artifact's value is that no model composed it."
+          }
+        }
+      }
+    }
+  }
+}

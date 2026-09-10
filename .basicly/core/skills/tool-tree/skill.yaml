@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-tree
-description: Use tree to visualize directory layout quickly in a token-efficient form. Trigger when understanding project structure or summarizing file hierarchies.
+invocation: user
 instructions: |
   # tool-tree
 

@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/implementation-plan.schema.json",
+  "title": "basicly implementation-plan handoff artifact",
+  "description": "What DECOMPOSE hands BUILD (factory loop requirements 8). One artifact per decompose event, recorded on the feature that was decomposed. It carries the six fields the plan gate already refuses a child for, resolved onto the ids the decomposition created, plus the graph those ids were grouped into - so BUILD reads the plan it is held to instead of re-deriving it from each child's body.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature",
+    "tasks",
+    "groups"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The issue id that was decomposed into these tasks."
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "One entry per planned child, in the plan's declared order. A plan with no task is not a plan, which is the whole-plan rule plan_gate.gate_plan states first.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "issue_id",
+          "title",
+          "acceptance",
+          "scope",
+          "depends_on",
+          "budget_tokens",
+          "integrity",
+          "demonstration"
+        ],
+        "properties": {
+          "issue_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The recorded child this planned task became."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The child's title, which the plan's declared graph is keyed on."
+          },
+          "acceptance": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Testable acceptance criteria. At least one, so VERIFY has a check to derive rather than a judgement to make.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "scope": {
+            "type": "array",
+            "minItems": 1,
+            "description": "The file globs this task declares it touches, so parallel safety is computable and the landing scope check has something to hold the lane to.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "Sibling ids this task follows, declared and computed edges unioned. Empty is a declared answer; the key being absent is silence, which is why it is required.",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "budget_tokens": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "description": "What this unit is worth spending. A budget that cannot be spent is not a budget."
+          },
+          "integrity": {
+            "enum": [
+              "L1",
+              "L2",
+              "L3"
+            ],
+            "description": "The level selecting this unit's gate set, model tier and rework allowance."
+          },
+          "demonstration": {
+            "type": "string",
+            "minLength": 1,
+            "description": "How this task is exercised end to end through the consumer surface (D18) - the command, request or test that demonstrates it. Required here, unlike in the build-entry predicate over a recorded bead: this artifact's only producer is a decomposition plan_gate.require_plan already passed, so there is no population whose silence could be mistaken for a defect. That it names something runnable is the gate's rule, not restated here, on the same grounds scope does not re-encode what makes a string a glob."
+          }
+        }
+      }
+    },
+    "groups": {
+      "type": "array",
+      "minItems": 1,
+      "description": "The graph: ids per parallel group, in declared order. Distinct groups are safe to build concurrently; within a group the order is the serial build order.",
+      "items": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

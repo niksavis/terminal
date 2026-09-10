@@ -1,7 +1,12 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 91
 name: worktree-isolation
+invocation: model
 description: Isolate non-trivial work in a sibling git worktree using `basicly worktree`, covering sibling placement on a harness branch, dependency + git-hook provisioning, and safe cleanup. Use when starting a unit of work that should not touch the main checkout, when parallel tracks would collide, or when deciding whether a change needs its own worktree.
+covers:
+  phases: [build, repair]
 instructions: |
   # Worktree Isolation
 
@@ -13,9 +18,11 @@ instructions: |
 
   It is not for:
 
-  - Merging a finished worktree branch back or resolving conflicts (that is the merge
-    orchestrator's job — not yet part of `basicly worktree`).
-  - Creating or claiming the beads issue the work tracks (see `tool-br`).
+  - Resolving a merge conflict. Landing itself *is* part of `basicly worktree` (step 3
+    below), but a conflict is never settled here: it means the declared scopes missed a
+    coupling, so the merge bounces the lane back to re-apply its intent on the new base.
+    There is no hand-edited conflict marker and no merge-time AI resolution.
+  - Creating or claiming the tracker record the work tracks (see `work-tracker`).
   - Git staging, diffing, or commit-message formatting (see `tool-git`, `conventional-commits`).
 
   ## When to isolate
@@ -40,16 +47,44 @@ instructions: |
 
   1. **Create + provision** — `basicly worktree create <name> [--base <branch>]`. This adds the
      sibling worktree, provisions its own standalone `.venv` (`uv sync`) and `node_modules`
-     (`npm install`), and installs the repo's git hooks for every stage. The dependency trees
-     are freshly installed (never symlinked to main), so the worktree is self-contained and
-     teardown is safe. Creation is refused once `[worktree].concurrency` (default 4) is reached.
+     (copied from a checkout whose `package-lock.json` is byte-identical, else `npm install`),
+     and installs the repo's git hooks for every stage. The dependency trees are real trees of
+     their own (never symlinked to main), so the worktree is self-contained and teardown is
+     safe. Creation is refused once `[worktree].concurrency` is reached — read the
+     configured value, never a number quoted in prose.
   2. **Work** — do the change in the worktree; its hooks gate commits exactly as on main.
-  3. **Cleanup** — `basicly worktree cleanup <name>` removes the worktree, prunes the registry,
+  3. **Merge** — `basicly worktree merge <name> --bead <id>` lands one finished branch on its
+     base: rebase, re-run verify (`--mode`), then a `--no-ff` merge. `basicly worktree
+     merge-queue <name>:<bead> ...` lands several serially in the given topological order.
+     Both run **from the base checkout** — git refuses to update a branch checked out in
+     another worktree. Under `basicly loop`, the build→verify advance does this for you; call
+     these directly only for a worktree the loop is not driving.
+  4. **Cleanup** — `basicly worktree cleanup <name>` removes the worktree, prunes the registry,
      and deletes the `harness/<name>` branch once it is merged. The base branch is never
      touched. An unmerged branch is kept (with a note) unless you pass `--force`; a worktree
      whose directory vanished is still reclaimable.
 
   Use `basicly worktree list` to see active sessions (stale ones are marked).
+
+  ## Hooks are already wired — never override `core.hooksPath`
+
+  A linked worktree's `.git` is a **file**, not a directory, and git resolves its hooks to
+  the shared common dir (`git rev-parse --git-path hooks` prints
+  `<repo>/.git/hooks`). Provisioning installs the repo's hooks there, so a plain
+  `git commit` in the worktree is gated exactly as on main and needs no extra flag.
+
+  So never pass `-c core.hooksPath=...` from a worktree. A relative override such as
+  `git -c core.hooksPath=.git/hooks commit` resolves against the worktree, where `.git` is
+  a file and `.git/hooks` therefore does not exist — git finds no hooks, **skips every gate
+  (pre-commit, commit-msg, the record id check) and prints nothing**, so the commit looks
+  clean because none of them ran. The bypass surfaces only later: in the recorded incident
+  (`basicly-kjc5.9`) the next commit *without* the override was rejected for a subject the
+  first one had carried straight through. To check where hooks resolve, read the path
+  instead of setting it:
+
+  ```sh
+  git rev-parse --git-path hooks
+  ```
 
   ## Claude Code note
 

@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 3
 name: tool-ripgrep
-description: Use ripgrep for extremely fast text and regex search across repositories. Trigger when locating symbols, strings, or patterns at scale.
+invocation: user
 instructions: |
   # tool-ripgrep
 

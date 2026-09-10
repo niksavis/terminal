@@ -24,10 +24,34 @@ repos:
     stages:
     - pre-commit
     pass_filenames: false
-    always_run: true
+    files: ^(\.basicly/core/|\.basicly-local/|basicly\.toml$)
   - id: secret-scan
     name: secret-scan
     entry: uv run python .basicly/core/hooks/secret-scan.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: tracker-path-scan
+    name: tracker-path-scan
+    entry: uv run python .basicly/core/hooks/tracker-path-scan.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: internal-info-scan
+    name: internal-info-scan
+    entry: uv run python .basicly/core/hooks/internal-info-scan.py
+    language: system
+    stages:
+    - pre-commit
+    pass_filenames: false
+    always_run: true
+  - id: kit-boundary
+    name: kit-boundary
+    entry: uv run python .basicly/core/hooks/kit-boundary.py
     language: system
     stages:
     - pre-commit
@@ -40,9 +64,9 @@ repos:
     stages:
     - commit-msg
     pass_filenames: true
-  - id: beads-commit-msg-script
-    name: beads-commit-msg-script
-    entry: uv run python .basicly/core/hooks/beads-commit-msg.py
+  - id: tracker-commit-msg-script
+    name: tracker-commit-msg-script
+    entry: uv run python .basicly/core/hooks/tracker-commit-msg.py
     language: system
     stages:
     - commit-msg

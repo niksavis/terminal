@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-git
-description: Use git for repository state inspection, safe staging, diff review, and history-aware change management. Trigger when the task involves commits, branches, diffs, or version control decisions.
+invocation: user
 instructions: |
   # tool-git
 

@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `wsl`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "file access under /mnt/c is painfully slow"
+    - prompt: "windows and linux interop is breaking my tool"
+    - prompt: "it works in my terminal but not from a script"
+  negative:
+    - prompt: "add type hints and pathlib usage to this module"
+      owner: python
+    - prompt: "cut a version of this repository"
+      owner: release-process

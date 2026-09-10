@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/classification.schema.json",
+  "title": "basicly classification handoff artifact",
+  "description": "What CLASSIFY hands DECOMPOSE (factory loop requirements 8). One artifact per classified unit, recorded on that unit; the decider writes it at L2 and above, and the path rule alone writes it below. It carries the level, the loop depth and the rule that produced them, plus what the level selects - the same four things integrity.Selection already computes and the [harness-classification] marker already persists, so DECOMPOSE reads the gate set, tier and rework allowance it is held to instead of re-deriving them from the letter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "issue",
+    "level",
+    "depth",
+    "rule",
+    "reason",
+    "selects"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Artifact-format version; bump only when a consumer's contract changes."
+    },
+    "issue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The unit of work this classification was assigned to, so a later state can tell whose level it is reading."
+    },
+    "level": {
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "description": "The level selecting this unit's gate set, model tier and rework allowance. Every downstream spend and gate decision hangs off it, which is why nothing here is optional."
+    },
+    "depth": {
+      "enum": [
+        "build",
+        "decompose"
+      ],
+      "description": "Whether this unit goes straight to BUILD or is cut up first. DECOMPOSE's entry predicate is literally depth = decompose, so an artifact that omits it cannot be evaluated against that predicate at all."
+    },
+    "rule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The named clause that decided the level, or downgrade when the diff-size rule moved it. Required because a level with no rule behind it is a judgement, and the whole point of the path rule is that the level is not judgeable and therefore not gameable."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why that clause fired, in the terms the rule itself used - which declared path resolved, or what the downgrade measured. A reader disputing a level has to be able to check the input, because a level derived from a scope that under-declares is wrong in the unsafe direction."
+    },
+    "selects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gates",
+        "model_tier",
+        "rework_allowance",
+        "ship"
+      ],
+      "description": "What the level buys, resolved rather than implied. Carried alongside the letter so no consumer re-derives the mapping, and so a level recorded under one table is still readable after the table changes.",
+      "properties": {
+        "gates": {
+          "type": "array",
+          "minItems": 1,
+          "description": "The verify mode this level runs, followed by any gate it adds on top. At least one entry: a level that selects no gate is not an integrity level.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "model_tier": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The tier every agent dispatched under this unit spawns on. Required here because the tier is the largest single cost lever in the loop and must not be chosen per dispatch."
+        },
+        "rework_allowance": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many repair rounds this unit is owed before it escalates. Zero is a real allowance, not a missing one, so the floor is 0 rather than 1; the key being absent would be silence, which is why it is required."
+        },
+        "ship": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Whether SHIP may be delegated or has to be a human. Carried on the classification because the answer is fixed by the level at CLASSIFY, and discovering it at SHIP is discovering it after the tokens are spent."
+        }
+      }
+    }
+  }
+}

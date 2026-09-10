@@ -1,7 +1,9 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
+token_cost:
+  listing: 2
 name: tool-zsh
-description: Use zsh for shell startup, profile troubleshooting, and non-interactive command validation. Trigger when the task touches shell behavior, aliases, completions, or prompt startup.
+invocation: user
 technologies: [zsh]
 instructions: |
   # tool-zsh
