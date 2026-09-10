@@ -78,7 +78,12 @@ if is_windows then
   wsl_default_domain = pick_wsl_domain()
   if wsl_default_domain then
     config.default_domain = wsl_default_domain
-    config.default_prog = wsl_startup_args
+    -- Keep the WSL startup args on the WSL domain entry only. A global
+    -- config.default_prog applies to the local domain too, so on Windows it
+    -- makes `wezterm cli spawn --domain-name local` (no explicit program) try
+    -- to run `zsh -lc ...` on the Windows side: the spawn still returns a pane
+    -- id and exit 0, but the shell dies immediately with "didn't exit cleanly"
+    -- and the pane reports an empty cwd.
     for _, domain in ipairs(config.wsl_domains or {}) do
       if domain.name == wsl_default_domain then
         domain.default_prog = wsl_startup_args
@@ -88,9 +93,6 @@ if is_windows then
   end
 end
 
-if not (is_windows and wsl_default_domain) then
-  config.default_prog = nil
-end
 config.default_cwd = home_dir
 
 -- Launcher profiles for fast context switches between WSL and Windows shells.
