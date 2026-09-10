@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 
@@ -418,6 +419,39 @@ def test_wezterm_template_offers_git_bash() -> None:
     content = template_path("wezterm.lua").read_text(encoding="utf-8")
     assert 'label = "Git Bash"' in content
     assert "find_git_bash" in content
+
+
+@pytest.mark.parametrize("label", ["PowerShell", "Git Bash", "Command Prompt"])
+def test_wezterm_windows_launch_entries_pin_local_domain(label: str) -> None:
+    """Windows-native launcher profiles must name the local domain explicitly.
+
+    A SpawnCommand with no ``domain`` falls back to CurrentPaneDomain, and the
+    default tab on Windows is the WSL domain. Without the explicit pin the
+    launcher starts these inside WSL: Git Bash dies immediately because its
+    Windows path is not in the WSL filesystem namespace, and pwsh/cmd only reach
+    Windows through interop, in a WSL pane with WSL cwd semantics.
+    """
+    content = template_path("wezterm.lua").read_text(encoding="utf-8")
+    assert 'local local_domain = { DomainName = "local" }' in content
+    entry = re.search(rf'label = "{re.escape(label)}",\s*\n\s*domain = local_domain,', content)
+    assert entry is not None, f"{label} launch entry does not pin the local domain"
+
+
+def test_wezterm_open_config_pins_local_domain() -> None:
+    """The Windows 'open config' binding must also spawn on the local domain."""
+    content = template_path("wezterm.lua").read_text(encoding="utf-8")
+    action = re.search(r'domain = local_domain,\s*\n\s*args = \{ "notepad\.exe"', content)
+    assert action is not None, "notepad.exe action does not pin the local domain"
+
+
+def test_wezterm_wsl_launch_entry_pins_wsl_domain() -> None:
+    """The WSL profile must stay pinned to the WSL domain, not the local one."""
+    content = template_path("wezterm.lua").read_text(encoding="utf-8")
+    entry = re.search(
+        r'label = "Ubuntu \(WSL\)",\s*\n\s*domain = \{ DomainName = wsl_default_domain \},',
+        content,
+    )
+    assert entry is not None, "WSL launch entry does not pin the WSL domain"
 
 
 def test_append_guarded_block_preserves_and_is_idempotent(tmp_path: Path) -> None:

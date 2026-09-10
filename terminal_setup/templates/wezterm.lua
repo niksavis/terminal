@@ -9,6 +9,13 @@ local is_windows = wezterm.target_triple:find("windows") ~= nil
 local home_dir = wezterm.home_dir
 local is_wsl = os.getenv("WSL_DISTRO_NAME") ~= nil or os.getenv("WSL_INTEROP") ~= nil
 local wsl_default_domain = nil
+-- Windows-native profiles must name the local domain explicitly. A SpawnCommand
+-- with no `domain` field falls back to CurrentPaneDomain, and the default tab on
+-- Windows is the WSL domain, so the launcher would start these inside WSL: Git
+-- Bash dies immediately because its Windows path is not in the WSL filesystem
+-- namespace, while pwsh and cmd only limp along through WSL interop, in a WSL
+-- pane with WSL cwd semantics.
+local local_domain = { DomainName = "local" }
 local wsl_startup_args = {
   "zsh",
   "-lc",
@@ -107,6 +114,7 @@ if is_windows then
   end
   table.insert(config.launch_menu, {
     label = "PowerShell",
+    domain = local_domain,
     args = { "pwsh.exe", "-NoLogo" },
   })
   -- Offer Git Bash when Git for Windows is installed. Probe the standard
@@ -135,11 +143,13 @@ if is_windows then
   if git_bash then
     table.insert(config.launch_menu, {
       label = "Git Bash",
+      domain = local_domain,
       args = { git_bash, "--login", "-i" },
     })
   end
   table.insert(config.launch_menu, {
     label = "Command Prompt",
+    domain = local_domain,
     args = { "cmd.exe" },
   })
 else
@@ -246,6 +256,7 @@ local rename_tab_action = act.PromptInputLine({
 local open_config_action
 if is_windows then
   open_config_action = act.SpawnCommandInNewTab({
+    domain = local_domain,
     args = { "notepad.exe", wezterm.config_file },
   })
 else

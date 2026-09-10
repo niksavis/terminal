@@ -17,7 +17,7 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 | Next / previous tab      | `Ctrl + Tab` / `Ctrl + Shift + Tab`   |
 | Rename tab               | leader then `,`                       |
 | Switch workspace         | leader then `w`                       |
-| Launcher (profiles/tabs) | `Ctrl + Shift + L`                    |
+| Launcher (pick a shell)  | `Ctrl + Shift + L` or right-click `+` |
 | Toggle fullscreen        | `Alt + Enter`                         |
 
 ### Panes

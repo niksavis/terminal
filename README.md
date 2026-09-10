@@ -92,7 +92,7 @@ wezterm
 
 WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, lazygit, direnv, just, fzf, and the extra CLI tools ready.
 
-Press `Ctrl + Shift + l` for the launch menu to switch shells: **Ubuntu (WSL)** (default), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
+Press `Ctrl + Shift + l` — or right-click the `+` button in the tab bar, WezTerm's equivalent of the Windows Terminal new-tab dropdown — for the launch menu to switch shells: **Ubuntu (WSL)** (default), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. Each entry opens as its own tab, so WSL, PowerShell, and Git Bash can run side by side; the three Windows-native profiles are pinned to WezTerm's `local` domain so they start on Windows rather than inside the WSL tab you launched them from. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
 
 The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
 
@@ -140,7 +140,7 @@ wezterm
 | Jump to previous prompt   | `Ctrl + Shift + Up`                                             |
 | Jump to next prompt       | `Ctrl + Shift + Down`                                           |
 | Quick-select URL/text     | `Ctrl + Shift + p`                                              |
-| Launcher (profiles/tabs)  | `Ctrl + Shift + l`                                              |
+| Launcher (pick a shell)   | `Ctrl + Shift + l` or right-click the `+` button                |
 | Copy with mouse           | Select text and release left button                             |
 | Paste with mouse          | Right-click                                                     |
 | Split horizontal (direct) | `Ctrl + Alt + backslash`                                        |
