@@ -53,3 +53,10 @@ redirect
 *.tmp-*
 *-lock-*
 *.fsqlite-*
+
+# Same class, hyphen-separated: `br doctor migrate-schema` writes
+# beads.db-fsqlite-ns-{gate,use}, beads.db-wal-cert{,-head} and
+# .beads.db.schema-migration-<runid>.vacuum-*. The globs above all need a dot
+# before the suffix, so none of them match these names.
+*-fsqlite-*
+*-wal-cert*
