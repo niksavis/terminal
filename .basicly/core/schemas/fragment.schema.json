@@ -31,7 +31,12 @@
       ]
     },
     "priority": {"enum": ["critical", "high", "medium", "low"]},
-    "applies_to": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "applies_to": {
+      "type": "array",
+      "items": {"type": "string"},
+      "minItems": 1,
+      "description": "Rendering targets this fragment projects into, not topics: `all`, or a target registered under the targets directory (`claude`, `codex`, `copilot` as shipped). The loader refuses anything else. For a routing word use `tags` instead."
+    },
     "tags": {"type": "array", "items": {"type": "string"}},
     "technologies": {"type": "array", "items": {"type": "string", "minLength": 1}},
     "status": {"enum": ["active", "draft", "deprecated"]},

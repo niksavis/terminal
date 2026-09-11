@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.12.0",
+  "basicly_version": "0.12.1",
   "core": {
     "agents/architect/agent.yaml": "sha256:7e04bed650863fce06344b4ea7be6ec264fe647f9002a346a6785eae6e69fd82",
     "agents/auditor/agent.yaml": "sha256:124f2e452f4b836b5dc4031897c7ce7d02940bbdd4c6549db453704f71ccbdd0",
@@ -60,7 +60,7 @@
     "hooks/shell_tokens.py": "sha256:a1b4bc9ab8d0980339dda9c05f869fdb7238d3a6041df14059dc871e2ba55faf",
     "hooks/tool-usage.py": "sha256:83d1c265e3aba2754de90fd97d71a542338250eda161f6851380e2c56d391d4b",
     "hooks/tracker-commit-msg.py": "sha256:4f3a634266b4b43be25ecb2766005b98cc1a35ba4959bbf21efee132144cc258",
-    "hooks/tracker-path-scan.py": "sha256:0514a65e56edbd2c126d96ddea1ec7e5a6122e22188e30e5e7b3f649dd459a7e",
+    "hooks/tracker-path-scan.py": "sha256:aecef9d46e60235737d250adf5e93c1b60a03b54505c5faa87092c702a96c940",
     "hooks/unsplit-loop-guard.py": "sha256:a0fdd5faef68f3ca35d9b80a1fce552e2bf145cdfa0c70c41f98abde62befb24",
     "kit/README.md": "sha256:e690eaef39a08431b68817bde633031288966efd2ae61bf590c623690788636c",
     "kit/tier/README.md": "sha256:bdb43d3489d7900760075dac97b58132f5123333866a376528adaa5d7d57eb5d",
@@ -101,7 +101,7 @@
     "schemas/change-summary.schema.json": "sha256:deb2b0848cd5733da2db7ba739023b793b3f5efdff455d2cee7f2b8a74856b21",
     "schemas/classification.schema.json": "sha256:c16c3b93c386921f92fff560f2944e197f61e406a44b6c319256c4544d335bc9",
     "schemas/evals.schema.json": "sha256:c59d60a9423d0a91567440025a3ad6349d7182d3feb131479f430bd26b47bb98",
-    "schemas/fragment.schema.json": "sha256:09e519233930817de556a76dd13a18953856b5736fd33a092ec565d79ea7d34d",
+    "schemas/fragment.schema.json": "sha256:7e6bd1e0a17c15d7f24475d292df504216a92de8a5e82cc23b8fbf350cd1cf29",
     "schemas/implementation-plan.schema.json": "sha256:785f530932d55712c78a8524ec144c57743777803b960bafe678e2172f25b9af",
     "schemas/release-record.schema.json": "sha256:59c9ac73c8b2e922df757d126d1e67088e1484dbdc26fe93f0d3219adc322359",
     "schemas/skill.schema.json": "sha256:b8d373883eae9928ea99c7c1465877889b074b53f4763909e3a0a96a6260f7b7",
@@ -129,7 +129,7 @@
     "skills/python/references/cross-platform.md": "sha256:d38ef61152043714c42b11fb6b37b1e8aa1c73ca7971769bae61b920ea70f820",
     "skills/python/skill.yaml": "sha256:fc7b686a489860ab1225ef5ea5e4888ff92b7a168f815707790ea634a6056ee4",
     "skills/release-process/evals.yaml": "sha256:27ffbe106b019554561624372d0ee76339067f477a036a89a56ae339e84cd963",
-    "skills/release-process/skill.yaml": "sha256:2a8cbbd29363f9d421c8faceff9a69c99d233999cec2b15b37c52fadfbf6364a",
+    "skills/release-process/skill.yaml": "sha256:a9e3c0f3e317c6c3059fa95147e409d658411990a2b416751db46cf964061e71",
     "skills/repair-in-place/skill.yaml": "sha256:4373ce3c4d27a8229883220ea23822e97ffbdb7ef6a94fd71677144a51e1f1d0",
     "skills/root-cause/skill.yaml": "sha256:6bf3ae21faedd4a9f9c68af2ecee9bd181a31dd9ab9168d93f0d65b0ef010b0a",
     "skills/session-finish/evals.yaml": "sha256:dc557e3c0e6fbf0927f13bd409591ad34af5db87710677222cdcdf7f5a82f2f4",
@@ -195,6 +195,6 @@
     "templates/codex/rule_md.j2": "sha256:0c236f2ac2ab05fafc6d5c199700ead5ec7c69ff21b8850f09a46f585ea94166",
     "templates/copilot/copilot_instructions_md.j2": "sha256:5d69050d4a037b769f918c84bfd1c92dae393b358df7451ae035b86ba98bdb9c"
   },
-  "installed_at": "2026-09-10T21:30:27.167978+00:00",
+  "installed_at": "2026-09-11T08:18:02.477150+00:00",
   "schema_version": 1
 }

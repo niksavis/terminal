@@ -8,6 +8,23 @@ description: Cut a release of this repository with `basicly release`, then do th
 instructions: |
   # Release Process
 
+  ## First: does this repository release with `basicly`?
+
+  This skill describes `basicly release`, and it projects into every repo that
+  installs the catalog — including one that cuts releases its own way. Check before
+  following anything below:
+
+  ```sh
+  ls changelog.d/ 2>/dev/null; grep -n "## \[Unreleased\]" CHANGELOG.md
+  ```
+
+  **If either is missing, this repo does not use `basicly release`. Stop, and follow
+  the repo's own release document** (`docs/releases.md` or the equivalent). A consumer
+  session read this skill as authoritative and nearly created a `changelog.d/` fragment
+  and an `[Unreleased]` heading that nothing there consumes, then ran a command that did
+  not match that repo's version single-sourcing. The repo's own evidence beats a
+  projected skill, and the rest of this page assumes both files exist.
+
   ## Run `basicly release` — never hand-run the steps it performs
 
   Everything up to and including the annotated tag is one command:

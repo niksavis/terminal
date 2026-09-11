@@ -49,3 +49,8 @@ node_modules/
 # package.json and package-lock.json are tracked to pin markdownlint-cli2.
 # Per-machine basicly overrides; harness keys win over basicly.toml.
 basicly.local.toml
+# Derived folds of the committed event log. The log is the truth; never commit a fold.
+.basicly/ledger/snapshot.jsonl
+.basicly/ledger/checkpoint-*.jsonl
+# Your copy of a file basicly replaced; delete it once you have merged what you want.
+*.basicly-bak

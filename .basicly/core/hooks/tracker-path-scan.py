@@ -3,7 +3,7 @@
 The tracker export is committed and, for a distribution like this one, cloned by
 every consumer — so an absolute path or username in it is published, and it is a
 wrong answer on any machine but the one that wrote it. The harness repairs the
-log at its own tracker commits (``basicly.br.scrub_ledger``); this is the
+log at its own tracker commits (``basicly.tracker.scrub_ledger``); this is the
 deterministic gate that catches whatever that misses: a field a later write adds,
 or a log staged by hand before the repair ran.
 
@@ -157,11 +157,10 @@ def main() -> int:
     print(
         "The log is committed and cloned by every consumer, so an absolute path or "
         "username in it is published.\n"
-        "Repair it with:  uv run python -c "
-        '"from pathlib import Path; import basicly.br as b; '
-        "print(b.scrub_ledger(Path('.')))\"\n"
-        "then re-stage .basicly/ledger. A harness loop advance repairs it "
-        "automatically.",
+        "Repair it with:  basicly tracker scrub\n"
+        "(prefix that with `uv run` or with your `uvx --from <pin>` when basicly is not "
+        "on PATH), then re-stage .basicly/ledger.\n"
+        "A harness loop advance repairs it automatically.",
         file=sys.stderr,
     )
     return 1
