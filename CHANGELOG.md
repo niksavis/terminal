@@ -2,6 +2,37 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.4.6 - 2026-09-11
+
+Delta: v0.4.5..v0.4.6
+
+### Highlights
+
+- **Windows: the launch menu now opens Windows shells on Windows.** PowerShell, Git Bash, and Command Prompt had no `domain` on their launcher entries, so WezTerm fell back to `CurrentPaneDomain` — and since the default tab on Windows is the WSL domain, picking one of them started it *inside WSL*. Git Bash died immediately (its Windows path is not in the WSL filesystem namespace); pwsh and cmd limped along through WSL interop with WSL cwd semantics. All three are now pinned to the `local` domain, as is the "open config in notepad" action (term-tqk).
+- **Windows: a WSL-only startup command no longer leaks onto the local domain.** `config.default_prog` was set globally, so it applied to the local domain too and `wezterm cli spawn --domain-name local` (with no explicit program) tried to run `zsh -lc …` on the Windows side. The spawn returned a pane id and exit 0 while the shell died at once with "didn't exit cleanly" and the pane reported an empty cwd — a failure that looked like success. The startup args now live only on the WSL domain entry (term-o2u).
+- Each launcher entry opens as its own tab, so WSL, PowerShell, and Git Bash can run side by side. The launcher is reachable by right-clicking the `+` button in the tab bar as well as with `Ctrl + Shift + l`; both are now documented in the README and the cheat sheet.
+- Internal only, no effect on installed terminals: the packaged basicly harness moved from 0.5.1 to a clean v0.12.1 install. This retires the vendored-engine era — `.scripts/sync-basicly.py` and its tests are gone, CI and the VS Code tasks are pinned to a released tag instead of tracking a branch, and the agent guidance, skills, and git hooks were regenerated from the 0.12.1 catalog (term-99z).
+- Re-apply with `terminal-setup --only config`. Restart WezTerm on Windows to pick up the launcher and domain changes; on Linux and macOS there is nothing to re-apply.
+
+### Commit delta (auto-generated)
+
+- chore(basicly): upgrade the harness to v0-12-1 and re-pin the gates (term-99z) (bec2643)
+- chore(release): bump package version for next release (term-99z) (7840802)
+- chore(basicly): retire the vendoring script and ignore br sidecar files (term-99z) (77ded78)
+- chore(beads): record the upstream reply and close the release-page wait (term-99z) (9ce896a)
+- chore(beads): record the post-install state of play for pickup (term-99z) (5ede3c4)
+- chore(basicly): replace the harness with a clean v0-12-0 install (term-99z) (0e0a97a)
+- chore(beads): record the v0-12-0 clean-install runbook from basicly (term-99z) (22c677c)
+- chore(beads): record the decision to wait for the basicly release (term-99z) (5be1c92)
+- chore(beads): correct the recorded ci failure cause (term-99z) (6f6c5af)
+- chore(beads): switch to a clean-install plan and file the broken build task (term-99z) (51bf628)
+- chore(beads): record the br-to-new-tracker migration checklist (term-99z) (28e2269)
+- chore(beads): record the catalog-lint root cause and close the launcher bug (term-99z) (49d1b9a)
+- fix(wezterm): pin windows launcher profiles to the local domain (term-tqk) (b6a5c53)
+- chore(beads): track the basicly upgrade and release follow-up (term-99z) (f599f97)
+- chore(beads): close the wezterm local domain tracker issue (term-o2u) (35b863a)
+- fix(wezterm): scope wsl startup args to the wsl domain (term-o2u) (44767a0)
+
 ## v0.4.5 - 2026-07-23
 
 Delta: v0.4.4..v0.4.5
