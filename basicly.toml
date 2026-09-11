@@ -35,3 +35,12 @@ modes = ["full"]
 # high-water mark, so raise it as routing improves, never lower it to go green.
 [catalog]
 rank1_floor = 0.85
+
+# Id prefix for records this repo mints. Until the beads cutover this lived in
+# `.beads/config.yaml` as `issue_prefix: term`, which `tracker import` does not
+# carry over — it preserves existing ids verbatim but declares no prefix, so
+# `tracker write -- create` with no parent is refused until this line exists.
+# It has to be here before `.beads/` is deleted, or the only record of our own
+# id namespace goes with the directory.
+[tracker]
+prefix = "term"
