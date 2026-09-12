@@ -241,6 +241,36 @@ def test_statusline_gauge_has_no_texture_to_break_up() -> None:
     assert blocks <= {"\u2588", "\u258c"}, f"gauge uses a shaded glyph: {blocks}"
 
 
+_DIM = "38;2;86;95;137"  # FD, the palette's secondary-detail colour
+
+
+def colour_before(raw: str, label: str) -> str:
+    """Return the foreground SGR parameters in force where ``label`` is printed."""
+    index = raw.index(label)
+    foreground = ""
+    for match in _ANSI.finditer(raw[:index]):
+        body = match.group(0)[2:-1]
+        if body in {"0", ""}:
+            foreground = ""
+        elif body.startswith("38;"):
+            foreground = body
+    return foreground
+
+
+def test_statusline_shows_a_fresh_per_model_sample_in_full_colour(tmp_path: Path) -> None:
+    """A reading taken moments ago must read like the live gauges beside it."""
+    write_usage_cache(tmp_path, [_FABLE_WINDOW], age_seconds=0)
+    raw = render(full_payload(), keep_color=True, CLAUDE_CONFIG_DIR=str(tmp_path))
+    assert colour_before(raw, "fable 83%") != _DIM
+
+
+def test_statusline_dims_a_per_model_sample_as_it_ages(tmp_path: Path) -> None:
+    """Nothing refreshes this figure but /usage, so an old one must not look current."""
+    write_usage_cache(tmp_path, [_FABLE_WINDOW], age_seconds=25 * 60)
+    raw = render(full_payload(), keep_color=True, CLAUDE_CONFIG_DIR=str(tmp_path))
+    assert colour_before(raw, "fable 83%") == _DIM
+
+
 def test_statusline_survives_unreadable_claude_config(tmp_path: Path) -> None:
     """Claude Code rewrites that config live: a half-written read costs one segment."""
     (tmp_path / ".claude.json").write_text('{"cachedUsageUtil', encoding="utf-8")

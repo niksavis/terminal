@@ -14,8 +14,9 @@
 #
 # The two weekly gauges are two different limits: "wk" is the all-models weekly
 # window Claude Code puts on stdin, and "fable 83%" (say) is the extra weekly
-# window a single model is billed against. See the per-model block below for why
-# only one of them is live and what makes the other one disappear.
+# window a single model is billed against. Only the first is live; the second is
+# a snapshot that dims as it ages and is dropped once stale. See the per-model
+# block below for where it comes from and why it cannot be read continuously.
 #
 # MODES
 #   STATUSLINE_NERDFONT=1  (default)  Nerd Font icons. Requires a Nerd Font in your
@@ -256,6 +257,11 @@ if [ -n "$wk" ]; then p=${wk%.*}; pfg "$p"; gauge "$p"
     age=$(( now - mdlat ))
     if (( age >= 0 && age < 3600 )); then
       p=$mdlpct; pfg "$p"; gauge "$p"; trunc "${mdl,,}" 8
+      # Nothing refreshes this figure but /usage and /cost - using the model it
+      # measures does not - so past a few minutes it is recall, not a reading.
+      # Drop it to the dim colour there: a stale figure must not look identical
+      # to one taken a second ago, and it has no pressure left to signal.
+      (( age >= 600 )) && _pf=$FD
       wfull+=" ${FD}·${R} ${_pf}${_bar}${R} ${_pf}${_t} ${p}%${R}"
       wshort+=" ${FD}·${R} ${_pf}${_t} ${p}%${R}"
     fi

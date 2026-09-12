@@ -219,7 +219,9 @@ Claude Code can bill a single model against its own weekly window on top of the 
 | `wk 60%` | The weekly limit across all models | Live, from the status line payload |
 | `fable 83%` | The extra weekly limit for one model, labelled with that model's name | Sampled from Claude Code's usage cache |
 
-The per-model gauge is the one to read with care: Claude Code does not put that window on the status line's stdin, so it comes from the usage snapshot Claude Code caches in its own config file, which only `/usage` and `/cost` refresh. The figure can therefore be up to an hour old, and once it passes the one-hour lifetime Claude Code itself gives it the gauge disappears rather than showing a number nobody refreshed. Run `/usage` to refresh it — that screen is also where the live figure always lives.
+The per-model gauge is the one to read with care, because it is a snapshot rather than a reading. Claude Code does not put that window on the status line's stdin, so it comes from the usage snapshot Claude Code caches in its own config file — and **only `/usage` and `/cost` write that cache**. Using the model it measures does not refresh it, so between those commands the figure is frozen at whatever it was when you last looked.
+
+It therefore fades rather than lying. Within ten minutes of a refresh it renders in full colour like the live gauges; after that it drops to the dim colour, still readable but visibly no longer current; and once it passes the one-hour lifetime Claude Code gives that cache it disappears entirely. Run `/usage` to bring it back to full colour — that screen is also where the live figure always lives.
 
 The two weekly windows share one segment, separated by a dim `·`, with the countdown stated once after both: they are the same week and reset within a microsecond of each other, so one reset covers the pair. With no per-model window the segment collapses to the all-models gauge alone.
 
