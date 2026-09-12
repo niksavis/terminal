@@ -143,6 +143,8 @@ class Runner:
 
     dry_run: bool = False
     reporter: Reporter = field(default_factory=ConsoleReporter)
+    failures: list[str] = field(default_factory=list)
+    """Steps that failed but were not allowed to abort the run. See ``attempt``."""
 
     def run(  # noqa: PLR0913
         self,

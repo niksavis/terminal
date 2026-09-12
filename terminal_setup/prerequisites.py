@@ -6,7 +6,9 @@ import json
 import os
 import subprocess  # nosec B404
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 from .platform import (
@@ -478,6 +480,36 @@ def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> No
         "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
         wsl_distro=wsl_distro,
     )
+
+
+def _failure_reason(error: Exception) -> str:
+    """Render an install failure in one line, preferring the tool's own stderr."""
+    if isinstance(error, subprocess.CalledProcessError):
+        detail = (error.stderr or error.stdout or "").strip().splitlines()
+        return detail[-1] if detail else f"exit code {error.returncode}"
+    return str(error) or error.__class__.__name__
+
+
+def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
+    """Run one install step, recording a failure instead of aborting the run.
+
+    Installing a tool reaches the network and a third party's release assets, so
+    it fails for reasons that have nothing to do with the rest of the setup: an
+    outage, a renamed asset, an API rate limit. Every such failure used to reach
+    the one top-level handler and end the run, taking with it the steps that had
+    not run yet - including config deployment, which needs no network at all.
+
+    The failure is not swallowed: it is reported here and again in the summary
+    the caller prints from ``runner.failures``, which is what makes the exit
+    status non-zero.
+    """
+    try:
+        action()
+    except (subprocess.CalledProcessError, RuntimeError, OSError) as error:
+        runner.failures.append(label)
+        runner.reporter.warn(f"{label} failed: {_failure_reason(error)} (continuing)")
+        return False
+    return True
 
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
@@ -969,14 +1001,28 @@ def _install_cargo_tool(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Install a Rust crate into ~/.local using cargo."""
-    del binary
+    """Install a Rust crate into ~/.local using cargo, unless it is already current.
+
+    ``--force`` rebuilds from source whether or not anything changed, which on a
+    refresh run costs minutes of compilation to land the identical binary. Ask
+    crates.io first - that is the version cargo would install, and it is not
+    always the project's newest git tag: sd's latest release is tagged v1.1.0 but
+    only 1.0.0 was ever published, so comparing against the tag would rebuild for
+    ever. An unreadable or empty answer falls through to installing.
+    """
     _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
     _run_shell_command(
         runner,
         (
             'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; '
-            f"cargo install --locked --force --root ~/.local {crate}"
+            f"want=$(curl -fsSL -H 'User-Agent: terminal-setup' "
+            f"https://crates.io/api/v1/crates/{crate} 2>/dev/null | "
+            'sed -n \'s/.*"max_stable_version":"\\([^"]*\\)".*/\\1/p\'); '
+            f'have=$("$HOME/.local/bin/{binary}" --version 2>/dev/null | '
+            "grep -oE '[0-9]+\\.[0-9]+(\\.[0-9]+)?' | head -n 1); "
+            'if [ -n "$want" ] && [ "$want" = "$have" ]; then '
+            f'echo "{crate} is up to date ($have); skipping rebuild"; '
+            f"else cargo install --locked --force --root ~/.local {crate}; fi"
         ),
         wsl_distro=wsl_distro,
     )
@@ -1398,6 +1444,12 @@ def _install_user_local_tool(
     return False
 
 
+def _install_one_user_local_tool(runner: Runner, package: str, platform: PlatformInfo) -> None:
+    """Install one tool, naming it when no user-local path is known."""
+    if not _install_user_local_tool(runner, package, platform):
+        runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
+
+
 def _stdin_is_interactive(runner: Runner) -> bool:
     """Return whether prompts can reach the user (or are simulated in dry-run)."""
     return runner.dry_run or sys.stdin.isatty()
@@ -1486,8 +1538,11 @@ def ensure_wsl_tools(  # noqa: PLR0913
                 and _is_user_local_command_available(runner, command, wsl_distro=distro)
             ):
                 continue
-            if not _install_user_local_tool(runner, package, platform):
-                runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
+            attempt(
+                runner,
+                f"install {package}",
+                partial(_install_one_user_local_tool, runner, package, platform),
+            )
         _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return
 

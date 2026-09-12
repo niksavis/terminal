@@ -165,7 +165,7 @@ def test_run_setup_config_only_skips_package_installs() -> None:
     ):
         result = run_setup(
             fake_platform,
-            mock.Mock(),
+            mock.Mock(failures=[]),
             skip_vscode=True,
             skip_starship=False,
             skip_claude=False,
@@ -212,7 +212,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
     ):
         result = run_setup(
             fake_platform,
-            mock.Mock(),
+            mock.Mock(failures=[]),
             skip_vscode=True,
             skip_starship=True,
             skip_claude=True,
@@ -267,7 +267,7 @@ def _run_setup_install_mode(
     ):
         result = run_setup(
             fake_platform,
-            mock.Mock(),
+            mock.Mock(failures=[]),
             skip_vscode=True,
             skip_starship=True,
             skip_claude=True,

@@ -6,6 +6,7 @@ import argparse
 import os
 import subprocess  # nosec B404
 import sys
+from functools import partial
 from pathlib import Path
 
 from . import configs, platform, prerequisites
@@ -448,21 +449,33 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 uninstall_system_versions=uninstall_system_versions,
                 keep_system_versions=keep_system_versions,
             )
-            prerequisites.ensure_wsl_cli_extras(runner, platform_info)
+            prerequisites.attempt(
+                runner,
+                "install WSL CLI extras",
+                partial(prerequisites.ensure_wsl_cli_extras, runner, platform_info),
+            )
         else:
             prerequisites.ensure_shell_tools(runner, platform_info)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
-        prerequisites.ensure_wezterm(
+        prerequisites.attempt(
             runner,
-            platform_info,
-            no_sudo=effective_no_sudo,
+            "install WezTerm",
+            partial(prerequisites.ensure_wezterm, runner, platform_info, no_sudo=effective_no_sudo),
         )
 
-        prerequisites.ensure_node(runner, platform_info, update=update)
+        prerequisites.attempt(
+            runner,
+            "install Node.js",
+            partial(prerequisites.ensure_node, runner, platform_info, update=update),
+        )
 
         if not skip_starship:
-            prerequisites.ensure_starship(runner, platform_info)
+            prerequisites.attempt(
+                runner,
+                "install starship",
+                partial(prerequisites.ensure_starship, runner, platform_info),
+            )
 
     runner.reporter.step("Deploying configuration")
     configs.deploy_all(
@@ -492,6 +505,18 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             include_starship=not skip_starship,
             include_vscode=not skip_vscode,
         )
+
+    if runner.failures:
+        # Everything that could run has run; say plainly what did not, and exit
+        # non-zero so a script is not told a partial setup succeeded.
+        runner.reporter.error(
+            f"Setup finished with {len(runner.failures)} failed "
+            f"{'step' if len(runner.failures) == 1 else 'steps'}:"
+        )
+        for failure in runner.failures:
+            runner.reporter.error(f"  - {failure}")
+        runner.reporter.step("Re-run to retry them; everything else was applied.")
+        return 1
 
     runner.reporter.success("Setup complete.")
     if config_only:
