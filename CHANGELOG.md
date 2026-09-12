@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.6.1 - 2026-09-12
+
+Delta: v0.6.0..v0.6.1
+
+### Highlights
+
+- **A failing tool no longer ends the whole setup.** Installing a tool reaches the network and someone else's release assets, so it fails for reasons unrelated to everything queued behind it - an outage, a renamed asset, an API rate limit. Until now any one of those aborted the run, taking with it every step not yet reached, config deployment included, which needs no network at all. Each tool install is now isolated: the failure is reported with the tool's own error, the run carries on, and the end of the run names every failed step. The exit status is still non-zero, so a script is never told a partial setup succeeded (term-jet6e).
+- **Refresh runs no longer rebuild Rust tools that are already current.** `cargo install --force` rebuilds from source whether or not anything changed, spending minutes of compilation to land an identical binary. The version is now checked against crates.io first - which is what cargo would install, and not always a project's newest git tag: `sd`'s latest release is tagged v1.1.0 while only 1.0.0 was ever published, so comparing against tags would rebuild for ever. An unreachable crate or a missing binary still installs (term-jet6e).
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-jet6e) (1f36882)
+- fix(install): keep one failing tool from ending the whole setup (term-jet6e) (b2b756c)
+
 ## v0.6.0 - 2026-09-12
 
 Delta: v0.5.1..v0.6.0
