@@ -2,6 +2,26 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.5.0 - 2026-09-12
+
+Delta: v0.4.6..v0.5.0
+
+### Highlights
+
+- **The status line now shows both of Claude Code's weekly limits.** Claude bills some models against a weekly window of their own on top of the all-models one - `/usage` calls it "Current week (Fable)" - and the status line only ever rendered the all-models figure. The binding constraint could therefore sit at 83% while the visible gauge read 61%. Both now render side by side under one shared reset, since the two windows are the same week and reset within a microsecond of each other: `wk 61% - fable 83% 4d`. When a model has no window of its own the segment collapses to the all-models gauge alone, so nothing needs changing if that distinction ever goes away (term-4dnxa).
+- **That per-model figure is sampled, not live.** Claude Code holds the window in its own rate-limit store but does not put it on the status line's stdin, so it is read from the usage snapshot Claude Code caches in its config file - which only `/usage` and `/cost` refresh. A sample past the one-hour lifetime Claude Code itself gives that cache is dropped rather than shown, so the gauge goes quiet instead of going wrong. Run `/usage` to refresh it (term-4dnxa).
+- **The universal (`--no-nerd-font`) build now renders outside a Nerd Font terminal.** Four of its glyphs - the worktree, branch, reset and model markers - are in no Windows console font and appeared as tofu boxes in PowerShell and Git Bash, and the gauge blocks were absent from Consolas and Lucida Console, which blanked the bar outright. Every glyph is now chosen against the cmap of Consolas, Cascadia Mono, Lucida Console and DejaVu Sans Mono, and a test asserts it over the rendered output rather than trusting that a codepoint looks ordinary. The worktree marker turned out to be in none of those fonts, so it was tofu in WezTerm too (term-4dnxa).
+- **The gauges resolve to half a cell rather than a whole one**, so 60% no longer looks like 70% and 83% no longer looks like 97%. They are also drawn as one solid block in two colours instead of a solid fill against a dithered trough, whose texture read as a break in the bar (term-4dnxa).
+- Re-apply with `terminal-setup --only config`. No restart is needed on any platform: the status line script is executed afresh on every render, so a replaced file takes effect immediately.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-4dnxa) (486d944)
+- feat(statusline): show the per-model weekly limit and repair the glyph set (term-4dnxa) (7a91f39)
+- chore(tracker): file the session retro findings and handover (term-99z) (a6d6933)
+- chore(tracker): correct the wezterm upgrade scope on term-31j (term-31j) (af1c758)
+- chore(tracker): record the migration and close the release record (term-99z) (c9eb38c)
+- chore(tracker): cut over from beads to the owned ledger (term-99z) (a6b3f6d)
+
 ## v0.4.6 - 2026-09-11
 
 Delta: v0.4.5..v0.4.6
