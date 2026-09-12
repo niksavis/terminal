@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.6.0 - 2026-09-12
+
+Delta: v0.5.1..v0.6.0
+
+### Highlights
+
+- **Node.js in WSL/Linux/macOS moves from v24 to v26.** This setup installs Node into WSL but leaves Windows-native Node alone, so the pinned major is what keeps the two sides on one line - and that had lapsed: a machine with Windows on v26.8.2 still got v24 in WSL. v26 is the Current line for another six weeks and becomes Active LTS on 2026-10-28, eight days after v24 drops to maintenance, so the old pin was behind rather than conservatively stable. Pick it up with `terminal-setup --update`, which refreshes Node and the other user-local tools to their latest releases; `--only config` does not touch runtimes (term-uhxvn).
+- The README no longer claims the two sides match automatically. Windows-native Node is outside this setup's control, so it now says where to check (`node --version` on each) rather than asserting a match it cannot enforce.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-uhxvn) (64af247)
+- feat(node): track the node line the windows runtime is on (term-uhxvn) (00b4a26)
+
 ## v0.5.1 - 2026-09-12
 
 Delta: v0.5.0..v0.5.1
