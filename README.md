@@ -207,11 +207,29 @@ The prompt uses the Tokyo Night color palette and keeps all segments on one line
 
 ## Claude Code status line
 
-When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exists), the setup deploys a responsive status line to `~/.claude/statusline.sh` and registers it in `~/.claude/settings.json` (existing settings are preserved). It shows the model and reasoning effort, git repo/branch/state, gauges for context-window and 5-hour/weekly rate-limit usage (green → yellow → red), session cost with burn rate, and lines changed — using the same Tokyo Night palette as the prompt. Segments shorten and drop by priority as the terminal narrows.
+When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exists), the setup deploys a responsive status line to `~/.claude/statusline.sh` and registers it in `~/.claude/settings.json` (existing settings are preserved). It shows the model and reasoning effort, git repo/branch/state, gauges for context-window and rate-limit usage (green → yellow → red), session cost with burn rate, and lines changed — using the same Tokyo Night palette as the prompt. Segments shorten and drop by priority as the terminal narrows.
+
+### Reading the limit gauges
+
+Claude Code can bill a single model against its own weekly window on top of the all-models one — the status line shows both, so `wk` and `fable` are two different limits rather than two views of one:
+
+| Gauge | Limit | Source |
+| --- | --- | --- |
+| `5h 2%` | The 5-hour session limit, shared by every model | Live, from the status line payload |
+| `wk 60%` | The weekly limit across all models | Live, from the status line payload |
+| `fable 83%` | The extra weekly limit for one model, labelled with that model's name | Sampled from Claude Code's usage cache |
+
+The per-model gauge is the one to read with care: Claude Code does not put that window on the status line's stdin, so it comes from the usage snapshot Claude Code caches in its own config file, which only `/usage` and `/cost` refresh. The figure can therefore be up to an hour old, and once it passes the one-hour lifetime Claude Code itself gives it the gauge disappears rather than showing a number nobody refreshed. Run `/usage` to refresh it — that screen is also where the live figure always lives.
+
+The two weekly windows share one segment, separated by a dim `·`, with the countdown stated once after both: they are the same week and reset within a microsecond of each other, so one reset covers the pair. With no per-model window the segment collapses to the all-models gauge alone.
+
+The gauge is absent when no model has a window of its own, which is also what you will see if such a model later folds back into the all-models limit. Nothing needs re-applying for that; the segment simply stops appearing.
+
+All four gauges share one form: five cells resolved to half a cell each, so they carry ten steps rather than five and 60% does not look like 70%. The half block is as fine as it goes — the eighth-width blocks that would give more steps are missing from Consolas and Lucida Console.
 
 On Windows the status line is installed into **both** Claude Code homes so it looks the same wherever you open `claude`: the WSL `~/.claude` (Claude launched from WezTerm's Ubuntu shell) and the Windows-native `%USERPROFILE%\.claude` (Claude launched from PowerShell 7 or Git Bash). Windows-native Claude runs the status line through Git Bash, so that half is installed only when Git for Windows is present; the single bash script is shared across all of them (it strips the CR that Windows `jq` adds to its output).
 
-Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd-font` for the universal build that renders in any font, or `--skip-claude` to skip it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--only config`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
+Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd-font` for the universal build, or `--skip-claude` to skip it. The universal build restricts itself to codepoints checked against the cmap of every font it can land in — Consolas, Cascadia Mono, and Lucida Console on Windows, DejaVu Sans Mono on Linux — so it renders in PowerShell and Git Bash rather than in a Nerd Font terminal only; a test asserts this over the rendered output, since a codepoint looking ordinary is no evidence a console font carries it. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--only config`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
 
 ## What gets installed
 

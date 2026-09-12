@@ -8,9 +8,14 @@
 # dropped lowest-priority-first. Empty segments (no churn, no rate limits) are hidden.
 #
 # Shows: model + effort · git (repo/worktree/branch/dirty/ahead-behind) · context
-# gauge · 5h limit gauge · weekly limit gauge · cost + burn rate · lines changed.
-# The three gauges (context / 5h / weekly) share one form and colour by pressure
-# (green → yellow → red).
+# gauge · 5h limit gauge · weekly limit gauge · per-model weekly limit gauge ·
+# cost + burn rate · lines changed. The gauges share one form and colour by
+# pressure (green → yellow → red).
+#
+# The two weekly gauges are two different limits: "wk" is the all-models weekly
+# window Claude Code puts on stdin, and "fable 83%" (say) is the extra weekly
+# window a single model is billed against. See the per-model block below for why
+# only one of them is live and what makes the other one disappear.
 #
 # MODES
 #   STATUSLINE_NERDFONT=1  (default)  Nerd Font icons. Requires a Nerd Font in your
@@ -46,7 +51,7 @@ if [ -n "${LC_ALL:-}" ]; then
   export LC_ALL=""
 fi
 export LC_NUMERIC=C
-probe=$'▮'
+probe=$'█'
 if [ "${#probe}" != 1 ]; then
   export LC_CTYPE=C.UTF-8
 fi
@@ -89,6 +94,35 @@ ctxpct=${F[9]}; ctxtok=${F[10]}; ctxmax=${F[11]}
 h5=${F[12]}; h5r=${F[13]}; wk=${F[14]}; wkr=${F[15]}
 [ -z "$model" ] && exit 0
 
+# ── per-model weekly limit (a second jq, deliberately not the one above) ──
+# Claude Code bills some models against their own weekly window on top of the
+# all-models one — /usage shows it as "Current week (Fable)". Its status line
+# payload does not carry that window: the builder projects five_hour, seven_day
+# and a gateway-only spend_limit, and nothing else (v2.1.269). The usage snapshot
+# Claude Code caches in its own config file does carry it, as a limits[] row
+# scoped to a model, so read it from there — a sample, not a live feed, which is
+# why a sample past Claude Code's own one-hour TTL is dropped rather than shown.
+#
+# Selecting on the model scope rather than on kind keeps this honest in both
+# directions: a row appears only while such a window exists, so when a model
+# folds back into the all-models limit the segment disappears on its own.
+#
+# This runs as its own jq against its own file: Claude Code rewrites that config
+# frequently, and a half-written read must cost us this segment, not the whole
+# status line the way a failure in the stdin parse above would.
+ccfile="${CLAUDE_CONFIG_DIR:-$HOME}/.claude.json"
+mapfile -t M < <(
+  jq -r '
+    .cachedUsageUtilization as $u
+    | [ ($u.utilization.limits // [])[]
+        | select(.scope.model.display_name != null and .percent != null) ]
+    | sort_by(-.percent)[0] // empty
+    | (.scope.model.display_name),
+      (.percent | floor | tostring),
+      (($u.fetchedAtMs // 0) / 1000 | floor | tostring)' "$ccfile" 2>/dev/null | tr -d '\r'
+)
+mdl=${M[0]:-}; mdlpct=${M[1]:-}; mdlat=${M[2]:-0}
+
 # ── terminal width ──
 cols=${STATUSLINE_WIDTH:-${COLUMNS:-}}
 [ -z "$cols" ] && cols=$(tput cols 2>/dev/null || echo 120)
@@ -103,7 +137,8 @@ FDR="${E}38;2;255;158;100m"  # dirty / cost-warn (orange)
 FGR="${E}38;2;158;206;106m"  # green   (gauge low, +added, ahead)
 FYE="${E}38;2;224;175;104m"  # yellow  (gauge mid)
 FRE="${E}38;2;247;118;142m"  # red     (gauge high, -removed, behind, cost-crit)
-FDIV="${E}38;2;65;72;104m"   # separator
+FDIV="${E}38;2;65;72;104m"   # separator, and the gauge trough
+BGD="${E}48;2;65;72;104m"    # trough as a background, for the half-step cell
 SEP=" ${FDIV}│${R} "
 case $model in                                     # model accent: cool, non-violet
   Opus*)   MINK="${E}38;2;122;162;247m";;          # blue
@@ -113,22 +148,44 @@ case $model in                                     # model accent: cool, non-vio
 esac
 
 # ── glyphs: Nerd Font (default) vs universal-unicode ──
-G_WT=$'⑂'; G_UP=$'↑'; G_DN=$'↓'; G_DIRTY=$'●'   # ⑂ ↑ ↓ ●
-GA_F=$'▮▮▮▮▮'; GA_E=$'▯▯▯▯▯'  # ▮ / ▯ gauge
+# Everything outside the Nerd Font branch is checked against the cmap of the
+# fonts a terminal running this actually uses — Consolas, Cascadia Mono, Lucida
+# Console, DejaVu Sans Mono — because "universal" is a claim about coverage, not
+# a codepoint's age. That rules out several obvious-looking picks: ⑂ U+2442 is in
+# none of them (nor in any font on a stock WSL box), and ⎇ U+2387, ⟳ U+27F3 and
+# ✱ U+2731 are in no Windows console font, so each renders as tofu. The gauge
+# is built from block elements rather than ▮/▯ U+25AE-AF for the same reason:
+# those are absent from Consolas and Lucida Console, which blanks the whole bar.
+G_UP=$'↑'; G_DN=$'↓'; G_DIRTY=$'•'   # ↑ ↓ •
+GA_B=$'█████'; GA_H=$'▌'  # █ bar cell, ▌ half step
 if [ "$NERDFONT" = 1 ]; then
-  G_BRANCH=$' '; G_REPO=$' '; G_CLOCK=$' '        #
+  G_BRANCH=$' '; G_REPO=$' '; G_CLOCK=$' '; G_WT=$' '        #
   case $model in
     Opus*)   G_MODEL=$' ';;  Sonnet*) G_MODEL=$' ';;
     Haiku*)  G_MODEL=$' ';;  Fable*)  G_MODEL=$' ';;
     *)       G_MODEL=$' ';;    # microchip fallback
   esac
 else
-  G_BRANCH=$'⎇ '; G_REPO=''; G_CLOCK=$'⟳'; G_MODEL=$'✱ '   # ⎇ ⟳ ✱
+  G_BRANCH=$'»'; G_REPO=''; G_CLOCK=$'→'; G_MODEL=$'* '; G_WT=$'+'   # » → *
 fi
 
 # ── helpers (all fork-free; set a global rather than printing) ──
 pfg(){ local p=$1; if (( p>=85 )); then _pf=$FRE; elif (( p>=60 )); then _pf=$FYE; else _pf=$FGR; fi; }
-gauge(){ local p=$1; local f=$(( p*5/100 )); (( f>5 ))&&f=5; _bar="${GA_F:0:f}${GA_E:0:$((5-f))}"; }
+# Five cells resolved to half a cell each: ten steps, not five. The half block is
+# the only partial block Consolas and Lucida Console carry — the eighths that
+# would give finer steps are absent there — so this is as fine as the bar goes
+# without costing the fonts it has to render in.
+#
+# Filled and empty are the same solid block in two colours rather than two
+# glyphs. A shaded trough is drawn as a dither, and against a solid neighbour its
+# first pixel column reads as a break in the bar. The half step is the one cell
+# needing both colours at once, so it takes the trough as a background and lets
+# the glyph's own left half carry the fill.
+gauge(){ local p=$1; (( p>100 ))&&p=100; local f=$(( p/20 )) h=0
+  (( f<5 && p%20>=10 ))&&h=1
+  _bar="${GA_B:0:f}"
+  (( h ))&&_bar+="${BGD}${GA_H}${R}"
+  _bar+="${FDIV}${GA_B:0:$((5-f-h))}"; }
 hnum(){ local n=$1
   if   (( n>=1000000 )); then _h="$((n/1000000)).$(((n%1000000)/100000))M"
   elif (( n>=1000 ));    then _h="$((n/1000))k"
@@ -185,8 +242,27 @@ seg ctx 95 "${_pf}${_bar}${R} ${_pf}ctx ${cp}%${R} ${FD}${lbl}${R}" "${_pf}ctx $
 if [ -n "$h5" ]; then p=${h5%.*}; pfg "$p"; gauge "$p"; _r=""; [ -n "$h5r" ] && reset_in "$h5r"
   seg 5h 90 "${_pf}${_bar}${R} ${_pf}5h ${p}%${R} ${FD}${G_CLOCK}${_r}${R}" "${_pf}5h ${p}%${R}"
 fi
-if [ -n "$wk" ]; then p=${wk%.*}; pfg "$p"; gauge "$p"; _r=""; [ -n "$wkr" ] && reset_in "$wkr"
-  seg wk 85 "${_pf}${_bar}${R} ${_pf}wk ${p}%${R} ${FD}${G_CLOCK}${_r}${R}" "${_pf}wk ${p}%${R}"
+# The weekly gauges are one segment: the all-models window, then the window a
+# single model is billed against when it has one. They are the same week and
+# reset within a microsecond of each other, so the countdown is stated once after
+# both rather than on the first of them, where it read as belonging to that one
+# alone. A model's window is dropped past Claude Code's own TTL, so a sample
+# nobody refreshed goes quiet rather than going wrong; when a model has no window
+# of its own this collapses to exactly the all-models gauge.
+if [ -n "$wk" ]; then p=${wk%.*}; pfg "$p"; gauge "$p"
+  wfull="${_pf}${_bar}${R} ${_pf}wk ${p}%${R}"; wshort="${_pf}wk ${p}%${R}"
+  if [ -n "$mdl" ] && [ -n "$mdlpct" ] && [[ $mdlat == +([0-9]) ]]; then
+    [ -z "$now" ] && now=$(date +%s)
+    age=$(( now - mdlat ))
+    if (( age >= 0 && age < 3600 )); then
+      p=$mdlpct; pfg "$p"; gauge "$p"; trunc "${mdl,,}" 8
+      wfull+=" ${FD}·${R} ${_pf}${_bar}${R} ${_pf}${_t} ${p}%${R}"
+      wshort+=" ${FD}·${R} ${_pf}${_t} ${p}%${R}"
+    fi
+  fi
+  _r=""; [ -n "$wkr" ] && reset_in "$wkr"
+  [ -n "$_r" ] && wfull+=" ${FD}${G_CLOCK}${_r}${R}"
+  seg wk 85 "$wfull" "$wshort"
 fi
 
 # cost + burn rate ($/hr); formatted fork-free (bash printf + integer cents)
