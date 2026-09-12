@@ -20,7 +20,7 @@ Maintainer notes for publishing tagged releases.
 ## Maintainer steps
 
 1. Ensure `main` is green and all release code changes are committed.
-1. Bump `version` in `pyproject.toml` to match the target tag, refresh `uv.lock` (`uv lock`), and commit both, for example `git commit -m "chore(release): bump package version for next release"`.
+1. Bump `version` in `pyproject.toml` **and** `__version__` in `terminal_setup/__init__.py` to match the target tag, refresh `uv.lock` (`uv lock`), and commit them together, for example `git commit -m "chore(release): bump package version for next release"`. The two must agree: `tests/test_version.py` fails when they drift, which is how `__version__` was caught sitting at 0.1.0 through every release up to v0.5.0.
 1. Generate/update changelog for the target semantic tag and date with `uv run python .scripts/generate_release_changelog.py --tag vX.Y.Z --date YYYY-MM-DD`.
 1. Review `CHANGELOG.md`: keep a concise user-facing `### Highlights` section above the auto-generated commit delta.
 1. Commit changelog updates with `git add CHANGELOG.md && git commit -m "docs(release): update changelog for vX-Y-Z"`.
