@@ -10,7 +10,14 @@ permissions:
   contents: write
 
 jobs:
+  # Publishing is gated on the gates passing against the tagged tree itself.
+  # Neither gate workflow triggers on tags, so before this a tag inherited its
+  # green from main having been pushed first - and a tag is not a branch.
+  verify:
+    uses: ./.github/workflows/quality-gates.yml
+
   release:
+    needs: verify
     if: |
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest

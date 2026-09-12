@@ -6,6 +6,7 @@ name: quality-gates
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -21,7 +22,7 @@ jobs:
         with:
           node-version: 22
       - name: Install Python dependencies
-        run: uv sync
+        run: uv sync --locked
       - name: Install Node dependencies
         run: npm install --no-fund --no-audit
       - name: Run pre-commit checks

@@ -19,6 +19,9 @@ from pathlib import Path
 
 TAG_PATTERN = re.compile(r"^v(?P<version>\d+\.\d+\.\d+)$")
 VERSION_ATTR_PATTERN = re.compile(r'^__version__\s*=\s*"(?P<version>[^"]+)"', re.MULTILINE)
+LOCK_PROJECT_PATTERN = re.compile(
+    r'^name = "terminal"\nversion = "(?P<version>[^"]+)"', re.MULTILINE
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,6 +46,16 @@ def module_version(repo_root: Path) -> str:
     return match.group("version")
 
 
+def lock_version(repo_root: Path) -> str | None:
+    """Return the project version uv.lock records, or None when it records none.
+
+    Checked because a bare ``uv sync`` re-resolves and rewrites a stale lockfile
+    rather than failing on it, so the drift is masked wherever it is not asserted.
+    """
+    match = LOCK_PROJECT_PATTERN.search((repo_root / "uv.lock").read_text(encoding="utf-8"))
+    return match.group("version") if match else None
+
+
 def changelog_heading(repo_root: Path, tag: str) -> str | None:
     """Return the dated changelog heading for ``tag``, or None when absent."""
     pattern = re.compile(rf"^## {re.escape(tag)} - (\d{{4}}-\d{{2}}-\d{{2}})$", re.MULTILINE)
@@ -63,9 +76,12 @@ def check(tag: str, repo_root: Path = REPO_ROOT) -> list[str]:
     declared = (
         ("pyproject.toml [project] version", pyproject_version(repo_root)),
         ("terminal_setup/__init__.py __version__", module_version(repo_root)),
+        ("uv.lock project version", lock_version(repo_root)),
     )
     for label, actual in declared:
-        if actual != expected:
+        if actual is None:
+            problems.append(f"{label} could not be read")
+        elif actual != expected:
             problems.append(f"{label} is {actual}, but the tag says {expected}")
 
     if changelog_heading(repo_root, tag) is None:
@@ -92,6 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Release {args.tag} is consistent:")
     print(f"  {'pyproject.toml':<16} {pyproject_version(REPO_ROOT)}")
     print(f"  {'__version__':<16} {module_version(REPO_ROOT)}")
+    print(f"  {'uv.lock':<16} {lock_version(REPO_ROOT)}")
     print(f"  {'CHANGELOG.md':<16} {changelog_heading(REPO_ROOT, args.tag)}")
     return 0
 

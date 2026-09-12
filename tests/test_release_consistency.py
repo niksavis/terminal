@@ -30,12 +30,22 @@ def load_script() -> ModuleType:
 CHECKER = load_script()
 
 
-def fake_repo(tmp_path: Path, *, pyproject: str, version_attr: str, changelog: str) -> Path:
+def fake_repo(
+    tmp_path: Path,
+    *,
+    pyproject: str,
+    version_attr: str,
+    changelog: str,
+    lock_version: str = "0.6.0",
+) -> Path:
     """Lay out a synthetic repository the checker can be pointed at."""
     (tmp_path / "pyproject.toml").write_text(pyproject, encoding="utf-8")
     (tmp_path / "terminal_setup").mkdir()
     (tmp_path / "terminal_setup" / "__init__.py").write_text(version_attr, encoding="utf-8")
     (tmp_path / "CHANGELOG.md").write_text(changelog, encoding="utf-8")
+    (tmp_path / "uv.lock").write_text(
+        f'[[package]]\nname = "terminal"\nversion = "{lock_version}"\n', encoding="utf-8"
+    )
     return tmp_path
 
 
@@ -106,15 +116,29 @@ def test_refuses_a_malformed_tag(tmp_path: Path, tag: str) -> None:
     assert CHECKER.check(tag, consistent(tmp_path)) != []
 
 
+def test_refuses_a_stale_lockfile(tmp_path: Path) -> None:
+    """A bare `uv sync` rewrites a stale lock instead of failing, so assert it here."""
+    repo = fake_repo(
+        tmp_path,
+        pyproject='[project]\nname = "terminal"\nversion = "0.6.0"\n',
+        version_attr='__version__ = "0.6.0"\n',
+        changelog="# Changelog\n\n## v0.6.0 - 2026-09-14\n",
+        lock_version="0.5.0",
+    )
+    problems = CHECKER.check("v0.6.0", repo)
+    assert any("uv.lock" in problem and "0.5.0" in problem for problem in problems)
+
+
 def test_reports_every_disagreement_at_once(tmp_path: Path) -> None:
-    """One run must name all three, so a release is not fixed one failed run at a time."""
+    """One run must name all four, so a release is not fixed one failed run at a time."""
     repo = fake_repo(
         tmp_path,
         pyproject='[project]\nname = "terminal"\nversion = "0.5.0"\n',
         version_attr='__version__ = "0.1.0"\n',
         changelog="# Changelog\n\n## v0.5.0 - 2026-09-12\n",
+        lock_version="0.4.6",
     )
-    assert len(CHECKER.check("v0.6.0", repo)) == 3
+    assert len(CHECKER.check("v0.6.0", repo)) == 4
 
 
 def test_reads_the_version_attribute_from_source_not_import(tmp_path: Path) -> None:
