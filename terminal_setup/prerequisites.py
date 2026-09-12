@@ -30,8 +30,10 @@ class PrerequisiteStatus:
 
 
 # Node.js major version to install in WSL/Linux/macOS, matching the Windows
-# runtime. Track the current active major so both sides stay aligned.
-TARGET_NODE_MAJOR = "24"
+# runtime, which this setup does not manage - so this is the knob that keeps the
+# two sides on one major. Track the line that is, or is about to be, Active LTS:
+# v26 becomes LTS 2026-10-28, eight days after v24 drops to maintenance.
+TARGET_NODE_MAJOR = "26"
 
 
 def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:

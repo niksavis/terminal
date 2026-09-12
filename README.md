@@ -29,7 +29,7 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - A consistent terminal stack across Windows+WSL, Linux, and macOS.
 - Better defaults for multitasking: WezTerm + tmux + zsh + starship.
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
-- Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v24), matching the Windows versions.
+- Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v26). Windows-native Node is managed outside this setup, so the major is pinned here to keep both sides on one line — check `node --version` on each if you rely on them matching.
 - Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
 - No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
 
@@ -239,7 +239,7 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
-- Runtimes (WSL/Linux/macOS): `node` (latest v24, user-local in `~/.local`)
+- Runtimes (WSL/Linux/macOS): `node` (latest v26, user-local in `~/.local`)
 - Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, and `~/.claude/statusline.sh` (Claude Code status line, when Claude Code is installed)
 
 `lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
