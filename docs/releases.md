@@ -16,6 +16,7 @@ Maintainer notes for publishing tagged releases.
 - Uses the matching section in `CHANGELOG.md` as release notes source.
 - Requires section heading format: `## vX.Y.Z - YYYY-MM-DD`.
 - Appends a pinned `uvx` install command for that tag.
+- Runs `.scripts/check_release_consistency.py` first and fails the release when the tag disagrees with `pyproject.toml`, `terminal_setup/__init__.py` or the changelog heading. The pre-flight step below is the same check run earlier; this one is what makes skipping it harmless, since a tag cut on an unbumped tree cannot publish.
 
 ## Maintainer steps
 
@@ -25,6 +26,7 @@ Maintainer notes for publishing tagged releases.
 1. Review `CHANGELOG.md`: keep a concise user-facing `### Highlights` section above the auto-generated commit delta.
 1. Commit changelog updates with `git add CHANGELOG.md && git commit -m "docs(release): update changelog for vX-Y-Z"`.
 1. Push `main` with `git push origin main`.
+1. Check the release is internally consistent with `uv run python .scripts/check_release_consistency.py --tag vX.Y.Z`. It compares the tag against `pyproject.toml`, `terminal_setup/__init__.py` and the `CHANGELOG.md` heading, and names every disagreement at once. Run it here so a mismatch is fixed before a tag exists to retract.
 1. Create an annotated semantic version tag with the release date in the message using `git tag -a vX.Y.Z -m "vX.Y.Z (YYYY-MM-DD)"`.
 1. Push the tag with `git push origin vX.Y.Z`.
 1. Review the generated GitHub release page and verify notes were copied from `CHANGELOG.md`.

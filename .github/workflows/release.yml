@@ -35,6 +35,21 @@ jobs:
           git fetch --force --tags origin
           git rev-parse "${tag_name}" >/dev/null
 
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Verify the tag agrees with the declared version
+        shell: bash
+        run: |
+          # The bumps are manual, so a tag can be cut on an unbumped tree: v0.5.0
+          # published with __version__ still at 0.1.0 while every other gate passed.
+          # Fail here rather than publish a release whose pinned install command
+          # resolves to a package declaring a different version.
+          # Stdlib only, but pin the interpreter to the version the project
+          # declares rather than inheriting whatever the runner image ships.
+          uv run --no-project --python 3.14 \
+            .scripts/check_release_consistency.py \
+            --tag '${{ steps.resolve_tag.outputs.tag_name }}'
+
       - name: Generate release notes from changelog
         shell: bash
         run: |
