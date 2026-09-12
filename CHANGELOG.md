@@ -2,6 +2,24 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.5.1 - 2026-09-12
+
+Delta: v0.5.0..v0.5.1
+
+### Highlights
+
+- **The Fable gauge now fades as its reading ages, instead of looking current when it is not.** That figure is a snapshot: it comes from the usage snapshot Claude Code caches, and only `/usage` and `/cost` write that cache - using Fable does not refresh it. A reading from 55 minutes ago therefore looked identical to one from a second ago. It now renders in full colour for ten minutes after a refresh, in the dim colour after that, and disappears once past the cache's own one-hour lifetime. Colour alone carries it, so no duration is added that could be misread as a countdown (term-sinhx).
+- **Fixed: the package reported version 0.1.0.** `terminal_setup.__version__` had sat at 0.1.0 through every release since, because the release bumps `pyproject.toml` alone and nothing compared the two. Nothing reads the attribute today, so there is no behaviour change - but it was wrong, and anyone reading it would have believed it (term-4ph26).
+- **Maintainers: a release can no longer publish a version nobody bumped.** A new pre-flight compares the tag against `pyproject.toml`, `terminal_setup/__init__.py`, `uv.lock` and the changelog heading, naming every disagreement in one run, and the release workflow runs the same check before publishing - so skipping the pre-flight is harmless rather than silent. Publishing is now also gated on the full `quality-gates` suite passing against the tagged tree: neither gate workflow triggered on tags before, so a published tag inherited its green from `main` having been pushed first. CI also passes `uv sync --locked`, because a bare `uv sync` rewrites a stale lockfile rather than failing on it, masking the drift (term-l0ym3, term-0bl0c).
+- Re-apply with `terminal-setup --only config`. No restart is needed on any platform.
+
+### Commit delta (auto-generated)
+- chore(release): bump package version for next release (term-sinhx) (f859e5b)
+- fix(statusline): fade the per-model gauge as its sample ages (term-sinhx) (0ad58c9)
+- ci(release): gate publishing on the gates and refuse a stale lockfile (term-0bl0c) (adea098)
+- ci(release): refuse a tag that disagrees with the declared version (term-l0ym3) (ac1eb15)
+- fix(version): bring the package version attribute into step with pyproject (term-4ph26) (d53e47b)
+
 ## v0.5.0 - 2026-09-12
 
 Delta: v0.4.6..v0.5.0
