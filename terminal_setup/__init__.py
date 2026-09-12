@@ -6,4 +6,4 @@ from __future__ import annotations
 # tests/test_version.py. Deriving it from installed metadata instead does not
 # work here: `[tool.uv] package = false`, so a dev checkout and CI have no
 # installed distribution to read and would report a placeholder.
-__version__ = "0.5.1"
+__version__ = "0.6.0"
