@@ -1,9 +1,3 @@
-"""Validate conventional commit message format.
-
-Installed as a commit-msg hook via pre-commit.
-Usage: python .basicly/core/hooks/commit-msg.py <commit-msg-file>
-"""
-
 from __future__ import annotations
 
 import re
@@ -27,19 +21,6 @@ ALLOWED_TYPES = (
     "revert",
 )
 
-# type(scope)!: description (optional-issue-id[, issue-id...])
-# Scope is optional and lowercase-kebab-case. An optional "!" before the colon
-# marks a breaking change per the Conventional Commits spec.
-# Description must be entirely lowercase (not just the first letter; proper
-# nouns and acronyms get lowercased too), allows letters/digits/space/hyphen
-# only (no underscores or other punctuation), has at least
-# MIN_DESCRIPTION_LENGTH chars, and must not end with punctuation.
-# An optional trailing parenthetical referencing one or more tracker record
-# ids is permitted syntactically here; tracker-commit-msg.py validates that the
-# referenced id(s) actually exist. A beads id is a kebab-case prefix plus a
-# hyphenated base, with optional dotted hierarchy levels (e.g. basicly-q49,
-# basicly-zrj.8, basicly-zrj.4.1) — the dots must be accepted here to match
-# beads' own id scheme.
 ISSUE_ID = r"[a-z][a-z0-9]*-[a-z0-9]+(?:\.[a-z0-9]+)*"
 HEADER_PATTERN = re.compile(
     r"^(" + "|".join(ALLOWED_TYPES) + r")(\([a-z0-9]+(?:-[a-z0-9]+)*\))?(!)?: "
@@ -79,9 +60,7 @@ Invalid examples:
 
 
 def validate(message: str) -> bool:
-    """Return True if the commit message matches conventional commit format."""
     first_line = message.splitlines()[0] if message else ""
-    # Ignore merge commits and revert commits with long auto-generated bodies.
     if first_line.startswith(("Merge ", 'Revert "')):
         return True
 
@@ -97,18 +76,13 @@ def validate(message: str) -> bool:
 
 
 def _description_of(message: str) -> str | None:
-    """Return the parsed description of the header, or None if it doesn't parse."""
     first_line = message.splitlines()[0] if message else ""
     match = HEADER_PATTERN.match(first_line)
     return match.group(4) if match else None
 
 
 def disallowed_description_chars(description: str) -> list[str]:
-    """Return the distinct out-of-charset characters, in first-seen order.
 
-    The charset is lowercase letters, digits, spaces, and hyphens; capitals and
-    dots (version numbers, filenames, proper nouns) are the usual offenders.
-    """
     bad: list[str] = []
     for char in description:
         if not _ALLOWED_DESCRIPTION_CHAR.fullmatch(char) and char not in bad:
@@ -117,7 +91,6 @@ def disallowed_description_chars(description: str) -> list[str]:
 
 
 def main() -> int:
-    """Entry point for the commit-msg hook."""
     if len(sys.argv) < 2:
         print("Usage: commit-msg.py <commit-msg-file>", file=sys.stderr)
         return 1

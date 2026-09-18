@@ -130,53 +130,53 @@ wezterm
 
 ### WezTerm
 
-| Action                    | Shortcut                                                        |
-| ------------------------- | --------------------------------------------------------------- |
-| New tab                   | `Ctrl + Shift + t`                                              |
-| Close tab                 | `Ctrl + Shift + w`                                              |
-| Copy selection            | `Ctrl + Shift + c`                                              |
-| Paste                     | `Ctrl + Shift + v`                                              |
-| Search in scrollback      | `Ctrl + Shift + f`                                              |
-| Jump to previous prompt   | `Ctrl + Shift + Up`                                             |
-| Jump to next prompt       | `Ctrl + Shift + Down`                                           |
-| Quick-select URL/text     | `Ctrl + Shift + p`                                              |
-| Launcher (pick a shell)   | `Ctrl + Shift + l` or right-click the `+` button                |
-| Copy with mouse           | Select text and release left button                             |
-| Paste with mouse          | Right-click                                                     |
-| Split horizontal (direct) | `Ctrl + Alt + backslash`                                        |
-| Split vertical (direct)   | `Ctrl + Alt + -`                                                |
-| Close pane (direct)       | `Ctrl + Alt + x`                                                |
-| Next tab                  | `Ctrl + Tab`                                                    |
-| Previous tab              | `Ctrl + Shift + Tab`                                            |
-| Split vertical            | `Ctrl + Shift + Space` then `-` or `s`                          |
-| Split horizontal          | `Ctrl + Shift + Space` then `backslash`, `pipe`, or `v`         |
+| Action                    | Shortcut                                                                   |
+| ------------------------- | -------------------------------------------------------------------------- |
+| New tab                   | `Ctrl + Shift + t`                                                         |
+| Close tab                 | `Ctrl + Shift + w`                                                         |
+| Copy selection            | `Ctrl + Shift + c`                                                         |
+| Paste                     | `Ctrl + Shift + v`                                                         |
+| Search in scrollback      | `Ctrl + Shift + f`                                                         |
+| Jump to previous prompt   | `Ctrl + Shift + Up`                                                        |
+| Jump to next prompt       | `Ctrl + Shift + Down`                                                      |
+| Quick-select URL/text     | `Ctrl + Shift + p`                                                         |
+| Launcher (pick a shell)   | `Ctrl + Shift + l` or right-click the `+` button                           |
+| Copy with mouse           | Select text and release left button                                        |
+| Paste with mouse          | Right-click                                                                |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                                                   |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                                           |
+| Close pane (direct)       | `Ctrl + Alt + x`                                                           |
+| Next tab                  | `Ctrl + Tab`                                                               |
+| Previous tab              | `Ctrl + Shift + Tab`                                                       |
+| Split vertical            | `Ctrl + Shift + Space` then `-` or `s`                                     |
+| Split horizontal          | `Ctrl + Shift + Space` then `backslash`, `pipe`, or `v`                    |
 | Move between panes        | `Ctrl + Shift + Left/Right` or `Ctrl + Shift + Space` then `h`/`j`/`k`/`l` |
-| Zoom pane                 | `Ctrl + Shift + Space` then `z`                                 |
-| Close pane                | `Ctrl + Shift + Space` then `x`                                 |
-| Rename tab                | `Ctrl + Shift + Space` then `,`                                 |
-| Switch workspace          | `Ctrl + Shift + Space` then `w`                                 |
-| Toggle fullscreen         | `Alt + Enter`                                                   |
-| Increase font size        | `Ctrl + Shift + =`                                              |
-| Decrease font size        | `Ctrl + Shift + -`                                              |
-| Reset font size           | `Ctrl + 0`                                                      |
-| Open config               | `Ctrl + Shift + Space` then `.`                                 |
+| Zoom pane                 | `Ctrl + Shift + Space` then `z`                                            |
+| Close pane                | `Ctrl + Shift + Space` then `x`                                            |
+| Rename tab                | `Ctrl + Shift + Space` then `,`                                            |
+| Switch workspace          | `Ctrl + Shift + Space` then `w`                                            |
+| Toggle fullscreen         | `Alt + Enter`                                                              |
+| Increase font size        | `Ctrl + Shift + =`                                                         |
+| Decrease font size        | `Ctrl + Shift + -`                                                         |
+| Reset font size           | `Ctrl + 0`                                                                 |
+| Open config               | `Ctrl + Shift + Space` then `.`                                            |
 
 `Ctrl + Shift + Space` is the WezTerm leader key with a 3-second timeout. Press and release `Ctrl + Shift + Space`, then press the second key. Plain `Ctrl + Space` is the tmux prefix, so the leader must not shadow it, and the readline shortcuts `Ctrl + A` (beginning-of-line) and `Ctrl + E` (end-of-line) stay untouched. Jump to previous/next prompt needs the OSC 133 prompt marks emitted by the deployed zshrc.
 
 ### tmux
 
-| Action             | Shortcut                                |
-| ------------------ | --------------------------------------- |
-| Prefix key         | `Ctrl + Space`                          |
-| New window         | `Ctrl + Space` then `c`                 |
-| Next window        | `Ctrl + Space` then `n`                 |
-| Previous window    | `Ctrl + Space` then `p`                 |
-| Reload config      | `Ctrl + Space` then `r`                 |
-| Split vertical     | `Ctrl + Space` then `\|`                |
-| Split horizontal   | `Ctrl + Space` then `-`                 |
-| Move between panes | `Ctrl + Space` then `h`/`j`/`k`/`l`     |
-| Resize pane        | `Ctrl + Space` then `H`/`J`/`K`/`L`     |
-| Zoom pane          | `Ctrl + Space` then `m`                 |
+| Action             | Shortcut                            |
+| ------------------ | ----------------------------------- |
+| Prefix key         | `Ctrl + Space`                      |
+| New window         | `Ctrl + Space` then `c`             |
+| Next window        | `Ctrl + Space` then `n`             |
+| Previous window    | `Ctrl + Space` then `p`             |
+| Reload config      | `Ctrl + Space` then `r`             |
+| Split vertical     | `Ctrl + Space` then `\|`            |
+| Split horizontal   | `Ctrl + Space` then `-`             |
+| Move between panes | `Ctrl + Space` then `h`/`j`/`k`/`l` |
+| Resize pane        | `Ctrl + Space` then `H`/`J`/`K`/`L` |
+| Zoom pane          | `Ctrl + Space` then `m`             |
 
 See [`terminal-cheat-sheet.md`](terminal-cheat-sheet.md) for the full command reference.
 
@@ -213,10 +213,10 @@ When [Claude Code](https://claude.com/claude-code) is installed (`~/.claude` exi
 
 Claude Code can bill a single model against its own weekly window on top of the all-models one — the status line shows both, so `wk` and `fable` are two different limits rather than two views of one:
 
-| Gauge | Limit | Source |
-| --- | --- | --- |
-| `5h 2%` | The 5-hour session limit, shared by every model | Live, from the status line payload |
-| `wk 60%` | The weekly limit across all models | Live, from the status line payload |
+| Gauge       | Limit                                                                 | Source                                 |
+| ----------- | --------------------------------------------------------------------- | -------------------------------------- |
+| `5h 2%`     | The 5-hour session limit, shared by every model                       | Live, from the status line payload     |
+| `wk 60%`    | The weekly limit across all models                                    | Live, from the status line payload     |
 | `fable 83%` | The extra weekly limit for one model, labelled with that model's name | Sampled from Claude Code's usage cache |
 
 The per-model gauge is the one to read with care, because it is a snapshot rather than a reading. Claude Code does not put that window on the status line's stdin, so it comes from the usage snapshot Claude Code caches in its own config file — and **only `/usage` and `/cost` write that cache**. Using the model it measures does not refresh it, so between those commands the figure is frozen at whatever it was when you last looked.

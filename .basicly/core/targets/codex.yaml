@@ -1,29 +1,29 @@
 name: codex
 enabled: true
 tone: terse_directive
-# Higher than claude/copilot (9000): scoped fragments are inlined here because Codex
-# has no glob-based instruction scoping and a nested AGENTS.md below the cwd is never
-# loaded (architecture §12.2). Counted in characters, not bytes. Codex's real budget is
-# project_doc_max_bytes (32 KiB default, configurable).
+# Higher than claude/copilot: scoped fragments are inlined here because Codex has no
+# glob-based instruction scoping and a nested AGENTS.md below the cwd is never loaded
+# (architecture 12.2). The scoped tier is 7370 characters, 46% of this file.
 #
-# Raised from 12000/200 on 2026-08-09, after the basicly-a3ab.1 audit measured where the
-# overrun actually comes from. The always-on layer is 8462 characters and is NOT the
-# cause: claude renders 8628 and copilot 8727, both under their 9000. The extra 5091 here
-# is the scoped tier, which the other two receive as separate `paths:`-carrying rules
-# files and Codex cannot. So the overrun is structural to this target, and evicting
-# baseline lines would have cost all three families to fix one - while leaving the cause.
-# 12000 was our own conservative pick against a 32 KiB real budget, so the number moved
-# rather than the content.
+# Counted in BYTES, not characters, because bytes is what Codex enforces. The vendor limit
+# is `project_doc_max_bytes`, 32768 by default and configurable, and it bounds the COMBINED
+# size of every AGENTS.md from the repository root down to the working directory - so an
+# ancestor file in a consumer's tree spends the same budget. Codex truncates past it with
+# no warning in the TUI, /stats, exec or the VS Code extension (openai/codex#13386, open,
+# no maintainer response), so the failure is invisible and the margin is the whole defence.
+# 24576 is 75% of the limit, leaving 8 KiB for ancestors.
 #
-# What this trades away, stated because it is not free: the cap also stood proxy for the
-# vendor's claim that adherence degrades with length, which this repo has never measured.
-# basicly-agzx.1 is the bead that would. Until it runs, this is a budget we know we fit
-# and an adherence cost we do not.
+# The line cap is the adherence instrument and stays at 320. Measured 2026-09-12 by
+# `.scripts/retention_eval.py`: this file at 266 lines returned 92% of its own rules with a
+# flat position curve, while 700 lines fell to 82% with the second half 14pp below the
+# first. 320 keeps the surface inside the measured flat zone.
 #
-# Lines track characters at the ~50 chars/line ratio the paragraph above assumes, so the
-# two caps keep saying the same thing rather than one firing alone at an arbitrary point.
+# Codex does have one on-demand mechanism: it reads skills from `.agents/skills`, which
+# `basicly skills-build` already writes. Guidance that is not needed every session belongs
+# there rather than here.
 max_lines_warning: 320
-max_size_warning: 16000
+max_size_warning: 24576
+max_size_unit: bytes
 outputs:
   agents_baseline:
     path: AGENTS.md

@@ -15,4 +15,4 @@ tags:
 - self-improvement
 status: active
 body: |
-  - When a session hits a real rejection or user-corrected mistake, run the retro from the `session-finish` skill: find the root cause and propose the exact fragment/skill/hook change that would have prevented it — never a vague "be careful", never self-applied. Skip it when nothing concrete surfaced.
+  - After a rejection or a user-corrected mistake, run the retro from the `session-finish` skill: name the root cause and propose the fragment, skill or hook change that would have refused it. A vague "be careful" changes nothing; a self-applied fix dies with the session. Skip it when nothing surfaced.

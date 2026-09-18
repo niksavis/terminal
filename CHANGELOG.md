@@ -12,6 +12,7 @@ Delta: v0.6.0..v0.6.1
 - **Refresh runs no longer rebuild Rust tools that are already current.** `cargo install --force` rebuilds from source whether or not anything changed, spending minutes of compilation to land an identical binary. The version is now checked against crates.io first - which is what cargo would install, and not always a project's newest git tag: `sd`'s latest release is tagged v1.1.0 while only 1.0.0 was ever published, so comparing against tags would rebuild for ever. An unreachable crate or a missing binary still installs (term-jet6e).
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-jet6e) (1f36882)
 - fix(install): keep one failing tool from ending the whole setup (term-jet6e) (b2b756c)
 
@@ -25,6 +26,7 @@ Delta: v0.5.1..v0.6.0
 - The README no longer claims the two sides match automatically. Windows-native Node is outside this setup's control, so it now says where to check (`node --version` on each) rather than asserting a match it cannot enforce.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-uhxvn) (64af247)
 - feat(node): track the node line the windows runtime is on (term-uhxvn) (00b4a26)
 
@@ -40,6 +42,7 @@ Delta: v0.5.0..v0.5.1
 - Re-apply with `terminal-setup --only config`. No restart is needed on any platform.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-sinhx) (f859e5b)
 - fix(statusline): fade the per-model gauge as its sample ages (term-sinhx) (0ad58c9)
 - ci(release): gate publishing on the gates and refuse a stale lockfile (term-0bl0c) (adea098)
@@ -59,6 +62,7 @@ Delta: v0.4.6..v0.5.0
 - Re-apply with `terminal-setup --only config`. No restart is needed on any platform: the status line script is executed afresh on every render, so a replaced file takes effect immediately.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-4dnxa) (486d944)
 - feat(statusline): show the per-model weekly limit and repair the glyph set (term-4dnxa) (7a91f39)
 - chore(tracker): file the session retro findings and handover (term-99z) (a6d6933)
@@ -108,6 +112,7 @@ Delta: v0.4.4..v0.4.5
 - Nothing to re-apply — no change to any deployed terminal config.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-irs) (b09322f)
 - chore(beads): close the harness restamp tracker issue (term-irs) (e3864f7)
 - fix(tests): narrow bash path to satisfy pyright (term-h65) (a4d0412)
@@ -125,6 +130,7 @@ Delta: v0.4.3..v0.4.4
 - Re-apply with `terminal-setup --only config`; no WezTerm restart is needed.
 
 ### Commit delta (auto-generated)
+
 - fix(tests): make statusline and runner tests portable on windows (term-h65) (bc89c2a)
 - chore(release): bump package version for next release (term-f0z) (f7b9095)
 - fix(starship): raise scan timeout to stop directory scan warnings (term-f0z) (842befd)
@@ -142,6 +148,7 @@ Delta: v0.4.2..v0.4.3
 - Re-apply with `terminal-setup --only config`; no WezTerm restart is needed — Claude Code re-reads the status line on its next render.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-zpj) (82dcaf0)
 - feat(statusline): use music note for opus and add fable book icon (term-6m7) (e2078c5)
 - chore(basicly): restamp the install for the harness upgrade (term-8kv) (f113ecb)
@@ -157,6 +164,7 @@ Delta: v0.4.1..v0.4.2
 - Re-apply with `terminal-setup --only config`; no WezTerm restart is needed — Claude Code re-reads the status line on its next render.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-trp) (90abe8f)
 - fix(statusline): use portable font awesome v4 glyphs for model icons (term-86x) (eaf8c3f)
 - chore(basicly): refresh the install at the third release (term-20c) (7e0b396)
@@ -173,6 +181,7 @@ Delta: v0.4.0..v0.4.1
 - Re-apply with `terminal-setup --only config` and restart WezTerm.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-mp4) (b176312)
 - chore(basicly): restamp the install at the fixed release (term-pak) (a3732f0)
 - docs(readme): put quick install first and fix stale keybindings (term-5ng) (a3f7815)
@@ -200,6 +209,7 @@ Delta: v0.3.1..v0.4.0
 - Re-apply with `terminal-setup --only config`, restart WezTerm, and reload tmux (prefix + `r`).
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (term-k9e) (54fb20f)
 - chore(beads): close the packaged basicly adoption (term-7xk) (53ed404)
 - chore(beads): close the overlay trim track (term-m3a) (211a400)
@@ -242,6 +252,7 @@ Delta: v0.3.0..v0.3.1
 - Re-apply with `terminal-setup --only config` and restart WezTerm.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (fa6bf1a)
 - feat(wezterm): double mouse wheel scroll speed (2182a00)
 - fix(wezterm): drop unresolvable fonts causing the startup warning toast (ce18f8d)
@@ -258,6 +269,7 @@ Delta: v0.2.2..v0.3.0
 - The Claude Code status line is now installed for the Windows-native Claude too (not just WSL) and renders correctly there: a UTF-8-locale fix removes the mangled (`�`) gauges from Windows `jq`'s CRLF output, the build falls back to universal glyphs when no Nerd Font is present, and the git segment shows the repo name for Windows backslash paths.
 
 ### Commit delta (auto-generated)
+
 - chore(release): bump package version for next release (46077d5)
 - fix(statusline): show repo name for windows backslash paths (b5f2dae)
 - fix(setup): windows statusline glyphs and accurate no-sudo message (9f0357f)

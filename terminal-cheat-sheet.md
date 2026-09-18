@@ -10,40 +10,40 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 ### Tabs & Windows
 
-| Action                   | Shortcut                              |
-| ------------------------ | ------------------------------------- |
-| New tab                  | `Ctrl + Shift + T` or leader then `c` |
-| Close tab                | `Ctrl + Shift + W`                    |
-| Next / previous tab      | `Ctrl + Tab` / `Ctrl + Shift + Tab`   |
-| Rename tab               | leader then `,`                       |
-| Switch workspace         | leader then `w`                       |
-| Launcher (pick a shell)  | `Ctrl + Shift + L` or right-click `+` |
-| Toggle fullscreen        | `Alt + Enter`                         |
+| Action                  | Shortcut                              |
+| ----------------------- | ------------------------------------- |
+| New tab                 | `Ctrl + Shift + T` or leader then `c` |
+| Close tab               | `Ctrl + Shift + W`                    |
+| Next / previous tab     | `Ctrl + Tab` / `Ctrl + Shift + Tab`   |
+| Rename tab              | leader then `,`                       |
+| Switch workspace        | leader then `w`                       |
+| Launcher (pick a shell) | `Ctrl + Shift + L` or right-click `+` |
+| Toggle fullscreen       | `Alt + Enter`                         |
 
 ### Panes
 
-| Action                    | Shortcut                                            |
-| ------------------------- | --------------------------------------------------- |
-| Split horizontal          | leader then `backslash`, `pipe`, or `v`             |
-| Split vertical            | leader then `-` or `s`                              |
-| Split horizontal (direct) | `Ctrl + Alt + backslash`                            |
-| Split vertical (direct)   | `Ctrl + Alt + -`                                    |
+| Action                    | Shortcut                                             |
+| ------------------------- | ---------------------------------------------------- |
+| Split horizontal          | leader then `backslash`, `pipe`, or `v`              |
+| Split vertical            | leader then `-` or `s`                               |
+| Split horizontal (direct) | `Ctrl + Alt + backslash`                             |
+| Split vertical (direct)   | `Ctrl + Alt + -`                                     |
 | Move between panes        | `Ctrl + Shift + Left/Right` or leader then `h/j/k/l` |
-| Zoom / unzoom pane        | leader then `z`                                     |
-| Close pane                | leader then `x` or `Ctrl + Alt + X`                 |
+| Zoom / unzoom pane        | leader then `z`                                      |
+| Close pane                | leader then `x` or `Ctrl + Alt + X`                  |
 
 ### Copy, Paste & Search
 
-| Action                | Shortcut                            |
-| --------------------- | ----------------------------------- |
-| Copy selection        | `Ctrl + Shift + C`                  |
-| Paste                 | `Ctrl + Shift + V`                  |
-| Copy with mouse       | Select text and release left button |
-| Paste with mouse      | Right-click                         |
-| Search in scrollback  | `Ctrl + Shift + F`                  |
-| Scroll one screen     | `Shift + PageUp` / `Shift + PageDown` |
+| Action                         | Shortcut                                    |
+| ------------------------------ | ------------------------------------------- |
+| Copy selection                 | `Ctrl + Shift + C`                          |
+| Paste                          | `Ctrl + Shift + V`                          |
+| Copy with mouse                | Select text and release left button         |
+| Paste with mouse               | Right-click                                 |
+| Search in scrollback           | `Ctrl + Shift + F`                          |
+| Scroll one screen              | `Shift + PageUp` / `Shift + PageDown`       |
 | Jump to previous / next prompt | `Ctrl + Shift + Up` / `Ctrl + Shift + Down` |
-| Quick-select URL/text | `Ctrl + Shift + P`                  |
+| Quick-select URL/text          | `Ctrl + Shift + P`                          |
 
 ### Appearance & Config
 
@@ -57,19 +57,19 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 The tmux prefix is `Ctrl + Space`; the WezTerm leader is `Ctrl + Shift + Space`, so the prefix passes straight through to tmux. Mouse support and vi copy-mode keys are enabled, and copy-mode `y` reaches the system clipboard (OSC 52) — including the Windows clipboard from WSL.
 
-| Action                       | Shortcut                                 |
-| ---------------------------- | ---------------------------------------- |
-| Prefix key                   | `Ctrl + Space`                           |
-| New window (keeps directory) | prefix then `c`                          |
-| Next / previous window       | prefix then `n` / `p`                    |
-| Split horizontal             | prefix then `pipe`                       |
-| Split vertical               | prefix then `-`                          |
-| Move between panes           | prefix then `h/j/k/l`                    |
-| Resize pane                  | prefix then `H/J/K/L` (repeatable)       |
-| Zoom / unzoom pane           | prefix then `m`                          |
+| Action                       | Shortcut                                                |
+| ---------------------------- | ------------------------------------------------------- |
+| Prefix key                   | `Ctrl + Space`                                          |
+| New window (keeps directory) | prefix then `c`                                         |
+| Next / previous window       | prefix then `n` / `p`                                   |
+| Split horizontal             | prefix then `pipe`                                      |
+| Split vertical               | prefix then `-`                                         |
+| Move between panes           | prefix then `h/j/k/l`                                   |
+| Resize pane                  | prefix then `H/J/K/L` (repeatable)                      |
+| Zoom / unzoom pane           | prefix then `m`                                         |
 | Copy mode (vi keys)          | prefix then `[`, then `v` select, `y` copy to clipboard |
-| Reload tmux config           | prefix then `r`                          |
-| Install tmux plugins (TPM)   | prefix then `I`                          |
+| Reload tmux config           | prefix then `r`                                         |
+| Install tmux plugins (TPM)   | prefix then `I`                                         |
 
 Sessions survive terminal restarts via tmux-resurrect/continuum: reattach with `tmux attach`.
 
@@ -77,26 +77,26 @@ Sessions survive terminal restarts via tmux-resurrect/continuum: reattach with `
 
 Faster, friendlier replacements for classic commands. All are installed by `terminal-setup`.
 
-| Tool         | Replaces / Purpose | Example                                          |
-| ------------ | ------------------ | ------------------------------------------------ |
-| `fd`         | `find`             | `fd '\.py$'` - find files by regex, fast         |
-| `rg`         | `grep -r`          | `rg "TODO" src/` - recursive code search         |
-| `bat`        | `cat`              | `bat file.py` - view with syntax highlighting    |
-| `fzf`        | interactive filter | `history \| fzf` - fuzzy-pick from any list      |
-| `lazygit`    | git UI             | `lazygit` - stage, commit, and browse visually   |
-| `delta`      | `diff` pager       | used by git automatically for readable diffs     |
-| `jq`         | JSON processor     | `curl api \| jq .items[0]` - query JSON          |
-| `yq`         | YAML processor     | `yq .jobs ci.yml` - query/edit YAML              |
-| `xh`         | `curl` for APIs    | `xh get api.example.com/users` - clean HTTP      |
-| `sd`         | `sed` replace      | `sd 'old' 'new' file` - simple find/replace      |
-| `ast-grep`   | structural search  | `ast-grep -p 'if ($X) $S'` - code-aware matching |
-| `just`       | task runner        | `just test` - run project recipes                |
-| `typos`      | spell checker      | `typos src/` - find typos in code and docs       |
-| `tree`       | directory tree     | `tree -L 2` - visualize folder structure         |
-| `direnv`     | per-dir env vars   | auto-loads `.envrc` when entering a directory    |
-| `uv`         | Python tooling     | `uv run script.py` - fast installs and runs      |
+| Tool         | Replaces / Purpose | Example                                               |
+| ------------ | ------------------ | ----------------------------------------------------- |
+| `fd`         | `find`             | `fd '\.py$'` - find files by regex, fast              |
+| `rg`         | `grep -r`          | `rg "TODO" src/` - recursive code search              |
+| `bat`        | `cat`              | `bat file.py` - view with syntax highlighting         |
+| `fzf`        | interactive filter | `history \| fzf` - fuzzy-pick from any list           |
+| `lazygit`    | git UI             | `lazygit` - stage, commit, and browse visually        |
+| `delta`      | `diff` pager       | used by git automatically for readable diffs          |
+| `jq`         | JSON processor     | `curl api \| jq .items[0]` - query JSON               |
+| `yq`         | YAML processor     | `yq .jobs ci.yml` - query/edit YAML                   |
+| `xh`         | `curl` for APIs    | `xh get api.example.com/users` - clean HTTP           |
+| `sd`         | `sed` replace      | `sd 'old' 'new' file` - simple find/replace           |
+| `ast-grep`   | structural search  | `ast-grep -p 'if ($X) $S'` - code-aware matching      |
+| `just`       | task runner        | `just test` - run project recipes                     |
+| `typos`      | spell checker      | `typos src/` - find typos in code and docs            |
+| `tree`       | directory tree     | `tree -L 2` - visualize folder structure              |
+| `direnv`     | per-dir env vars   | auto-loads `.envrc` when entering a directory         |
+| `uv`         | Python tooling     | `uv run script.py` - fast installs and runs           |
 | `node`       | JavaScript runtime | `node script.js` - run JS; `npm install` for packages |
-| `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs       |
+| `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs            |
 
 Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the latest uv-installed CPython (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js is installed user-locally in `~/.local` at the same major version as Windows.
 

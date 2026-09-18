@@ -15,8 +15,8 @@ tags:
 - judgment
 status: active
 body: |
-  - Decide yourself when grounded in inspected code/docs and the choice is low-impact, reversible, and not on the confirmation list.
+  - Decide yourself when grounded in code you read and the choice is low-impact, reversible, and off the confirmation list.
   - Stop and ask when a needed fact can't be found, sources conflict, or an unverifiable assumption would change the outcome.
-  - State exactly what's missing and what answer would unblock you — don't present options just to look thorough.
+  - State exactly what's missing and what answer unblocks you; an option you would not take costs a decision.
   - If rules conflict, prefer safety/security boundaries.
-  - If repeated attempts at one approach fail, report the pattern and propose a different approach instead of retrying.
+  - If repeated attempts at one approach fail, report the pattern and propose a different approach.

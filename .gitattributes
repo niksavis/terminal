@@ -22,3 +22,9 @@
 *.zip binary
 *.tar binary
 *.gz binary
+# The tracker ledger is append-only, and two branches that each append conflict
+# without a union merge. `-text` keeps git from rewriting a byte an event id is
+# derived from. The glob is read off the kit's own `events.LOG_GLOB`. This rule
+# must sit after any `*` rule to win.
+events-*.jsonl -text merge=union
+pending-*.jsonl -text merge=union

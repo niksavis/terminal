@@ -52,7 +52,7 @@ gap is only found when a lane has already spent a budget reaching it.
 Four scopes were written wrong in one session on 2026-08-22, all the same way:
 
 | declared | the value is actually produced in |
-|---|---|
+| --- | --- |
 | `loop.py`, `supervise.py`, `verify.py` | `checkout.py`, `commit.py`, `merge.py` |
 | `board_wall.py` | `board_regions.py` |
 | two skill surfaces | the YAML source plus both projected roots — `.claude/skills` and `.agents/skills` |

@@ -16,8 +16,8 @@ tags:
 - data-leakage
 status: active
 body: |
-  - Validate and sanitize external input at trust boundaries before it reaches business logic.
-  - Parameterize shell commands and queries; never concatenate untrusted input into them.
-  - Never commit secrets; use env vars or a secret manager and keep them out of logs.
-  - Don't leak internal detail (stack traces, paths) in user-facing errors; log it, return a generic message.
-  - Never commit user- or machine-specific paths, usernames, or hostnames; keep defaults portable.
+  - Validate external input at the trust boundary; past it every caller assumes it is safe.
+  - Parameterize shell commands and queries; concatenation lets input read as syntax, not data.
+  - Keep secrets in env vars or a secret manager, out of the repo and logs; a commit outlives the fix.
+  - Log internal detail, return a generic message; a stack trace or path maps the system.
+  - Keep defaults portable; a committed path, username or hostname breaks the next clone.

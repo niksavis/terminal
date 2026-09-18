@@ -72,9 +72,10 @@
   },
   "provenance": {
     "source_url": "https://models.dev/api.json",
-    "fetched_date": "2026-08-09",
-    "payload_sha256": "956cf84c7fb7fd97c602d17bc7286c60c6abdcbfef292875578df90be11e1aef",
-    "payload_bytes": 48014,
+    "fetched_date": "2026-09-12",
+    "payload_sha256": "07617fe08e8038b5fa2d5018dfe896a7478d6f48f2e78af2bc308d32914c5560",
+    "payload_bytes": 4621537,
+    "etag": "\"07617fe08e8038b5fa2d5018dfe896a7\"",
     "note": "models.dev serves api.json as a CDN-cached generated artifact and publishes no git commit sha: the payload has no commit field and the response has no last-modified header. payload_sha256 plus etag is therefore the strongest available upstream identity, and no commit-sha field is claimed. Per-surface upstream_last_updated is models.dev's record date."
   },
   "tiers": {
@@ -158,27 +159,27 @@
           }
         },
         "moonshotai": {
-          "anchor": "kimi-k2.5",
-          "model_name": "Kimi K2.5",
+          "anchor": "kimi-k2.6",
+          "model_name": "Kimi K2.6",
           "family": "kimi-k2",
           "reasoning": true,
           "surfaces": {
             "moonshotai": {
               "status": "available",
-              "model": "kimi-k2.5",
+              "model": "kimi-k2.6",
               "cost_usd_per_mtok": {
-                "input": 0.6,
-                "output": 3
+                "input": 0.95,
+                "output": 4
               },
               "limit_tokens": {
                 "context": 262144,
                 "output": 262144
               },
-              "upstream_last_updated": "2026-01"
+              "upstream_last_updated": "2026-04-21"
             },
             "github-copilot": {
               "status": "unavailable",
-              "reason": "provider 'github-copilot' serves no model named 'Kimi K2.5'"
+              "reason": "provider 'github-copilot' serves no model named 'Kimi K2.6'"
             }
           }
         },
@@ -332,8 +333,8 @@
               "status": "available",
               "model": "gemini-3.6-flash",
               "cost_usd_per_mtok": {
-                "input": 1.5,
-                "output": 7.5
+                "input": 0.75,
+                "output": 3.75
               },
               "limit_tokens": {
                 "context": 1048576,
@@ -345,8 +346,8 @@
               "status": "available",
               "model": "gemini-3.6-flash",
               "cost_usd_per_mtok": {
-                "input": 1.5,
-                "output": 7.5
+                "input": 0.75,
+                "output": 3.75
               },
               "limit_tokens": {
                 "context": 1000000,
@@ -412,8 +413,8 @@
               "status": "available",
               "model": "gpt-5.6-sol",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 30
+                "input": 4,
+                "output": 20
               },
               "limit_tokens": {
                 "context": 1050000,
@@ -426,8 +427,8 @@
               "status": "available",
               "model": "gpt-5.6-sol",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 30
+                "input": 4,
+                "output": 20
               },
               "limit_tokens": {
                 "context": 1050000,
@@ -492,18 +493,8 @@
               "upstream_last_updated": "2026-02-19"
             },
             "github-copilot": {
-              "status": "available",
-              "model": "gemini-3.1-pro-preview",
-              "cost_usd_per_mtok": {
-                "input": 2,
-                "output": 12
-              },
-              "limit_tokens": {
-                "context": 1000000,
-                "input": 936000,
-                "output": 64000
-              },
-              "upstream_last_updated": "2026-02-19"
+              "status": "unavailable",
+              "reason": "provider 'github-copilot' serves no model named 'Gemini 3.1 Pro Preview'"
             }
           }
         }
@@ -518,14 +509,14 @@
       ],
       "vendors": {
         "anthropic": {
-          "anchor": "claude-fable-5",
-          "model_name": "Claude Fable 5",
+          "anchor": "claude-fable-5-1",
+          "model_name": "Claude Fable 5.1",
           "family": "claude-fable",
           "reasoning": true,
           "surfaces": {
             "anthropic": {
               "status": "available",
-              "model": "claude-fable-5",
+              "model": "claude-fable-5-1",
               "cost_usd_per_mtok": {
                 "input": 10,
                 "output": 50
@@ -534,11 +525,11 @@
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-06-09"
+              "upstream_last_updated": "2026-09-01"
             },
             "github-copilot": {
               "status": "available",
-              "model": "claude-fable-5",
+              "model": "claude-fable-5.1",
               "cost_usd_per_mtok": {
                 "input": 10,
                 "output": 50
@@ -547,47 +538,43 @@
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-06-09"
+              "upstream_last_updated": "2026-09-01"
             }
           }
         },
         "openai": {
-          "anchor": "gpt-5.6-sol",
-          "model_name": "GPT-5.6 Sol",
-          "family": "gpt-sol",
+          "anchor": "gpt-6-astra",
+          "model_name": "GPT-6 Astra",
+          "family": "gpt-astra",
           "reasoning": true,
-          "collapse": {
-            "same_model_as_tier": "high",
-            "reason": "OpenAI ships a three-class ladder, so high and maximum resolve to its top class. The `-pro` models are deliberately not used for maximum: measured 2026-07-31, github-copilot serves none of the six (gpt-5-pro, gpt-5.2-pro, gpt-5.4-pro, gpt-5.5-pro, o1-pro, o3-pro), so the tier would be unusable on one of the two surfaces this repo requires."
-          },
           "surfaces": {
             "openai": {
               "status": "available",
-              "model": "gpt-5.6-sol",
+              "model": "gpt-6-astra",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 30
+                "input": 10,
+                "output": 50
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-04"
             },
             "github-copilot": {
               "status": "available",
-              "model": "gpt-5.6-sol",
+              "model": "gpt-6-astra",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 30
+                "input": 10,
+                "output": 50
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-04"
             }
           }
         },
@@ -636,7 +623,7 @@
           "reasoning": true,
           "collapse": {
             "same_model_as_tier": "high",
-            "reason": "Google ships a three-class ladder, so high and maximum resolve to its top Pro class. That top id is a `-preview`: previews get renamed or withdrawn at GA, so this pin is the least stable in the map. It is pinned rather than guessed at, and `--check` fails naming the id the moment it stops resolving — there is deliberately no silent fallback to an older Pro."
+            "reason": "Google ships a three-class ladder, so high and maximum resolve to its top Pro class. That top id is a `-preview`: previews get renamed or withdrawn at GA, so this pin is the least stable in the map. It is pinned rather than guessed at, and `--check` fails naming the id the moment it stops resolving — there is deliberately no silent fallback to an older Pro. Measured 2026-09-12: github-copilot now serves no Google Pro model at all, only the flash line, so Google's high and maximum resolve unavailable on that surface. That is a standing condition rather than a blip, and it is why `vendor_order` puts Google after Anthropic and OpenAI for those two tiers."
           },
           "surfaces": {
             "google": {
@@ -653,18 +640,8 @@
               "upstream_last_updated": "2026-02-19"
             },
             "github-copilot": {
-              "status": "available",
-              "model": "gemini-3.1-pro-preview",
-              "cost_usd_per_mtok": {
-                "input": 2,
-                "output": 12
-              },
-              "limit_tokens": {
-                "context": 1000000,
-                "input": 936000,
-                "output": 64000
-              },
-              "upstream_last_updated": "2026-02-19"
+              "status": "unavailable",
+              "reason": "provider 'github-copilot' serves no model named 'Gemini 3.1 Pro Preview'"
             }
           }
         }

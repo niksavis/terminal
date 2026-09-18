@@ -18,6 +18,8 @@ them to the files coding agents actually load.
   mechanically-enforced rules.
 - A **skill** is an on-demand runbook projected to `SKILL.md` at the target
   skill roots and loaded only when its `description` trigger matches.
+- An **output style** is projected to `.claude/output-styles/<slug>.md` and
+  replaces the host's default answer format for every session in the repo.
 
 ## The non-negotiable rule: sources are never named for discovery
 
@@ -25,8 +27,8 @@ Coding agents auto-discover context by **filename/extension** — `SKILL.md`,
 `AGENTS.md`, `CLAUDE.md`, `*.instructions.md`, `*.mdc`, `GEMINI.md`. So catalog
 **sources** are authored as YAML (`skill.yaml`, `<id>.fragment.yaml`) and the
 discoverable `.md` is emitted only at the target roots by the projector. Never
-add a `SKILL.md` or `*.fragment.md` under `.basicly/core/`; the `catalog lint`
-gate rejects it.
+add a `SKILL.md`, `*.fragment.md` or a markdown output style under
+`.basicly/core/`; the `catalog lint` gate rejects it.
 
 ## Author a skill
 
@@ -47,6 +49,21 @@ gate rejects it.
    `scope.paths` (path-scoped rules), and the `replaces`/`override` overlay
    fields.
 3. Project + verify: `basicly build` then `basicly check`.
+
+## Author an output style
+
+An output style rewrites the host's system prompt for every session in the
+repository, so it is always-on guidance and the catalog owns it. Only Claude
+Code reads one today, so it projects to `.claude/output-styles/<slug>.md` and
+nowhere else.
+
+1. Write `core/output-styles/<slug>/style.yaml` with `name`, `description`,
+   `body`, and `keep_coding_instructions`. The slug is the directory name.
+2. Project + verify: `basicly styles-build` then `basicly styles-check`, which
+   is what the `projection-styles` gate runs.
+
+Leave `keep_coding_instructions: true` unless you mean to drop the host's
+built-in software-engineering instructions, which include how to verify work.
 
 ## Technology scoping
 
@@ -71,7 +88,9 @@ CLAUDE.md corpus (2026-07 research, epic basicly-84v):
   a bare "never X" leaves it stuck.
 - Give a one-clause rationale so the rule generalizes beyond its literal case.
 - Emphasis is a scarce resource: at most one `IMPORTANT`-style marker per
-  projection, or every marker becomes invisible.
+  projection, or every marker becomes invisible. `basicly catalog lint`
+  counts them per composed projection and per skill, and refuses the second
+  one by name; a marker inside a code span or a fence does not count.
 - Every rule should trace to a real incident, not a hypothetical one; the
   quirks category exists for exactly those.
 - Apply the deletion test before adding a bullet: would removing it cause the

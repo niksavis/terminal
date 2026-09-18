@@ -6,12 +6,32 @@
 # The fields stay tool-agnostic so another manager (e.g. lefthook) can be
 # projected later. See docs/architecture/architecture.md §10.2, §16.
 hooks:
+  # Repo-wide run through .markdownlint-cli2.yaml (globs + generated-file ignores)
+  # instead of staged filenames, so explicit paths cannot bypass the config's ignore
+  # list. Launched through a script that resolves node itself rather than `npx
+  # --no-install markdownlint-cli2` (basicly-jr0l.14): a hook shell has no profile, so
+  # with nvm off PATH WSL interop resolved npx to the Windows nodejs, which cannot
+  # express the worktree's UNC path. The launcher never invokes npx and fails in one
+  # line when no usable node exists.
+  #
+  # Declared here rather than left as a local block in the config (basicly-vdlio8i):
+  # `_is_managed` claims any local hook whose entry names this directory, so an
+  # undeclared one is pruned by every `hooks-build` while `hooks-check` stays green.
+  - id: markdownlint
+    description: "Run markdownlint-cli2 through a node this script resolves itself (basicly-jr0l.14)."
+    script: markdownlint.py
+    stage: pre-commit
+    files: \.md$
+    pass_filenames: false
+    technologies: [node]
   - id: identity-guard
+    description: "Block commits made with an unconfigured or auto-derived git identity."
     script: identity-guard.py
     stage: pre-commit
     always_run: true
     pass_filenames: false
   - id: pre-commit-script
+    description: "Run the configured fast checks before a commit."
     script: pre-commit.py
     stage: pre-commit
     always_run: true
@@ -21,11 +41,13 @@ hooks:
   # validation bug blocked commits touching no catalog file at all. A custom overlay root
   # is outside this regex; the CI step stays the unconditional backstop.
   - id: catalog-lint
+    description: "Pre-commit hook: validate catalog YAML sources via ``basicly catalog lint``."
     script: catalog-lint.py
     stage: pre-commit
     files: ^(\.basicly/core/|\.basicly-local/|basicly\.toml$)
     pass_filenames: false
   - id: secret-scan
+    description: "Block a commit that stages a likely secret (basicly-yzyd)."
     script: secret-scan.py
     stage: pre-commit
     always_run: true
@@ -36,6 +58,7 @@ hooks:
   # it (basicly-vkh0.5). The engine strips br's source_repo_path at its own
   # tracker commits; this is the gate for whatever that misses.
   - id: tracker-path-scan
+    description: "Block a commit that stages a machine-specific path in the tracker export (basicly-vkh0.5)."
     script: tracker-path-scan.py
     stage: pre-commit
     always_run: true
@@ -48,6 +71,7 @@ hooks:
   # suppresses publishes them itself, into this repo and into every consumer that
   # installs the catalog. Inert until configured.
   - id: internal-info-scan
+    description: "Block a commit that stages an internal-only identifier (basicly-0n3d)."
     script: internal-info-scan.py
     stage: pre-commit
     always_run: true
@@ -58,25 +82,41 @@ hooks:
   # is its own — it would never declare the check. The verify entry covers this
   # repo's CI (`full`, run by pre-push.py); this covers commit time, here and
   # there, so the two wirings do not duplicate each other's work.
+  # The comment ban (basicly-phglc2x). The code is the source of truth, so a code file
+  # carries no prose: `check` reports every prose comment and exits 1, and a directive a
+  # tool reads is never reported. Scoped by extension rather than always_run, because the
+  # kit claims code files only - config and markdown keep their comments, which are the one
+  # place a why can live once the code cannot hold it.
+  - id: no-comments
+    description: "Refuse a commit that adds a prose comment to a code file."
+    script: no-comments.py
+    stage: pre-commit
+    files: \.(py|pyi|js|jsx|mjs|cjs|ts|tsx|mts|cts|java|kt|kts|cs|c|cc|cpp|cxx|h|hpp|go|rs|swift|scala|php|m|mm|css|scss|sass|less|html|htm|xhtml|vue|svelte|cshtml|razor|sh|bash|zsh|ksh|ps1|psm1|psd1|sql|vb|vbs)$
+    pass_filenames: true
   - id: kit-boundary
+    description: "Fail when a kit module reaches back into basicly (basicly-vkh0.16)."
     script: kit-boundary.py
     stage: pre-commit
     always_run: true
     pass_filenames: false
   - id: commit-msg-script
+    description: "Validate conventional commit message format."
     script: commit-msg.py
     stage: commit-msg
     pass_filenames: true
   - id: tracker-commit-msg-script
+    description: "Validate that a commit message references an issue id the tracker holds."
     script: tracker-commit-msg.py
     stage: commit-msg
     pass_filenames: true
   - id: pre-push-script
+    description: "Run the configured full checks before a push, and refuse one that would race a landing."
     script: pre-push.py
     stage: pre-push
     always_run: true
     pass_filenames: false
   - id: protect-generated
+    description: "Block agent edits to basicly-generated files (Claude Code PreToolUse hook)."
     script: protect-generated.py
     stage: pretooluse
     manager: claude
@@ -84,6 +124,7 @@ hooks:
   # and was violated anyway, and the failure is silent by construction: the loop runs once
   # and exits 0 (basicly-m2g3). Guidance that must bind becomes a hook.
   - id: unsplit-loop-guard
+    description: "Refuse a for-loop over an unsplit scalar (Claude Code PreToolUse hook, basicly-m2g3)."
     script: unsplit-loop-guard.py
     stage: pretooluse
     manager: claude
@@ -96,11 +137,39 @@ hooks:
   # budget. Fires only where the status is actually read (basicly-xkqxp9), never on the
   # idiom, or it becomes noise and gets switched off.
   - id: pipe-status-guard
+    description: "Refuse reading a pipeline's exit status when a filter ends it (PreToolUse, xkqxp9)."
     script: pipe-status-guard.py
     stage: pretooluse
     manager: claude
     matcher: Bash
-  # `module-size` and `comment-density` are budgets, not rules: prose can say the gate
+  # zsh does not word-split an unquoted expansion, so `W="uv run x --"; $W a b` looks for
+  # one command literally named `uv run x --`, exits 127, and lets the chain run on. A
+  # consumer who had read the always-on rule first still hit it eight times in a row
+  # (basicly-gmdvdwo). Fires only where the same command assigns that variable a value
+  # holding whitespace: measured over 17358 recorded calls that is 4 true positives and 0
+  # false ones, while a quoted `"$VAR"` head - a path with a space - occurs 54 times and
+  # is deliberate, so the missing quotes are the discriminator.
+  - id: bare-var-guard
+    description: "Refuse a command whose head is a bare `$VAR` that same command assigned a phrase."
+    script: bare-var-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  # `-r` is ripgrep's --replace and takes a value, so `rg -rn <pat>` searches with
+  # replacement `n`: the pattern is substituted in every printed line, the line numbers
+  # vanish, and the output reads as a real finding (basicly-0m5hn5w). `-rn` reads as
+  # "recursive plus line numbers" to a grep habit, and ripgrep recurses by default, so the
+  # `r` is never wanted. Measured over 17391 recorded calls: 2977 rg invocations, 92 with a
+  # trap cluster and 6 deliberate `-r`, every deliberate one as its own token - so a
+  # cluster is the discriminator and its false-positive population is empty. Prose was
+  # tried first; it lost the always-on budget contest and would not have bound anyway.
+  - id: rg-replace-guard
+    description: "Refuse an `rg` short-flag cluster that swallows `-r`'s replacement value."
+    script: rg-replace-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  # `module-size` is a budget, not a rule: prose can say the gate
   # exists and cannot say a module has 456 tokens left. `.scripts/headroom.py` is the read
   # that answers it before the code is written, and the `python` skill gives the command -
   # skipped three times on 2026-08-14 (basicly-co64) and three more on 2026-09-04, every
@@ -109,6 +178,7 @@ hooks:
   # silent on a module with room, so it earns its place on the write path
   # (basicly-zq9i2m.4). Empty matcher = the manager's default write-tools set.
   - id: headroom-guard
+    description: "Put a Python module's remaining ratchet room in context before it is edited."
     script: headroom-guard.py
     stage: pretooluse
     manager: claude
@@ -117,6 +187,7 @@ hooks:
   # commit that stages a generated output whose content diverges from the
   # projection manifest.
   - id: protect-generated-commit
+    description: "Block a commit that stages a hand-edited basicly-generated file (git backstop)."
     script: protect-generated-commit.py
     stage: pre-commit
     always_run: true
@@ -125,11 +196,13 @@ hooks:
   # shell command and every Skill invocation into the self-ignored
   # .basicly/usage/tool-usage.json.
   - id: tool-usage
+    description: "Count which terminal tools and skills the agent actually invokes (PostToolUse hook)."
     script: tool-usage.py
     stage: posttooluse
     manager: claude
     matcher: Bash|Skill
   - id: tool-usage-copilot
+    description: "Count which terminal tools and skills the agent actually invokes (PostToolUse hook)."
     script: tool-usage.py
     stage: posttooluse
     manager: copilot
@@ -140,11 +213,13 @@ hooks:
   # documented match-all and the default write-tools matcher would never fire, while
   # Copilot's sessionStart takes no matcher at all.
   - id: session-start
+    description: "Put the ledger's orientation in an agent's context at session open (basicly-yru8eu)."
     script: session-start.py
     stage: sessionstart
     manager: claude
     matcher: "*"
   - id: session-start-copilot
+    description: "Put the ledger's orientation in an agent's context at session open (basicly-yru8eu)."
     script: session-start.py
     stage: sessionstart
     manager: copilot

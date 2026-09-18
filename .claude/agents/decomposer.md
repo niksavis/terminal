@@ -2,6 +2,7 @@
 name: decomposer
 description: Cuts a classified unit of work into children that can each be built, verified and demonstrated end to end. Invoked by the engine at DECOMPOSE, once `classification` and `change-shape` validate and the loop depth calls for a plan. Returns an `implementation-plan` whose every child carries testable acceptance criteria, scope globs, declared dependencies, a token budget, an integrity level, and the command that demonstrates it. Read-only. It proposes a plan; the engine writes it.
 tools: Read, Grep, Glob, Bash
+tier: high
 effort: high
 skills:
 - decompose-plan

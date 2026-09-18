@@ -2,6 +2,7 @@
 name: researcher
 description: Establishes a fact about an external interface or a claimed best practice from authoritative primary sources rather than recall. Use before writing code, a design note, a rule or any claim that depends on how a third-party tool behaves, on what a published practice actually says, or on whether a competing project does what it advertises. Returns each claim with its evidence rung, the source it was verified against, the version and date it was verified at, and an explicit list of what could not be established. Read-only.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
+tier: high
 skills:
 - root-cause
 - falsify-first
@@ -85,7 +86,7 @@ A table, one row per claim:
 
 ```text
 | Claim | Verdict | Rung | Source | Verified at |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | copilot reports no token counts | REFUTED | 1 (our code) | copilot_store.py | 1.0.78, 2026-08-09 |
 ```
 

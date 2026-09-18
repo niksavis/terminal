@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 213
-  codex: 213
-  copilot: 212
+  claude: 283
+  codex: 283
+  copilot: 284
 id: quality-gate
 description: Quality gate rules before finishing work.
 category: project
@@ -15,9 +15,11 @@ tags:
 - review
 status: active
 body: |
-  - Review the diff, then exercise the change as it will really be used — run it, read the output. Tests passing ≠ feature working.
-  - Run the repo's checks on anything touched, re-run after the final edit — a later change breaks what passed. Point at gates, don't restate them.
+  - Review the diff, then run the change as a consumer runs it and read the output; tests passing is not a working feature.
+  - Run the repo's checks on anything touched and after the final edit; a later change breaks what passed. Point at a gate, don't restate it: a restatement goes stale.
   - Confirm success from the explicit pass/fail summary line; truncated output hides failures.
-  - State only the scope actually exercised. Say what you did not run. Never "expected to work" → "works".
-  - In a plan awaiting approval, mark parts resting on unread code as assumptions, not design — an approval spent on a false premise costs the checkpoint + the rework budget behind it.
-  - Same for a capability claim on a consumer surface (README · release notes · repo description): exercise before publishing — `docs-claims` catches only an invented command.
+  - State only the scope you exercised. Say what you did not run. Never "expected to work" → "works".
+  - A coverage claim names the list the code iterates; a general mechanism proves nothing about membership.
+  - In a plan awaiting approval, mark parts resting on unread code as assumptions, not design; an approval on a false premise costs the checkpoint and the rework behind it.
+  - Same for a README, release note or repo description claim: exercise it before publishing; `docs-claims` catches only an invented command.
+  - A design document sentence naming a call the code does not make is a claim, not a plan; write it once the call exists or say what is owed, because `docs-claims` reads a command and not a call, so nothing refuses it.

@@ -22,7 +22,7 @@ In the campaign this comes from, one run proposed five candidate inequalities an
 adversarial numerical search killed every one of them:
 
 | Candidate | Gap found | What the counterexample said |
-|---|---|---|
+| --- | --- | --- |
 | G2, G1 | -4.000000 | a free **phase** makes the term contribute nothing while still being charged |
 | G2re | -1.000000, -2.000000 | same cause; the gap grows with the pair count |
 | G3 | -0.500 / -1.333 | a negative term is priced at zero and still subtracts |

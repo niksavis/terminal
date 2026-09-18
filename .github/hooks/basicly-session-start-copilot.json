@@ -4,8 +4,8 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "uv run python .basicly/core/hooks/session-start.py",
-        "powershell": "uv run python '.basicly/core/hooks/session-start.py'"
+        "bash": "uv run --no-project python .basicly/core/hooks/session-start.py",
+        "powershell": "uv run --no-project python '.basicly/core/hooks/session-start.py'"
       }
     ]
   }

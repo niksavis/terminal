@@ -1,12 +1,14 @@
 name: copilot
 enabled: true
 tone: concise_checklist
-# Soft, non-blocking warning on `basicly build` (not a gate). The baseline is
-# ~50 chars/line, so this fires ~1000 chars before the ~200-line (~10000-char)
-# point where always-on context starts to dilute attention. Codex sits higher
-# (12000) because it inlines scoped fragments.
+# Mirrors claude because the content is the same and the vendor publishes no limit for this
+# file. GitHub removed the 4000-character limit on repository custom instructions in June
+# 2026 (github.blog changelog 2026-06-12), and the current docs state no size at all, so
+# there is no vendor number to sit under. The line cap is therefore the whole constraint,
+# and it is set from the same retention measurement as claude - see targets/claude.yaml for
+# the four data points.
 max_lines_warning: 200
-max_size_warning: 9000
+max_size_warning: 12000
 outputs:
   copilot_baseline:
     path: .github/copilot-instructions.md

@@ -2,6 +2,7 @@
 name: reviewer
 description: Reviews a change along one named lens and reports findings on that axis alone. Invoked by the engine at VALIDATE once per lens alongside the validator, and by a human ad hoc on any diff or named component - say which lens you want, `correctness` or `security`. Supersedes `code-reviewer`, the retired ad-hoc reviewer - ask for this role by name instead. Returns findings for its own lens with `path:line` evidence and a severity, never a merged ranking across lenses. Read-only.
 tools: Read, Grep, Glob, Bash
+tier: high
 effort: high
 skills:
 - falsify-first

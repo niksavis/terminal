@@ -77,11 +77,18 @@ tier_vendor_order:
 # One anchor per (tier, vendor). Every vendor must declare all four tiers.
 #
 # `collapse` states, in the data, that two tiers resolve to the same model on
-# purpose. Only Anthropic publishes a genuine fourth class (Fable); the other
-# three vendors ship a three-class ladder, so high and maximum land on the same
-# top class — which is what agent-roster-design R5 already says. The generator
-# cross-checks that a collapsed tier really does name the same model as its
-# target, so the declaration cannot drift from the ids.
+# purpose. Anthropic and OpenAI each publish a genuine fourth class — Fable and,
+# since 2026-09-04, GPT-6 Astra — while Google and Moonshot ship a three-class
+# ladder, so for those two high and maximum land on the same top class. The
+# generator cross-checks that a collapsed tier really does name the same model as
+# its target, so the declaration cannot drift from the ids.
+#
+# Astra replaced a collapse rather than joining one because it clears the test the
+# `-pro` models failed: measured 2026-09-12 against models.dev, github-copilot
+# serves `gpt-6-astra` at the same cost as `openai` does, while it serves none of
+# `gpt-5-pro`, `gpt-5.2-pro`, `gpt-5.4-pro`, `gpt-5.5-pro`, `o1-pro`, `o3-pro`, and
+# `gpt-6-astra-pro` is not served by `openai` directly either. A maximum tier that
+# resolves on only one of the two surfaces this repo requires is not a tier.
 vendors:
   - id: anthropic
     name: Anthropic
@@ -91,7 +98,7 @@ vendors:
       low: claude-haiku-4-5
       medium: claude-sonnet-5
       high: claude-opus-5
-      maximum: claude-fable-5
+      maximum: claude-fable-5-1
 
   - id: openai
     name: OpenAI
@@ -100,21 +107,13 @@ vendors:
       low: gpt-5.6-luna
       medium: gpt-5.6-terra
       high: gpt-5.6-sol
-      maximum: gpt-5.6-sol
-    collapse:
-      maximum: high
-    collapse_reason: >-
-      OpenAI ships a three-class ladder, so high and maximum resolve to its top
-      class. The `-pro` models are deliberately not used for maximum: measured
-      2026-07-31, github-copilot serves none of the six (gpt-5-pro, gpt-5.2-pro,
-      gpt-5.4-pro, gpt-5.5-pro, o1-pro, o3-pro), so the tier would be unusable on
-      one of the two surfaces this repo requires.
+      maximum: gpt-6-astra
 
   - id: moonshotai
     name: Moonshot AI
     surfaces: [moonshotai, github-copilot]
     tiers:
-      low: kimi-k2.5
+      low: kimi-k2.6
       medium: kimi-k2.7-code
       high: kimi-k3
       maximum: kimi-k3
@@ -144,4 +143,8 @@ vendors:
       Pro class. That top id is a `-preview`: previews get renamed or withdrawn at
       GA, so this pin is the least stable in the map. It is pinned rather than
       guessed at, and `--check` fails naming the id the moment it stops resolving
-      — there is deliberately no silent fallback to an older Pro.
+      — there is deliberately no silent fallback to an older Pro. Measured
+      2026-09-12: github-copilot now serves no Google Pro model at all, only the
+      flash line, so Google's high and maximum resolve unavailable on that surface.
+      That is a standing condition rather than a blip, and it is why `vendor_order`
+      puts Google after Anthropic and OpenAI for those two tiers.

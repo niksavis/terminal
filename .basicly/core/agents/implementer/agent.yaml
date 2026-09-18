@@ -9,7 +9,15 @@ tier: high
 tools: [Read, Grep, Glob, Bash, Edit, Write]
 claude:
   effort: high
-  skills: [python-guidelines, repair-in-place, test-discipline, conventional-commits]
+  skills:
+    [
+      python-guidelines,
+      no-comments,
+      repair-in-place,
+      test-discipline,
+      conventional-commits,
+      plain-english,
+    ]
 slots:
   role:
     - text: |

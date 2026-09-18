@@ -20,6 +20,62 @@ Two rules govern what is written here, and the second is why this file is short:
 - A claim that merely **restated shipped code** was dropped rather than relocated. The
   code is the authority; this file is the contract it is held to.
 
+## 3. Install
+
+**`uvx` is the way in**, and it is not merely a convenience here: the tracker's central
+promise depends on a git attribute the host repository must declare, and the installer is
+what declares it.
+
+```console
+$ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tracker basicly-tracker init
+tracker: added to .gitattributes: events-*.jsonl -text merge=union
+tracker: added to .gitignore: .basicly/ledger/snapshot.jsonl
+tracker: added to .gitignore: .basicly/ledger/checkpoint-*.jsonl
+tracker: 18 file(s) written, 0 unchanged, in .basicly/kit/tracker
+```
+
+The attribute is written **before** the first kit file, and an install that cannot write it
+refuses and leaves nothing behind. Without `merge=union` two branches that each append an
+event conflict, and the reason this tracker exists is that they must not. The glob and the
+derived-file patterns are read off `events.LOG_GLOB` and `snapshot.DERIVED_PATTERNS`, never
+spelled a second time (§9.4, and the same rule `.scripts/kit_deployment.py` follows).
+
+Afterwards plain `python3` runs it — no `uvx`, no network, nothing on `PATH`. Every
+subcommand takes the repository directory as its first argument:
+
+```console
+$ python3 .basicly/kit/tracker/cli.py create . --prefix demo --title "try the tracker"
+{
+  "events": ["demo-hbms#ev-59a934da3f", "demo-hbms#ev-04bc122532"],
+  "record": "demo-hbms"
+}
+$ python3 .basicly/kit/tracker/cli.py ready .
+{
+  "count": 1,
+  "records": [{"rank": 1, "record": "demo-hbms", "score": 2000, "title": "try the tracker"}],
+  "schema": "basicly.scheduler.v1",
+  "sort": "priority ASC, dependents DESC, id ASC"
+}
+```
+
+`update` re-vendors and reports what changed, `status` says whether the installed copy and
+its rules are current, and `uninstall` removes exactly what `init` wrote.
+
+`init` also writes the kit's **skill** into `.claude/skills/tracker/` and `.agents/skills/tracker/`,
+so an agent in that repository knows the kit exists and when to
+reach for it. That is the half a code-only install leaves out: a kit nothing calls is a kit
+nobody has.
+
+Add `--with-instructions` and it also writes a short always-on block into whichever of
+`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` are
+present, inside a marked region that a second run does not duplicate and `uninstall` removes
+byte for byte. Without the flag it prints the block instead, because editing your instruction
+file is not something an installer should do unasked.
+
+**Copying the files by hand is the fallback, not the route.** It still works — the kit
+imports nothing but the standard library — but a hand copy does not write the git
+attribute, so a repository installed that way keeps the conflicts this design removes.
+
 ## 4. The store: an append-only event log, and a one-way boundary
 
 **The event log is the truth; every other file is derived.** Every change is a new
@@ -78,6 +134,84 @@ Three reasons the kit is a requirement rather than a nicety:
 3. **The data outlives the tool.** A work ledger is the longest-lived artifact a harness
    owns. If the harness is abandoned, the ledger and its scripts must stay usable — a
    property no in-package-only design has.
+
+### 4.0 Sharding — a writer appends to its own file
+
+**`merge=union` does not stop a pull request being flagged as conflicting.** GitHub
+computes mergeability ahead of the merge and that computation ignores a repository's
+`.gitattributes`; its own auto-merge then refuses a pull request it has flagged. The
+request has been open since 2021-12-24 and was still unimplemented at 2026-08
+(github/community discussion 9288).
+
+**Measured on GitHub rather than argued from that thread**, on a throwaway private
+repository, 2026-09-17. Two arms, each carrying the identical `.gitattributes` above on
+its own base branch, each advancing that base by one append and then opening a pull
+request for a second append:
+
+| arm | the pull request changes | `git merge` locally | GitHub `mergeable` |
+| --- | --- | --- | --- |
+| one shared log | `events-0001.jsonl` | MERGEABLE | **CONFLICTING**, state DIRTY |
+| one file per writer | `pending-<writer>.jsonl` | MERGEABLE | **MERGEABLE**, state CLEAN |
+
+The first row is the whole argument: **the same commits, under the same declared
+attribute, merge clean locally and are refused by the forge.** So a local `git merge` that
+succeeds proves nothing about the pull request, and the conflicting arm is the positive
+control without which the clean one would be worth nothing. A shared log is a conflict
+surface on a forge however the attribute is declared. That is the defect this section
+exists for, not a hypothetical.
+
+**A writer appends to `pending-<writer>.jsonl`, never to the trunk.** Two branches then
+change two different paths, and a forge has nothing to flag. The writer is derived from
+`.git/HEAD` — a file read, not a subprocess — and a linked worktree's `.git` file is
+followed to its own `HEAD`, so a lane is its own writer without the engine telling it so.
+A directory outside a repository keeps the single trunk log, which is what keeps an
+existing ledger reading and writing exactly as it did.
+
+**Sharding separates branches, not clones, and `merge=union` still carries the rest.** The
+writer name comes from `.git/HEAD`, so two checkouts both sitting on the trunk write the
+same shard path and their appends meet in one file. That is not a defect in the design and
+it is not covered by the measurement above, which used two branches: it is the case the
+union driver exists for, which is why the install declares the attribute on the shard glob
+as well as the trunk one and why an installer that writes only one of them leaves a hole.
+State it this way round — a shard removes the conflict *between branches*, and the
+attribute removes the one *within* a branch.
+
+**This is the one place the kit reads a file it does not own.** §4's rule is otherwise
+that the kit reads its own committed data and takes everything else as arguments. The
+exception is narrow and stated rather than assumed: git is already the substrate the
+whole design rests on, and the alternative — a required `--writer` on every call — would
+make the standalone install worse than the bundled one, which is the split this kit
+exists to avoid. `events.append` still accepts `writer=` for a caller that knows better.
+
+**A shard is transient. `compact` folds it into the trunk and unlinks it.** The count of
+files must be bounded by how many writers are open at once, never by how many have ever
+existed. Measured 2026-09-17, one `git add` over a directory of shards costs 2.89s at
+1,000 files and 35.59s at 10,000 on NTFS, against 0.16s and 0.66s on ext4 — and the ratio
+doubles every decade, reaching 374.27s against 3.48s at 100,000. At a measured 8.2 lanes a
+day a shard kept forever reaches 3,000 files inside a year, so `fsck` warns above 1,000 and
+refuses above 10,000.
+
+Compaction needs no central serializer, which is why it is a kit command rather than an
+engine one. Two clones that each compact the same shards and push converge: union merge
+concatenates, event ids are content-derived so a duplicate folds once, and a shard removed
+on both sides is a delete that git resolves. An engine above the kit calls that same
+command at whatever seam commits tracker state; it is a caller, not a second mechanism.
+
+**What sharding buys depends on who commits the ledger, and the two are not one claim.**
+Where a developer commits the ledger on a feature branch — the standalone shape — sharding
+is what keeps the pull request mergeable, which is the measurement above. Where a harness
+commits tracker state only from one base checkout and every worktree redirects to that one
+ledger, there is a single committer and no branch to conflict with, so sharding buys
+tidiness and a bounded file count rather than merge safety. Stating only the first would
+overclaim for the second.
+
+**Rotation refuses while any shard is uncompacted.** A checkpoint records the line count
+of the logs it covers, and `fold_resumed` matches that count to decide whether it may
+resume. A rotation taken while a writer still holds events would write a checkpoint no
+resumed fold can match, and the failure would be a silent fall back to a whole-history
+fold rather than an error. So the shard namespace is separate from `events-*` in the first
+place: `period_of` parses everything after `events-` as a period and `rotate` compares
+file names, so a writer component inside that namespace corrupts both.
 
 ### 4.1 Ordering — the per-item sequence
 
@@ -406,6 +540,46 @@ already-claimed lane, so a null rank must stay distinguishable from an unrecorde
   idempotent rather than duplicating.
 - **No slugs in ids.** A slug embeds hyphens that read as a prefix boundary, which breaks a
   commit-message gate that parses the prefix — a shipped defect, not a hypothetical.
+
+### 9.4.1 The declared collision budget, derived
+
+"Collision-checked" is a hand-wave: a mint can only check the ids *this* writer can see, and
+two branches minting from the same base collide invisibly and merge into one id. So the root
+length is sized from the birthday bound against a declared maximum probability instead:
+
+```text
+P(collision) ≈ 1 - e^(-n² / 2N),   N = RADIX ** length
+```
+
+where *n* is the number of **distinct roots** under one prefix, not the number of records —
+children share their root. The declared target is `MAX_COLLISION_PROBABILITY` = `1e-4`: one
+chance in ten thousand that any pair of all roots ever minted collides. It yields:
+
+| root length | id space N | max roots at P ≤ 1e-4 |
+| --- | --- | --- |
+| 4 | 1,679,616 | 18 |
+| 5 | 60,466,176 | 109 |
+| 6 | 2,176,782,336 | 659 |
+| 7 | 78,364,164,096 | 3,958 |
+
+That table is derived, not typed. `max_population` recomputes every row and
+`tests/test_kit_tracker_ids.py` parses **this section** and asserts the two agree, so the
+number a reader checks here cannot drift from the number a mint uses. The exact birthday
+probability, `1 - Π(1 - i/N)`, is lower than the approximation at every row above, so the
+approximation is the conservative side to be on — also asserted.
+
+Why `1e-4` rather than something tighter: a collision is not data loss (the local check
+retries, and a cross-branch collision is a visible fork rather than a silent overwrite), and
+ids are read and typed by people, so length is a real cost. For scale, this repo's own ledger
+held 311 roots across 636 records at 3-4 characters, measured 2026-08-06 — a 4-character root
+at that population carries P ≈ 2.8e-2, which is 284 times the target this module declares.
+Sizing from a stated bound is what turns that from an opinion into a check.
+
+**Adaptive length is safe because an existing id never changes.** Only a newly minted root
+gets longer; every id already handed out keeps the length it was minted at, and `mint_root_id`
+treats it as taken forever regardless. That is also why ids are never reused: the caller
+passes every id ever minted, a deleted record's id included, and a candidate matching any of
+them is discarded.
 
 ## 9.5 Time — a timestamp is evidence, never a constraint
 

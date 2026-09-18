@@ -18,12 +18,14 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 
 | Hook | Stage | Manager | Script | Purpose |
 | --- | --- | --- | --- | --- |
+| `markdownlint` | `pre-commit` | `git` | [`markdownlint.py`](markdownlint.py) | Run markdownlint-cli2 through a node this script resolves itself (basicly-jr0l.14). |
 | `identity-guard` | `pre-commit` | `git` | [`identity-guard.py`](identity-guard.py) | Block commits made with an unconfigured or auto-derived git identity. |
 | `pre-commit-script` | `pre-commit` | `git` | [`pre-commit.py`](pre-commit.py) | Run the configured fast checks before a commit. |
 | `catalog-lint` | `pre-commit` | `git` | [`catalog-lint.py`](catalog-lint.py) | Pre-commit hook: validate catalog YAML sources via ``basicly catalog lint``. |
 | `secret-scan` | `pre-commit` | `git` | [`secret-scan.py`](secret-scan.py) | Block a commit that stages a likely secret (basicly-yzyd). |
 | `tracker-path-scan` | `pre-commit` | `git` | [`tracker-path-scan.py`](tracker-path-scan.py) | Block a commit that stages a machine-specific path in the tracker export (basicly-vkh0.5). |
 | `internal-info-scan` | `pre-commit` | `git` | [`internal-info-scan.py`](internal-info-scan.py) | Block a commit that stages an internal-only identifier (basicly-0n3d). |
+| `no-comments` | `pre-commit` | `git` | [`no-comments.py`](no-comments.py) | Refuse a commit that adds a prose comment to a code file. |
 | `kit-boundary` | `pre-commit` | `git` | [`kit-boundary.py`](kit-boundary.py) | Fail when a kit module reaches back into basicly (basicly-vkh0.16). |
 | `commit-msg-script` | `commit-msg` | `git` | [`commit-msg.py`](commit-msg.py) | Validate conventional commit message format. |
 | `tracker-commit-msg-script` | `commit-msg` | `git` | [`tracker-commit-msg.py`](tracker-commit-msg.py) | Validate that a commit message references an issue id the tracker holds. |
@@ -31,6 +33,8 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 | `protect-generated` | `pretooluse` | `claude` | [`protect-generated.py`](protect-generated.py) | Block agent edits to basicly-generated files (Claude Code PreToolUse hook). |
 | `unsplit-loop-guard` | `pretooluse` | `claude` | [`unsplit-loop-guard.py`](unsplit-loop-guard.py) | Refuse a for-loop over an unsplit scalar (Claude Code PreToolUse hook, basicly-m2g3). |
 | `pipe-status-guard` | `pretooluse` | `claude` | [`pipe-status-guard.py`](pipe-status-guard.py) | Refuse reading a pipeline's exit status when a filter ends it (PreToolUse, xkqxp9). |
+| `bare-var-guard` | `pretooluse` | `claude` | [`bare-var-guard.py`](bare-var-guard.py) | Refuse a command whose head is a bare `$VAR` that same command assigned a phrase. |
+| `rg-replace-guard` | `pretooluse` | `claude` | [`rg-replace-guard.py`](rg-replace-guard.py) | Refuse an `rg` short-flag cluster that swallows `-r`'s replacement value. |
 | `headroom-guard` | `pretooluse` | `claude` | [`headroom-guard.py`](headroom-guard.py) | Put a Python module's remaining ratchet room in context before it is edited. |
 | `protect-generated-commit` | `pre-commit` | `git` | [`protect-generated-commit.py`](protect-generated-commit.py) | Block a commit that stages a hand-edited basicly-generated file (git backstop). |
 | `tool-usage` | `posttooluse` | `claude` | [`tool-usage.py`](tool-usage.py) | Count which terminal tools and skills the agent actually invokes (PostToolUse hook). |

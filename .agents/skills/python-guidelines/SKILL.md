@@ -35,20 +35,24 @@ Test quality is out of scope — `test-discipline` owns it.
   `read_cost` (out of `decompose`), `contention` (out of `supervise`). Each
   docstring states the responsibility, the boundary, and what forced the split.
 
-## Names and docstrings that carry information
+## Names, because the name is the only prose left
+
+A code file carries **no comment and no docstring** (`code-is-authoritative`,
+enforced by `no-comments`). So the name is where meaning goes, and a vague one
+now costs the reader everything a docstring used to buy back.
 
 - `N` checks case, not meaning. Name the domain effect, not the location:
   `contention`, `read_cost`, `repair_brief`. Reject `utils`, `helpers`,
   `common`, `misc`, `manager`, `_part1` — each names where code sits rather
   than what it is answerable for, and reaching for one is the signal that the
   split above is wrong.
-- `D` checks shape. A docstring restating the signature passes the gate and
-  tells the reader nothing. Replace it with the fact a caller would otherwise
-  have to read the body for: what it raises, what it mutates, why the
-  surprising branch exists. The parameter list is already in the signature.
-- A docstring that explains *why* a value or an assertion holds is a claim the
-  next reader will act on. Cite the file, constant or measurement it rests on,
-  or leave it out.
+- **A fact that would have been a docstring goes somewhere it stays true.** A
+  measurement, a vendor quirk, the incident a guard exists for: put it on the
+  tracker record, in the module's README or design document, or in a test name
+  that asserts it. A fact with nowhere to live is a fact nobody verified.
+- Name a function for what a caller needs to know: what it answers, what it
+  raises, what it mutates. `mint_root_id` and `unsplit_command_vars` need no
+  prose; `process` and `handle` needed a paragraph and would not have earned it.
 
 ## Whether an abstraction earns its keep
 
@@ -62,34 +66,36 @@ Test quality is out of scope — `test-discipline` owns it.
 
 ## Fix the metric, do not move the score
 
-- Both size gates can be satisfied without improving anything. Extracting
-  `_part1()`/`_part2()` satisfies `C901`; deleting docstrings and comments
-  lowers a token count, and the module-size ratchet counts tokens — so the
-  cheapest way to pass it is to delete exactly the content the cap exists to
-  protect.
+- **Run the ratchet directly, not through the suite.** It prints the same
+  refusal `pytest` does, in about a tenth of a second (measured 2026-09-12)
+  against about four minutes for the suite:
+
+      uv run python .scripts/check_module_size.py
+
+  It reads no argument — it sweeps the whole tracked tree, and the full sweep is
+  still far cheaper than the wait. Measure while writing, not after the gate
+  refuses.
+- `module-size` can be satisfied without improving anything: extracting
+  `_part1()`/`_part2()` clears the number and cuts nothing. Since the comment ban
+  the cap counts code alone, so the old escape of deleting prose is gone — 21
+  modules graduated out of the frozen table on 2026-09-12 when the prose went.
 - The check: state what you did without naming the gate. "Split the collision
   reporting out of pass admission" is a fix; "got `cli.py` back under its
   baseline" is a score. If only the second sentence is available, you gamed it.
-- **Extracting is not free, and two in three natural cuts make it worse.**
-  Removing a unit raises the parent's prose share whenever the unit is
-  prose-*lighter* than the parent, so a cut that fixes `module-size` breaks
-  `comment-density`. Measured over 3,588 real top-level defs in the 68 frozen
-  oversized modules: only 34.4% are prose-heavier than their parent and so
-  satisfy both gates. Check that ratio for your candidate before you cut. This
-  binds only where a module is frozen in *both* tables — 17 of them today.
-- **Three legitimate routes when the cut does not exist. Rebaselining is the
+- **Two legitimate routes when the cut does not exist. Rebaselining is the
   usual one and is not a defeat.** Record it in `basicly.d/<record-id>.toml`
-  under `[ratchet.module_size]` or `[ratchet.comment_density]` as
-  `rebaselined`, with a non-empty `rebaseline_reason` and a `base_commit` that
-  is an ancestor of HEAD. It is counted and printed on the pass line, so it is
-  reviewable rather than silent. It is already used 50 times across 26 entries.
+  under `[ratchet.module_size]` as `rebaselined`, with a non-empty
+  `rebaseline_reason` and a `base_commit` that is an ancestor of HEAD. It is
+  counted and printed on the pass line, so it is reviewable rather than silent.
+  It is used 72 times across 25 entries today.
   What is forbidden is only the *silent* raise: hand-editing `[tool.*.frozen]`
   in `pyproject.toml`, or a `frozen` delta that loosens, are both refused.
-- **The waiver, when the module's prose genuinely is its contract.** A column-0
-  comment in the file, and it **must state a kind** or the gate refuses it:
+- **The waiver, when the module genuinely is one responsibility.** A column-0
+  marker in the file, and it **must state a kind** or the gate refuses it. It is
+  a directive rather than prose, so `no-comments` leaves it alone:
 
       # module-size-waiver: cohesion: <why this module is one responsibility>
-      # comment-density-waiver: cost(<record-id>): <what is owed back>
+      # module-size-waiver: cost(<record-id>): <what is owed back>
 
   `cohesion` is permanent; `cost(<record-id>)` is debt and expires when that
   record closes, policed by `.scripts/check_waivers.py`. A waiver with no kind
@@ -119,37 +125,29 @@ Test quality is out of scope — `test-discipline` owns it.
   inert and read as "reviewed" to everyone after you. A suppression no tool
   reads is worse than none — write the reasoning as an ordinary comment.
 
-## Comments — the divergence rule
+## Where a fact goes now that a comment cannot hold it
 
-- The code is what runs; a comment is a claim about it. When you change a line,
-  re-read the comment above it. If they disagree the comment is wrong until you
-  show otherwise — PEP 8: "Comments that contradict the code are worse than no
-  comments." Nothing mechanical checks this: `ERA001` catches commented-out code
-  and no rule in the stack reads a comment's meaning.
-- **Do not resolve a divergence by deleting the comment.** The module-size ratchet
-  counts comment tokens: stripping the standalone comments out of `config.py`
-  returns 36.3% of its budget, `merge.py` 17.0% and `loop.py` 11.6% (measured
-  2026-08-09). That makes deletion the cheapest way to pass a size gate, and it is
-  the same gaming shape as splitting into `_part1()`/`_part2()`. Fix the claim.
-- **That is not a licence to write more of it.** Measured 2026-08-12 in the same token
-  unit, this tree is 39.4% prose — comments plus docstrings — with a median module at
-  36.3% and 75 modules over 50%, and the last 40 commits added comments at 35.5% of
-  added code lines against 10.5% mid-history. `comment-density` (basicly-wxr3) ratchets
-  that share per module. The two rules meet on *content*: narration is deletable and is
-  what the gate is for; a measurement, a vendor fact or a why is evidence and stays,
-  with `# comment-density-waiver: cohesion: <reason>` for a module whose payload is
-  provenance. The kind is not optional; a waiver without one is refused.
-- Never narrate the next statement. The Google convention this repo pins
-  (`convention = "google"`) says "never describe the code" — and says it directly
-  after requiring that complicated operations get a few lines of comment first, so
-  it is a rule about *content*, not about existence.
-- Do write the thing the code cannot say: why this branch and not the other one,
-  what a bare `str` is allowed to hold, which incident a guard exists for, what a
-  constant's units are, which measurement a threshold came from. Measured over
-  this tree, that is what the comments already are — 41% contract, 40% why, 16%
-  navigation, 0% narration. That is a finding about *kind*, and it says nothing
-  about *volume*: a paragraph of correct "why" is still a paragraph, and the same
-  fact fits in a sentence. Write the shortest form that survives review.
+A code file carries no comment and no docstring. That removes the divergence
+problem outright — a claim beside the code can no longer go stale, because there
+is no claim beside the code. It also removes the place most facts used to land,
+so the discipline is now about **relocation**, not about restraint.
+
+- **A measurement goes on the record.** "Measured 2026-09-12: 92 of 2977 rg calls
+  carry the trap" belongs on the tracker record and in the commit message, where
+  it is dated and attributable. The ledger is permanent; a comment was not.
+- **A contract goes in a name, a type, or an assertion.** What a bare `str` may
+  hold is a type or a validator. What a function raises is a test that asserts it.
+- **A why goes in the design document or the module's README.** The tracker kit's
+  birthday-bound derivation moved from a docstring to `SPEC.md` §9.4.1, and the
+  test that checked the docstring now parses the section. That is the pattern:
+  move the fact and re-point the check at its new home.
+- **A directive is not prose and stays.** `noqa`, `nosec`, `type: ignore`,
+  `pragma: no cover`, `fmt: off`, a shebang, `SPDX-License-Identifier`, a `/*!`
+  banner. Measured over this tree: 335 of them, all preserved by the strip.
+- Removing prose is not licence to write unreadable code. Everything a comment
+  used to excuse — a five-letter name, a nine-branch function, a magic number —
+  is now unexcused. `.basicly/core/kit/comments/cli.py check <path>` reports what
+  is left; the `no-comments` hook refuses it at commit.
 
 ## Exception design
 

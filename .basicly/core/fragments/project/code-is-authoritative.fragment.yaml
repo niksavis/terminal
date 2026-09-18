@@ -5,7 +5,7 @@ token_cost:
   codex: 132
   copilot: 0
 id: code-is-authoritative
-description: Code is the authoritative source; a comment carries only what code cannot say.
+description: Code is the only source of truth; a code file carries no comment and no docstring.
 category: project
 priority: high
 applies_to: [all]
@@ -17,15 +17,19 @@ scope:
   paths:
   - src/**
   - tests/**
+  - packages/**
+  - site/**
   - .scripts/**
   - .basicly/core/hooks/**
   - .basicly/core/kit/**
 title: Code Is Authoritative
 body: |
-  Code is the authority; a comment is a claim about it. Write only what the code cannot
-  say — why this branch and not the other, what a unit is, which measurement a threshold
-  came from, which incident a guard exists for. Never restate the statement below it.
+  **A code file carries no prose.** No comment, no docstring: the code is the only source
+  of truth, so changing it cannot leave a stale claim beside it. `no-comments` refuses the
+  commit; `.basicly/core/kit/comments/cli.py fix <path>` removes them.
 
-  One sentence, not a paragraph: the same fact fits in a line, and `comment-density`
-  ratchets prose share (comments plus docstrings) per module. Needing a comment to explain
-  *what* the code does is a defect in the code, not a missing comment.
+  A **directive a tool reads** stays — `noqa`, `nosec`, `type: ignore`, `pragma: no cover`,
+  a shebang, `fmt: off`, a licence banner.
+
+  Put the fact a comment would have carried where it stays true: a name, a test name, the
+  tracker record, a README. Needing prose to say *what* the code does is a defect in the code.

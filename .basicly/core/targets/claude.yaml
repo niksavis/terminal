@@ -1,12 +1,29 @@
 name: claude
 enabled: true
 tone: terse_directive
-# Soft, non-blocking warning on `basicly build` (not a gate). The baseline is
-# ~50 chars/line, so this fires ~1000 chars before the ~200-line (~10000-char)
-# point where always-on context starts to dilute attention. Codex sits higher
-# (12000) because it inlines scoped fragments.
+# Two caps, and the LINE cap is the binding one. Anthropic states its budget in lines
+# ("target under 200 lines per CLAUDE.md file"), not characters, and the hard limit is
+# 4 MiB - a file above that is skipped whole. The character cap below is only a backstop
+# so a file of very long lines cannot slip past the line cap.
+#
+# Set from measurement, not from the vendor alone. `.scripts/retention_eval.py` dispatched
+# claude against four instruction files on 2026-09-12, n=1 per point, scoring how many of
+# the file's own rules came back:
+#
+#   152 lines  59 rules  95% retained  position curve flat (2nd half +3pp)
+#   266 lines  74 rules  92% retained  flat (-1pp)
+#   700 lines 130 rules  82% retained  2nd half 14pp below the 1st
+#  1667 lines 158 rules  79% retained  2nd half 23pp below the 1st
+#
+# The first half of a file holds near 90% at every length; only the tail is lost. The knee
+# is between 266 and 700 lines, so 200 keeps this surface well inside the flat zone and
+# agrees with the vendor's own number. Caveat recorded because it bounds the claim: the
+# probe cannot separate "forgot the rule" from "stopped enumerating", and n is 1.
+#
+# `always-on-size` refuses a breach; it used to be a warning that printed and exited 0,
+# and AGENTS.md sat over its cap for a month unnoticed.
 max_lines_warning: 200
-max_size_warning: 9000
+max_size_warning: 12000
 outputs:
   claude_wrapper:
     path: .claude/CLAUDE.md

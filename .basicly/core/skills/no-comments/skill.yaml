@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 76
+name: no-comments
+invocation: model
+description: >-
+  Write and edit code files in a repository that bans prose comments — what to do instead of a comment, which comments are directives and stay, and the commands that report and remove them. Use whenever creating or editing any code file, and whenever the no-comments gate refuses a change.
+instructions: |
+  # No comments in code
+
+  **The code is the only source of truth, so a code file carries no prose.** No comment,
+  no docstring. Changing code can then never leave a stale claim beside it, and nobody has
+  to keep a paragraph true as the lines under it move.
+
+  This is enforced, not advised. A commit that adds one is refused.
+
+  ## Before you write a comment, put the fact somewhere it stays true
+
+  That is the whole skill. A comment is a claim about code that nothing checks, so relocate
+  the claim to a place that is checked:
+
+  | The fact | Where it goes |
+  | --- | --- |
+  | A measurement — a count, a timing, a rate | the commit message, and the issue or record the change came from |
+  | What a function raises, mutates or returns | a test that asserts it, and the type signature |
+  | What a bare `str` is allowed to hold | a type, an enum, or a validator |
+  | Why this branch and not the other | a name for the branch condition, or a test named after the case |
+  | Which incident a guard exists for | the issue id in the commit message; the test that reproduces it |
+  | What the module is for | its README, or the design document |
+  | Anything you cannot place | it was not load-bearing. Drop it. |
+
+  Needing prose to say *what* the code does is a defect in the code. Rename it, split it, or
+  give the condition a name.
+
+  **Removing prose is not licence to write unreadable code.** Everything a comment used to
+  excuse — a five-letter name, a nine-branch function, a bare magic number — is now
+  unexcused.
+
+  ## A directive is not prose and must survive
+
+  A comment some tool reads is functional. Strip it and the build breaks, so the gate never
+  reports one and `fix` never removes one:
+
+  `noqa` · `nosec` · `type: ignore` · `pragma: no cover` · `fmt: off` / `fmt: on` / `fmt: skip`
+  · a shebang · `eslint-disable` · `prettier-ignore` · `@ts-expect-error` · `@ts-nocheck`
+  · `stylelint-disable` · `go:build` · `CHECKSTYLE:` · `NOSONAR` · `SPDX-License-Identifier`
+  · a `/*!` licence banner · an HTML conditional comment.
+
+  If you need a suppression, write it in that form with its code and a reason after it. That
+  reason is part of the directive, so it stays.
+
+  ## The commands
+
+  ```sh
+  python3 .basicly/kit/comments/cli.py check <path>      # report; exit 1 when prose is found
+  python3 .basicly/kit/comments/cli.py fix <path>        # remove it
+  python3 .basicly/kit/comments/cli.py languages         # every extension claimed
+  ```
+
+  `check` never writes. `fix` writes nothing it cannot prove: it re-parses the file, requires
+  the strip to be idempotent, and requires every string literal to survive. A file it cannot
+  lex with certainty is reported and left alone.
+
+  ## What is not covered
+
+  Config, data and prose formats — YAML, TOML, JSON, Markdown — keep their comments, because
+  there is no code beside them to be the source of truth instead. Vendored directories are
+  skipped. Run `languages` for the live list rather than guessing.

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://basicly.dev/schemas/output-style.schema.json",
+  "title": "basicly output style source",
+  "description": "An output style authored as <slug>/style.yaml, projected to .claude/output-styles/<slug>.md. An output style rewrites the host's system prompt for every session in the repository, so it is always-on guidance of the same class as a fragment and the catalog owns it rather than a hand-edited markdown file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "name", "description", "body"],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Source-format version; bump only when the loader contract changes."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The style's display name, as the host lists it. The slug comes from the directory name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One line naming what the style changes about the answer."
+    },
+    "keep_coding_instructions": {
+      "type": "boolean",
+      "default": true,
+      "description": "Projected as `keep-coding-instructions`. False omits the host's built-in software-engineering instructions, including how to verify work, so the default is true."
+    },
+    "technologies": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "body": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The style body in markdown. Every character reaches the system prompt of every session, so it is charged like an always-on fragment."
+    }
+  }
+}

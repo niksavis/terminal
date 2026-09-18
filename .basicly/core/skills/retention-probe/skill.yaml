@@ -1,0 +1,100 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 75
+name: retention-probe
+invocation: model
+description: >-
+  Test whether this session still holds the repository's always-on instruction
+  file in its context window. Use when a repo convention seems to have gone
+  missing, at the start of work in a subagent or a fresh worktree, or after a
+  compaction, before trusting that project rules are loaded.
+instructions: |
+  # Retention Probe
+
+  ## What this answers, and what it does not
+
+  One question: **is the instruction file in this session's context?**
+
+  It does not measure adherence. Reciting a rule is not obeying one, and the
+  correlation between the two is unmeasured here. A gate or a `PreToolUse` hook
+  is what enforces a rule; this probe only tells you whether the guidance
+  arrived.
+
+  It also cannot measure gradual forgetting. While the file is in context you
+  are reading it, not recalling it, so a high score proves the file is present
+  and nothing more. The probe's own output repeats every rule, which means
+  running it is itself a re-injection — so run it when you suspect a problem,
+  not on a schedule.
+
+  ## Procedure
+
+  1. Write every rule, convention and constraint you believe governs this
+     repository, one per line, to a scratch file. Answer **exhaustively** from
+     what is already in your context — do not read, search or list files first,
+     because reading the file is what the probe is trying to detect.
+  2. Score it:
+
+     ```sh
+     uv run basicly retention <scratch-file>
+     ```
+
+     Add `--verbose` to list the rules that did not come back, each beside the
+     closest line in your answer. Add `--baseline <path>` to score against a
+     file other than the default `.claude/CLAUDE.md`.
+
+  3. Act on the verdict.
+
+  ## Verdicts
+
+  | Verdict | Meaning | What to do |
+  | --- | --- | --- |
+  | `LOADED` | ≥80%. The file is in context. | Nothing. |
+  | `PARTIAL` | 30–80%. Not decisive. | Re-run once, answering more fully. |
+  | `ABSENT` | ≤30%. The file is not in context. | Read the instruction file, then continue. |
+  | `UNDERSAMPLED` | Fewer lines than the file has rules. | You stopped early. Answer exhaustively and probe again. |
+
+  The bands come from measurement, not taste (2026-09-12, `basicly-j17pqa9`): a
+  fresh cell holding the file returned 92–95% of its own rules, and a cell with
+  no guidance file at all returned 5%. That is a 90-point gap, which is why the
+  probe is reliable for presence and useless for anything finer.
+
+  `UNDERSAMPLED` exists because the first real use of this tool tripped it. A
+  30-line answer against 58 rules scored 45% and looked like degradation; the
+  file was loaded and the answer had simply stopped early. Every genuine attempt
+  measured wrote at least 1.17 lines per rule, **including the one with no file**.
+
+  ## When ABSENT is the right answer
+
+  These are the cases that produce a real `ABSENT`, and reading the file fixes
+  every one of them:
+
+  - A subagent that was never given the project instructions.
+  - A session launched outside the repository root.
+  - A `claudeMdExcludes` pattern matching more than it was meant to.
+  - A consumer repository where `basicly install` has not run.
+
+  A compaction is **not** on that list: Claude Code re-reads the project-root
+  instruction file from disk and re-injects it after `/compact`, so the file
+  comes back on its own.
+
+  ## The trend file
+
+  Every run appends one line to `.basicly/usage/retention.jsonl` with the rate
+  and the verdict. Compare runs against each other rather than reading one
+  number as absolute — the score is lexical, with a false negative near 1 in 6
+  on a distant paraphrase, so the rate is a floor.
+
+  ## The calibration harness
+
+  `basicly retention` scores an answer you already have. To measure the file
+  itself — how much of it survives one injection into a clean session, and
+  whether the tail is lost — use the dispatching harness instead:
+
+  ```sh
+  uv run python .scripts/retention_eval.py --family claude --control --cells /tmp/cells
+  ```
+
+  It builds throwaway repositories, asserts that no other guidance file leaked
+  in, and reports retention by position in the file. That is the instrument that
+  set the size caps in `.basicly/core/targets/`.

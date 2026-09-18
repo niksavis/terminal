@@ -59,12 +59,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Catalog lint
-        run: uvx --from git+https://github.com/niksavis/basicly@v0.12.1 basicly catalog lint
+        run: uvx --from git+https://github.com/niksavis/basicly@v0.14.2 basicly catalog lint
       - name: Projection drift check
-        run: uvx --from git+https://github.com/niksavis/basicly@v0.12.1 basicly check
+        run: uvx --from git+https://github.com/niksavis/basicly@v0.14.2 basicly check
       - name: Skill projection drift check
-        run: uvx --from git+https://github.com/niksavis/basicly@v0.12.1 basicly skills-check
+        run: uvx --from git+https://github.com/niksavis/basicly@v0.14.2 basicly skills-check
       - name: Hook wiring drift check
-        run: uvx --from git+https://github.com/niksavis/basicly@v0.12.1 basicly hooks-check
+        run: uvx --from git+https://github.com/niksavis/basicly@v0.14.2 basicly hooks-check
       - name: Configured verify checks
-        run: uvx --from git+https://github.com/niksavis/basicly@v0.12.1 basicly verify --mode full
+        run: uvx --from git+https://github.com/niksavis/basicly@v0.14.2 basicly verify --mode full

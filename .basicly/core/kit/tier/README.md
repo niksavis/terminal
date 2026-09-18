@@ -3,15 +3,14 @@
 **A subagent declares a portable tier; this kit makes the spawn actually run on the
 model that tier resolves to.** Three Python files and one JSON map, with **no
 basicly**: no `import basicly`, nothing on `PATH`, no third-party package, no
-network. Copy them into a repository that has never heard of this harness and they
-work.
+network.
 
 | File | What it does |
 | --- | --- |
 | `tier_resolver.py` | answers _which model_ a tier means, for one host surface |
 | `claude_tier_hook.py` | rewrites a Claude Code spawn to use it |
 | `install_hook.py` | wires the hook into the host's settings |
-| `../models/model-map.json` | the committed data all three read ([contract](../models/README.md)) |
+| `model-map.json` | the committed data all three read, vendored beside them by `init` |
 
 The `tier-injection` skill is the entry point for using it. This file is the
 reference for how it behaves and where it stops.
@@ -25,7 +24,7 @@ reference for how it behaves and where it stops.
 
 Dynamic is preferred because a model pinned into a definition file is a fact
 duplicated in every definition, and it goes stale silently. The static path is the
-documented **fallback**, not a second-class accident.
+documented **fallback**, and it is supported.
 
 **Corrected 2026-08-08.** This section previously said copilot "has no hook surface
 at all", citing no hooks directory under `~/.copilot`, no hook key in `settings.json`
@@ -59,10 +58,45 @@ It exits **1**, so a script can branch on it without parsing the report.
 
 ## Install
 
+**`uvx` is the way in.** The kit is published as its own package, so a repository that has
+never heard of this harness gets it in one command:
+
+```console
+$ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tier basicly-tier init
+tier: 5 file(s) written, 0 unchanged, in .basicly/kit/tier
+```
+
+`init` **vendors** the kit into `.basicly/kit/tier`, so from then on plain `python3` runs
+it with no `uvx`, no network and nothing on `PATH`. `update` re-vendors and reports what
+changed, `status` says whether the installed copy matches, and `uninstall` removes exactly
+the files `init` wrote and nothing else.
+
+`init` also writes the kit's **skill** into `.claude/skills/tier/` and `.agents/skills/tier/`,
+so an agent in that repository knows the kit exists and when to
+reach for it. That is the half a code-only install leaves out: a kit nothing calls is a kit
+nobody has.
+
+Add `--with-instructions` and it also writes a short always-on block into whichever of
+`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` are
+present, inside a marked region that a second run does not duplicate and `uninstall` removes
+byte for byte. Without the flag it prints the block instead, because editing your instruction
+file is not something an installer should do unasked.
+
+Running it without vendoring works too — `basicly-tier --host claude --tier low` passes
+straight through to the resolver. The model map travels with the kit, so a vendored copy
+resolves with nothing else on disk.
+
+**Copying the files by hand is the fallback, not the route.** It still works, because the
+kit imports nothing but the standard library, and it is the right answer when you are
+driving the kit from another harness rather than adopting it. The rest of this document
+describes the kit itself, which behaves identically however it arrived.
+
+## Install the spawn hook
+
 ```bash
-python3 .basicly/core/kit/tier/install_hook.py --dry-run   # print what it would write
-python3 .basicly/core/kit/tier/install_hook.py             # this repository
-python3 .basicly/core/kit/tier/install_hook.py --user      # every repository on this machine
+python3 .basicly/kit/tier/install_hook.py --dry-run   # print what it would write
+python3 .basicly/kit/tier/install_hook.py             # this repository
+python3 .basicly/kit/tier/install_hook.py --user      # every repository on this machine
 ```
 
 Re-running converges: it never duplicates the hook, and it matches hooks by the
@@ -137,7 +171,8 @@ $ echo $?
 
 ## Drive the map from another harness, with no basicly
 
-The kit is four files. Copy them anywhere, keep the two directories beside each
+The kit is four files, and `basicly-tier init` puts them where the resolver expects.
+You can also copy them anywhere by hand: keep the two directories beside each
 other or point `--map` wherever you put the map, and call it:
 
 ```console
