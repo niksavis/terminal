@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.14.2",
+  "basicly_version": "0.15.0",
   "core": {
     "agents/architect/agent.yaml": "sha256:7e04bed650863fce06344b4ea7be6ec264fe647f9002a346a6785eae6e69fd82",
     "agents/auditor/agent.yaml": "sha256:124f2e452f4b836b5dc4031897c7ce7d02940bbdd4c6549db453704f71ccbdd0",
@@ -20,7 +20,7 @@
     "fragments/boundaries/require-explicit-confirmation.fragment.yaml": "sha256:a99c2cd512ff74d9cce175dacabfb61c1ac10cc4efb4b331c48e937d60ff7129",
     "fragments/commands/git-discipline.fragment.yaml": "sha256:dd2a7da87d94a19268379fd58c8dd73e6102320143ae0d6a9641cb0f5494542b",
     "fragments/decisions/decision-protocol.fragment.yaml": "sha256:d63771b201a485bf33d6594c6ab3f4da695f1877f7d87cda77585523dee1a62b",
-    "fragments/decisions/external-facts.fragment.yaml": "sha256:c11c6a9f13e1cc86f8ac7789268134da2d4912e238fbac036c608e2c78050ddb",
+    "fragments/decisions/external-facts.fragment.yaml": "sha256:7b8a436d5cc799bb2e3c7db992ac328dd0ea392b21c742c7d1f53e92a9a4e500",
     "fragments/decisions/model-tier-routing.fragment.yaml": "sha256:8d86fa3debfca6bfe1b451d574b062896a63648d88cb26df9403fa715997bd6d",
     "fragments/design/external-review.fragment.yaml": "sha256:39fa4affb1e8209dfbb2d6e02bc5b541d8f3cd502a56a48b05d41949683c16b4",
     "fragments/project/catalog-authoring.fragment.yaml": "sha256:f4254a6e12429b14cccbd0c641960bf7ab4a79d30c7c7a3df6bb005c38cc0371",
@@ -95,7 +95,7 @@
     "kit/tracker/fsck.py": "sha256:47e5d8e967dd421f15e320d520f28dee39ec646524d7323b763b8c11691a9967",
     "kit/tracker/gates.py": "sha256:ee7d2e5de2450cc89760e15ed0e66ce95d43713b9a621c7e3e5333d1bfbd7769",
     "kit/tracker/ids.py": "sha256:e026415d801a568cb7c5b8f33250f9da31bd47e306bde0453d9c47d6080b23bc",
-    "kit/tracker/install_hook.py": "sha256:41e7fa3acf8fb1a6eaa91905a6b504d4fe1f0b79b99399a8000edf782f0d4086",
+    "kit/tracker/install_hook.py": "sha256:fdfe652478c33ce602c0e6d20eb7e6fb287caf4707011dbd60184438762caa56",
     "kit/tracker/label_shape.py": "sha256:096835ae28669525f73412f73ae2a80230781ff841395c0d3d5e3b03a9945d9c",
     "kit/tracker/labels.py": "sha256:c3b7df88597d6fc6e57466166e383be0fd3692c77374c4345626b3b4c97e6bb6",
     "kit/tracker/migrate.py": "sha256:a49d3c9d21138375a2eddbb1c349ad494fa3192be80dd56ea03c567c3c735987",
@@ -187,7 +187,7 @@
     "skills/tool-zsh/skill.yaml": "sha256:743e679bbd42994e87ecd9f32d496d72b24ba2f8254d8dc48d3a54515886b196",
     "skills/validate-as-consumer/skill.yaml": "sha256:7d4de6d9ffea2998985d0be2ce0e2f174e8ffdf37646194cf343a15e0c808416",
     "skills/work-tracker/evals.yaml": "sha256:bea7f46863d86a650d98122be3bc503132ef1e88ef475cfb402834b0245e8e8d",
-    "skills/work-tracker/skill.yaml": "sha256:15a85f12bcf01d620590047fb1cad25e0d7e87cc8199c78469af0ccd9102c0aa",
+    "skills/work-tracker/skill.yaml": "sha256:75477ef507443c6d832e896b75e680ec5e296e579321ded5de035401eb66ff73",
     "skills/worktree-isolation/evals.yaml": "sha256:ed4b7523b84306b5d0c5c057d50056d147ff9a903d8e69fc6fa581fd511b75ea",
     "skills/worktree-isolation/skill.yaml": "sha256:1a8cea551b61592b116db517d284b4b7f4af499ad9ed5805af447fd2f75323e5",
     "skills/wsl/evals.yaml": "sha256:0f3aeed286c125354b17d65a8348986fe8bbc3135a0db09b40cd20c81819ddf8",
@@ -221,6 +221,6 @@
     "templates/codex/rule_md.j2": "sha256:0c236f2ac2ab05fafc6d5c199700ead5ec7c69ff21b8850f09a46f585ea94166",
     "templates/copilot/copilot_instructions_md.j2": "sha256:5d69050d4a037b769f918c84bfd1c92dae393b358df7451ae035b86ba98bdb9c"
   },
-  "installed_at": "2026-09-18T17:14:13.957479+00:00",
+  "installed_at": "2026-09-18T20:30:50.637243+00:00",
   "schema_version": 1
 }

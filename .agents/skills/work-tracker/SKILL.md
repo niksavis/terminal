@@ -137,6 +137,23 @@ rather than renumbered, with the rest of the export still landing — so read th
 and the exit code, which is non-zero when anything was refused. A re-run is a replay, so
 an import torn off at the tail completes instead of doubling the history.
 
+## After a merge: fold the writer shards
+
+A writer appends to `pending-<branch>.jsonl`, never to the trunk log, so two branches
+never edit one file and never conflict. A merge therefore lands a shard, and the readers
+read the trunk log. Fold it:
+
+```sh
+basicly tracker fold
+```
+
+`basicly install` wires this to a `post-merge` hook, so a merge folds the shard on its
+own. Run it by hand only when the hook did not run, or when the hook printed *the
+pending shards are not folded* because the engine was not on the path. The commit it
+writes carries a record id taken from the shard's own events, so the commit-msg gate
+admits it. It refuses while the tree carries a change outside the ledger, so commit
+your own work first.
+
 ## Bulk queries: `jq` over the event log
 
 Counting or auditing the whole tracker means reading the events with `jq`. Three
