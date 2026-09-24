@@ -2,6 +2,48 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.7.0 - 2026-09-24
+
+Delta: v0.6.1..v0.7.0
+
+### Highlights
+
+- **New: `img-zoom`, an image zoom command for coding agents.** Agents read dense images - screenshots, charts, technical drawings - more accurately when they can crop part of the full-resolution original and look at it enlarged. `img-zoom IMAGE X1 Y1 X2 Y2 -o OUT.png` does that and prints the image size and the crop box, so the agent can check its coordinates; `img-zoom --info IMAGE` prints the size first. It works on image files only. Setup installs it with `uv tool install`: run from Windows, both in WSL and natively on Windows, with its folder added to your user PATH; run inside WSL or on Linux or macOS, there. `img-zoom --python` prints a Python that has Pillow and OpenCV, for an agent's own measuring scripts (Pillow only on Windows on ARM, where OpenCV has no build) (term-u1hdq, term-534cp).
+- **Claude Code learns that `img-zoom` exists.** Setup writes a skill to `~/.claude/skills/img-zoom/SKILL.md` - in WSL, and in `%USERPROFILE%\.claude` when run from Windows - only where Claude Code is installed and `img-zoom` is present, so the skill never points at a missing command. `--skip-claude` skips it, as it skips the status line (term-u1hdq, term-534cp).
+- **`uv tool upgrade` keeps working after `uv cache clean`.** Setup installs `img-zoom` from a copy it keeps in `~/.local/share/terminal-setup` (Windows: `%LOCALAPPDATA%\terminal-setup`), not from uv's cache, which a cache clean removes (term-9bmbl).
+- **Fixed: the Claude Code status line was blank on a stock Mac.** macOS ships bash 3.2, and the script used bash 4 features, so it failed without a word. It now runs on bash 3.2 or newer; its output is unchanged everywhere else. The README now documents `STATUSLINE_NERDFONT` and `STATUSLINE_WIDTH` (term-zb5lg).
+- **Maintainers: CI now runs the tests on Windows and macOS too**, not only on Ubuntu. The first run is what found the macOS status line bug (term-7yv4e). The basicly harness moves from 0.15.0 to 0.18.2, and ruff no longer requires docstrings, because basicly's no-comments gate forbids them (term-dq7l5, term-np3i3, term-rdfqj).
+- **To pick it up, run the full setup** (not `--only config`): `img-zoom` is an install step, and the skill is written only where `img-zoom` is present. On Windows, restart the terminal afterwards so the new PATH entry applies.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-m1ubo) (3c2f8ad)
+- chore(tracker): close the cross-platform ci and macos bash records (term-zb5lg) (d5c429a)
+- fix(statusline): run on the old bash that ships with macos (term-zb5lg) (de19a88)
+- ci: run the test suite on windows and macos (term-7yv4e) (569ed14)
+- chore(tracker): close the stable-copy record (term-9bmbl) (b0bae95)
+- fix(agents): install img-zoom from a stable copy (term-9bmbl) (1d6aeac)
+- chore(tracker): record the full windows setup run (term-534cp) (d76d89a)
+- chore(tracker): close the uvx and windows img-zoom record (term-534cp) (5e26fd4)
+- fix(agents): ship img-zoom in the package and install it on windows (term-534cp) (ba322f7)
+- chore(tracker): close img-zoom after a real setup run (term-u1hdq) (edfead9)
+- chore(tracker): close the v0-18-2 upgrade record (term-np3i3) (d2797a4)
+- chore(harness): upgrade basicly to v0-18-2 (term-np3i3) (f3faacc)
+- chore(tracker): close the upgrade and gate conflict records (term-rdfqj) (f99107f)
+- feat(agents): add img-zoom image crop-and-zoom command (term-u1hdq) (8de6768)
+- chore(lint): follow no-comments over ruff pydocstyle (term-rdfqj) (923095a)
+- chore(harness): upgrade basicly to v0-18-1 (term-dq7l5) (ade64ce)
+- chore(harness): upgrade basicly to v0-15-0 (term-1050f) (9d77586)
+- chore(tracker): record the v0-15-0 pre-upgrade findings (term-1050f) (2e40bcf)
+- chore(tracker): file the unconditional install advice (term-ip2wz) (596c993)
+- chore(tracker): propose the positive-control refinement (term-2vkce) (b8492cc)
+- chore(tracker): close the markdownlint blocker (term-fawxo) (d4e0b15)
+- chore(harness): upgrade basicly to v0-14-2 (term-fawxo) (539d37b)
+- chore(tracker): file the unannounced ci scaffold writes (term-42xuc) (43a9b9e)
+- chore(tracker): file the ledger merge-driver gaps (term-n3rzn) (6ccd6d4)
+- chore(tracker): correct the wezterm staleness premise (term-31j) (700f997)
+- chore(tracker): record the session handover (term-99z) (62f8290)
+
 ## v0.6.1 - 2026-09-12
 
 Delta: v0.6.0..v0.6.1
