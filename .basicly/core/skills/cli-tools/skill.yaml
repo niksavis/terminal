@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 125
+name: cli-tools
+invocation: model
+description: Pick the installed command-line tool for a shell task instead of a slower default - rg to search text in files, fd to find or list files by name or extension, bat to read a file with line numbers, jq or yq to read a field from a JSON or YAML file, sd to replace text, ast-grep for code structure, xh or curl to call an HTTP endpoint, just for project recipes. Use when you search, list, read or reshape files or data, call an API or run a project task; then load tool-<name> for its flags.
+instructions: |
+  # Command-line tools
+
+  Pick the tool for the task, then load its `tool-<name>` skill for the flags. When a tool is missing, say so and use the fallback in the last column.
+
+  | Task | Tool | Skill | Fallback |
+  | --- | --- | --- | --- |
+  | Search text in files | `rg` | `tool-ripgrep` | `grep -rn` |
+  | Find files by name or type | `fd` | `tool-fd` | `find` |
+  | Read a file with line numbers | `bat` | `tool-bat` | `cat -n` |
+  | Read or reshape JSON | `jq` | `tool-jq` | a script |
+  | Read or reshape YAML or TOML | `yq` | `tool-yq` | a script |
+  | Replace text in files | `sd` | `tool-sd` | `sed` |
+  | Search or rewrite code structure | `ast-grep` | `tool-ast-grep` | `rg` |
+  | Call an HTTP API | `xh`, `curl` | `tool-xh`, `tool-curl` | `curl` |
+  | Download a file | `wget` | `tool-wget` | `curl -O` |
+  | Read a diff | `delta` | `tool-git-delta` | `git diff` |
+  | Run a project recipe | `just` | `tool-just` | the README command |
+  | Run with the project variables | `direnv exec .` | `tool-direnv` | set them by hand |
+  | Large binary files in git | `git lfs` | `tool-git-lfs` | none |
+  | Check a shell script | `shellcheck` | `tool-shellcheck` | none |
+  | Find spelling mistakes | `typos` | `tool-typos` | none |
+  | Show a directory tree | `tree` | `tool-tree` | `fd` |
+  | Python projects and scripts | `uv` | `tool-uv` | `pip` |
+  | Git commands | `git` | `tool-git` | none |
+
+  To give every repo on this machine these skills, run `basicly skills-user cli-tools 'tool-*'` once; terminal-setup runs it for the tools it installs.
+
+  ## Rules
+
+  - **Never start an interactive tool.** `fzf`, `lazygit` and `tmux` wait for a person; their skills say which forms are safe.
+  - **Prefer the tool over a custom script.** It is faster, and a person can read the command.
+  - **Read the output before you act on it.** An empty result is not proof of absence; run a search that must match first.

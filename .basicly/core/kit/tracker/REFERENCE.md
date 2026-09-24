@@ -25,7 +25,10 @@ python3 .basicly/kit/tracker/cli.py child .basicly/ledger acme-a1b2 --title "Par
 
 ### update
 
-Set fields, the status or labels. `--add-label` and `--remove-label` repeat.
+Set fields, the status or labels. `--add-label` and `--remove-label` repeat. Moving a story
+that nobody holds to `in_progress` also names you as its holder. `--if-seq N` refuses the
+update when a field it writes changed after seq `N`, the `max_seq` that `show` gave you, so
+an edit never silently replaces a newer one.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py update .basicly/ledger acme-a1b2 --status in_progress --add-label export
@@ -42,10 +45,21 @@ python3 .basicly/kit/tracker/cli.py comment .basicly/ledger acme-a1b2 "The expor
 ### dep
 
 Record that the first record waits on the second. `--type` sets the edge type, `blocks`
-when omitted. An edge that would make a cycle is refused.
+when omitted: `blocks`, `parent-child`, `related` or `discovered-from`. An edge that would
+make a cycle, an edge the record already has, and a `blocks` edge on a closed record are
+refused.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py dep .basicly/ledger acme-a1b2 acme-c3d4
+```
+
+### undep
+
+Retract an edge the first record holds on the second, as one appended event. An edge the
+record does not hold, and a `parent-child` edge, are refused.
+
+```sh
+python3 .basicly/kit/tracker/cli.py undep .basicly/ledger acme-a1b2 acme-c3d4
 ```
 
 ### close
@@ -68,7 +82,9 @@ python3 .basicly/kit/tracker/cli.py assign .basicly/ledger acme-a1b2 --to alex
 
 ### claim
 
-Reserve a record and set it to `in_progress` in one write, when you start the work.
+Reserve a record and set it to `in_progress` in one write, when you start the work. It is
+refused while the record carries the `refine` label or fails `dor`: an agent reviews it
+first.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py claim .basicly/ledger acme-a1b2 --to alex
@@ -141,6 +157,15 @@ Counts by status, with the ready and blocked counts.
 python3 .basicly/kit/tracker/cli.py stats .basicly/ledger
 ```
 
+### commit-check
+
+The check the `commit-msg` hook runs; you do not run it yourself. It reads the commit
+message file and the staged paths, and refuses a commit that changes files outside the
+ledger unless the committer (`git config user.name`) holds a record the message names in
+progress or closed. A ledger with no record yet passes, and the files a kit install manages
+(`.basicly/kit/`, the tracker and board skills, `.gitignore`, `.gitattributes`) do not count,
+so the install commit works.
+
 ### show
 
 One record's folded state and its edges in both directions, each edge with the title of the
@@ -194,7 +219,8 @@ python3 .basicly/kit/tracker/cli.py fields .basicly/ledger
 The open records a refinement pass owes: each one carries the `refine` label or fails
 `dor`. A person writes or edits a story, and the board page adds the label. An agent then
 rewrites the record with the full fields (trigger, acceptance criteria, requirements,
-type, priority, edges) and removes the label with `update --remove-label refine`.
+type, priority, edges) and removes the label with `update --remove-label refine`. Only an
+agent writer removes it, and only when `dor` passes.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py refine .basicly/ledger

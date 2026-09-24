@@ -104,6 +104,28 @@ def refuse(states: Mapping[str, Any], drafts: Sequence[Any]) -> None:
         )
 
 
+IN_PROGRESS = "in_progress"
+
+
+def claimed_by(states: Mapping[str, Any], drafts: Sequence[Any], name: str) -> list:
+
+    added = []
+    for draft in drafts:
+        if draft.kind != events.KIND_STATUS or draft.payload.get("status") != IN_PROGRESS:
+            continue
+        named = any(
+            other.record == draft.record
+            and other.kind == events.KIND_FIELD
+            and other.payload.get("name") == HOLDER_FIELD
+            for other in drafts
+        )
+        if name and not named and not _held_by(states, draft.record):
+            added.append(
+                events.Draft(draft.record, events.KIND_FIELD, {"name": HOLDER_FIELD, "value": name})
+            )
+    return [*drafts, *added]
+
+
 def _seconds(stamp: object) -> float | None:
 
     if not isinstance(stamp, str) or not stamp:

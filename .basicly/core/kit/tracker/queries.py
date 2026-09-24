@@ -52,12 +52,19 @@ def query_records(
 ) -> list[dict[str, object]]:
 
     records = folded(directory)
+    views, _ = views_and_children(directory)
     matched = [
-        snapshot.record_to_dict(records[key])
+        {**snapshot.record_to_dict(records[key]), "dependencies": _edges_of(views, key)}
         for key in sorted(records)
         if not records[key].tombstoned and (status is None or records[key].status == status)
     ]
     return matched if limit is None else matched[:limit]
+
+
+def _edges_of(views: Mapping[str, Any], record: str) -> list[dict[str, str]]:
+    view = views.get(record)
+    held = view.dependencies if view is not None else ()
+    return [{"id": edge.target, "dependency_type": edge.type} for edge in held]
 
 
 def views_and_children(directory: Path | str) -> tuple:

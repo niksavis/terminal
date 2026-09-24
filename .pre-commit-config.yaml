@@ -87,6 +87,13 @@ repos:
     stages:
     - commit-msg
     pass_filenames: true
+  - id: tracker-claim-script
+    name: tracker-claim-script
+    entry: uv run --no-project python .basicly/core/hooks/tracker-claim.py
+    language: system
+    stages:
+    - commit-msg
+    pass_filenames: true
   - id: pre-push-script
     name: pre-push-script
     entry: uv run --no-project python .basicly/core/hooks/pre-push.py

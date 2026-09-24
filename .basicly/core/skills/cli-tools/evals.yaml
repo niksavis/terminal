@@ -1,0 +1,15 @@
+# Tier-2 routing evidence for `cli-tools`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "find every file that mentions retry_policy"
+    - prompt: "pull the version field out of package.json"
+    - prompt: "list all markdown files under docs"
+    - prompt: "call the staging health endpoint and show the response"
+  negative:
+    - prompt: "which issues are ready to be claimed"
+      owner: work-tracker
+    - prompt: "the commit-msg hook rejected my message"
+      owner: conventional-commits

@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 2
+name: tool-lazygit
+invocation: user
+instructions: |
+  # lazygit
+
+  A terminal interface for git that a person drives with the keyboard. Use it to review, stage and commit by hand.
+
+  ## Rules
+
+  - **An agent never starts lazygit.** It is interactive and waits for keys, so a command that starts it does not end. Use `git` commands instead.
+  - **Suggest it to a person for work by hand.** Staging parts of a file, an interactive rebase, and resolving a conflict are easier in it.
+  - **Open a panel directly.** `lazygit status`, `lazygit branch`, `lazygit log` or `lazygit stash` opens that panel.
+  - **Point it at another repository with `-p <path>`.**
+  - **Find its settings with `--print-config-dir`.** `lazygit --config` prints the default configuration.
+
+  ## Commands
+
+  ```bash
+  lazygit --version
+  lazygit --print-config-dir
+  lazygit --config
+  lazygit
+  lazygit log
+  lazygit -p ../other-repo
+  lazygit --filter src/app.py
+  ```
+
+  ## Output
+
+  - `--version`, `--print-config-dir` and `--config` print and exit, so they are safe for an agent.
+  - Every other form opens the interface and runs until the person quits it.

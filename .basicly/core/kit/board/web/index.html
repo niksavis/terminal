@@ -18,7 +18,8 @@
   button, input, select, textarea { font: inherit; color: inherit; }
   header { display: flex; align-items: center; gap: 1rem; padding: .6rem 1.2rem; border-bottom: 1px solid var(--line); background: var(--panel); }
   header h1 { font-size: 1.05rem; margin: 0; }
-  #search { flex: 0 1 26rem; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .search-box { flex: 0 1 28rem; }
+  #search { width: 100%; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
   #counts { display: flex; gap: .9rem; color: var(--muted); font-size: .9rem; margin-left: auto; }
   #counts b { color: var(--text); }
   main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(22rem, 44%) 1fr; }
@@ -32,9 +33,12 @@
   .grow { flex: 1; }
   select.small { padding: .15rem .4rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
   #rows { list-style: none; margin: 0; padding: .4rem .6rem; overflow: auto; flex: 1; }
-  #rows button { all: unset; display: grid; gap: .2rem; width: 100%; box-sizing: border-box; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; }
+  #rows button { all: unset; display: grid; grid-template-columns: 1.1rem 1fr; gap: .2rem .5rem; align-items: baseline; width: 100%; box-sizing: border-box; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; }
   #rows button:hover { background: var(--raise); }
   #rows button:focus-visible { outline: 2px solid var(--accent); }
+  #rows button > .st { grid-row: 1; align-self: center; }
+  #rows button > .title { grid-column: 2; }
+  #rows button > .meta, #rows button > .links-line { grid-column: 1 / -1; }
   #rows button[aria-current="true"] { background: var(--raise); box-shadow: inset 3px 0 0 var(--accent); }
   .title { font-weight: 500; }
   .meta { color: var(--muted); font-size: .82rem; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
@@ -42,11 +46,29 @@
   .pr0 { color: white; background: var(--bad); border-color: var(--bad) !important; } .pr1 { color: var(--warn); }
   .pr2 { color: var(--text); } .pr3, .pr4, .pr- { color: var(--muted); }
   .pill { display: inline-block; font-size: .75rem; font-weight: 600; line-height: 1.5; padding: 0 .5rem; border-radius: 999px; border: 1px solid currentColor; }
-  .t-bug { color: var(--bad); } .t-feature { color: var(--accent); } .t-epic { color: light-dark(#7c3aed, #c4a5ff); }
-  .t-task { color: var(--muted); } .t-chore { color: light-dark(#0f766e, #5eead4); }
+  .pill[class*="t-"] { color: var(--muted); border-color: var(--line); font-weight: 500; }
+  .st { flex: none; width: .8rem; height: .8rem; border-radius: 50%; border: 2px solid var(--muted); box-sizing: border-box; display: inline-block; position: relative; }
+  .st-in_progress { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
+  .st-blocked { border-color: var(--bad); background: var(--bad); }
+  .st-blocked::after { content: ""; position: absolute; left: 1px; right: 1px; top: calc(50% - 1px); height: 2px; background: var(--panel); }
+  .st-deferred { border-style: dashed; }
+  .st-closed { border-color: var(--ok); background: var(--ok); }
   .s-in_progress { color: var(--accent); } .s-blocked { color: var(--bad); } .s-deferred, .s-open { color: var(--muted); } .s-closed { color: var(--ok); }
-  .warn { color: var(--warn); } .bad { color: var(--bad); } .held { color: var(--held); } .ok { color: var(--ok); }
+  .bad { color: var(--bad); } .held { color: var(--held); } .ok { color: var(--ok); }
   .empty { color: var(--muted); padding: 1rem; }
+  .links-line { color: var(--muted); font-size: .8rem; display: flex; flex-wrap: wrap; gap: .1rem .7rem; }
+  .links-line .open-blocker { color: var(--bad); }
+  .checklist { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--muted); }
+  .checklist .have, .dod li.have { color: var(--ok); }
+  .dod ul { list-style: none; padding-left: .2rem; }
+  .needs { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
+  .notice ul { margin: .3rem 0 0; padding-left: 1.2rem; }
+  .notice li b { font-weight: 600; }
+  .label { font-size: .72rem; padding: 0 .4rem; border-radius: 4px; background: var(--raise); color: var(--muted); }
+  details.facts summary { cursor: pointer; color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+  details.facts dl { display: grid; grid-template-columns: 11rem 1fr; gap: .2rem .8rem; margin: .5rem 0 0; font-size: .88rem; }
+  details.facts dt { color: var(--muted); }
+  details.facts dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
   .crumbs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; color: var(--muted); }
   .crumbs select { padding: .1rem .3rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
   h2.story-title { font-size: 1.35rem; margin: .4rem 0 .6rem; line-height: 1.3; }
@@ -70,7 +92,7 @@
   .picker li[aria-selected="true"], .picker li:hover { background: var(--raise); }
   .verdict { font-size: .85rem; flex-basis: 100%; }
   .notice { padding: .5rem .8rem; border-radius: 8px; margin-bottom: .8rem; border: 1px solid var(--line); }
-  .notice.warn { border-color: var(--warn); } .notice.bad { border-color: var(--bad); }
+  .notice.note { border-color: var(--line); color: var(--text); } .notice.bad { border-color: var(--bad); }
   section.block { margin: 1.1rem 0; }
   section.block > h3 { display: flex; align-items: baseline; gap: .8rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4rem; }
   .md p { margin: .3rem 0; } .md h4 { margin: .7rem 0 .2rem; font-size: .95rem; }
@@ -112,7 +134,7 @@
 <body>
 <header>
   <h1>Tracker</h1>
-  <input id="search" type="search" placeholder="Search titles and ids   ( / )" aria-label="Search">
+  <div class="picker search-box"><input id="search" type="search" placeholder="Search titles and ids   ( / )" aria-label="Search" autocomplete="off"></div>
   <div id="counts" aria-live="polite"></div>
   <button class="btn" id="new" type="button">New story</button>
 </header>
@@ -142,7 +164,7 @@ const STATUSES = ["open", "in_progress", "blocked", "deferred"];
 const EDGE_NAMES = { blocks: "waits on", "parent-child": "is a child of", related: "is related to", "discovered-from": "was discovered from" };
 const TABS = [["ready", "Ready"], ["working", "In progress"], ["refine", "Refine"], ["blocked", "Blocked"], ["mine", "Mine"], ["active", "All open"], ["closed", "Closed"]];
 const LIST_CAP = 400;
-const state = { edgeTypes: ["blocks"], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
+const state = { dependents: new Map(), edgeTypes: ["blocks"], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
 
 function el(tag, attrs, ...children) {
   const node = document.createElement(tag);
@@ -164,6 +186,7 @@ async function call(method, path, body) {
   }
   const response = await fetch(API + path, init);
   const report = await response.json();
+  if (report.found === false) throw new Error("no story " + (report.record || "") + " in this ledger");
   if (!response.ok || typeof report.refused === "string") throw new Error(report.refused || JSON.stringify(report.blocking || report));
   return report;
 }
@@ -194,8 +217,36 @@ function age(stamp) {
   return Math.round(days / 30) + "mo";
 }
 
-function owes(names) {
-  return (names || []).map((name) => name.replace(/^## /, "")).join(", ");
+const SECTIONS = {
+  "Trigger": ["trigger", "the situation that causes the work: When <situation>, I want <goal>, so I can <outcome>."],
+  "Acceptance Criteria": ["acceptance criteria", "checks that prove the work is done, one per line: - [ ] <a check a person can run>. Verify checks them."],
+  "Requirements": ["requirements", "what the solution must hold to, for example: standard library only. Validation judges the result against them."],
+  "Steps to Reproduce": ["steps to reproduce", "the steps that make the bug happen, one per line."],
+  "Success Criteria": ["success criteria", "what must be true when the whole epic is done."],
+};
+
+function sectionOf(name) {
+  const bare = name.replace(/^## /, "");
+  return [bare, ...(SECTIONS[bare] || [bare.toLowerCase(), "a section the template for this type requires."])];
+}
+
+function needs(names) {
+  const parts = (names || []).map(sectionOf);
+  return el("span", { class: "needs", title: parts.map(([bare, , what]) => bare + ": " + what).join("\n") }, "DoR: " + parts.map(([, short]) => short).join(", "));
+}
+
+function doneBlock(shown) {
+  const f = shown.fields;
+  const item = (ok, name, what) => el("li", { class: ok ? "have" : "" }, (ok ? "✓ " : "○ ") , el("b", {}, name), ": " + what);
+  return el("div", { class: "notice note dod" }, "Definition of Done: closing needs a reason as evidence, and the engine checks:",
+    el("ul", {}, [
+      item(Boolean(String(f.acceptance_criteria || "").trim()), "acceptance criteria", "verify checks each one"),
+      item(Boolean(String(f.requirements || "").trim()), "requirements", "validation judges the result against them, and refuses without them"),
+    ]));
+}
+
+function needsList(names) {
+  return el("ul", {}, (names || []).map(sectionOf).map(([bare, , what]) => el("li", {}, el("b", {}, bare), ": " + what)));
 }
 
 function writer(raw) {
@@ -210,13 +261,22 @@ function person(name) {
 }
 
 async function load() {
+  const version = await call("GET", "/version").then((stamp) => stamp.version, () => "");
   const [index, ready, blocked, refine, ...lists] = await Promise.all([
     call("GET", ""), call("GET", "/ready?limit=5000"), call("GET", "/blocked"), call("GET", "/refine"),
     ...STATUSES.map((status) => call("GET", "/records?status=" + status)),
   ]);
+  state.version = version;
   state.me = index.holder || "";
   state.edgeTypes = index.edge_types || state.edgeTypes;
   state.records = new Map(lists.flatMap((list) => list.records).map((one) => [one.record, one]));
+  state.dependents = new Map();
+  for (const one of state.records.values()) {
+    for (const edge of one.dependencies || []) {
+      if (!state.dependents.has(edge.id)) state.dependents.set(edge.id, []);
+      state.dependents.get(edge.id).push({ id: one.record, dependency_type: edge.dependency_type });
+    }
+  }
   state.ready = ready.records;
   state.blocked = new Map(blocked.records.map((one) => [one.record, one]));
   state.refine = new Map(refine.records.map((one) => [one.record, one]));
@@ -269,12 +329,42 @@ function badge(item) {
   const record = item.record || {};
   if (record.contested && record.contested.length) return el("span", { class: "bad" }, "contested");
   const refine = state.refine.get(item.id);
-  if (refine && refine.blocking.length) return el("span", { class: "warn" }, "owes " + owes(refine.blocking));
-  if (refine && refine.labelled) return el("span", { class: "warn" }, "waits for refinement");
-  const waits = state.blocked.get(item.id);
-  if (waits && waits.blocked_by.length) return el("span", {}, "waits on " + waits.blocked_by.map((b) => b.record).join(", "));
-  if (waits && waits.children.length) return el("span", {}, "parent of " + waits.children.length);
+  if (refine && refine.blocking.length) return needs(refine.blocking);
+  if (refine && refine.labelled) return el("span", { class: "needs", title: "a person wrote or changed it, so an agent reviews it before it is ready" }, "needs agent review");
   return null;
+}
+
+function named(ids) {
+  return ids.map((id) => id + "  " + String((state.records.get(id) || { fields: {} }).fields.title || "")).join("\n");
+}
+
+function few(ids) {
+  return ids.slice(0, 2).join(", ") + (ids.length > 2 ? " +" + (ids.length - 2) : "");
+}
+
+function linksLine(item) {
+  const record = item.record;
+  if (!record) return null;
+  const own = record.dependencies || [];
+  const theirs = state.dependents.get(item.id) || [];
+  const typed = (list, type) => list.filter((edge) => edge.dependency_type === type).map((edge) => edge.id);
+  const waiting = typed(own, "blocks");
+  const openWaits = waiting.filter((id) => state.records.has(id));
+  const done = waiting.length - openWaits.length;
+  const parts = [];
+  if (openWaits.length) parts.push(el("span", { class: "open-blocker", title: named(waiting) }, "waits on " + few(openWaits) + (done ? " (+" + done + " done)" : "")));
+  else if (done) parts.push(el("span", { title: waiting.join("\n") }, done === 1 ? "blocker done" : "blockers done"));
+  const blocking = typed(theirs, "blocks");
+  if (blocking.length) parts.push(el("span", { title: named(blocking) }, "blocks " + few(blocking)));
+  const parent = typed(own, "parent-child");
+  if (parent.length) parts.push(el("span", {}, "child of " + parent.join(", ")));
+  const children = typed(theirs, "parent-child");
+  if (children.length) parts.push(el("span", { title: named(children) }, children.length + (children.length === 1 ? " child" : " children")));
+  const related = [...typed(own, "related"), ...typed(theirs, "related"), ...typed(own, "discovered-from")];
+  if (related.length) parts.push(el("span", { title: named(related) }, related.length + " related"));
+  const labels = labelsOf(record.fields.labels).filter((label) => label !== REFINE);
+  for (const label of labels.slice(0, 4)) parts.push(el("span", { class: "label" }, label));
+  return parts.length ? el("span", { class: "links-line" }, parts) : null;
 }
 
 async function closedRecords() {
@@ -298,6 +388,15 @@ function drawTabs() {
   }, name)));
 }
 
+const STATUS_NAMES = { open: "open", in_progress: "in progress", blocked: "blocked", deferred: "deferred", closed: "closed" };
+
+function statusMark(status, record) {
+  const waits = status === "open" && record ? (record.dependencies || []).filter((edge) => edge.dependency_type === "blocks" && state.records.has(edge.id)).map((edge) => edge.id) : [];
+  const shown = waits.length ? "blocked" : status;
+  const name = waits.length ? "open, waits on " + waits.join(", ") : STATUS_NAMES[status] || status || "unknown";
+  return el("span", { class: "st st-" + shown, role: "img", "aria-label": "status: " + name, title: name });
+}
+
 function typePill(type) {
   return el("span", { class: "pill t-" + type }, type);
 }
@@ -314,15 +413,16 @@ function row(item) {
   return el("li", {}, el("button", {
     type: "button", "aria-current": String(Boolean(state.current) && state.current.record === item.id), onclick: () => go(item.id),
   },
+  statusMark(record.status, record),
   el("span", { class: "title" }, String(record.fields.title || item.id)),
   el("span", { class: "meta" },
     priorityPill(record.fields.priority),
+    holder ? el("span", { class: "held" }, holder) : null,
+    badge(item),
     record.fields.issue_type ? typePill(record.fields.issue_type) : null,
-    el("span", { class: "id" }, item.id),
-    record.status && record.status !== "open" ? el("span", { class: "pill s-" + record.status }, record.status.replace("_", " ")) : null,
     record.dates && record.dates.updated ? el("span", { title: "last updated " + record.dates.updated }, age(record.dates.updated)) : null,
-    holder ? el("span", { class: "held" }, "● " + holder) : null,
-    badge(item))));
+    el("span", { class: "id" }, item.id)),
+  linksLine(item)));
 }
 
 function drawList() {
@@ -396,15 +496,6 @@ function go(record) {
   else open(record);
 }
 
-async function patch(body, done) {
-  const record = state.current.record;
-  await attempt(async () => {
-    await call("PATCH", "/records/" + encodeURIComponent(record), body);
-    await load();
-    await open(record);
-  }, done);
-}
-
 async function act(action, body, done) {
   const record = state.current.record;
   await attempt(async () => {
@@ -435,31 +526,127 @@ function grow(area) {
 
 const CONTENT = ["title", "description", "acceptance", "requirements"];
 
+function suggest(input, { source, choose, render }) {
+  const list = el("ul", { role: "listbox", hidden: true });
+  let found = [], active = 0;
+  input.setAttribute("role", "combobox");
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("aria-expanded", "false");
+  const hide = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); };
+  const draw = () => {
+    list.replaceChildren(...found.map((item, index) => el("li", { role: "option", "aria-selected": String(index === active), onmousedown: (event) => { event.preventDefault(); hide(); choose(item); } }, render(item))));
+    list.hidden = !found.length;
+    input.setAttribute("aria-expanded", String(!list.hidden));
+  };
+  input.addEventListener("input", async () => { found = await source(input.value); active = 0; draw(); });
+  input.addEventListener("keydown", (event) => {
+    if (list.hidden) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); active = (active + (event.key === "ArrowDown" ? 1 : found.length - 1)) % found.length; draw(); }
+    if (event.key === "Enter" && found[active]) { event.preventDefault(); event.stopImmediatePropagation(); hide(); choose(found[active]); }
+    if (event.key === "Escape") hide();
+  });
+  input.addEventListener("blur", hide);
+  return list;
+}
+
+function storyRow(one) {
+  return [statusMark(one.status), el("span", { class: "id" }, one.record), el("span", {}, String(one.fields.title || ""))];
+}
+
+function matching(query, except) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const pool = [...state.records.values(), ...(state.closed || [])];
+  return pool.filter((one) => one.record !== except && words.every((word) =>
+    one.record.toLowerCase().includes(word) || String(one.fields.title || "").toLowerCase().includes(word))).slice(0, 8);
+}
+
+function labelsOf(value) {
+  return (Array.isArray(value) ? value : String(value || "").split(",")).map((one) => String(one).trim()).filter(Boolean);
+}
+
+function knownLabels() {
+  return [...new Set([...state.records.values(), ...(state.closed || [])].flatMap((one) => labelsOf(one.fields.labels)))].sort();
+}
+
+function knownHolders() {
+  return [...new Set([state.me, ...[...state.records.values(), ...(state.closed || [])].map((one) => String(one.fields.assignee || ""))].filter(Boolean))].sort();
+}
+
+function labelInput(value) {
+  const input = el("input", { class: "field", name: "labels", value: labelsOf(value).join(", "), placeholder: "comma-separated, for example phase-1, kit" });
+  const list = suggest(input, {
+    source: (text) => {
+      const parts = text.split(",");
+      const last = parts[parts.length - 1].trim().toLowerCase();
+      const taken = new Set(parts.slice(0, -1).map((one) => one.trim()));
+      return knownLabels().filter((label) => !taken.has(label) && (!last || label.toLowerCase().includes(last))).slice(0, 8);
+    },
+    choose: (label) => {
+      const parts = input.value.split(",").slice(0, -1).map((one) => one.trim()).filter(Boolean);
+      input.value = [...parts, label].join(", ") + ", ";
+      input.focus();
+    },
+    render: (label) => el("span", {}, label),
+  });
+  return el("div", { class: "picker" }, input, list);
+}
+
+const templates = new Map();
+
+async function templateFor(type) {
+  if (!templates.has(type)) templates.set(type, call("GET", "/scaffold?type=" + encodeURIComponent(type)).catch(() => ({ required: [] })));
+  return templates.get(type);
+}
+
+function has(form, name) {
+  const bare = name.replace(/^## /, "");
+  if (bare === "Trigger") return form.description.value.trim().length > 0;
+  if (bare === "Acceptance Criteria") return form.acceptance.value.trim().length > 0;
+  if (bare === "Requirements") return form.requirements.value.trim().length > 0;
+  return form.description.value.includes("## " + bare);
+}
+
+async function drawChecklist(form, box, type) {
+  const { required } = await templateFor(type || "task");
+  box.replaceChildren(el("span", { title: "Definition of Ready: what a story needs before work can start" }, "Definition of Ready for a " + (type || "task") + ":"), ...(required || []).map((name) => {
+    const [bare, short, what] = sectionOf(name);
+    const ok = has(form, name);
+    return el("span", { class: ok ? "have" : "", title: bare + ": " + what }, (ok ? "✓ " : "○ ") + short);
+  }), el("span", {}, "An agent fills in what is missing."));
+}
+
 function storyForm(values, { status, submit, cancel, note }) {
-  const type = select(TYPES.map((t) => [t, t]), values.issue_type, () => {}, "no type");
+  const checklist = el("div", { class: "checklist", "aria-live": "polite" });
+  const type = select(TYPES.map((t) => [t, t]), values.issue_type, () => drawChecklist(form, checklist, type.value), "no type");
   const priority = select(PRIORITIES.map(([key, name]) => [key, "P" + key + " " + name]), values.priority, () => {}, "no priority");
   const state_ = status ? select(STATUSES.map((one) => [one, one.replace("_", " ")]), status, () => {}) : null;
   const area = (name, text, placeholder, tall) => grow(el("textarea", { name, placeholder, class: tall ? "tall" : null }, String(text || "")));
   const form = el("form", { class: "grid" },
     el("label", {}, "Title", el("input", { class: "field", name: "title", required: true, value: String(values.title || "") })),
     el("div", { class: "inline" }, el("label", {}, "Type", type), el("label", {}, "Priority", priority), state_ ? el("label", {}, "Status", state_) : null),
+    el("label", {}, "Labels", labelInput(values.labels)),
     el("label", {}, "Story", area("description", values.description, "When <situation>, I want to <motivation>, so I can <outcome>.", true)),
     el("label", {}, "Acceptance criteria", area("acceptance", values.acceptance, "- [ ] a check a person can run")),
     el("label", {}, "Requirements", area("requirements", values.requirements, "- what the solution must hold to")),
+    checklist,
     el("div", { class: "form-foot" }, el("button", { class: "btn", type: "submit" }, submit),
       el("button", { class: "btn plain", type: "button", onclick: cancel }, "Cancel"),
       el("span", { class: "meta" }, note + "  ·  Ctrl+Enter saves")));
   form.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit(); });
+  form.addEventListener("input", () => drawChecklist(form, checklist, type.value));
+  drawChecklist(form, checklist, type.value);
   form.read = () => ({
     title: form.title.value, description: form.description.value, acceptance: form.acceptance.value, requirements: form.requirements.value,
     issue_type: type.value, priority: priority.value, status: state_ ? state_.value : undefined,
+    labels: labelsOf(form.labels.value),
   });
   return form;
 }
 
 function edit(shown) {
   const f = shown.fields;
-  const before = { title: f.title, description: f.description, acceptance: f.acceptance_criteria, requirements: f.requirements, issue_type: f.issue_type, priority: f.priority };
+  const before = { title: f.title, description: f.description, acceptance: f.acceptance_criteria, requirements: f.requirements, issue_type: f.issue_type, priority: f.priority, labels: labelsOf(f.labels) };
   const form = storyForm(before, { status: shown.status, submit: "Save", cancel: () => open(shown.record), note: "a change to the text asks for an agent refinement pass" });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -471,21 +658,62 @@ function edit(shown) {
     if (after.priority !== "" && String(after.priority) !== String(before.priority ?? "")) fields.priority = Number(after.priority);
     if (Object.keys(fields).length) body.fields = fields;
     if (after.status !== shown.status) body.status = after.status;
-    if (!Object.keys(body).length) return open(shown.record);
     const text = CONTENT.some((key) => key in body);
-    if (text) body.add_labels = [REFINE];
-    patch(body, text ? "saved; an agent refinement pass owes it before it is ready" : "saved");
+    const added = after.labels.filter((label) => !before.labels.includes(label));
+    const removed = before.labels.filter((label) => !after.labels.includes(label));
+    if (text && !after.labels.includes(REFINE)) added.push(REFINE);
+    if (added.length) body.add_labels = added;
+    if (removed.length) body.remove_labels = removed;
+    if (!Object.keys(body).length) return open(shown.record);
+    body.if_seq = shown.max_seq;
+    saveEdit(form, shown.record, body, text ? "saved; an agent refinement pass owes it before it is ready" : "saved");
   });
   document.getElementById("detail-pane").replaceChildren(
     el("div", { class: "crumbs" }, el("span", { class: "id" }, shown.record), el("span", {}, "editing")), form);
   form.title.focus();
 }
 
+async function saveEdit(form, record, body, done) {
+  try {
+    await call("PATCH", "/records/" + encodeURIComponent(record), body);
+    await load();
+    await open(record);
+    toast(done);
+  } catch (error) {
+    form.querySelector(".notice")?.remove();
+    form.prepend(el("div", { class: "notice bad" }, error.message + ". Your text stays in the form, so copy what you need. ",
+      el("button", { class: "link", type: "button", onclick: () => open(record) }, "Discard my edit and reload")));
+    document.getElementById("detail-pane").scrollTop = 0;
+  }
+}
+
+function assignForm(bar, shown, cancel) {
+  const held = shown.holder && shown.holder.name;
+  const input = el("input", { class: "field", placeholder: "a name, as git config user.name gives it" });
+  const list = suggest(input, {
+    source: (text) => knownHolders().filter((name) => name.toLowerCase().includes(text.trim().toLowerCase())).slice(0, 8),
+    choose: (name) => { input.value = name; judge(); },
+    render: (name) => el("span", {}, name === state.me ? name + " (you)" : name),
+  });
+  const button = el("button", { class: "btn", type: "button", disabled: true }, "Assign");
+  const judge = () => {
+    const name = input.value.trim();
+    const taking = Boolean(held) && held !== name;
+    button.disabled = !name || name === held;
+    button.className = taking ? "btn danger" : "btn";
+    button.textContent = taking ? "Take from " + held + " and assign" : "Assign";
+    button.onclick = () => act("assign", taking ? { to: name, take: true } : { to: name }, "assigned to " + name);
+  };
+  input.addEventListener("input", judge);
+  bar.replaceChildren(el("span", { class: "meta" }, "Assign to"), el("div", { class: "picker" }, input, list), button, cancel);
+  input.focus();
+}
+
 function since(held) {
   return held.since ? " since " + held.since.slice(0, 10) : "";
 }
 
-function actionsBar(shown) {
+function actionsBar(shown, waiting) {
   const held = shown.holder && shown.holder.name;
   const yours = Boolean(held) && held === state.me;
   const bar = el("div", { class: "bar" });
@@ -500,7 +728,7 @@ function actionsBar(shown) {
   };
   if (!held) {
     bar.append(el("span", { class: "meta" }, "Nobody holds this story."),
-      el("button", { class: "btn", type: "button", onclick: () => act("claim", {}, "claimed: it is yours and in progress") }, "Claim"));
+      el("button", { class: "btn", type: "button", disabled: Boolean(waiting), title: waiting || "take it and start", onclick: () => act("claim", {}, "claimed: it is yours and in progress") }, "Claim"));
     item("Reserve for later (assign to me)", () => act("assign", {}, "reserved for you"));
   } else if (yours) {
     bar.append(el("span", { class: "held" }, "● You hold this story" + since(shown.holder)),
@@ -515,16 +743,10 @@ function actionsBar(shown) {
     });
   }
   if (!yours) item("Close…", closeForm);
+  item("Assign to someone…", () => assignForm(bar, shown, cancel()));
   item("Add a dependency…", () => dependencyForm(bar, shown, cancel()));
   bar.append(el("span", { class: "grow" }), el("button", { class: "btn plain", type: "button", title: "edit the story (e)", onclick: () => edit(shown) }, "Edit"), more);
   return bar;
-}
-
-function candidates(query, shown) {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const pool = [...state.records.values(), ...(state.closed || [])];
-  return pool.filter((one) => one.record !== shown.record && words.every((word) =>
-    one.record.toLowerCase().includes(word) || String(one.fields.title || "").toLowerCase().includes(word))).slice(0, 8);
 }
 
 function dependencyVerdict(shown, target, type) {
@@ -536,11 +758,10 @@ function dependencyVerdict(shown, target, type) {
 }
 
 function dependencyForm(bar, shown, cancel) {
-  let picked = null, active = 0, found = [];
+  let picked = null;
   const loading = closedRecords().catch(() => []);
   const kind = select(state.edgeTypes.map((type) => [type, EDGE_NAMES[type] || type]), "blocks", () => judge());
-  const input = el("input", { class: "field", placeholder: "id or title words", autocomplete: "off", role: "combobox", "aria-expanded": "false" });
-  const list = el("ul", { role: "listbox", hidden: true });
+  const input = el("input", { class: "field", placeholder: "id or title words" });
   const verdict = el("div", { class: "verdict meta" });
   const add = el("button", { class: "btn", type: "button", disabled: true, onclick: () => act("deps", { target: picked.record, type: kind.value }, "dependency recorded") }, "Add");
   const judge = () => {
@@ -549,50 +770,68 @@ function dependencyForm(bar, shown, cancel) {
     verdict.textContent = text;
     add.disabled = tone !== "ok";
   };
-  const choose = (one) => { picked = one; input.value = one.record + "  " + String(one.fields.title || ""); list.hidden = true; judge(); };
-  const draw = () => {
-    list.replaceChildren(...found.map((one, index) => el("li", { role: "option", "aria-selected": String(index === active), onmousedown: (event) => { event.preventDefault(); choose(one); } },
-      el("span", { class: "id" }, one.record), el("span", {}, String(one.fields.title || "")), one.status !== "open" ? el("span", { class: "pill s-" + one.status }, one.status.replace("_", " ")) : null)));
-    list.hidden = !found.length;
-    input.setAttribute("aria-expanded", String(!list.hidden));
-  };
-  input.addEventListener("input", async () => {
-    picked = null;
-    const query = input.value.trim();
-    await loading;
-    found = query ? candidates(query, shown) : [];
-    if (!found.length && /^[\w.-]+-[\w.]+$/.test(query)) {
-      try { found = [await call("GET", "/records/" + encodeURIComponent(query))]; } catch (error) { found = []; }
-    }
-    active = 0;
-    draw();
-    judge();
-    if (query && !found.length) { verdict.className = "verdict bad"; verdict.textContent = "no story matches " + query; }
+  const list = suggest(input, {
+    source: async (text) => {
+      picked = null;
+      const query = text.trim();
+      await loading;
+      let found = matching(query, shown.record);
+      if (!found.length && /^[\w.-]+-[\w.]+$/.test(query)) {
+        try { found = [await call("GET", "/records/" + encodeURIComponent(query))]; } catch (error) { found = []; }
+      }
+      judge();
+      if (query && !found.length) { verdict.className = "verdict bad"; verdict.textContent = "no story matches " + query; }
+      return found;
+    },
+    choose: (one) => { picked = one; input.value = one.record + "  " + String(one.fields.title || ""); judge(); },
+    render: storyRow,
   });
-  input.addEventListener("keydown", (event) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); active = (active + (event.key === "ArrowDown" ? 1 : found.length - 1)) % Math.max(found.length, 1); draw(); }
-    if (event.key === "Enter") { event.preventDefault(); if (!list.hidden && found[active]) choose(found[active]); else if (!add.disabled) add.click(); }
-    if (event.key === "Escape") { list.hidden = true; }
-  });
-  input.addEventListener("blur", () => { list.hidden = true; });
+  input.addEventListener("keydown", (event) => { if (event.key === "Enter" && !add.disabled) { event.preventDefault(); add.click(); } });
   bar.replaceChildren(el("span", { class: "meta" }, "This story"), kind, el("div", { class: "picker" }, input, list), add, cancel, verdict);
   judge();
   input.focus();
 }
 
-function linkRow(kind, id, title, status) {
-  return el("li", {}, el("span", { class: "kind" }, kind),
+function linkRow(kind, id, title, status, removal) {
+  const row = el("li", {}, el("span", { class: "kind" }, kind),
     el("button", { class: "link", type: "button", onclick: () => go(id) }, id),
     el("span", {}, title || ""), status && status !== "open" ? el("span", { class: "meta" }, status.replace("_", " ")) : null);
+  if (removal) {
+    const remove = el("button", { class: "link", type: "button", title: "retract this dependency" }, "remove");
+    remove.addEventListener("click", () => remove.replaceWith(el("span", { class: "inline" },
+      el("span", { class: "bad" }, "Remove this link?"),
+      el("button", { class: "btn danger", type: "button", onclick: removal }, "Remove"),
+      el("button", { class: "btn plain", type: "button", onclick: () => open(state.current.record) }, "Keep"))));
+    row.append(el("span", { class: "grow" }), remove);
+  }
+  return row;
 }
 
 function linksBlock(shown) {
   const named = { "parent-child": ["parent", "child"], blocks: ["waits on", "blocks"] };
   const rows = [
-    ...shown.dependencies.map((edge) => linkRow((named[edge.dependency_type] || [edge.dependency_type])[0], edge.id, edge.title, edge.status)),
+    ...shown.dependencies.map((edge) => linkRow((named[edge.dependency_type] || [edge.dependency_type])[0], edge.id, edge.title, edge.status,
+      edge.dependency_type === "parent-child" ? null : () => act("undep", { target: edge.id, type: edge.dependency_type }, "link removed"))),
     ...shown.dependents.map((edge) => linkRow((named[edge.dependency_type] || [, edge.dependency_type])[1], edge.id, edge.title, edge.status)),
   ];
   return el("section", { class: "block" }, el("h3", {}, "Links"), rows.length ? el("ul", { class: "links" }, rows) : el("div", { class: "none" }, "no links"));
+}
+
+const IMPORTED = ["design", "notes", "created_by", "owner", "source_repo", "imported_from", "created_at", "updated_at", "closed_at"];
+
+function factsBlock(shown) {
+  const f = shown.fields;
+  const dates = shown.dates || {};
+  const rows = [
+    ["created", dates.created], ["assigned", dates.assigned], ["updated", dates.updated], ["closed", dates.closed],
+    ["external_ref", f.external_ref], ["shaped under", f.shaped_under],
+    ["checkpoints", Object.keys(shown.checkpoints || {}).length ? JSON.stringify(shown.checkpoints) : ""],
+    ["artifacts", Object.keys(shown.artifacts || {}).join(", ")],
+    ["tokens", shown.totals && Object.values(shown.totals).some(Boolean) ? JSON.stringify(shown.totals) : ""],
+    ...IMPORTED.map((name) => ["imported " + name, f[name]]),
+  ].filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+  return el("details", { class: "facts block" }, el("summary", {}, "Details"),
+    el("dl", {}, rows.flatMap(([name, value]) => [el("dt", {}, name), el("dd", {}, String(value))])));
 }
 
 function commentsBlock(shown) {
@@ -609,10 +848,16 @@ function notices(shown, dor) {
   const found = [];
   const labels = String(shown.fields.labels || "").split(",").map((one) => one.trim());
   if (shown.conflicts && shown.conflicts.length) found.push(el("div", { class: "notice bad" }, "Two branches set different values: " + shown.conflicts.map((c) => c.key + " = " + c.values.join(" / ")).join("; ") + ". Run the kit's resolve command to keep the current value."));
-  if (labels.includes(REFINE)) found.push(el("div", { class: "notice warn" }, "Waits for an agent refinement pass before it is ready. ",
-    el("button", { class: "link", type: "button", onclick: () => patch({ remove_labels: [REFINE] }, "marked refined") }, "Mark refined")));
-  if (shown.status !== "closed" && dor.blocking && dor.blocking.length) found.push(el("div", { class: "notice warn" }, "Not ready: owes " + owes(dor.blocking) + "."));
+  if (labels.includes(REFINE)) found.push(el("div", { class: "notice note" }, "Needs agent review. A person wrote or changed this story, so an agent reviews it and fills in what is missing before work can start. Ask an agent to refine " + shown.record + "."));
+  if (shown.status !== "closed" && dor.blocking && dor.blocking.length) found.push(el("div", { class: "notice note" }, "Definition of Ready not met. Edit the story and add:", needsList(dor.blocking)));
+  if (shown.status !== "closed") found.push(doneBlock(shown));
   return found;
+}
+
+function waitingReason(shown, dor) {
+  if (labelsOf(shown.fields.labels).includes(REFINE)) return "an agent reviews this story before work can start";
+  if (dor && !dor.ready && shown.fields.shaped_under) return "the story is not ready: it still needs " + (dor.blocking || []).map((name) => sectionOf(name)[1]).join(", ");
+  return "";
 }
 
 function titleBlock(shown) {
@@ -622,17 +867,19 @@ function titleBlock(shown) {
 function crumbs(shown) {
   const f = shown.fields;
   const labels = String(f.labels || "").split(",").map((one) => one.trim()).filter(Boolean);
-  return el("div", { class: "crumbs" }, el("span", { class: "id" }, shown.record),
-    f.issue_type ? typePill(f.issue_type) : el("span", { class: "pill t-task" }, "no type"),
+  return el("div", { class: "crumbs" },
+    el("span", { class: "inline" }, statusMark(shown.status), el("span", { class: "s-" + shown.status }, STATUS_NAMES[shown.status] || shown.status)),
     priorityPill(f.priority, true),
-    el("span", { class: "pill s-" + shown.status }, String(shown.status || "").replace("_", " ")),
+    f.issue_type ? typePill(f.issue_type) : el("span", { class: "pill t-task" }, "no type"),
     shown.dates && shown.dates.updated ? el("span", { title: shown.dates.updated }, "updated " + age(shown.dates.updated) + " ago") : null,
-    labels.length ? el("span", {}, labels.join(", ")) : null);
+    ...labels.map((label) => el("span", { class: "label" }, label)),
+    el("span", { class: "id" }, shown.record));
 }
 
-async function open(record) {
+async function open(record, quiet) {
   document.body.classList.add("reading");
   const pane = document.getElementById("detail-pane");
+  const scrolled = pane.scrollTop;
   const path = "/records/" + encodeURIComponent(record);
   let shown, dor;
   try {
@@ -647,14 +894,15 @@ async function open(record) {
     el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"),
     crumbs(shown),
     titleBlock(shown),
-    shown.status === "closed" ? el("div", { class: "notice" }, "Closed: " + String(f.close_reason || "")) : actionsBar(shown),
+    shown.status === "closed" ? el("div", { class: "notice" }, "Closed: " + String(f.close_reason || "")) : actionsBar(shown, waitingReason(shown, dor)),
     ...notices(shown, dor),
     section("Story", f.description, "no story yet: say when it happens, what the person wants, and what for"),
     section("Acceptance criteria", f.acceptance_criteria, "no acceptance criteria yet"),
     section("Requirements", f.requirements, "no requirements yet"),
     linksBlock(shown),
-    commentsBlock(shown));
-  pane.scrollTop = 0;
+    commentsBlock(shown),
+    factsBlock(shown));
+  pane.scrollTop = quiet ? scrolled : 0;
   drawList();
 }
 
@@ -671,7 +919,8 @@ function blank() {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const made = form.read();
-    const body = { title: made.title, description: made.description, fields: { issue_type: made.issue_type || "task", priority: Number(made.priority || 2), labels: REFINE } };
+    const labels = [...new Set([...made.labels, REFINE])].join(",");
+    const body = { title: made.title, description: made.description, fields: { issue_type: made.issue_type || "task", priority: Number(made.priority || 2), labels } };
     if (made.acceptance.trim()) body.acceptance = made.acceptance;
     if (made.requirements.trim()) body.requirements = made.requirements;
     attempt(async () => {
@@ -689,7 +938,39 @@ function routed() {
   if (match) open(decodeURIComponent(match[1]));
 }
 
-document.getElementById("search").addEventListener("input", (event) => { state.query = event.target.value; drawList(); });
+const search = document.getElementById("search");
+search.addEventListener("input", (event) => { state.query = event.target.value; drawList(); });
+search.after(suggest(search, { source: (text) => matching(text, ""), choose: (one) => go(one.record), render: storyRow }));
+
+function busy() {
+  const pane = document.getElementById("detail-pane");
+  return document.hidden || Boolean(pane.querySelector("form, .bar input, details[open]"))
+    || [...pane.querySelectorAll("textarea")].some((area) => area.value.trim());
+}
+
+async function refreshQuietly() {
+  if (busy()) return;
+  try {
+    await load();
+    if (state.current && document.body.classList.contains("reading") && !busy()) await open(state.current.record, true);
+  } catch (error) {
+    toast("the tracker server did not answer: " + error.message, true);
+  }
+}
+
+async function watchVersion() {
+  if (document.hidden || !state.version || busy()) return;
+  try {
+    const { version } = await call("GET", "/version");
+    if (version !== state.version) await refreshQuietly();
+  } catch (error) {
+    return;
+  }
+}
+
+setInterval(watchVersion, 2000);
+setInterval(refreshQuietly, 15000);
+window.addEventListener("focus", refreshQuietly);
 document.getElementById("sort").addEventListener("change", (event) => { state.sort = event.target.value; drawList(); });
 document.getElementById("new").addEventListener("click", blank);
 document.addEventListener("keydown", (event) => {

@@ -94,7 +94,7 @@ instructions: |
 
   ```sh
   basicly tracker write -- create "Title" -t task -p 2 -d "<the trigger>" --acceptance "<the check>" --requirements "<the standard>" --json
-  basicly tracker write -- update <id> --status in_progress --assignee "$(git config user.email)"
+  basicly tracker write -- update <id> --status in_progress       # claims it: you become the holder
   basicly tracker write -- update <id> --acceptance-criteria "When <event>, the <system> shall <response>."
   basicly tracker write -- update <id> --add-label <label>      # adds to the current set
   basicly tracker write -- update <id> --remove-label <label>

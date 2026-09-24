@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 2
+name: tool-direnv
+invocation: user
+instructions: |
+  # direnv
+
+  Load a directory's environment variables from its `.envrc` or `.env` when a shell enters it. Use it to set project variables without exporting them by hand.
+
+  ## Rules
+
+  - **An agent shell has no hook.** direnv loads through a shell hook, and a non-interactive command does not run it. Use `direnv exec . <command>` to run one command with the environment.
+  - **Read an `.envrc` before you allow it.** `direnv allow` permits it to run code. Only a person decides that.
+  - **Never allow from a script.** An `.envrc` you have not read can run any command.
+  - **Check the state with `direnv status`.** It shows the file, whether it is allowed, and the `--json` form for a script.
+  - **Keep secrets out of `.envrc` in git.** Put them in a file that git ignores and load it with `dotenv` or `source_env`.
+
+  ## Commands
+
+  ```bash
+  direnv status
+  direnv status --json
+  direnv exec . env
+  direnv exec . make test
+  direnv allow
+  direnv deny
+  direnv reload
+  direnv stdlib
+  ```
+
+  ## Output
+
+  - `direnv exec DIR COMMAND` runs COMMAND with the environment of the first `.envrc` or `.env` it finds in DIR, and returns the command's exit code.
+  - A blocked `.envrc` prints `direnv: error ... is blocked` and loads nothing.

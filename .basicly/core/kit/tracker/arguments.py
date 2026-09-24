@@ -77,6 +77,20 @@ def parser() -> argparse.ArgumentParser:
     page.add_argument("directory", help=DIRECTORY_HELP)
     page.add_argument("--out", default="tracker-board.html", help="the file to write")
 
+    claim_check = sub.add_parser(
+        "commit-check", help="refuse a code commit that names no record the committer holds"
+    )
+    claim_check.add_argument("directory", help=DIRECTORY_HELP)
+    claim_check.add_argument("message", help="the commit message file git passes to commit-msg")
+    claim_check.add_argument("path", nargs="*", help="the staged paths")
+    claim_check.add_argument("--stdin", action="store_true", help="read staged paths from stdin")
+    claim_check.add_argument(
+        "--installed",
+        action="append",
+        default=[],
+        help="a path an install manages, not code; a trailing / names a folder",
+    )
+
     check = sub.add_parser(
         "fsck", help="fold the whole log and report anything unparseable or broken"
     )
@@ -152,6 +166,12 @@ def _add_write_parsers(sub: Any) -> None:
     update.add_argument("--status", default="", help="the status to move it to")
     update.add_argument("--add-label", action="append", default=[], metavar="LABEL")
     update.add_argument("--remove-label", action="append", default=[], metavar="LABEL")
+    update.add_argument(
+        "--if-seq",
+        type=int,
+        default=None,
+        help="refuse when a field this update writes changed after this seq, as show reports it",
+    )
     _add_shape_arguments(update)
 
     closing = sub.add_parser("close", help="move records to the closed status")
@@ -169,6 +189,12 @@ def _add_write_parsers(sub: Any) -> None:
     dep.add_argument("record", help="the dependent record id")
     dep.add_argument("target", help="the record it depends on")
     dep.add_argument("--type", dest="edge_type", default="blocks", help="the edge type")
+
+    undep = sub.add_parser("undep", help="retract a dependency edge the dependent holds")
+    undep.add_argument("directory", help=DIRECTORY_HELP)
+    undep.add_argument("record", help="the dependent record id")
+    undep.add_argument("target", help="the record it no longer depends on")
+    undep.add_argument("--type", dest="edge_type", default="blocks", help="the edge type")
 
     for name, helping in (
         ("assign", "reserve a record for a person without changing its status"),

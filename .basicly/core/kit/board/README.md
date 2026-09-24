@@ -43,9 +43,12 @@ story, so a link to a story works.
 
 ## Refinement
 
-A person writes or edits a story on the page. The page adds the label `refine`. An agent
-then does a refinement pass: it reads `refine`, rewrites each record with the full fields
-and removes the label. The tracker kit's `work-tracker` skill gives the steps. A record
+A person writes or edits a story on the page. The page adds the label `refine` and shows
+"Needs agent review". An agent then does a refinement pass: it reads `refine`, rewrites
+each record with the full fields and removes the label. Only an agent may remove it, and
+work cannot start before that: the kit refuses `claim` and a move to `in_progress`. The page
+server runs as a person even when an agent starts it. The form shows the sections the
+story's type needs. The tracker kit's `work-tracker` skill gives the steps. A record
 that carries the label, or that was created under the current rule and fails `dor`, leaves
 the Ready tab. An older record that fails `dor` stays there and shows what it owes.
 
@@ -59,23 +62,25 @@ output works against the API. `GET /api/v1` also names the `holder`, the name th
 
 | Method and path | Kit command | Body keys |
 | --- | --- | --- |
+| `GET /api/v1/version` | none: a stamp of the ledger files that changes on every write | |
 | `GET /api/v1/ready?limit=N` | `ready` | |
 | `GET /api/v1/blocked`, `/stats`, `/fields`, `/refine` | same name | |
 | `GET /api/v1/scaffold?type=T` | `scaffold` | |
 | `GET /api/v1/records?status=S&limit=N` | `list` | |
 | `GET /api/v1/records/<id>` | `show` | |
-| `GET /api/v1/records/<id>/dor` | `dor` | |
+| `GET /api/v1/records/<id>/dor` | `dor`, 200 with `ready` true or false | |
 | `POST /api/v1/records` | `create`, or `child` with `parent` | `title`, `description`, `acceptance`, `requirements`, `fields`, `parent`, `prefix` |
 | `PATCH /api/v1/records/<id>` | `update` | the create keys except `parent` and `prefix`, and `status`, `add_labels`, `remove_labels` |
 | `POST /api/v1/records/<id>/comments` | `comment` | `text` |
 | `POST /api/v1/records/<id>/close` | `close` | `reason` |
 | `POST /api/v1/records/<id>/deps` | `dep` | `target`, `type` |
+| `POST /api/v1/records/<id>/undep` | `undep` | `target`, `type` |
 | `POST /api/v1/records/<id>/assign` | `assign` | `to`, `take` |
 | `POST /api/v1/records/<id>/claim` | `claim` | `to`, `take` |
 | `POST /api/v1/records/<id>/unassign` | `unassign` | |
 
-Status codes: 200 or 201 when the command succeeds, 422 when the kit refuses it, 404 for a
-missing record, 400 for a malformed request, 403 for a foreign host. A write must send
+Status codes: 200 or 201 when the command succeeds, 422 when the kit refuses a write, 404
+for a missing record, 400 for a malformed request, 403 for a foreign host. A write must send
 `Content-Type: application/json`. The server refuses a request whose `Host` or `Origin` is
 not this server, so a web page on another site cannot write to your ledger. `--host`
 binds another address. Anyone who can reach that address can then write.

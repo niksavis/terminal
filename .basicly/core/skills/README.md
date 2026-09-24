@@ -19,6 +19,7 @@ by design: that absence is what keeps it out of the model's always-loaded index.
 | Skill | Invocation | Technologies | Description |
 | --- | --- | --- | --- |
 | `catalog-authoring` | `model` | any | Author and improve basicly catalog sources — skills, fragments and output styles — in their YAML source format (never a discoverable .md), then project and verify them. Use when you add or edit a skill or fragment, build a catalog, or decide where guidance should live (always-on fragment or on-demand skill). |
+| `cli-tools` | `model` | any | Pick the installed command-line tool for a shell task instead of a slower default - rg to search text in files, fd to find or list files by name or extension, bat to read a file with line numbers, jq or yq to read a field from a JSON or YAML file, sd to replace text, ast-grep for code structure, xh or curl to call an HTTP endpoint, just for project recipes. Use when you search, list, read or reshape files or data, call an API or run a project task; then load tool-<name> for its flags. |
 | `conventional-commits` | `model` | any | Construct a Conventional Commits subject that passes the commit-msg and tracker-commit-msg hooks on the first attempt - type, scope, the "!" breaking-change marker, the lowercase description and the trailing tracker record id. Use when you write or review a commit message, or when a hook rejected a commit. |
 | `decompose-plan` | `model` | any | Cut a unit of work into children that the plan gate accepts, each with EARS acceptance criteria, disjoint or declared scope globs, acyclic dependencies, a token budget, an integrity level and an end-to-end demonstration command. Use at DECOMPOSE, when a plan gate refused a child, or when a child has no consumer-visible behaviour to check. |
 | `falsify-first` | `model` | any | Attempt to break a claim - an invariant, a design premise, a measurement - with a concrete counterexample search before you defend or adopt it, and read each kill for the precondition that carried the weight. Use before an invariant enters a plan, a design note or a gate, or before a measured number becomes a claim. |
@@ -40,11 +41,15 @@ by design: that absence is what keeps it out of the model's always-loaded index.
 | `tool-ast-grep` | `user` | any | |
 | `tool-bat` | `user` | any | |
 | `tool-curl` | `user` | any | |
+| `tool-direnv` | `user` | any | |
 | `tool-fd` | `user` | any | |
 | `tool-fzf` | `user` | any | |
 | `tool-git` | `user` | any | |
 | `tool-git-delta` | `user` | any | |
+| `tool-git-lfs` | `user` | any | |
 | `tool-jq` | `user` | any | |
+| `tool-just` | `user` | any | |
+| `tool-lazygit` | `user` | any | |
 | `tool-ripgrep` | `user` | any | |
 | `tool-sd` | `user` | any | |
 | `tool-shellcheck` | `user` | any | |

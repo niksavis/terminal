@@ -109,6 +109,11 @@ hooks:
     script: tracker-commit-msg.py
     stage: commit-msg
     pass_filenames: true
+  - id: tracker-claim-script
+    description: "Refuse a commit that changes files outside the ledger unless the committer holds a named record in progress."
+    script: tracker-claim.py
+    stage: commit-msg
+    pass_filenames: true
   - id: pre-push-script
     description: "Run the configured full checks before a push, and refuse one that would race a landing."
     script: pre-push.py

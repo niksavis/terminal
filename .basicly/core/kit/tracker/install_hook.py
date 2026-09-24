@@ -16,6 +16,9 @@ DEFAULT_INTERPRETER = "uv run --no-project --no-python-downloads python"
 
 BEGIN = "# >>> basicly-tracker compact >>>"
 END = "# <<< basicly-tracker compact <<<"
+CLAIM_HOOK = "commit-msg"
+CLAIM_BEGIN = "# >>> basicly-tracker claim >>>"
+CLAIM_END = "# <<< basicly-tracker claim <<<"
 
 SHEBANG = "#!/bin/sh"
 
@@ -121,15 +124,40 @@ def body(interpreter: str, script: str, ledger: str, command: str = "", advice: 
     ))
 
 
-def _stripped(text: str) -> str:
+INSTALLED_SKILLS = ("tracker", "board")
+INSTALLED_FILES = (".gitignore", ".gitattributes")
+
+
+def claim_body(script: str, ledger: str) -> str:
+    kit_root = str(Path(script).parent.parent.as_posix())
+    installed = [f"{kit_root}/", *INSTALLED_FILES]
+    for agents in (".claude", ".agents"):
+        installed += [f"{agents}/skills/{name}/" for name in INSTALLED_SKILLS]
+    flags = " ".join(f'--installed "{one}"' for one in installed)
+    check = f'"$tracker_try" "{script}" commit-check "{ledger}" "$1" --stdin {flags}'
+    return "\n".join((
+        CLAIM_BEGIN,
+        f'if [ -f "{script}" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then',
+        "  for tracker_try in python3 python; do",
+        '    command -v "$tracker_try" >/dev/null 2>&1 || continue',
+        f"    tracker_out=$(git diff --cached --name-only | {check}) ||",
+        '      { echo "$tracker_out" >&2; exit 1; }',
+        "    break",
+        "  done",
+        "fi",
+        CLAIM_END,
+    ))
+
+
+def _stripped(text: str, begin: str = BEGIN, end: str = END) -> str:
 
     kept = []
     inside = False
     for line in text.splitlines():
-        if line.strip() == BEGIN:
+        if line.strip() == begin:
             inside = True
             continue
-        if line.strip() == END:
+        if line.strip() == end:
             inside = False
             continue
         if not inside:
@@ -137,11 +165,11 @@ def _stripped(text: str) -> str:
     return "\n".join(kept).rstrip("\n")
 
 
-def merged(current: str, block: str) -> str:
+def merged(current: str, block: str, begin: str = BEGIN, end: str = END) -> str:
 
     if not current.strip():
         return f"{SHEBANG}\n\n{block}\n"
-    kept = _stripped(current)
+    kept = _stripped(current, begin, end)
     if not kept.splitlines() or not kept.splitlines()[0].startswith("#!"):
         kept = f"{SHEBANG}\n{kept}"
     return f"{kept.rstrip()}\n\n{block}\n"
@@ -193,6 +221,24 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     return 0
 
 
+def _install_claim(
+    directory: Path, script: str, ledger: str, *, dry_run: bool, stream: Any
+) -> None:
+
+    hook = directory / CLAIM_HOOK
+    current = hook.read_text(encoding="utf-8") if hook.is_file() else ""
+    wanted = merged(current, claim_body(script, ledger), CLAIM_BEGIN, CLAIM_END)
+    if current == wanted:
+        return
+    if dry_run:
+        stream.write(f"tracker: would write {CLAIM_HOOK} in {directory}\n")
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    hook.write_text(wanted, encoding="utf-8")
+    _make_executable(hook)
+    stream.write(f"tracker: {CLAIM_HOOK} now refuses a code commit on a record you do not hold\n")
+
+
 def ensure_ledger(root: Path, ledger: Path, *, dry_run: bool, stream: Any) -> str:
 
     within = _within(ledger, root)
@@ -212,7 +258,36 @@ NO_FOLD = (
 )
 
 
+def _uninstall_claim(directory: Path | None, *, dry_run: bool) -> None:
+
+    hook = directory / CLAIM_HOOK if directory is not None else None
+    if hook is None or not hook.is_file() or dry_run:
+        return
+    current = hook.read_text(encoding="utf-8")
+    if CLAIM_BEGIN not in current:
+        return
+    kept = _stripped(current, CLAIM_BEGIN, CLAIM_END).strip()
+    if kept in ("", SHEBANG):
+        hook.unlink()
+    else:
+        hook.write_text(f"{kept}\n", encoding="utf-8")
+
+
+def install_claim(root: Path, *, ledger: Path, dry_run: bool, stream: Any) -> None:
+
+    directory = hooks_dir(root)
+    if directory is not None:
+        script = _within(_HERE / CLI_FILE, root)
+        _install_claim(directory, script, _within(ledger, root), dry_run=dry_run, stream=stream)
+
+
 def uninstall(root: Path, *, dry_run: bool, stream: Any) -> int:
+
+    _uninstall_claim(hooks_dir(root), dry_run=dry_run)
+    return uninstall_fold(root, dry_run=dry_run, stream=stream)
+
+
+def uninstall_fold(root: Path, *, dry_run: bool, stream: Any) -> int:
 
     directory = hooks_dir(root)
     hook = directory / HOOK_NAME if directory is not None else None
@@ -282,10 +357,12 @@ def main(argv: Any = None) -> int:
     ledger = Path(args.ledger) if args.ledger else _HERE.parent.parent / "ledger"
     if not ledger.is_absolute():
         ledger = root / ledger
+    ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
+    if not args.command:
+        install_claim(root, ledger=ledger, dry_run=args.dry_run, stream=sys.stdout)
     if not args.fold_on_merge:
-        ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
         sys.stdout.write(NO_FOLD)
-        return uninstall(root, dry_run=args.dry_run, stream=sys.stdout)
+        return uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout)
     return install(
         root,
         ledger=ledger,
