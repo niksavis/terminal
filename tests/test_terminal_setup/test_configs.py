@@ -3,18 +3,23 @@ from __future__ import annotations
 import json
 import re
 import subprocess
-from pathlib import Path
+import sys
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
 from terminal_setup.configs import (
     _STARSHIP_BLOCK_MARKER,
     CHEAT_SHEET_PATH,
+    IMG_ZOOM_SOURCE,
     TEMPLATE_DIR,
     _append_guarded_block,
     _configure_git_bash_starship,
     _configure_pwsh_starship,
+    _img_zoom_install_script,
     configure_vscode_terminal,
+    deploy_all,
+    deploy_claude_img_zoom_skill,
     deploy_claude_statusline,
     deploy_micro_config,
     deploy_tmux_config,
@@ -22,9 +27,11 @@ from terminal_setup.configs import (
     deploy_windows_shell_prompts,
     deploy_wsl_configs,
     deploy_zsh_config,
+    install_img_zoom,
     template_path,
 )
-from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
+from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, wsl_exec_command
+from terminal_setup.prerequisites import attempt
 from terminal_setup.runner import Runner
 
 
@@ -628,3 +635,165 @@ def test_wsl_start_dir_rejects_shell_metacharacters(tmp_path: Path) -> None:
     assert platform.wezterm_config_dir is not None
     rendered = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
     assert 'cd "$HOME/workspace"' in rendered
+
+
+def test_install_img_zoom_runs_uv_tool_install_on_the_repo_package(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    reporter = RecordingReporter()
+    install_img_zoom(
+        Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.LINUX, tmp_path)
+    )
+
+    script = reporter.commands[-1][-1]
+    assert f"tool install {IMG_ZOOM_SOURCE.as_posix()}" in script
+    assert "--upgrade" not in script
+
+
+def test_install_img_zoom_upgrades_on_update(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    reporter = RecordingReporter()
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    install_img_zoom(Runner(dry_run=True, reporter=reporter), platform, update=True)
+
+    assert "tool install --upgrade " in reporter.commands[-1][-1]
+
+
+def test_install_img_zoom_windows_installs_inside_wsl_from_the_mounted_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr(
+        "terminal_setup.configs.IMG_ZOOM_SOURCE", PureWindowsPath("C:/src/terminal/tools/img-zoom")
+    )
+    reporter = RecordingReporter()
+    install_img_zoom(
+        Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.WINDOWS, tmp_path)
+    )
+
+    command = reporter.commands[-1]
+    assert command[:-1] == wsl_exec_command("Ubuntu", ["sh", "-c"])
+    assert "tool install /mnt/c/src/terminal/tools/img-zoom" in command[-1]
+
+
+def _run_install_script(tmp_path: Path, *, with_uv: bool) -> subprocess.CompletedProcess[str]:
+    home = tmp_path / "home"
+    bin_dir = home / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    record = tmp_path / "uv-args"
+    if with_uv:
+        fake_uv = bin_dir / "uv"
+        fake_uv.write_text(f'#!/bin/sh\necho "$@" > {record}\n', encoding="utf-8")
+        fake_uv.chmod(0o755)
+    script = _img_zoom_install_script("/repo/tools/img-zoom", update=False)
+    return subprocess.run(
+        ["/bin/sh", "-c", script],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="the script runs in a POSIX sh inside WSL or on a Unix host"
+)
+def test_install_script_finds_uv_in_local_bin_when_path_lacks_it(tmp_path: Path) -> None:
+    result = _run_install_script(tmp_path, with_uv=True)
+
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "uv-args").read_text(
+        encoding="utf-8"
+    ).strip() == "tool install /repo/tools/img-zoom"
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32", reason="the script runs in a POSIX sh inside WSL or on a Unix host"
+)
+def test_install_script_refuses_by_name_when_uv_is_missing(tmp_path: Path) -> None:
+    result = _run_install_script(tmp_path, with_uv=False)
+
+    assert result.returncode == 1
+    assert "uv not found in PATH or ~/.local/bin" in result.stderr
+
+
+def test_install_img_zoom_failure_is_recorded_not_fatal(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+
+    def refuse(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.CalledProcessError(1, command, "", "uv not found in PATH or ~/.local/bin")
+
+    monkeypatch.setattr(runner, "run", refuse)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    ok = attempt(runner, "install img-zoom", lambda: install_img_zoom(runner, platform))
+
+    assert ok is False
+    assert runner.failures == ["install img-zoom"]
+
+
+def test_deploy_claude_img_zoom_skill_writes_the_user_skill(tmp_path: Path) -> None:
+    claude = _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    deploy_claude_img_zoom_skill(Runner(dry_run=False), platform)
+    deploy_claude_img_zoom_skill(Runner(dry_run=False), platform)
+
+    skill = claude / "skills" / "img-zoom" / "SKILL.md"
+    assert skill.read_text(encoding="utf-8") == template_path("img-zoom-skill.md").read_text(
+        encoding="utf-8"
+    )
+    assert [path.name for path in (claude / "skills").iterdir()] == ["img-zoom"]
+
+
+def test_deploy_claude_img_zoom_skill_skips_without_claude_dir(tmp_path: Path) -> None:
+    reporter = RecordingReporter()
+    deploy_claude_img_zoom_skill(
+        Runner(dry_run=False, reporter=reporter), make_platform(OperatingSystem.LINUX, tmp_path)
+    )
+
+    assert not (tmp_path / ".claude").exists()
+    assert any("skipping the img-zoom skill" in message for message in reporter.messages)
+
+
+def test_deploy_claude_img_zoom_skill_windows_pushes_into_wsl_home(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    reporter = RecordingReporter()
+    deploy_claude_img_zoom_skill(
+        Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.WINDOWS, tmp_path)
+    )
+
+    script = reporter.commands[-1][-1]
+    assert '"$claude/skills/img-zoom/SKILL.md"' in script
+    assert 'claude="$HOME/.claude"' in script
+
+
+def test_img_zoom_skill_is_model_invocable() -> None:
+    content = template_path("img-zoom-skill.md").read_text(encoding="utf-8")
+    front_matter = content.split("---")[1]
+
+    assert "name: img-zoom" in front_matter
+    assert "description: " in front_matter
+    assert "disable-model-invocation" not in front_matter
+
+
+@pytest.mark.parametrize("include_claude", [True, False])
+def test_deploy_all_writes_the_skill_only_with_claude(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, include_claude: bool
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    claude = _make_claude_home(tmp_path)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "run", lambda *a, **_k: subprocess.CompletedProcess(a, 0, "", ""))
+    deploy_all(
+        runner, platform, include_starship=False, include_claude=include_claude, no_sudo=True
+    )
+
+    assert (claude / "skills" / "img-zoom" / "SKILL.md").exists() is include_claude

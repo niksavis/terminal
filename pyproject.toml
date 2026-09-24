@@ -22,6 +22,7 @@ dev = [
   "djlint>=1.40.4",
   "import-linter>=2.13",
   "jinja2>=3.1.6",
+  "pillow>=12.3.0",
   "pip-audit>=2.10.1",
   "pre-commit>=4.6",
   "pyproject-fmt>=2.25.2",
@@ -38,11 +39,11 @@ packages = [ "terminal_setup" ]
 terminal_setup = [ "templates/*" ]
 
 [tool.pytest.ini_options]
-pythonpath = [".basicly", "."]
+pythonpath = [".basicly", ".", "tools/img-zoom/src"]
 addopts = ["--import-mode=importlib"]
 
 [tool.pyright]
-extraPaths = [".basicly", "."]
+extraPaths = [".basicly", ".", "tools/img-zoom/src"]
 typeCheckingMode = "basic"
 
 [project.scripts]

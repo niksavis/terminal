@@ -245,6 +245,7 @@ def _print_wsl_report(
         "delta",
         "typos",
         "uv",
+        "img-zoom",
         "node",
     ]:
         ok, detail = _wsl_command_present(runner, platform_info, command)
@@ -260,6 +261,7 @@ def _print_wsl_report(
         "~/.config/starship.toml",
         "~/.config/micro/settings.json",
         "~/.claude/statusline.sh",
+        "~/.claude/skills/img-zoom/SKILL.md",
     ]:
         ok, detail = _wsl_file_exists(runner, platform_info, path)
         _report_status(runner, f"wsl:{path}", ok, detail)
@@ -301,6 +303,7 @@ def _print_host_report(
         "delta",
         "typos",
         "uv",
+        "img-zoom",
         "node",
     ]:
         path = _host_command_path(runner, command)
@@ -430,6 +433,12 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         else:
             prerequisites.ensure_shell_tools(runner, platform_info)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
+
+        prerequisites.attempt(
+            runner,
+            "install img-zoom",
+            partial(configs.install_img_zoom, runner, platform_info, update=update),
+        )
 
         prerequisites.attempt(
             runner,

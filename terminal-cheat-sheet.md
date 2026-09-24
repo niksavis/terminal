@@ -97,6 +97,7 @@ Faster, friendlier replacements for classic commands. All are installed by `term
 | `uv`         | Python tooling     | `uv run script.py` - fast installs and runs           |
 | `node`       | JavaScript runtime | `node script.js` - run JS; `npm install` for packages |
 | `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs            |
+| `img-zoom`   | image zoom         | `img-zoom shot.png 0 0 400 300 -o z.png` - zoom a box |
 
 Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the latest uv-installed CPython (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js is installed user-locally in `~/.local` at the same major version as Windows.
 
