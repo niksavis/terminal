@@ -29,3 +29,17 @@ jobs:
         run: uv run python .scripts/git-hooks/pre-commit.py
       - name: Run pre-push checks
         run: uv run python .scripts/git-hooks/pre-push.py
+
+  tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install Python dependencies
+        run: uv sync --locked
+      - name: Run the test suite
+        run: uv run python .scripts/git-hooks/pre-push.py
