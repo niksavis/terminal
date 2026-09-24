@@ -1044,13 +1044,43 @@ def _find_line(ledger: Path, event_id: str) -> tuple[Path, str, int, Event]:
     raise InvalidEventError(f"no event in the log carries the id {event_id!r}")
 
 
+REPLACE_ATTEMPTS = 20
+REPLACE_BACKOFF_S = 0.01
+
+
+def windows_busy_retry(
+    action: Callable[[], object], *, sleep: Callable[[float], None] = time.sleep
+) -> object:
+
+    for attempt in range(1, REPLACE_ATTEMPTS):
+        try:
+            return action()
+        except PermissionError:
+            sleep(REPLACE_BACKOFF_S * attempt)
+    return action()
+
+
+def replace_file(
+    temporary: Path, target: Path, *, sleep: Callable[[float], None] = time.sleep
+) -> None:
+    windows_busy_retry(lambda: temporary.replace(target), sleep=sleep)
+
+
+def read_published(path: Path, *, sleep: Callable[[float], None] = time.sleep) -> str:
+    return str(windows_busy_retry(lambda: path.read_text(encoding="utf-8"), sleep=sleep))
+
+
+def temporary_beside(path: Path) -> Path:
+    return path.with_name(f"{path.name}.{os.getpid()}.{os.urandom(6).hex()}.tmp")
+
+
 def _publish_text(path: Path, text: str) -> None:
 
-    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary = temporary_beside(path)
     try:
         with temporary.open("w", encoding="utf-8", newline="\n") as stream:
             stream.write(text)
-        temporary.replace(path)
+        replace_file(temporary, path)
     except OSError:
         temporary.unlink(missing_ok=True)
         raise

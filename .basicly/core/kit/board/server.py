@@ -242,6 +242,17 @@ _ACTIONS: dict[str, Callable[[str, str, object], list]] = {
 }
 
 
+def api_index(ledger: Path) -> dict:
+
+    commands = tracker_cli().commands
+    return {
+        "schema": SCHEMA,
+        "endpoints": list(ENDPOINTS),
+        "holder": commands.holders.default_holder(ledger),
+        "edge_types": sorted(commands.differential.DEFAULT_VOCABULARY.edge_types),
+    }
+
+
 def answer(argv: list, redact: Callable[[str], str] | None) -> tuple:
 
     cli = tracker_cli()
@@ -309,7 +320,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             self._trusted()
             if method == "GET" and split.path.rstrip("/") == API:
-                self._json(HTTPStatus.OK, {"schema": SCHEMA, "endpoints": list(ENDPOINTS)})
+                self._json(HTTPStatus.OK, api_index(self.ledger))
             elif method == "GET" and split.path.startswith(API + "/"):
                 argv = read_argv(self.ledger, split.path, parse_qs(split.query))
                 self._json(*answer(argv, self.redact))

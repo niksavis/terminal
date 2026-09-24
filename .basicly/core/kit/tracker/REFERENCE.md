@@ -143,7 +143,9 @@ python3 .basicly/kit/tracker/cli.py stats .basicly/ledger
 
 ### show
 
-One record's folded state and its edges in both directions.
+One record's folded state and its edges in both directions, each edge with the title of the
+other record. It also names the `holder`, any unresolved `conflicts`, and a `comment_log`
+that gives each comment with its writer class and time.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2

@@ -5,77 +5,156 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tracker</title>
 <style>
-  :root { color-scheme: light dark; --line: #8884; --muted: #888; --accent: #2563eb; }
-  body { font: 14px/1.45 system-ui, sans-serif; margin: 0; }
-  header { display: flex; gap: 1.5rem; align-items: baseline; padding: .8rem 1.2rem; border-bottom: 1px solid var(--line); }
-  header h1 { font-size: 1.1rem; margin: 0; }
-  #counts span { margin-right: 1rem; color: var(--muted); }
-  #counts b { color: CanvasText; }
-  main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 1rem; padding: 1rem 1.2rem; }
-  section h2 { font-size: .95rem; margin: 0 0 .5rem; }
-  ol, ul { list-style: none; margin: 0; padding: 0; }
-  li button.row { all: unset; display: block; width: 100%; box-sizing: border-box; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; margin-bottom: .35rem; cursor: pointer; }
-  li button.row:hover, li button.row:focus-visible { outline: 2px solid var(--accent); }
-  .id { font-family: ui-monospace, monospace; color: var(--muted); font-size: .85em; }
-  .owed { color: #b45309; font-size: .85em; }
-  form { display: grid; gap: .45rem; }
-  label { display: grid; gap: .15rem; font-size: .85rem; color: var(--muted); }
-  input, textarea, select { font: inherit; padding: .3rem .4rem; border: 1px solid var(--line); border-radius: 5px; background: Canvas; color: CanvasText; }
-  textarea { min-height: 4.5rem; resize: vertical; }
-  .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
-  button.act { font: inherit; padding: .3rem .8rem; border-radius: 5px; border: 1px solid var(--accent); background: var(--accent); color: white; cursor: pointer; }
-  button.act.plain { background: transparent; color: var(--accent); }
-  #message { min-height: 1.2rem; font-size: .85rem; }
-  #message.bad { color: #dc2626; }
-  #comments li { border-left: 3px solid var(--line); padding-left: .5rem; margin: .3rem 0; white-space: pre-wrap; }
-  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  :root {
+    color-scheme: light dark;
+    --bg: light-dark(#f7f7f8, #121214); --panel: light-dark(#ffffff, #1a1a1d); --raise: light-dark(#f0f0f3, #232327);
+    --line: light-dark(#dcdce2, #2e2e34); --text: light-dark(#18181b, #e7e7ea); --muted: light-dark(#63636e, #9a9aa5);
+    --accent: light-dark(#2563eb, #6b9bff); --warn: light-dark(#b45309, #f0a24a); --bad: light-dark(#c81e1e, #ff6b6b);
+    --held: light-dark(#5b5bd6, #a5a5ff); --ok: light-dark(#15803d, #4ade80);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  header { display: flex; align-items: center; gap: 1rem; padding: .6rem 1.2rem; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: 1.05rem; margin: 0; }
+  #search { flex: 0 1 26rem; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  #counts { display: flex; gap: .9rem; color: var(--muted); font-size: .9rem; margin-left: auto; }
+  #counts b { color: var(--text); }
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(22rem, 44%) 1fr; }
+  #list-pane { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+  #detail-pane { overflow: auto; padding: 1.2rem 1.6rem 3rem; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .6rem 1rem; border-bottom: 1px solid var(--line); }
+  .tab, .chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: .15rem .7rem; cursor: pointer; color: var(--muted); }
+  .tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
+  .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .tab .n { opacity: .75; margin-left: .3rem; font-size: .85em; }
+  .grow { flex: 1; }
+  select.small { padding: .15rem .4rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  #rows { list-style: none; margin: 0; padding: .4rem .6rem; overflow: auto; flex: 1; }
+  #rows button { all: unset; display: grid; gap: .2rem; width: 100%; box-sizing: border-box; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; }
+  #rows button:hover { background: var(--raise); }
+  #rows button:focus-visible { outline: 2px solid var(--accent); }
+  #rows button[aria-current="true"] { background: var(--raise); box-shadow: inset 3px 0 0 var(--accent); }
+  .title { font-weight: 500; }
+  .meta { color: var(--muted); font-size: .82rem; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  .id { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--muted); }
+  .pr0 { color: white; background: var(--bad); border-color: var(--bad) !important; } .pr1 { color: var(--warn); }
+  .pr2 { color: var(--text); } .pr3, .pr4, .pr- { color: var(--muted); }
+  .pill { display: inline-block; font-size: .75rem; font-weight: 600; line-height: 1.5; padding: 0 .5rem; border-radius: 999px; border: 1px solid currentColor; }
+  .t-bug { color: var(--bad); } .t-feature { color: var(--accent); } .t-epic { color: light-dark(#7c3aed, #c4a5ff); }
+  .t-task { color: var(--muted); } .t-chore { color: light-dark(#0f766e, #5eead4); }
+  .s-in_progress { color: var(--accent); } .s-blocked { color: var(--bad); } .s-deferred, .s-open { color: var(--muted); } .s-closed { color: var(--ok); }
+  .warn { color: var(--warn); } .bad { color: var(--bad); } .held { color: var(--held); } .ok { color: var(--ok); }
+  .empty { color: var(--muted); padding: 1rem; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; color: var(--muted); }
+  .crumbs select { padding: .1rem .3rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+  h2.story-title { font-size: 1.35rem; margin: .4rem 0 .6rem; line-height: 1.3; }
+  .bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 1rem; }
+  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 7px; padding: .3rem .9rem; cursor: pointer; }
+  .btn.plain { background: transparent; color: var(--accent); }
+  .btn.danger { border-color: var(--bad); background: var(--bad); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .link { all: unset; color: var(--accent); cursor: pointer; font-size: .85rem; }
+  .link:hover { text-decoration: underline; }
+  details.more { position: relative; }
+  details.more summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 7px; padding: .3rem .7rem; color: var(--muted); }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more .menu { position: absolute; right: 0; z-index: 5; margin-top: .3rem; min-width: 15rem; padding: .3rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 24px #0004; }
+  details.more .menu button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: .35rem .6rem; border-radius: 5px; cursor: pointer; }
+  details.more .menu button:hover { background: var(--raise); }
+  .bar select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--text); }
+  .picker { position: relative; flex: 1; min-width: 16rem; }
+  .picker ul { position: absolute; z-index: 6; left: 0; right: 0; margin: .2rem 0 0; padding: .3rem; list-style: none; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 24px #0004; max-height: 18rem; overflow: auto; }
+  .picker li { padding: .3rem .5rem; border-radius: 5px; cursor: pointer; display: flex; gap: .5rem; align-items: baseline; }
+  .picker li[aria-selected="true"], .picker li:hover { background: var(--raise); }
+  .verdict { font-size: .85rem; flex-basis: 100%; }
+  .notice { padding: .5rem .8rem; border-radius: 8px; margin-bottom: .8rem; border: 1px solid var(--line); }
+  .notice.warn { border-color: var(--warn); } .notice.bad { border-color: var(--bad); }
+  section.block { margin: 1.1rem 0; }
+  section.block > h3 { display: flex; align-items: baseline; gap: .8rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4rem; }
+  .md p { margin: .3rem 0; } .md h4 { margin: .7rem 0 .2rem; font-size: .95rem; }
+  .md ul { margin: .2rem 0; padding-left: 1.2rem; } .md li.check { list-style: none; margin-left: -1.2rem; }
+  .md code { font-family: ui-monospace, monospace; font-size: .88em; background: var(--raise); padding: .05rem .25rem; border-radius: 4px; }
+  .md table { border-collapse: collapse; margin: .4rem 0; font-size: .9em; }
+  .md th, .md td { border: 1px solid var(--line); padding: .25rem .5rem; text-align: left; vertical-align: top; }
+  .md th { background: var(--raise); }
+  .md pre { background: var(--raise); padding: .6rem; border-radius: 6px; overflow: auto; }
+  .none { color: var(--muted); font-style: italic; }
+  textarea, input.field { width: 100%; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
+  textarea { min-height: 7rem; resize: vertical; font-family: ui-monospace, monospace; font-size: .88rem; line-height: 1.5; overflow: hidden; }
+  textarea.tall { min-height: 16rem; }
+  .form-foot { position: sticky; bottom: -3rem; display: flex; gap: .6rem; align-items: center; padding: .7rem 0 3rem; background: var(--bg); border-top: 1px solid var(--line); margin-top: .6rem; }
+  .row-actions { display: flex; gap: .5rem; margin-top: .4rem; align-items: center; }
+  .links { list-style: none; margin: 0; padding: 0; }
+  .links li { display: flex; gap: .6rem; align-items: baseline; padding: .15rem 0; }
+  .links .kind { width: 6.5rem; flex: none; color: var(--muted); font-size: .82rem; }
+  .comments { list-style: none; margin: 0 0 .6rem; padding: 0; }
+  .comments li { border-left: 3px solid var(--line); padding: .1rem 0 .1rem .7rem; margin: .6rem 0; }
+  .comments .who { color: var(--muted); font-size: .8rem; }
+  .comments .text { white-space: pre-wrap; }
+  form.grid { display: grid; gap: .6rem; }
+  form.grid label { display: grid; gap: .2rem; color: var(--muted); font-size: .85rem; }
+  form.grid select { min-width: 10rem; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--text); font-size: .9rem; }
+  .inline { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  #toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 34rem; padding: .6rem .9rem; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 24px #0004; display: none; }
+  #toast.show { display: block; } #toast.bad { border-color: var(--bad); color: var(--bad); }
+  .back { display: none; }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    body.reading #list-pane { display: none; }
+    body:not(.reading) #detail-pane { display: none; }
+    .back { display: inline-block; margin-bottom: .6rem; }
+    #counts { display: none; }
+  }
 </style>
 </head>
 <body>
 <header>
   <h1>Tracker</h1>
+  <input id="search" type="search" placeholder="Search titles and ids   ( / )" aria-label="Search">
   <div id="counts" aria-live="polite"></div>
-  <button class="act plain" id="new" type="button">New story</button>
+  <button class="btn" id="new" type="button">New story</button>
 </header>
 <main>
-  <section aria-labelledby="h-refine"><h2 id="h-refine">Needs refinement</h2><ol id="refine"></ol></section>
-  <section aria-labelledby="h-ready"><h2 id="h-ready">Ready</h2><ol id="ready"></ol></section>
-  <section aria-labelledby="h-blocked"><h2 id="h-blocked">Blocked</h2><ol id="blocked"></ol></section>
-  <section aria-labelledby="h-detail">
-    <h2 id="h-detail">Story</h2>
-    <form id="story">
-      <div class="id" id="story-id">new record</div>
-      <label>Title <input name="title" required></label>
-      <label>Story (trigger and context) <textarea name="description" placeholder="When &lt;situation&gt;, I want to &lt;motivation&gt;, so I can &lt;outcome&gt;."></textarea></label>
-      <label>Acceptance criteria <textarea name="acceptance"></textarea></label>
-      <label>Requirements <textarea name="requirements"></textarea></label>
-      <label>Type <select name="issue_type"><option>task</option><option>feature</option><option>bug</option><option>chore</option><option>epic</option></select></label>
-      <label>Priority <select name="priority"><option value="0">0 critical</option><option value="1">1 high</option><option value="2" selected>2 medium</option><option value="3">3 low</option><option value="4">4 backlog</option></select></label>
-      <label>Status <select name="status"><option>open</option><option>in_progress</option><option>blocked</option><option>deferred</option></select></label>
-      <div class="owed" id="owed"></div>
-      <div class="buttons">
-        <button class="act" type="submit">Save for refinement</button>
-        <button class="act plain" type="button" id="refined">Mark refined</button>
-      </div>
-      <div class="owed" id="holder"></div>
-      <div class="buttons">
-        <button class="act plain" type="button" data-hold="assign">Assign to me</button>
-        <button class="act plain" type="button" data-hold="claim">Claim</button>
-        <button class="act plain" type="button" data-hold="take">Take over</button>
-        <button class="act plain" type="button" data-hold="unassign">Unassign</button>
-      </div>
-      <div id="message" role="status"></div>
-    </form>
-    <h2>Comments</h2>
-    <ul id="comments"></ul>
-    <form id="comment"><label>Add a comment <textarea name="text" required></textarea></label><div class="buttons"><button class="act plain" type="submit">Comment</button></div></form>
-  </section>
+  <div id="list-pane">
+    <div class="toolbar" id="tabs" role="toolbar" aria-label="Views"></div>
+    <div class="toolbar">
+      <div id="types" class="inline" role="toolbar" aria-label="Type"></div>
+      <span class="grow"></span>
+      <label class="meta">sort <select id="sort" class="small">
+        <option value="rank">rank</option><option value="priority">priority</option>
+        <option value="updated">last updated</option><option value="created">newest</option>
+      </select></label>
+    </div>
+    <ol id="rows" aria-label="Stories"></ol>
+  </div>
+  <div id="detail-pane" aria-live="polite"></div>
 </main>
+<div id="toast" role="status"></div>
 <script>
 "use strict";
 const API = "/api/v1";
 const REFINE = "refine";
-let current = null;
+const TYPES = ["task", "feature", "bug", "chore", "epic"];
+const PRIORITIES = [["0", "critical"], ["1", "high"], ["2", "medium"], ["3", "low"], ["4", "backlog"]];
+const STATUSES = ["open", "in_progress", "blocked", "deferred"];
+const EDGE_NAMES = { blocks: "waits on", "parent-child": "is a child of", related: "is related to", "discovered-from": "was discovered from" };
+const TABS = [["ready", "Ready"], ["working", "In progress"], ["refine", "Refine"], ["blocked", "Blocked"], ["mine", "Mine"], ["active", "All open"], ["closed", "Closed"]];
+const LIST_CAP = 400;
+const state = { edgeTypes: ["blocks"], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
+
+function el(tag, attrs, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(attrs || {})) {
+    if (value === undefined || value === null || value === false) continue;
+    if (key.startsWith("on")) node.addEventListener(key.slice(2), value);
+    else if (key === "class") node.className = value;
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of children.flat()) if (child !== null && child !== undefined && child !== "") node.append(child);
+  return node;
+}
 
 async function call(method, path, body) {
   const init = { method, headers: {} };
@@ -85,192 +164,543 @@ async function call(method, path, body) {
   }
   const response = await fetch(API + path, init);
   const report = await response.json();
-  if (!response.ok) throw new Error(report.refused || JSON.stringify(report.blocking || report));
+  if (!response.ok || typeof report.refused === "string") throw new Error(report.refused || JSON.stringify(report.blocking || report));
   return report;
 }
 
-function say(text, bad) {
-  const node = document.getElementById("message");
+function toast(text, bad) {
+  const node = document.getElementById("toast");
   node.textContent = text;
-  node.className = bad ? "bad" : "";
+  node.className = "show" + (bad ? " bad" : "");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { node.className = ""; }, bad ? 9000 : 3500);
 }
 
-function holderNote(held) {
-  if (!held) return "";
-  let note = held.name ? "held by " + held.name : "";
-  if (held.stale) note += " (stale)";
-  if (held.contested && held.contested.length) note += " (contested: " + held.contested.join(", ") + ")";
-  return note;
-}
-
-function notes(...parts) {
-  return parts.filter(Boolean).join(" · ");
-}
-
-function row(record, title, note) {
-  const item = document.createElement("li");
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "row";
-  const id = document.createElement("div");
-  id.className = "id";
-  id.textContent = record;
-  const name = document.createElement("div");
-  name.textContent = title || record;
-  button.append(id, name);
-  if (note) {
-    const owed = document.createElement("div");
-    owed.className = "owed";
-    owed.textContent = note;
-    button.append(owed);
-  }
-  button.addEventListener("click", () => open(record));
-  item.append(button);
-  return item;
-}
-
-function fill(listId, rows) {
-  const list = document.getElementById(listId);
-  list.replaceChildren(...rows);
-  if (!rows.length) {
-    const empty = document.createElement("li");
-    empty.className = "id";
-    empty.textContent = "nothing here";
-    list.append(empty);
+async function attempt(work, done) {
+  try {
+    await work();
+    if (done) toast(done);
+  } catch (error) {
+    toast(error.message, true);
   }
 }
 
-async function refresh() {
-  const [stats, ready, blocked, refine] = await Promise.all([
-    call("GET", "/stats"), call("GET", "/ready?limit=50"), call("GET", "/blocked"), call("GET", "/refine"),
+function age(stamp) {
+  if (!stamp) return "";
+  const days = (Date.now() - Date.parse(stamp)) / 86400000;
+  if (days < 1 / 24) return "now";
+  if (days < 1) return Math.round(days * 24) + "h";
+  if (days < 60) return Math.round(days) + "d";
+  return Math.round(days / 30) + "mo";
+}
+
+function owes(names) {
+  return (names || []).map((name) => name.replace(/^## /, "")).join(", ");
+}
+
+function writer(raw) {
+  const [kind, rest] = String(raw || "").split(":");
+  if (kind === "agent" && rest) return "agent · " + rest.split("_")[0];
+  return kind || "unknown";
+}
+
+function person(name) {
+  if (!name) return "";
+  return name === state.me ? "you" : name;
+}
+
+async function load() {
+  const [index, ready, blocked, refine, ...lists] = await Promise.all([
+    call("GET", ""), call("GET", "/ready?limit=5000"), call("GET", "/blocked"), call("GET", "/refine"),
+    ...STATUSES.map((status) => call("GET", "/records?status=" + status)),
   ]);
-  const counts = document.getElementById("counts");
-  counts.replaceChildren(...[["records", stats.records], ["ready", stats.ready], ["blocked", stats.blocked], ["refine", refine.count]].map(([name, value]) => {
-    const span = document.createElement("span");
-    const bold = document.createElement("b");
-    bold.textContent = value;
-    span.append(bold, " " + name);
-    return span;
-  }));
-  fill("refine", refine.records.map((one) => row(one.record, one.title, notes(one.blocking.join(", "), holderNote(one.holder)))));
-  const owing = new Set(refine.records.map((one) => one.record));
-  fill("ready", ready.records.map((one) => row(one.record, one.title, notes(owing.has(one.record) ? "owes refinement" : "", holderNote(one.holder)))));
-  fill("blocked", blocked.records.map((one) => row(one.record, "", "waits on " + one.blocked_by.map((b) => b.record).join(", "))));
+  state.me = index.holder || "";
+  state.edgeTypes = index.edge_types || state.edgeTypes;
+  state.records = new Map(lists.flatMap((list) => list.records).map((one) => [one.record, one]));
+  state.ready = ready.records;
+  state.blocked = new Map(blocked.records.map((one) => [one.record, one]));
+  state.refine = new Map(refine.records.map((one) => [one.record, one]));
+  drawCounts();
+  drawList();
 }
 
-function blank() {
-  current = null;
-  const form = document.getElementById("story");
-  form.reset();
-  document.getElementById("story-id").textContent = "new record";
-  document.getElementById("owed").textContent = "";
-  document.getElementById("comments").replaceChildren();
-  say("");
+function drawCounts() {
+  const counts = [["ready", state.ready.length], ["in progress", [...state.records.values()].filter(working).length], ["refine", state.refine.size], ["blocked", state.blocked.size], ["open", state.records.size]];
+  document.getElementById("counts").replaceChildren(...counts.map(([name, value]) => el("span", {}, el("b", {}, String(value)), " " + name)));
+}
+
+function working(record) {
+  return record.status === "in_progress";
+}
+
+function mine(record) {
+  return Boolean(state.me) && record.fields.assignee === state.me;
+}
+
+function population() {
+  const records = state.records;
+  if (state.tab === "ready") return state.ready.map((row) => ({ id: row.record, rank: row.rank, record: records.get(row.record) }));
+  if (state.tab === "refine") return [...state.refine.values()].map((row) => ({ id: row.record, record: records.get(row.record) }));
+  if (state.tab === "blocked") return [...state.blocked.values()].map((row) => ({ id: row.record, record: records.get(row.record) }));
+  if (state.tab === "working") return [...records.values()].filter(working).map((record) => ({ id: record.record, record }));
+  if (state.tab === "mine") return [...records.values()].filter(mine).map((record) => ({ id: record.record, record }));
+  if (state.tab === "closed") return (state.closed || []).map((record) => ({ id: record.record, record }));
+  return [...records.values()].map((record) => ({ id: record.record, record }));
+}
+
+function sortKey(item) {
+  const record = item.record || { fields: {}, dates: {} };
+  const dates = record.dates || {};
+  const priority = Number(record.fields.priority ?? 9);
+  if (state.sort === "priority") return [priority, item.rank ?? 1e9];
+  if (state.sort === "updated") return [-(Date.parse(dates.updated) || 0)];
+  if (state.sort === "created") return [-(Date.parse(dates.created) || 0)];
+  if (state.tab === "closed") return [-(Date.parse(dates.closed || dates.updated) || 0)];
+  return [item.rank ?? priority * 1e6];
+}
+
+function compare(a, b) {
+  const left = sortKey(a), right = sortKey(b);
+  for (let i = 0; i < left.length; i++) if (left[i] !== right[i]) return left[i] - right[i];
+  return a.id < b.id ? -1 : 1;
+}
+
+function badge(item) {
+  const record = item.record || {};
+  if (record.contested && record.contested.length) return el("span", { class: "bad" }, "contested");
+  const refine = state.refine.get(item.id);
+  if (refine && refine.blocking.length) return el("span", { class: "warn" }, "owes " + owes(refine.blocking));
+  if (refine && refine.labelled) return el("span", { class: "warn" }, "waits for refinement");
+  const waits = state.blocked.get(item.id);
+  if (waits && waits.blocked_by.length) return el("span", {}, "waits on " + waits.blocked_by.map((b) => b.record).join(", "));
+  if (waits && waits.children.length) return el("span", {}, "parent of " + waits.children.length);
+  return null;
+}
+
+async function closedRecords() {
+  if (!state.closed) state.closed = (await call("GET", "/records?status=closed")).records;
+  return state.closed;
+}
+
+async function pick(key) {
+  state.tab = key;
+  if (key === "closed") await attempt(closedRecords);
+  drawList();
+}
+
+function drawTabs() {
+  const sizes = { working: [...state.records.values()].filter(working).length, ready: state.ready.length, refine: state.refine.size, blocked: state.blocked.size, mine: [...state.records.values()].filter(mine).length, active: state.records.size, closed: state.closed ? state.closed.length : null };
+  document.getElementById("tabs").replaceChildren(...TABS.map(([key, name]) => el("button", {
+    class: "tab", type: "button", "aria-pressed": String(state.tab === key), onclick: () => pick(key),
+  }, name, sizes[key] === null ? null : el("span", { class: "n" }, String(sizes[key])))));
+  document.getElementById("types").replaceChildren(...[["", "all types"], ...TYPES.map((t) => [t, t])].map(([key, name]) => el("button", {
+    class: "chip", type: "button", "aria-pressed": String(state.type === key), onclick: () => { state.type = key; drawList(); },
+  }, name)));
+}
+
+function typePill(type) {
+  return el("span", { class: "pill t-" + type }, type);
+}
+
+function priorityPill(priority, long) {
+  const known = PRIORITIES.find(([key]) => key === String(priority ?? ""));
+  if (!known) return el("span", { class: "pill pr-" }, "no priority");
+  return el("span", { class: "pill pr" + known[0], title: known[1] }, "P" + known[0] + (long ? " " + known[1] : ""));
+}
+
+function row(item) {
+  const record = item.record || { fields: {}, dates: {} };
+  const holder = person(record.fields.assignee);
+  return el("li", {}, el("button", {
+    type: "button", "aria-current": String(Boolean(state.current) && state.current.record === item.id), onclick: () => go(item.id),
+  },
+  el("span", { class: "title" }, String(record.fields.title || item.id)),
+  el("span", { class: "meta" },
+    priorityPill(record.fields.priority),
+    record.fields.issue_type ? typePill(record.fields.issue_type) : null,
+    el("span", { class: "id" }, item.id),
+    record.status && record.status !== "open" ? el("span", { class: "pill s-" + record.status }, record.status.replace("_", " ")) : null,
+    record.dates && record.dates.updated ? el("span", { title: "last updated " + record.dates.updated }, age(record.dates.updated)) : null,
+    holder ? el("span", { class: "held" }, "● " + holder) : null,
+    badge(item))));
+}
+
+function drawList() {
+  drawTabs();
+  const query = state.query.toLowerCase();
+  const items = population().filter((item) => {
+    const fields = item.record ? item.record.fields : {};
+    if (state.type && fields.issue_type !== state.type) return false;
+    return !query || item.id.toLowerCase().includes(query) || String(fields.title || "").toLowerCase().includes(query);
+  }).sort(compare);
+  const rows = items.slice(0, LIST_CAP).map(row);
+  if (items.length > rows.length) rows.push(el("li", { class: "empty" }, `${items.length - rows.length} more: search or filter to narrow the list`));
+  if (!rows.length) rows.push(el("li", { class: "empty" }, state.tab === "mine" && !state.me ? "set git config user.name so the tracker knows who you are" : "nothing here"));
+  document.getElementById("rows").replaceChildren(...rows);
+}
+
+function strong(text) {
+  return text.split(/(\*\*[^*]+\*\*)/).map((part) => part.length > 4 && part.startsWith("**") && part.endsWith("**") ? el("strong", {}, part.slice(2, -2)) : part);
+}
+
+function inline(text) {
+  return String(text).split(/(`[^`]+`)/).flatMap((part) => part.length > 1 && part.startsWith("`") && part.endsWith("`") ? [el("code", {}, part.slice(1, -1))] : strong(part));
+}
+
+function cells(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+}
+
+function markdown(text) {
+  const root = el("div", { class: "md" });
+  let list = null, fence = null, table = null, para = [];
+  const flush = () => { if (para.length) root.append(el("p", {}, inline(para.join(" ")))); para = []; };
+  for (const raw of String(text || "").split("\n")) {
+    const line = raw.trimEnd();
+    if (fence !== null) {
+      if (line.trim().startsWith("```")) { root.append(el("pre", {}, el("code", {}, fence.join("\n")))); fence = null; } else fence.push(raw);
+      continue;
+    }
+    if (line.trim().startsWith("```")) { flush(); list = null; table = null; fence = []; continue; }
+    if (line.trim().startsWith("|")) {
+      flush(); list = null;
+      if (/^\|[\s:|-]+\|?$/.test(line.trim())) continue;
+      const row = el("tr", {}, cells(line).map((cell) => el(table ? "td" : "th", {}, inline(cell))));
+      if (!table) { table = el("table"); root.append(table); }
+      table.append(row);
+      continue;
+    }
+    table = null;
+    const heading = line.match(/^#{1,6}\s+(.*)$/);
+    const item = line.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/);
+    if (heading) { flush(); list = null; root.append(el("h4", {}, inline(heading[1]))); continue; }
+    if (item) {
+      flush();
+      if (!list) { list = el("ul"); root.append(list); }
+      const box = item[1].match(/^\[( |x|X)\]\s*(.*)$/);
+      list.append(box ? el("li", { class: "check" }, box[1] === " " ? "☐ " : "☑ ", inline(box[2])) : el("li", {}, inline(item[1])));
+      continue;
+    }
+    if (!line.trim()) { flush(); list = null; continue; }
+    if (list && /^\s+/.test(raw)) { list.lastChild.append(" ", ...inline(line.trim())); continue; }
+    list = null;
+    para.push(line.trim());
+  }
+  if (fence !== null) root.append(el("pre", {}, el("code", {}, fence.join("\n"))));
+  flush();
+  return root;
+}
+
+function go(record) {
+  if (location.hash !== "#/record/" + record) location.hash = "#/record/" + record;
+  else open(record);
+}
+
+async function patch(body, done) {
+  const record = state.current.record;
+  await attempt(async () => {
+    await call("PATCH", "/records/" + encodeURIComponent(record), body);
+    await load();
+    await open(record);
+  }, done);
+}
+
+async function act(action, body, done) {
+  const record = state.current.record;
+  await attempt(async () => {
+    await call("POST", "/records/" + encodeURIComponent(record) + "/" + action, body);
+    await load();
+    await open(record);
+  }, done);
+}
+
+function select(options, value, onchange, unset) {
+  const known = options.some(([key]) => String(key) === String(value));
+  return el("select", { onchange: (event) => onchange(event.target.value) },
+    known || !unset ? null : el("option", { value: "", selected: true, disabled: true }, unset),
+    ...options.map(([key, name]) => el("option", { value: key, selected: String(key) === String(value) }, name)));
+}
+
+function section(title, value, placeholder) {
+  return el("section", { class: "block" }, el("h3", {}, title),
+    value && String(value).trim() ? markdown(value) : el("div", { class: "none" }, placeholder));
+}
+
+function grow(area) {
+  const fit = () => { area.style.height = "auto"; area.style.height = area.scrollHeight + 2 + "px"; };
+  area.addEventListener("input", fit);
+  requestAnimationFrame(fit);
+  return area;
+}
+
+const CONTENT = ["title", "description", "acceptance", "requirements"];
+
+function storyForm(values, { status, submit, cancel, note }) {
+  const type = select(TYPES.map((t) => [t, t]), values.issue_type, () => {}, "no type");
+  const priority = select(PRIORITIES.map(([key, name]) => [key, "P" + key + " " + name]), values.priority, () => {}, "no priority");
+  const state_ = status ? select(STATUSES.map((one) => [one, one.replace("_", " ")]), status, () => {}) : null;
+  const area = (name, text, placeholder, tall) => grow(el("textarea", { name, placeholder, class: tall ? "tall" : null }, String(text || "")));
+  const form = el("form", { class: "grid" },
+    el("label", {}, "Title", el("input", { class: "field", name: "title", required: true, value: String(values.title || "") })),
+    el("div", { class: "inline" }, el("label", {}, "Type", type), el("label", {}, "Priority", priority), state_ ? el("label", {}, "Status", state_) : null),
+    el("label", {}, "Story", area("description", values.description, "When <situation>, I want to <motivation>, so I can <outcome>.", true)),
+    el("label", {}, "Acceptance criteria", area("acceptance", values.acceptance, "- [ ] a check a person can run")),
+    el("label", {}, "Requirements", area("requirements", values.requirements, "- what the solution must hold to")),
+    el("div", { class: "form-foot" }, el("button", { class: "btn", type: "submit" }, submit),
+      el("button", { class: "btn plain", type: "button", onclick: cancel }, "Cancel"),
+      el("span", { class: "meta" }, note + "  ·  Ctrl+Enter saves")));
+  form.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit(); });
+  form.read = () => ({
+    title: form.title.value, description: form.description.value, acceptance: form.acceptance.value, requirements: form.requirements.value,
+    issue_type: type.value, priority: priority.value, status: state_ ? state_.value : undefined,
+  });
+  return form;
+}
+
+function edit(shown) {
+  const f = shown.fields;
+  const before = { title: f.title, description: f.description, acceptance: f.acceptance_criteria, requirements: f.requirements, issue_type: f.issue_type, priority: f.priority };
+  const form = storyForm(before, { status: shown.status, submit: "Save", cancel: () => open(shown.record), note: "a change to the text asks for an agent refinement pass" });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const after = form.read();
+    const body = {};
+    for (const key of CONTENT) if (String(after[key] || "") !== String(before[key] || "")) body[key] = after[key];
+    const fields = {};
+    if (after.issue_type && after.issue_type !== before.issue_type) fields.issue_type = after.issue_type;
+    if (after.priority !== "" && String(after.priority) !== String(before.priority ?? "")) fields.priority = Number(after.priority);
+    if (Object.keys(fields).length) body.fields = fields;
+    if (after.status !== shown.status) body.status = after.status;
+    if (!Object.keys(body).length) return open(shown.record);
+    const text = CONTENT.some((key) => key in body);
+    if (text) body.add_labels = [REFINE];
+    patch(body, text ? "saved; an agent refinement pass owes it before it is ready" : "saved");
+  });
+  document.getElementById("detail-pane").replaceChildren(
+    el("div", { class: "crumbs" }, el("span", { class: "id" }, shown.record), el("span", {}, "editing")), form);
+  form.title.focus();
+}
+
+function since(held) {
+  return held.since ? " since " + held.since.slice(0, 10) : "";
+}
+
+function actionsBar(shown) {
+  const held = shown.holder && shown.holder.name;
+  const yours = Boolean(held) && held === state.me;
+  const bar = el("div", { class: "bar" });
+  const menu = el("div", { class: "menu" });
+  const more = el("details", { class: "more" }, el("summary", {}, "More ▾"), menu);
+  const item = (label, handler) => menu.append(el("button", { type: "button", onclick: () => { more.open = false; handler(); } }, label));
+  const cancel = () => el("button", { class: "btn plain", type: "button", onclick: () => open(shown.record) }, "Cancel");
+  const closeForm = () => {
+    const reason = el("input", { class: "field", placeholder: "Why is it done? This is the permanent record of what shipped." });
+    bar.replaceChildren(reason, el("button", { class: "btn", type: "button", onclick: () => act("close", { reason: reason.value }, "closed") }, "Close story"), cancel());
+    reason.focus();
+  };
+  if (!held) {
+    bar.append(el("span", { class: "meta" }, "Nobody holds this story."),
+      el("button", { class: "btn", type: "button", onclick: () => act("claim", {}, "claimed: it is yours and in progress") }, "Claim"));
+    item("Reserve for later (assign to me)", () => act("assign", {}, "reserved for you"));
+  } else if (yours) {
+    bar.append(el("span", { class: "held" }, "● You hold this story" + since(shown.holder)),
+      el("button", { class: "btn", type: "button", onclick: closeForm }, "Close…"));
+    item("Release it (unassign)", () => act("unassign", {}, "released"));
+  } else {
+    bar.append(el("span", { class: "held" }, "● Held by " + held + since(shown.holder) + (shown.holder.stale ? " (stale)" : "")),
+      el("button", { class: "btn", type: "button", disabled: true, title: "ask them first" }, "Claim"));
+    item("Take over from " + held + "…", () => {
+      bar.replaceChildren(el("span", { class: "bad" }, "Take the story from " + held + "? The ledger records that you took it."),
+        el("button", { class: "btn danger", type: "button", onclick: () => act("claim", { take: true }, "taken over") }, "Take over"), cancel());
+    });
+  }
+  if (!yours) item("Close…", closeForm);
+  item("Add a dependency…", () => dependencyForm(bar, shown, cancel()));
+  bar.append(el("span", { class: "grow" }), el("button", { class: "btn plain", type: "button", title: "edit the story (e)", onclick: () => edit(shown) }, "Edit"), more);
+  return bar;
+}
+
+function candidates(query, shown) {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const pool = [...state.records.values(), ...(state.closed || [])];
+  return pool.filter((one) => one.record !== shown.record && words.every((word) =>
+    one.record.toLowerCase().includes(word) || String(one.fields.title || "").toLowerCase().includes(word))).slice(0, 8);
+}
+
+function dependencyVerdict(shown, target, type) {
+  if (!target) return ["", "type an id or words from a title, then pick a story"];
+  if (target.record === shown.record) return ["bad", "a story cannot depend on itself"];
+  if (shown.dependencies.some((edge) => edge.id === target.record && edge.dependency_type === type)) return ["bad", "this story already " + EDGE_NAMES[type] + " " + target.record];
+  if (type === "blocks" && target.status === "closed") return ["bad", target.record + " is closed, so waiting on it holds nothing back; pick an open story, or use is related to"];
+  return ["ok", "this story " + (EDGE_NAMES[type] || type) + " " + target.record + ": " + String(target.fields.title || "")];
+}
+
+function dependencyForm(bar, shown, cancel) {
+  let picked = null, active = 0, found = [];
+  const loading = closedRecords().catch(() => []);
+  const kind = select(state.edgeTypes.map((type) => [type, EDGE_NAMES[type] || type]), "blocks", () => judge());
+  const input = el("input", { class: "field", placeholder: "id or title words", autocomplete: "off", role: "combobox", "aria-expanded": "false" });
+  const list = el("ul", { role: "listbox", hidden: true });
+  const verdict = el("div", { class: "verdict meta" });
+  const add = el("button", { class: "btn", type: "button", disabled: true, onclick: () => act("deps", { target: picked.record, type: kind.value }, "dependency recorded") }, "Add");
+  const judge = () => {
+    const [tone, text] = dependencyVerdict(shown, picked, kind.value);
+    verdict.className = "verdict " + (tone || "meta");
+    verdict.textContent = text;
+    add.disabled = tone !== "ok";
+  };
+  const choose = (one) => { picked = one; input.value = one.record + "  " + String(one.fields.title || ""); list.hidden = true; judge(); };
+  const draw = () => {
+    list.replaceChildren(...found.map((one, index) => el("li", { role: "option", "aria-selected": String(index === active), onmousedown: (event) => { event.preventDefault(); choose(one); } },
+      el("span", { class: "id" }, one.record), el("span", {}, String(one.fields.title || "")), one.status !== "open" ? el("span", { class: "pill s-" + one.status }, one.status.replace("_", " ")) : null)));
+    list.hidden = !found.length;
+    input.setAttribute("aria-expanded", String(!list.hidden));
+  };
+  input.addEventListener("input", async () => {
+    picked = null;
+    const query = input.value.trim();
+    await loading;
+    found = query ? candidates(query, shown) : [];
+    if (!found.length && /^[\w.-]+-[\w.]+$/.test(query)) {
+      try { found = [await call("GET", "/records/" + encodeURIComponent(query))]; } catch (error) { found = []; }
+    }
+    active = 0;
+    draw();
+    judge();
+    if (query && !found.length) { verdict.className = "verdict bad"; verdict.textContent = "no story matches " + query; }
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); active = (active + (event.key === "ArrowDown" ? 1 : found.length - 1)) % Math.max(found.length, 1); draw(); }
+    if (event.key === "Enter") { event.preventDefault(); if (!list.hidden && found[active]) choose(found[active]); else if (!add.disabled) add.click(); }
+    if (event.key === "Escape") { list.hidden = true; }
+  });
+  input.addEventListener("blur", () => { list.hidden = true; });
+  bar.replaceChildren(el("span", { class: "meta" }, "This story"), kind, el("div", { class: "picker" }, input, list), add, cancel, verdict);
+  judge();
+  input.focus();
+}
+
+function linkRow(kind, id, title, status) {
+  return el("li", {}, el("span", { class: "kind" }, kind),
+    el("button", { class: "link", type: "button", onclick: () => go(id) }, id),
+    el("span", {}, title || ""), status && status !== "open" ? el("span", { class: "meta" }, status.replace("_", " ")) : null);
+}
+
+function linksBlock(shown) {
+  const named = { "parent-child": ["parent", "child"], blocks: ["waits on", "blocks"] };
+  const rows = [
+    ...shown.dependencies.map((edge) => linkRow((named[edge.dependency_type] || [edge.dependency_type])[0], edge.id, edge.title, edge.status)),
+    ...shown.dependents.map((edge) => linkRow((named[edge.dependency_type] || [, edge.dependency_type])[1], edge.id, edge.title, edge.status)),
+  ];
+  return el("section", { class: "block" }, el("h3", {}, "Links"), rows.length ? el("ul", { class: "links" }, rows) : el("div", { class: "none" }, "no links"));
+}
+
+function commentsBlock(shown) {
+  const log = shown.comment_log || shown.comments.map((text) => ({ text }));
+  const text = el("textarea", { placeholder: "Add a comment", style: "min-height: 5rem" });
+  return el("section", { class: "block" }, el("h3", {}, "Comments", el("span", {}, String(log.length))),
+    el("ul", { class: "comments" }, log.map((one) => el("li", {},
+      one.writer ? el("div", { class: "who" }, writer(one.writer) + (one.at ? " · " + one.at.slice(0, 16).replace("T", " ") : "")) : null,
+      el("div", { class: "text" }, one.text)))),
+    text, el("div", { class: "row-actions" }, el("button", { class: "btn plain", type: "button", onclick: () => act("comments", { text: text.value }, "comment added") }, "Comment")));
+}
+
+function notices(shown, dor) {
+  const found = [];
+  const labels = String(shown.fields.labels || "").split(",").map((one) => one.trim());
+  if (shown.conflicts && shown.conflicts.length) found.push(el("div", { class: "notice bad" }, "Two branches set different values: " + shown.conflicts.map((c) => c.key + " = " + c.values.join(" / ")).join("; ") + ". Run the kit's resolve command to keep the current value."));
+  if (labels.includes(REFINE)) found.push(el("div", { class: "notice warn" }, "Waits for an agent refinement pass before it is ready. ",
+    el("button", { class: "link", type: "button", onclick: () => patch({ remove_labels: [REFINE] }, "marked refined") }, "Mark refined")));
+  if (shown.status !== "closed" && dor.blocking && dor.blocking.length) found.push(el("div", { class: "notice warn" }, "Not ready: owes " + owes(dor.blocking) + "."));
+  return found;
+}
+
+function titleBlock(shown) {
+  return el("h2", { class: "story-title" }, String(shown.fields.title || shown.record));
+}
+
+function crumbs(shown) {
+  const f = shown.fields;
+  const labels = String(f.labels || "").split(",").map((one) => one.trim()).filter(Boolean);
+  return el("div", { class: "crumbs" }, el("span", { class: "id" }, shown.record),
+    f.issue_type ? typePill(f.issue_type) : el("span", { class: "pill t-task" }, "no type"),
+    priorityPill(f.priority, true),
+    el("span", { class: "pill s-" + shown.status }, String(shown.status || "").replace("_", " ")),
+    shown.dates && shown.dates.updated ? el("span", { title: shown.dates.updated }, "updated " + age(shown.dates.updated) + " ago") : null,
+    labels.length ? el("span", {}, labels.join(", ")) : null);
 }
 
 async function open(record) {
-  const shown = await call("GET", "/records/" + encodeURIComponent(record));
-  current = shown;
+  document.body.classList.add("reading");
+  const pane = document.getElementById("detail-pane");
+  const path = "/records/" + encodeURIComponent(record);
+  let shown, dor;
+  try {
+    [shown, dor] = await Promise.all([call("GET", path), fetch(API + path + "/dor").then((r) => r.json())]);
+  } catch (error) {
+    pane.replaceChildren(el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"), el("p", { class: "bad" }, error.message));
+    return;
+  }
+  state.current = shown;
   const f = shown.fields;
-  const form = document.getElementById("story");
-  form.title.value = f.title || "";
-  form.description.value = f.description || "";
-  form.acceptance.value = f.acceptance_criteria || "";
-  form.requirements.value = f.requirements || "";
-  form.issue_type.value = f.issue_type || "task";
-  form.priority.value = String(f.priority ?? 2);
-  form.status.value = shown.status || "open";
-  document.getElementById("story-id").textContent = record + (shown.dates && shown.dates.updated ? "  updated " + shown.dates.updated.slice(0, 16) : "");
-  document.getElementById("holder").textContent = holderNote(shown.holder) || "not reserved";
-  const dor = await fetch(API + "/records/" + encodeURIComponent(record) + "/dor").then((r) => r.json());
-  document.getElementById("owed").textContent = dor.blocking && dor.blocking.length ? "owes: " + dor.blocking.join(", ") : "";
-  document.getElementById("comments").replaceChildren(...shown.comments.map((text) => {
-    const item = document.createElement("li");
-    item.textContent = text;
-    return item;
-  }));
-  say("");
+  pane.replaceChildren(
+    el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"),
+    crumbs(shown),
+    titleBlock(shown),
+    shown.status === "closed" ? el("div", { class: "notice" }, "Closed: " + String(f.close_reason || "")) : actionsBar(shown),
+    ...notices(shown, dor),
+    section("Story", f.description, "no story yet: say when it happens, what the person wants, and what for"),
+    section("Acceptance criteria", f.acceptance_criteria, "no acceptance criteria yet"),
+    section("Requirements", f.requirements, "no requirements yet"),
+    linksBlock(shown),
+    commentsBlock(shown));
+  pane.scrollTop = 0;
+  drawList();
 }
 
-function edited(form) {
-  const body = {
-    title: form.title.value,
-    description: form.description.value,
-    fields: { issue_type: form.issue_type.value, priority: Number(form.priority.value) },
-  };
-  if (form.acceptance.value.trim()) body.acceptance = form.acceptance.value;
-  if (form.requirements.value.trim()) body.requirements = form.requirements.value;
-  return body;
+function back() {
+  document.body.classList.remove("reading");
+  history.replaceState(null, "", location.pathname + location.search);
 }
 
-document.getElementById("story").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  try {
-    let record;
-    if (current) {
-      record = current.record;
-      const body = edited(form);
-      if (form.status.value !== current.status) body.status = form.status.value;
-      body.add_labels = [REFINE];
-      await call("PATCH", "/records/" + encodeURIComponent(record), body);
-    } else {
-      const body = edited(form);
-      body.fields.labels = REFINE;
-      record = (await call("POST", "/records", body)).record;
-    }
-    await refresh();
-    await open(record);
-    say("saved; an agent refinement pass owes it before it is ready");
-  } catch (error) {
-    say(error.message, true);
-  }
-});
-
-document.getElementById("refined").addEventListener("click", async () => {
-  if (!current) return say("open a record first", true);
-  try {
-    await call("PATCH", "/records/" + encodeURIComponent(current.record), { remove_labels: [REFINE] });
-    await refresh();
-    await open(current.record);
-    say("the refine label is removed");
-  } catch (error) {
-    say(error.message, true);
-  }
-});
-
-document.getElementById("comment").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (!current) return say("open a record first", true);
-  const form = event.currentTarget;
-  try {
-    await call("POST", "/records/" + encodeURIComponent(current.record) + "/comments", { text: form.text.value });
-    form.reset();
-    await open(current.record);
-  } catch (error) {
-    say(error.message, true);
-  }
-});
-
-for (const button of document.querySelectorAll("[data-hold]")) {
-  button.addEventListener("click", async () => {
-    if (!current) return say("open a record first", true);
-    const kind = button.dataset.hold;
-    const action = kind === "take" ? "claim" : kind;
-    const body = kind === "take" ? { take: true } : {};
-    try {
-      await call("POST", "/records/" + encodeURIComponent(current.record) + "/" + action, body);
-      await refresh();
-      await open(current.record);
-      say(kind === "unassign" ? "the reservation is released" : "reserved");
-    } catch (error) {
-      say(error.message, true);
-    }
+function blank() {
+  document.body.classList.add("reading");
+  state.current = null;
+  drawList();
+  const form = storyForm({ issue_type: "task", priority: "2" }, { submit: "Create", cancel: back, note: "a new story waits for an agent refinement pass before it is ready" });
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const made = form.read();
+    const body = { title: made.title, description: made.description, fields: { issue_type: made.issue_type || "task", priority: Number(made.priority || 2), labels: REFINE } };
+    if (made.acceptance.trim()) body.acceptance = made.acceptance;
+    if (made.requirements.trim()) body.requirements = made.requirements;
+    attempt(async () => {
+      const report = await call("POST", "/records", body);
+      await load();
+      go(report.record);
+    }, "created");
   });
+  document.getElementById("detail-pane").replaceChildren(el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"), el("h2", { class: "story-title" }, "New story"), form);
+  form.title.focus();
 }
 
+function routed() {
+  const match = location.hash.match(/^#\/record\/(.+)$/);
+  if (match) open(decodeURIComponent(match[1]));
+}
+
+document.getElementById("search").addEventListener("input", (event) => { state.query = event.target.value; drawList(); });
+document.getElementById("sort").addEventListener("change", (event) => { state.sort = event.target.value; drawList(); });
 document.getElementById("new").addEventListener("click", blank);
-refresh().catch((error) => say(error.message, true));
+document.addEventListener("keydown", (event) => {
+  const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  if (typing || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (event.key === "/") { event.preventDefault(); document.getElementById("search").focus(); }
+  if (event.key === "e" && state.current && state.current.status !== "closed" && !document.querySelector("#detail-pane form")) { event.preventDefault(); edit(state.current); }
+});
+window.addEventListener("hashchange", routed);
+document.getElementById("detail-pane").append(el("div", { class: "empty" }, "Pick a story from the list, or press New story."));
+load().then(routed).catch((error) => toast(error.message, true));
 </script>
 </body>
 </html>

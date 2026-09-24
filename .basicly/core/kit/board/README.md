@@ -31,20 +31,31 @@ Stop it with Ctrl+C. `--port` sets the port. `--web DIR` serves your own page in
 the default page. In a repository that installs basicly, `basicly tracker serve` runs the
 same server and removes machine paths from what it writes.
 
+## The page
+
+The page lists the stories on the left and shows one story on the right. The tabs are
+Ready, In progress, Refine, Blocked, Mine, All open and Closed. Search matches titles and ids, and `/`
+moves to the search box. Each row shows the priority, the type, the age, the holder and one
+warning. The story pane renders the text, offers one main action for the state of the
+story (Claim when nobody holds it, Close when you hold it), and keeps the rest in its More
+menu. Edit (or the key `e`) opens one form for the whole story. `#/record/<id>` opens a
+story, so a link to a story works.
+
 ## Refinement
 
 A person writes or edits a story on the page. The page adds the label `refine`. An agent
 then does a refinement pass: it reads `refine`, rewrites each record with the full fields
 and removes the label. The tracker kit's `work-tracker` skill gives the steps. A record
 that carries the label, or that was created under the current rule and fails `dor`, leaves
-the ready column. An older record that fails `dor` stays there and shows "owes refinement".
+the Ready tab. An older record that fails `dor` stays there and shows what it owes.
 
 ## HTTP API
 
 The API answers under `/api/v1`, and `GET /api/v1` lists every endpoint. Each endpoint runs
 the tracker kit command of the same name through `cli.invoke`. It returns the same JSON,
 with the same `schema` field and the same refusals, so a client written against the CLI
-output works against the API:
+output works against the API. `GET /api/v1` also names the `holder`, the name that
+`assign` and `claim` use by default, so a page can tell your stories from other people's:
 
 | Method and path | Kit command | Body keys |
 | --- | --- | --- |
@@ -72,7 +83,7 @@ binds another address. Anyone who can reach that address can then write.
 ## Build your own
 
 - **Your own page:** write static files and run `serve --web DIR`. Call the API with
-  `fetch`. `web/index.html` is a complete example of about 250 lines.
+  `fetch`. `web/index.html` is a complete example of about 630 lines.
 - **Your own server or tool:** call the tracker kit directly. `cli.invoke(args)` returns the
   exit code and the report for any command. Build `args` with `cli.arguments.parser()`.
 - **Your own chart or report:** read the JSON of `ready`, `blocked`, `stats`, `list` and

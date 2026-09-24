@@ -54,6 +54,10 @@ def owed_of(directory: Path | str, record: str) -> dict[str, object]:
     }
 
 
+def _title(states: Mapping[str, Any], record: str) -> str:
+    return str(states[record].fields.get("title", "")) if record in states else ""
+
+
 def _edges(record: str, views: Mapping[str, Any], states: Mapping[str, Any]) -> dict[str, object]:
 
     view = views.get(record)
@@ -63,6 +67,7 @@ def _edges(record: str, views: Mapping[str, Any], states: Mapping[str, Any]) -> 
                 "id": edge.target,
                 "dependency_type": edge.type,
                 "status": _status(views, edge.target),
+                "title": _title(states, edge.target),
             }
             for edge in (view.dependencies if view is not None else ())
         ],
@@ -71,7 +76,7 @@ def _edges(record: str, views: Mapping[str, Any], states: Mapping[str, Any]) -> 
                 "id": other,
                 "dependency_type": edge.type,
                 "status": held.status or "",
-                "title": str(states[other].fields.get("title", "")) if other in states else "",
+                "title": _title(states, other),
             }
             for other, held in sorted(views.items())
             for edge in held.dependencies
@@ -99,6 +104,13 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
     shown["holder"] = queries.holders.holding(state, stale_days, now)
     ordered = events.canonical_order(events.read_events(directory)[0])
     shown["conflicts"] = forks.of_record(ordered, record)
+    shown["comment_log"] = [
+        {"text": event.payload["text"], "writer": event.actor, "at": event.ts}
+        for event in ordered
+        if event.record == record
+        and event.kind in events.PROSE_KINDS
+        and isinstance(event.payload.get("text"), str)
+    ]
     return shown
 
 

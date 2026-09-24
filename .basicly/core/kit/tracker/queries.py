@@ -93,7 +93,10 @@ def ready(directory: Path | str, limit: int | None = None, mine: str = "") -> di
 def blocked(directory: Path | str) -> dict[str, object]:
 
     vocabulary = differential.DEFAULT_VOCABULARY
-    views, children = views_and_children(directory)
+    found = differential.read_ledger(ledger_dir(directory))
+    views = differential.views_from_events(found)
+    children = differential.children_of(views, vocabulary)
+    states = events.fold(found).records
     rows = []
     for record in sorted(views):
         view = views[record]
@@ -103,6 +106,7 @@ def blocked(directory: Path | str) -> dict[str, object]:
             continue
         rows.append({
             "record": record,
+            "title": str(states[record].fields.get("title") or ""),
             "status": view.status,
             "blocked_by": _open_blockers(view, views, vocabulary),
             "children": sorted(children.get(record) or ()),

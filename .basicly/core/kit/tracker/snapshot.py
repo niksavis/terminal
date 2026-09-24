@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import os
 import re
 import sys
 from collections.abc import Mapping, Sequence
@@ -198,7 +197,7 @@ def read_snapshot(path: Path | str) -> Snapshot | None:
 
     file_path = Path(path)
     try:
-        text = file_path.read_text(encoding="utf-8")
+        text = events.read_published(file_path)
     except FileNotFoundError:
         return None
     lines = [line for line in text.splitlines() if line.strip()]
@@ -247,12 +246,12 @@ def write_snapshot(path: Path | str, snapshot: Snapshot, *, allow_shrink: bool =
         if loss.refused:
             raise SnapshotError(f"{file_path.name}: {loss.reason}")
     file_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = file_path.with_name(f"{file_path.name}.{os.getpid()}.tmp")
+    temporary = events.temporary_beside(file_path)
     try:
         with temporary.open("w", encoding="utf-8", newline="\n") as stream:
             for line in to_lines(snapshot):
                 stream.write(line + "\n")
-        temporary.replace(file_path)
+        events.replace_file(temporary, file_path)
     except OSError:
         temporary.unlink(missing_ok=True)
         raise

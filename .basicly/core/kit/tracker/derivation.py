@@ -70,6 +70,7 @@ class Vocabulary:
     closed_statuses: frozenset[str] = frozenset({"closed", "tombstone"})
     blocking_types: frozenset[str] = frozenset({"blocks"})
     parent_child_type: str = "parent-child"
+    edge_types: frozenset[str] = frozenset({"blocks", "parent-child", "related", "discovered-from"})
 
 
 DEFAULT_VOCABULARY = Vocabulary()

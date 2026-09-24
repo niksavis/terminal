@@ -222,9 +222,29 @@ def add_dependency(
     with events.LedgerLock(ledger) as lock:
         _require(ledger, record)
         _require(ledger, target)
+        _refuse_edge(ledger, record, target, edge_type)
         _refuse_cycle(ledger, record, target, edge_type)
         payload = {migrate.EDGE_FROM: record, migrate.EDGE_TO: target, migrate.EDGE_TYPE: edge_type}
         return _append(ledger, [events.Draft(record, migrate.KIND_EDGE, payload)], redact, lock)
+
+
+def _refuse_edge(ledger: Path, record: str, target: str, edge_type: str) -> None:
+
+    vocabulary = differential.DEFAULT_VOCABULARY
+    if edge_type not in vocabulary.edge_types:
+        known = ", ".join(sorted(vocabulary.edge_types))
+        raise TrackerCommandError(f"{edge_type!r} is not an edge type; use one of {known}")
+    views, _ = queries.views_and_children(ledger)
+    if any(edge.target == target and edge.type == edge_type for edge in views[record].dependencies):
+        raise TrackerCommandError(f"{record} already has a {edge_type} edge on {target}")
+    if (
+        edge_type in vocabulary.blocking_types
+        and views[target].status in vocabulary.closed_statuses
+    ):
+        raise TrackerCommandError(
+            f"{target} is closed, so a {edge_type} edge on it holds nothing back; "
+            f"name an open record, or use related to keep the link"
+        )
 
 
 def _refuse_cycle(ledger: Path, record: str, target: str, edge_type: str) -> None:

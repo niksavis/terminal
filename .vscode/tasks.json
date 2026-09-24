@@ -6,35 +6,35 @@
       "label": "basicly: build",
       "detail": "Regenerate agent instruction files after editing overlay fragments",
       "type": "shell",
-      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.1 basicly build",
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.2 basicly build",
       "problemMatcher": []
     },
     {
       "label": "basicly: skills-build",
       "detail": "Re-project skills into every agent root",
       "type": "shell",
-      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.1 basicly skills-build",
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.2 basicly skills-build",
       "problemMatcher": []
     },
     {
       "label": "basicly: hooks-build",
       "detail": "Re-project and activate the git hooks",
       "type": "shell",
-      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.1 basicly hooks-build",
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.2 basicly hooks-build",
       "problemMatcher": []
     },
     {
       "label": "basicly: update",
       "detail": "Install or upgrade: converge core, projections, skills, and hooks",
       "type": "shell",
-      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.1 basicly install",
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.2 basicly install",
       "problemMatcher": []
     },
     {
       "label": "basicly: uninstall",
       "detail": "Remove everything basicly manages (overlay and config survive)",
       "type": "shell",
-      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.1 basicly uninstall",
+      "command": "uvx --from git+https://github.com/niksavis/basicly@v0.18.2 basicly uninstall",
       "problemMatcher": []
     }
   ]
