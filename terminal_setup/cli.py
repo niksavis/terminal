@@ -1,5 +1,3 @@
-"""Command-line interface for the terminal setup."""
-
 from __future__ import annotations
 
 import argparse
@@ -15,7 +13,6 @@ from .runner import ConsoleReporter, Runner
 
 
 def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser."""
     parser = argparse.ArgumentParser(
         prog="terminal-setup",
         description="Install and configure a cross-platform terminal environment.",
@@ -141,7 +138,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> None:
-    """Print a single report status line."""
     suffix = f" ({detail})" if detail else ""
     if ok:
         runner.reporter.success(f"{label}{suffix}")
@@ -152,12 +148,7 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
 def _wsl_command_present(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
 ) -> tuple[bool, str]:
-    """Return whether a command exists inside the configured WSL distro.
 
-    Prefer the user-local copy in ~/.local/bin so that tools whose binary name
-    conflicts with a system utility (e.g. ast-grep's ``sg`` vs util-linux's
-    ``sg``) are reported accurately.
-    """
     script = (
         f"if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
         f"else command -v {command} || true; fi"
@@ -182,7 +173,6 @@ def _wsl_command_present(
 def _wsl_file_exists(
     runner: Runner, platform_info: platform.PlatformInfo, path: str
 ) -> tuple[bool, str]:
-    """Return whether a file exists inside the configured WSL distro."""
     if is_running_in_wsl():
         result = runner.run(
             ["sh", "-c", f"test -f {path}"],
@@ -205,14 +195,11 @@ def _print_windows_report(
     *,
     include_starship: bool,
 ) -> None:
-    """Report Windows host tools and WezTerm config status."""
     for command in ["wezterm", "starship"]:
         if command == "starship" and not include_starship:
             continue
         path = runner.which(command)
         if path is None:
-            # PATH updates only reach new shells; also probe the known install
-            # directories so a fresh install reports accurately.
             for directory in prerequisites.windows_tool_candidate_dirs(platform_info, command):
                 executable = directory / f"{command}.exe"
                 if executable.exists():
@@ -236,7 +223,6 @@ def _print_wsl_report(
     *,
     include_starship: bool,
 ) -> None:
-    """Report tools and configs inside the WSL distro."""
     for command in [
         "zsh",
         "tmux",
@@ -280,12 +266,7 @@ def _print_wsl_report(
 
 
 def _host_command_path(runner: Runner, command: str) -> str | None:
-    """Return a host command path, preferring the user-local ~/.local/bin copy.
 
-    A --no-sudo install lands in ~/.local/bin, which may not be on the
-    invoking shell's PATH yet; without this probe the report would mark
-    freshly installed tools as missing.
-    """
     local = Path.home() / ".local" / "bin" / command
     if local.is_file() and os.access(local, os.X_OK):
         return str(local)
@@ -297,7 +278,6 @@ def _print_host_report(
     *,
     include_starship: bool,
 ) -> None:
-    """Report tools installed directly on a Linux/macOS host."""
     for command in [
         "wezterm",
         "zsh",
@@ -337,7 +317,6 @@ def print_setup_report(
     include_starship: bool,
     include_vscode: bool,
 ) -> None:
-    """Print a concise post-setup report of tools and deployed configs."""
     runner.reporter.step("Verification report")
 
     in_wsl = is_running_in_wsl()
@@ -361,7 +340,6 @@ def print_setup_report(
 
 
 def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
-    """Check prerequisites and report status."""
     statuses = prerequisites.check_all(platform_info, runner)
     all_present = True
     for status in statuses:
@@ -400,15 +378,10 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     windows_terminal_cwd: str | None,
     wsl_terminal_cwd: str | None,
 ) -> int:
-    """Run the full setup workflow."""
     runner.reporter.info(f"Detected platform: {platform_info.os.name}")
     runner.reporter.info(f"Package manager: {platform_info.package_manager.name.lower()}")
 
     in_wsl = is_running_in_wsl()
-    # A user-local, no-sudo install is the default; --system-install opts back
-    # into the package-manager path. User-local is only implemented for the WSL
-    # guest, so on a native Linux/macOS host the default stays on the package
-    # manager unless --no-sudo is given explicitly.
     targets_wsl = platform_info.os == platform.OperatingSystem.WINDOWS or in_wsl
     effective_no_sudo = False if system_install else (no_sudo or user_install or targets_wsl)
 
@@ -507,8 +480,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
     if runner.failures:
-        # Everything that could run has run; say plainly what did not, and exit
-        # non-zero so a script is not told a partial setup succeeded.
         runner.reporter.error(
             f"Setup finished with {len(runner.failures)} failed "
             f"{'step' if len(runner.failures) == 1 else 'steps'}:"
@@ -531,12 +502,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the CLI.
 
-    Wraps the run so every failure path prints what actually broke — the
-    default traceback for a failed subprocess hides the child's captured
-    stderr, which is usually the only useful diagnostic.
-    """
     parser = build_parser()
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()
@@ -562,7 +528,6 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
-    """Run the phase selected by the parsed arguments."""
     platform_info = platform.detect_platform()
 
     if args.only == "check":
