@@ -28,12 +28,14 @@ img-zoom drawing.png 1200 800 1800 1100 -o /tmp/zoom.png --scale 4
 
 ## Measure and verify
 
-The tool's Python has Pillow and OpenCV. It works offline, so use it for your own measuring scripts:
+`img-zoom --python` prints the Python that has Pillow and OpenCV. It works offline, so use it for your own measuring scripts:
 
 ```bash
-"$(uv tool dir)/img-zoom/bin/python" measure.py
+"$(img-zoom --python)" measure.py
 ```
+
+In PowerShell: `& (img-zoom --python) measure.py`. On Windows on ARM that Python has Pillow but no OpenCV, because OpenCV publishes no build for it.
 
 ## When it is missing
 
-`img-zoom: command not found` means terminal-setup has not installed it on this machine. Re-run terminal-setup, or use `uv run --no-project --with pillow --with opencv-python-headless python` for a script.
+`img-zoom: command not found` means terminal-setup has not installed it on this side. Setup run from Windows installs it both natively and in WSL; setup run inside WSL installs it only in WSL. Re-run terminal-setup, or use `uv run --no-project --with pillow --with opencv-python-headless python` for a script.

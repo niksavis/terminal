@@ -36,14 +36,18 @@ dev = [
 packages = [ "terminal_setup" ]
 
 [tool.setuptools.package-data]
-terminal_setup = [ "templates/*" ]
+terminal_setup = [
+  "templates/*",
+  "img_zoom_tool/pyproject.toml",
+  "img_zoom_tool/src/img_zoom/*.py",
+]
 
 [tool.pytest.ini_options]
-pythonpath = [".basicly", ".", "tools/img-zoom/src"]
+pythonpath = [".basicly", ".", "terminal_setup/img_zoom_tool/src"]
 addopts = ["--import-mode=importlib"]
 
 [tool.pyright]
-extraPaths = [".basicly", ".", "tools/img-zoom/src"]
+extraPaths = [".basicly", ".", "terminal_setup/img_zoom_tool/src"]
 typeCheckingMode = "basic"
 
 [project.scripts]

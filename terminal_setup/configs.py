@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import json
+import os
 import shlex
 import sys
 from pathlib import Path
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
+from .prerequisites import _add_to_user_path
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_DIR = _REPO_ROOT / "terminal_setup" / "templates"
 CHEAT_SHEET_PATH = _REPO_ROOT / "terminal-cheat-sheet.html"
-IMG_ZOOM_SOURCE = _REPO_ROOT / "tools" / "img-zoom"
+IMG_ZOOM_SOURCE = _REPO_ROOT / "terminal_setup" / "img_zoom_tool"
 _WSL_START_DIR_PLACEHOLDER = "__WSL_START_DIR__"
 
 
@@ -382,27 +384,60 @@ def _deploy_claude_statusline_host(
     runner.write_text(settings_path, json.dumps(settings, indent=2) + "\n")
 
 
+_UV_MISSING = "uv not found in PATH or ~/.local/bin; install uv, then re-run terminal-setup"
+_IMG_ZOOM_SKILL = "img-zoom"
+
+
+def _is_windows_host(platform: PlatformInfo) -> bool:
+    return platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
+
+
 def _img_zoom_install_script(source: str, *, update: bool) -> str:
     upgrade = " --upgrade" if update else ""
     return (
-        'uv="$(command -v uv)" || uv="$HOME/.local/bin/uv"; '
-        '[ -x "$uv" ] || { echo "uv not found in PATH or ~/.local/bin; '
-        'install uv, then re-run terminal-setup" >&2; exit 1; }; '
+        'uv="${UV:-}"; [ -x "$uv" ] || uv="$(command -v uv)" || uv="$HOME/.local/bin/uv"; '
+        f'[ -x "$uv" ] || {{ echo "{_UV_MISSING}" >&2; exit 1; }}; '
         f'"$uv" tool install{upgrade} {shlex.quote(source)}'
     )
 
 
-def install_img_zoom(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
-    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
-        distro = _wsl_distro(platform)
-        source = _to_wsl_path(runner, distro, IMG_ZOOM_SOURCE)
-        command = wsl_exec_command(
-            distro, ["sh", "-c", _img_zoom_install_script(source, update=update)]
-        )
-    else:
+def install_img_zoom_wsl(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
+    distro = _wsl_distro(platform)
+    source = _to_wsl_path(runner, distro, IMG_ZOOM_SOURCE)
+    script = _img_zoom_install_script(source, update=update)
+    runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+
+
+def _windows_uv(runner: Runner, platform: PlatformInfo) -> str:
+    for candidate in (os.environ.get("UV"), runner.which("uv")):
+        if candidate:
+            return candidate
+    fallback = platform.home / ".local" / "bin" / "uv.exe"
+    if fallback.exists():
+        return str(fallback)
+    raise RuntimeError(_UV_MISSING)
+
+
+def install_img_zoom_native(
+    runner: Runner, platform: PlatformInfo, *, update: bool = False
+) -> None:
+    if not _is_windows_host(platform):
         script = _img_zoom_install_script(IMG_ZOOM_SOURCE.as_posix(), update=update)
-        command = ["sh", "-c", script]
-    runner.run(command)
+        runner.run(["sh", "-c", script])
+        return
+    uv = _windows_uv(runner, platform)
+    upgrade = ["--upgrade"] if update else []
+    runner.run([uv, "tool", "install", *upgrade, str(IMG_ZOOM_SOURCE)])
+    bin_dir = runner.run([uv, "tool", "dir", "--bin"], dry_run_safe=True).stdout.strip()
+    if bin_dir:
+        _add_to_user_path(runner, Path(bin_dir))
+
+
+def _native_img_zoom_present(runner: Runner, platform: PlatformInfo) -> bool:
+    if runner.which("img-zoom"):
+        return True
+    local_bin = platform.home / ".local" / "bin"
+    return (local_bin / "img-zoom").exists() or (local_bin / "img-zoom.exe").exists()
 
 
 def _claude_skill_wsl_install_script(source: str, name: str) -> str:
@@ -410,26 +445,34 @@ def _claude_skill_wsl_install_script(source: str, name: str) -> str:
         'claude="$HOME/.claude"; '
         f'[ -d "$claude" ] || {{ echo "Claude Code not detected ($claude missing); '
         f'skipping the {name} skill."; exit 0; }}; '
+        f'{{ command -v {name} >/dev/null 2>&1 || [ -x "$HOME/.local/bin/{name}" ]; }} || '
+        f'{{ echo "{name} is not installed in WSL; skipping the {name} skill."; exit 0; }}; '
         f'mkdir -p "$claude/skills/{name}"; '
         f'cp -f {shlex.quote(source)} "$claude/skills/{name}/SKILL.md"'
     )
 
 
-def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None:
-    source = template_path("img-zoom-skill.md")
-    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
-        distro = _wsl_distro(platform)
-        wsl_source = _to_wsl_path(runner, distro, source)
-        script = _claude_skill_wsl_install_script(wsl_source, "img-zoom")
-        runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
-        return
+def _deploy_img_zoom_skill_native(runner: Runner, platform: PlatformInfo, source: Path) -> None:
     claude_dir = platform.home / ".claude"
     if not claude_dir.is_dir():
         runner.reporter.info(
             "Claude Code not detected (~/.claude missing); skipping the img-zoom skill."
         )
         return
-    runner.copy(source, claude_dir / "skills" / "img-zoom" / "SKILL.md")
+    if not _native_img_zoom_present(runner, platform):
+        runner.reporter.info("img-zoom is not installed here; skipping the img-zoom skill.")
+        return
+    runner.copy(source, claude_dir / "skills" / _IMG_ZOOM_SKILL / "SKILL.md")
+
+
+def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None:
+    source = template_path("img-zoom-skill.md")
+    if _is_windows_host(platform):
+        distro = _wsl_distro(platform)
+        wsl_source = _to_wsl_path(runner, distro, source)
+        script = _claude_skill_wsl_install_script(wsl_source, _IMG_ZOOM_SKILL)
+        runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+    _deploy_img_zoom_skill_native(runner, platform, source)
 
 
 def _configure_vscode_terminal_windows(

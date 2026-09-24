@@ -11,7 +11,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
 ]
 dependencies = [
-  "opencv-python-headless>=5",
+  "opencv-python-headless>=5; sys_platform != 'win32' or platform_machine != 'ARM64'",
   "pillow>=12",
 ]
 

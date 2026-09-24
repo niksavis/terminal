@@ -5,11 +5,14 @@ import sys
 from PIL import Image, UnidentifiedImageError
 
 from img_zoom.geometry import BoxError
-from img_zoom.request import InfoRequest, parse_request, plan_zoom, zoom_report
+from img_zoom.request import InfoRequest, PythonRequest, parse_request, plan_zoom, zoom_report
 
 
 def main(argv: list[str] | None = None) -> int:
     request = parse_request(argv)
+    if isinstance(request, PythonRequest):
+        print(sys.executable)
+        return 0
     try:
         with Image.open(request.image) as image:
             width, height = image.size

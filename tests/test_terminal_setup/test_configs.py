@@ -4,16 +4,19 @@ import json
 import re
 import subprocess
 import sys
-from pathlib import Path, PureWindowsPath
+import tomllib
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
 
+import terminal_setup.configs as configs_module
 from terminal_setup.configs import (
     _STARSHIP_BLOCK_MARKER,
     CHEAT_SHEET_PATH,
     IMG_ZOOM_SOURCE,
     TEMPLATE_DIR,
     _append_guarded_block,
+    _claude_skill_wsl_install_script,
     _configure_git_bash_starship,
     _configure_pwsh_starship,
     _img_zoom_install_script,
@@ -27,7 +30,8 @@ from terminal_setup.configs import (
     deploy_windows_shell_prompts,
     deploy_wsl_configs,
     deploy_zsh_config,
-    install_img_zoom,
+    install_img_zoom_native,
+    install_img_zoom_wsl,
     template_path,
 )
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, wsl_exec_command
@@ -637,12 +641,60 @@ def test_wsl_start_dir_rejects_shell_metacharacters(tmp_path: Path) -> None:
     assert 'cd "$HOME/workspace"' in rendered
 
 
-def test_install_img_zoom_runs_uv_tool_install_on_the_repo_package(
+def _posix_only(test: object) -> object:
+    return pytest.mark.skipif(
+        sys.platform == "win32", reason="the script runs in a POSIX sh inside WSL or on a Unix host"
+    )(test)
+
+
+class _FakeRun:
+    def __init__(self, bin_dir: str = "") -> None:
+        self.commands: list[list[str]] = []
+        self.bin_dir = bin_dir
+
+    def __call__(self, command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        self.commands.append(command)
+        stdout = self.bin_dir if command[1:] == ["tool", "dir", "--bin"] else ""
+        return subprocess.CompletedProcess(command, 0, stdout, "")
+
+
+def test_img_zoom_source_ships_inside_the_package() -> None:
+    assert IMG_ZOOM_SOURCE.parent == Path(configs_module.__file__).resolve().parent
+    assert (IMG_ZOOM_SOURCE / "pyproject.toml").is_file()
+
+
+def test_package_data_names_every_img_zoom_source_file() -> None:
+    root = Path(__file__).resolve().parents[2]
+    patterns = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["tool"][
+        "setuptools"
+    ]["package-data"]["terminal_setup"]
+    package = root / "terminal_setup"
+    shipped = [
+        path
+        for path in IMG_ZOOM_SOURCE.rglob("*")
+        if path.is_file() and "__pycache__" not in path.parts
+    ]
+
+    assert len(shipped) == 5
+    for path in shipped:
+        relative = PurePosixPath(path.relative_to(package).as_posix())
+        assert any(relative.full_match(pattern) for pattern in patterns), relative
+
+
+def test_img_zoom_leaves_out_opencv_only_on_windows_arm64() -> None:
+    project = tomllib.loads((IMG_ZOOM_SOURCE / "pyproject.toml").read_text(encoding="utf-8"))
+    opencv = next(dep for dep in project["project"]["dependencies"] if "opencv" in dep)
+
+    assert opencv.startswith("opencv-python-headless>=5;")
+    assert "sys_platform != 'win32' or platform_machine != 'ARM64'" in opencv
+
+
+def test_install_img_zoom_native_posix_runs_uv_tool_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
     reporter = RecordingReporter()
-    install_img_zoom(
+    install_img_zoom_native(
         Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.LINUX, tmp_path)
     )
 
@@ -651,103 +703,164 @@ def test_install_img_zoom_runs_uv_tool_install_on_the_repo_package(
     assert "--upgrade" not in script
 
 
-def test_install_img_zoom_upgrades_on_update(
+def test_install_img_zoom_native_upgrades_on_update(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
     reporter = RecordingReporter()
     platform = make_platform(OperatingSystem.LINUX, tmp_path)
-    install_img_zoom(Runner(dry_run=True, reporter=reporter), platform, update=True)
+    install_img_zoom_native(Runner(dry_run=True, reporter=reporter), platform, update=True)
 
     assert "tool install --upgrade " in reporter.commands[-1][-1]
 
 
-def test_install_img_zoom_windows_installs_inside_wsl_from_the_mounted_repo(
+def test_install_img_zoom_wsl_installs_inside_wsl_from_the_mounted_package(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
     monkeypatch.setattr(
-        "terminal_setup.configs.IMG_ZOOM_SOURCE", PureWindowsPath("C:/src/terminal/tools/img-zoom")
+        "terminal_setup.configs.IMG_ZOOM_SOURCE",
+        PureWindowsPath("C:/src/terminal/terminal_setup/img_zoom_tool"),
     )
     reporter = RecordingReporter()
-    install_img_zoom(
+    install_img_zoom_wsl(
         Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.WINDOWS, tmp_path)
     )
 
     command = reporter.commands[-1]
     assert command[:-1] == wsl_exec_command("Ubuntu", ["sh", "-c"])
-    assert "tool install /mnt/c/src/terminal/tools/img-zoom" in command[-1]
+    assert "tool install /mnt/c/src/terminal/terminal_setup/img_zoom_tool" in command[-1]
 
 
-def _run_install_script(tmp_path: Path, *, with_uv: bool) -> subprocess.CompletedProcess[str]:
+@pytest.mark.parametrize("update", [False, True])
+def test_install_img_zoom_native_windows_uses_the_uv_running_setup_and_adds_its_bin_to_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, update: bool
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setenv("UV", "C:/Users/u/.local/bin/uv.exe")
+    added: list[Path] = []
+    monkeypatch.setattr(
+        "terminal_setup.configs._add_to_user_path", lambda _runner, path: added.append(path)
+    )
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    fake = _FakeRun(bin_dir="C:/Users/u/.local/bin\n")
+    monkeypatch.setattr(runner, "run", fake)
+
+    install_img_zoom_native(runner, make_platform(OperatingSystem.WINDOWS, tmp_path), update=update)
+
+    upgrade = ["--upgrade"] if update else []
+    assert fake.commands == [
+        ["C:/Users/u/.local/bin/uv.exe", "tool", "install", *upgrade, str(IMG_ZOOM_SOURCE)],
+        ["C:/Users/u/.local/bin/uv.exe", "tool", "dir", "--bin"],
+    ]
+    assert added == [Path("C:/Users/u/.local/bin")]
+
+
+def test_install_img_zoom_native_windows_without_uv_fails_by_name(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.delenv("UV", raising=False)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+
+    ok = attempt(runner, "install img-zoom", lambda: install_img_zoom_native(runner, platform))
+
+    assert ok is False
+    assert runner.failures == ["install img-zoom"]
+    assert fake.commands == []
+
+
+def _run_install_script(
+    tmp_path: Path, *, uv_in_local_bin: bool, uv_env: bool = False
+) -> subprocess.CompletedProcess[str]:
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     bin_dir.mkdir(parents=True)
-    record = tmp_path / "uv-args"
-    if with_uv:
-        fake_uv = bin_dir / "uv"
-        fake_uv.write_text(f'#!/bin/sh\necho "$@" > {record}\n', encoding="utf-8")
-        fake_uv.chmod(0o755)
-    script = _img_zoom_install_script("/repo/tools/img-zoom", update=False)
+    env = {"HOME": str(home), "PATH": "/usr/bin:/bin"}
+    for name, wanted, directory in (
+        ("uv", uv_in_local_bin, bin_dir),
+        ("uv-from-env", uv_env, tmp_path),
+    ):
+        if wanted:
+            fake_uv = directory / name
+            fake_uv.write_text(
+                f'#!/bin/sh\necho "{name} $@" > {tmp_path / "uv-args"}\n', encoding="utf-8"
+            )
+            fake_uv.chmod(0o755)
+    if uv_env:
+        env["UV"] = str(tmp_path / "uv-from-env")
+    script = _img_zoom_install_script("/pkg/img_zoom_tool", update=False)
     return subprocess.run(
-        ["/bin/sh", "-c", script],
-        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
-        capture_output=True,
-        text=True,
-        check=False,
+        ["/bin/sh", "-c", script], env=env, capture_output=True, text=True, check=False
     )
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="the script runs in a POSIX sh inside WSL or on a Unix host"
-)
+@_posix_only
 def test_install_script_finds_uv_in_local_bin_when_path_lacks_it(tmp_path: Path) -> None:
-    result = _run_install_script(tmp_path, with_uv=True)
+    result = _run_install_script(tmp_path, uv_in_local_bin=True)
 
     assert result.returncode == 0, result.stderr
-    assert (tmp_path / "uv-args").read_text(
-        encoding="utf-8"
-    ).strip() == "tool install /repo/tools/img-zoom"
+    recorded = (tmp_path / "uv-args").read_text(encoding="utf-8").strip()
+    assert recorded == "uv tool install /pkg/img_zoom_tool"
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32", reason="the script runs in a POSIX sh inside WSL or on a Unix host"
-)
+@_posix_only
+def test_install_script_prefers_the_uv_named_by_uv_env(tmp_path: Path) -> None:
+    result = _run_install_script(tmp_path, uv_in_local_bin=True, uv_env=True)
+
+    assert result.returncode == 0, result.stderr
+    recorded = (tmp_path / "uv-args").read_text(encoding="utf-8").strip()
+    assert recorded == "uv-from-env tool install /pkg/img_zoom_tool"
+
+
+@_posix_only
 def test_install_script_refuses_by_name_when_uv_is_missing(tmp_path: Path) -> None:
-    result = _run_install_script(tmp_path, with_uv=False)
+    result = _run_install_script(tmp_path, uv_in_local_bin=False)
 
     assert result.returncode == 1
     assert "uv not found in PATH or ~/.local/bin" in result.stderr
 
 
-def test_install_img_zoom_failure_is_recorded_not_fatal(
+def _home_with_img_zoom(tmp_path: Path, executable: str = "img-zoom") -> Path:
+    claude = _make_claude_home(tmp_path)
+    local_bin = tmp_path / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    (local_bin / executable).write_text("", encoding="utf-8")
+    return claude
+
+
+def test_deploy_claude_img_zoom_skill_writes_the_user_skill_when_img_zoom_is_installed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
-    runner = Runner(dry_run=False, reporter=RecordingReporter())
-
-    def refuse(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        raise subprocess.CalledProcessError(1, command, "", "uv not found in PATH or ~/.local/bin")
-
-    monkeypatch.setattr(runner, "run", refuse)
+    claude = _home_with_img_zoom(tmp_path)
     platform = make_platform(OperatingSystem.LINUX, tmp_path)
-    ok = attempt(runner, "install img-zoom", lambda: install_img_zoom(runner, platform))
-
-    assert ok is False
-    assert runner.failures == ["install img-zoom"]
-
-
-def test_deploy_claude_img_zoom_skill_writes_the_user_skill(tmp_path: Path) -> None:
-    claude = _make_claude_home(tmp_path)
-    platform = make_platform(OperatingSystem.LINUX, tmp_path)
-    deploy_claude_img_zoom_skill(Runner(dry_run=False), platform)
-    deploy_claude_img_zoom_skill(Runner(dry_run=False), platform)
+    runner = Runner(dry_run=False)
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+    deploy_claude_img_zoom_skill(runner, platform)
+    deploy_claude_img_zoom_skill(runner, platform)
 
     skill = claude / "skills" / "img-zoom" / "SKILL.md"
     assert skill.read_text(encoding="utf-8") == template_path("img-zoom-skill.md").read_text(
         encoding="utf-8"
     )
     assert [path.name for path in (claude / "skills").iterdir()] == ["img-zoom"]
+
+
+def test_deploy_claude_img_zoom_skill_skips_when_img_zoom_is_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    claude = _make_claude_home(tmp_path)
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+    deploy_claude_img_zoom_skill(runner, make_platform(OperatingSystem.LINUX, tmp_path))
+
+    assert not (claude / "skills").exists()
+    assert any("img-zoom is not installed here" in message for message in reporter.messages)
 
 
 def test_deploy_claude_img_zoom_skill_skips_without_claude_dir(tmp_path: Path) -> None:
@@ -760,27 +873,65 @@ def test_deploy_claude_img_zoom_skill_skips_without_claude_dir(tmp_path: Path) -
     assert any("skipping the img-zoom skill" in message for message in reporter.messages)
 
 
-def test_deploy_claude_img_zoom_skill_windows_pushes_into_wsl_home(
+def test_deploy_claude_img_zoom_skill_windows_writes_both_sides(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    claude = _home_with_img_zoom(tmp_path, "img-zoom.exe")
     reporter = RecordingReporter()
-    deploy_claude_img_zoom_skill(
-        Runner(dry_run=True, reporter=reporter), make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False, reporter=reporter)
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+    monkeypatch.setattr("terminal_setup.configs._to_wsl_path", lambda *_a: "/mnt/c/skill.md")
+
+    deploy_claude_img_zoom_skill(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    assert fake.commands[0][:-1] == wsl_exec_command("Ubuntu", ["sh", "-c"])
+    assert "/mnt/c/skill.md" in fake.commands[0][-1]
+    assert (claude / "skills" / "img-zoom" / "SKILL.md").is_file()
+
+
+def _run_skill_script(tmp_path: Path, *, installed: bool) -> Path:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    if installed:
+        local_bin = home / ".local" / "bin"
+        local_bin.mkdir(parents=True)
+        tool = local_bin / "img-zoom"
+        tool.write_text("#!/bin/sh\n", encoding="utf-8")
+        tool.chmod(0o755)
+    source = tmp_path / "SKILL.md"
+    source.write_text("skill", encoding="utf-8")
+    subprocess.run(
+        ["/bin/sh", "-c", _claude_skill_wsl_install_script(str(source), "img-zoom")],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=True,
     )
-
-    script = reporter.commands[-1][-1]
-    assert '"$claude/skills/img-zoom/SKILL.md"' in script
-    assert 'claude="$HOME/.claude"' in script
+    return home / ".claude" / "skills" / "img-zoom" / "SKILL.md"
 
 
-def test_img_zoom_skill_is_model_invocable() -> None:
+@_posix_only
+def test_wsl_skill_script_writes_the_skill_when_img_zoom_is_installed(tmp_path: Path) -> None:
+    assert _run_skill_script(tmp_path, installed=True).read_text(encoding="utf-8") == "skill"
+
+
+@_posix_only
+def test_wsl_skill_script_skips_when_img_zoom_is_missing(tmp_path: Path) -> None:
+    assert not _run_skill_script(tmp_path, installed=False).exists()
+
+
+def test_img_zoom_skill_is_model_invocable_and_names_the_portable_python() -> None:
     content = template_path("img-zoom-skill.md").read_text(encoding="utf-8")
     front_matter = content.split("---")[1]
 
     assert "name: img-zoom" in front_matter
     assert "description: " in front_matter
     assert "disable-model-invocation" not in front_matter
+    assert '"$(img-zoom --python)"' in content
+    assert "bin/python" not in content
 
 
 @pytest.mark.parametrize("include_claude", [True, False])
@@ -788,10 +939,11 @@ def test_deploy_all_writes_the_skill_only_with_claude(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, include_claude: bool
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
-    claude = _make_claude_home(tmp_path)
+    claude = _home_with_img_zoom(tmp_path)
     platform = make_platform(OperatingSystem.LINUX, tmp_path)
     runner = Runner(dry_run=False, reporter=RecordingReporter())
     monkeypatch.setattr(runner, "run", lambda *a, **_k: subprocess.CompletedProcess(a, 0, "", ""))
+    monkeypatch.setattr(runner, "which", lambda _command: None)
     deploy_all(
         runner, platform, include_starship=False, include_claude=include_claude, no_sudo=True
     )

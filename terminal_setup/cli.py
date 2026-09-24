@@ -207,6 +207,14 @@ def _print_windows_report(
                     break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
 
+    img_zoom = runner.which("img-zoom")
+    local_img_zoom = platform_info.home / ".local" / "bin" / "img-zoom.exe"
+    if img_zoom is None and local_img_zoom.exists():
+        img_zoom = f"{local_img_zoom} (restart terminal for PATH)"
+    _report_status(runner, "windows:img-zoom", img_zoom is not None, img_zoom or "")
+    skill = platform_info.home / ".claude" / "skills" / "img-zoom" / "SKILL.md"
+    _report_status(runner, "windows:~/.claude/skills/img-zoom/SKILL.md", skill.exists(), str(skill))
+
     if platform_info.wezterm_config_dir is not None:
         wezterm_path = platform_info.wezterm_config_dir / "wezterm.lua"
         _report_status(
@@ -434,10 +442,16 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             prerequisites.ensure_shell_tools(runner, platform_info)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
+        if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
+            prerequisites.attempt(
+                runner,
+                "install img-zoom in WSL",
+                partial(configs.install_img_zoom_wsl, runner, platform_info, update=update),
+            )
         prerequisites.attempt(
             runner,
             "install img-zoom",
-            partial(configs.install_img_zoom, runner, platform_info, update=update),
+            partial(configs.install_img_zoom_native, runner, platform_info, update=update),
         )
 
         prerequisites.attempt(
@@ -506,6 +520,10 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             runner.reporter.step("Restart your terminal for the updated PATH to take effect.")
         if in_wsl:
             runner.reporter.step("Restart your WSL session for the updated PATH to take effect.")
+            runner.reporter.step(
+                "Agents started from PowerShell or Git Bash get img-zoom only when setup "
+                "also runs from Windows."
+            )
     runner.reporter.step("Verify anytime with: terminal-setup --only report")
     return 0
 

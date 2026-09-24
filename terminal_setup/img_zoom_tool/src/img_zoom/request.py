@@ -6,7 +6,16 @@ from pathlib import Path
 
 from img_zoom.geometry import Box, fit_size, scaled_size, validate_box, within_budget
 
-USAGE = "img-zoom IMAGE X1 Y1 X2 Y2 -o OUT.png [--scale N]\n       img-zoom --info IMAGE"
+USAGE = (
+    "img-zoom IMAGE X1 Y1 X2 Y2 -o OUT.png [--scale N]\n"
+    "       img-zoom --info IMAGE\n"
+    "       img-zoom --python"
+)
+
+
+@dataclass(frozen=True)
+class PythonRequest:
+    pass
 
 
 @dataclass(frozen=True)
@@ -38,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Coordinates are pixels of the original image, origin at the top-left corner."
         ),
     )
-    parser.add_argument("image", type=Path)
+    parser.add_argument("image", nargs="?", type=Path)
     parser.add_argument("coords", nargs="*", type=int, metavar="X1 Y1 X2 Y2")
     parser.add_argument("-o", "--output", type=Path, help="PNG file to write")
     parser.add_argument(
@@ -47,12 +56,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="magnify by this factor instead of fitting the largest readable size",
     )
     parser.add_argument("--info", action="store_true", help="print width, height and mode")
+    parser.add_argument(
+        "--python",
+        action="store_true",
+        help="print the Python that has Pillow and OpenCV, for measuring scripts",
+    )
     return parser
 
 
-def parse_request(argv: list[str] | None = None) -> InfoRequest | ZoomRequest:
+def parse_request(argv: list[str] | None = None) -> PythonRequest | InfoRequest | ZoomRequest:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.python:
+        if args.image or args.coords or args.output or args.scale is not None or args.info:
+            parser.error("--python takes no other argument")
+        return PythonRequest()
+    if args.image is None:
+        parser.error("IMAGE is required")
     if args.info:
         if args.coords or args.output or args.scale is not None:
             parser.error("--info takes only IMAGE")

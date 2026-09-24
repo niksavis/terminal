@@ -239,9 +239,9 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
-- Agent image tool (WSL/Linux/macOS): `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Its Python also has Pillow and OpenCV for measuring scripts: `"$(uv tool dir)/img-zoom/bin/python"`
+- Agent image tool: `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Run from Windows, setup installs it both in WSL and natively on Windows (its folder goes on the user PATH); run inside WSL or on Linux/macOS, it installs it there. `img-zoom --python` prints its Python, which has Pillow and OpenCV for measuring scripts (Pillow only on Windows on ARM, where OpenCV publishes no build)
 - Runtimes (WSL/Linux/macOS): `node` (latest v26, user-local in `~/.local`)
-- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when Claude Code is installed and not skipped with `--skip-claude`
+- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when Claude Code is installed and not skipped with `--skip-claude`. The skill goes to each side where `img-zoom` is installed: the WSL home and, when setup runs from Windows, `%USERPROFILE%\.claude`
 
 `lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
 
