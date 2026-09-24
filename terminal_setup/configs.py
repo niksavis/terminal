@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
+import shutil
 import sys
 from pathlib import Path
 
@@ -386,6 +387,7 @@ def _deploy_claude_statusline_host(
 
 _UV_MISSING = "uv not found in PATH or ~/.local/bin; install uv, then re-run terminal-setup"
 _IMG_ZOOM_SKILL = "img-zoom"
+_IMG_ZOOM_STAGE_POSIX = "$HOME/.local/share/terminal-setup/img_zoom_tool"
 
 
 def _is_windows_host(platform: PlatformInfo) -> bool:
@@ -397,7 +399,31 @@ def _img_zoom_install_script(source: str, *, update: bool) -> str:
     return (
         'uv="${UV:-}"; [ -x "$uv" ] || uv="$(command -v uv)" || uv="$HOME/.local/bin/uv"; '
         f'[ -x "$uv" ] || {{ echo "{_UV_MISSING}" >&2; exit 1; }}; '
-        f'"$uv" tool install{upgrade} {shlex.quote(source)}'
+        f'dest="{_IMG_ZOOM_STAGE_POSIX}"; '
+        'rm -rf "$dest" && mkdir -p "$dest" && '
+        f'cp -R {shlex.quote(source)}/. "$dest"/ && '
+        'find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} + || exit 1; '
+        f'"$uv" tool install{upgrade} "$dest"'
+    )
+
+
+def _windows_img_zoom_stage(platform: PlatformInfo) -> Path:
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    base = Path(local_app_data) if local_app_data else platform.home / "AppData" / "Local"
+    return base / "terminal-setup" / "img_zoom_tool"
+
+
+def _stage_img_zoom_source(runner: Runner, destination: Path) -> None:
+    runner.reporter.info(f"stage img-zoom source in {destination}")
+    if runner.dry_run:
+        return
+    if destination.exists():
+        shutil.rmtree(destination)
+    shutil.copytree(
+        IMG_ZOOM_SOURCE,
+        destination,
+        ignore=shutil.ignore_patterns("__pycache__"),
+        copy_function=shutil.copyfile,
     )
 
 
@@ -426,8 +452,10 @@ def install_img_zoom_native(
         runner.run(["sh", "-c", script])
         return
     uv = _windows_uv(runner, platform)
+    stage = _windows_img_zoom_stage(platform)
+    _stage_img_zoom_source(runner, stage)
     upgrade = ["--upgrade"] if update else []
-    runner.run([uv, "tool", "install", *upgrade, str(IMG_ZOOM_SOURCE)])
+    runner.run([uv, "tool", "install", *upgrade, str(stage)])
     bin_dir = runner.run([uv, "tool", "dir", "--bin"], dry_run_safe=True).stdout.strip()
     if bin_dir:
         _add_to_user_path(runner, Path(bin_dir))

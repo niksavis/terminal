@@ -699,8 +699,9 @@ def test_install_img_zoom_native_posix_runs_uv_tool_install(
     )
 
     script = reporter.commands[-1][-1]
-    assert f"tool install {IMG_ZOOM_SOURCE.as_posix()}" in script
-    assert "--upgrade" not in script
+    assert f"cp -R {IMG_ZOOM_SOURCE.as_posix()}/. " in script
+    assert 'dest="$HOME/.local/share/terminal-setup/img_zoom_tool"' in script
+    assert script.endswith('"$uv" tool install "$dest"')
 
 
 def test_install_img_zoom_native_upgrades_on_update(
@@ -729,7 +730,8 @@ def test_install_img_zoom_wsl_installs_inside_wsl_from_the_mounted_package(
 
     command = reporter.commands[-1]
     assert command[:-1] == wsl_exec_command("Ubuntu", ["sh", "-c"])
-    assert "tool install /mnt/c/src/terminal/terminal_setup/img_zoom_tool" in command[-1]
+    assert "cp -R /mnt/c/src/terminal/terminal_setup/img_zoom_tool/. " in command[-1]
+    assert command[-1].endswith('"$uv" tool install "$dest"')
 
 
 @pytest.mark.parametrize("update", [False, True])
@@ -738,6 +740,10 @@ def test_install_img_zoom_native_windows_uses_the_uv_running_setup_and_adds_its_
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
     monkeypatch.setenv("UV", "C:/Users/u/.local/bin/uv.exe")
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "LocalAppData"))
+    stage = tmp_path / "LocalAppData" / "terminal-setup" / "img_zoom_tool"
+    stage.mkdir(parents=True)
+    (stage / "stale.py").write_text("", encoding="utf-8")
     added: list[Path] = []
     monkeypatch.setattr(
         "terminal_setup.configs._add_to_user_path", lambda _runner, path: added.append(path)
@@ -750,10 +756,20 @@ def test_install_img_zoom_native_windows_uses_the_uv_running_setup_and_adds_its_
 
     upgrade = ["--upgrade"] if update else []
     assert fake.commands == [
-        ["C:/Users/u/.local/bin/uv.exe", "tool", "install", *upgrade, str(IMG_ZOOM_SOURCE)],
+        ["C:/Users/u/.local/bin/uv.exe", "tool", "install", *upgrade, str(stage)],
         ["C:/Users/u/.local/bin/uv.exe", "tool", "dir", "--bin"],
     ]
     assert added == [Path("C:/Users/u/.local/bin")]
+    staged = sorted(
+        path.relative_to(stage).as_posix() for path in stage.rglob("*") if path.is_file()
+    )
+    assert staged == [
+        "pyproject.toml",
+        "src/img_zoom/__init__.py",
+        "src/img_zoom/cli.py",
+        "src/img_zoom/geometry.py",
+        "src/img_zoom/request.py",
+    ]
 
 
 def test_install_img_zoom_native_windows_without_uv_fails_by_name(
@@ -780,6 +796,13 @@ def _run_install_script(
     home = tmp_path / "home"
     bin_dir = home / ".local" / "bin"
     bin_dir.mkdir(parents=True)
+    source = tmp_path / "cache" / "img_zoom_tool"
+    (source / "src" / "img_zoom" / "__pycache__").mkdir(parents=True)
+    (source / "pyproject.toml").write_text("fresh", encoding="utf-8")
+    (source / "src" / "img_zoom" / "__pycache__" / "cli.pyc").write_text("", encoding="utf-8")
+    stage = home / ".local" / "share" / "terminal-setup" / "img_zoom_tool"
+    stage.mkdir(parents=True)
+    (stage / "stale.py").write_text("", encoding="utf-8")
     env = {"HOME": str(home), "PATH": "/usr/bin:/bin"}
     for name, wanted, directory in (
         ("uv", uv_in_local_bin, bin_dir),
@@ -793,10 +816,14 @@ def _run_install_script(
             fake_uv.chmod(0o755)
     if uv_env:
         env["UV"] = str(tmp_path / "uv-from-env")
-    script = _img_zoom_install_script("/pkg/img_zoom_tool", update=False)
+    script = _img_zoom_install_script(str(source), update=False)
     return subprocess.run(
         ["/bin/sh", "-c", script], env=env, capture_output=True, text=True, check=False
     )
+
+
+def _stage(tmp_path: Path) -> Path:
+    return tmp_path / "home" / ".local" / "share" / "terminal-setup" / "img_zoom_tool"
 
 
 @_posix_only
@@ -805,7 +832,18 @@ def test_install_script_finds_uv_in_local_bin_when_path_lacks_it(tmp_path: Path)
 
     assert result.returncode == 0, result.stderr
     recorded = (tmp_path / "uv-args").read_text(encoding="utf-8").strip()
-    assert recorded == "uv tool install /pkg/img_zoom_tool"
+    assert recorded == f"uv tool install {_stage(tmp_path)}"
+
+
+@_posix_only
+def test_install_script_installs_from_a_fresh_stable_copy(tmp_path: Path) -> None:
+    result = _run_install_script(tmp_path, uv_in_local_bin=True)
+
+    assert result.returncode == 0, result.stderr
+    stage = _stage(tmp_path)
+    assert (stage / "pyproject.toml").read_text(encoding="utf-8") == "fresh"
+    assert not (stage / "stale.py").exists()
+    assert not list(stage.rglob("__pycache__"))
 
 
 @_posix_only
@@ -814,7 +852,7 @@ def test_install_script_prefers_the_uv_named_by_uv_env(tmp_path: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     recorded = (tmp_path / "uv-args").read_text(encoding="utf-8").strip()
-    assert recorded == "uv-from-env tool install /pkg/img_zoom_tool"
+    assert recorded == f"uv-from-env tool install {_stage(tmp_path)}"
 
 
 @_posix_only
