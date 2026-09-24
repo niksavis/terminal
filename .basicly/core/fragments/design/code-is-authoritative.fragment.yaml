@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+token_cost:
+  claude: 157
+  codex: 156
+  copilot: 157
+id: code-is-authoritative
+description: Keep prose out of code files, because the code is the only source of truth.
+category: design
+priority: high
+applies_to: [all]
+tags:
+- code-style
+- comments
+status: active
+title: Code Is Authoritative
+body: |
+  - A code file carries no prose: no comment and no docstring. The code is the only source of truth, so a change cannot leave a stale claim beside it.
+  - A directive that a tool reads stays: `noqa`, `nosec`, `type: ignore`, `pragma: no cover`, a shebang, `fmt: off`, a licence header.
+  - Put the fact that a comment would carry where it stays true: a name, a test name, the tracker record or a README. When code needs prose to say what it does, fix the code.
+  - The `no-comments` hook refuses the commit. This command removes the comments:
+
+  ```sh
+  python3 .basicly/core/kit/comments/cli.py fix <path>
+  ```

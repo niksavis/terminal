@@ -1,22 +1,20 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 141
-  codex: 141
-  copilot: 141
+  claude: 127
+  codex: 126
+  copilot: 127
 id: decision-protocol
-description: When to decide autonomously versus stop and ask the user.
+description: When to decide alone and when to stop and ask.
 category: decisions
-priority: high
-applies_to:
-- all
+priority: critical
+applies_to: [all]
 tags:
-- escalation
-- judgment
+- decisions
 status: active
+title: Decision Protocol
 body: |
-  - Decide yourself when grounded in code you read and the choice is low-impact, reversible, and off the confirmation list.
-  - Stop and ask when a needed fact can't be found, sources conflict, or an unverifiable assumption would change the outcome.
-  - State exactly what's missing and what answer unblocks you; an option you would not take costs a decision.
-  - If rules conflict, prefer safety/security boundaries.
-  - If repeated attempts at one approach fail, report the pattern and propose a different approach.
+  - Decide yourself when the choice rests on code you read, is small, can be undone, and is not on the confirmation list.
+  - Stop and ask when a fact is missing, when sources conflict, or when an assumption you cannot check would change the result. Name what is missing and the answer that unblocks you. Offer only options you would take.
+  - When rules conflict, follow the safety and security rule.
+  - When the same approach fails twice, report the pattern and propose another approach.

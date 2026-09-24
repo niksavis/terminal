@@ -1,0 +1,24 @@
+# yaml-language-server: $schema=../../schemas/fragment.schema.json
+schema_version: 1
+token_cost:
+  claude: 192
+  codex: 191
+  copilot: 192
+id: core-rules
+description: The engineering rules every change follows.
+category: design
+priority: high
+applies_to: [all]
+tags:
+- engineering
+status: active
+title: Core Rules
+body: |
+  - Make the smallest diff that meets the requirement. An unrelated change hides which change failed.
+  - Build only what the task asks for. A speculative abstraction or an unrequested option is a guess that stays in the code.
+  - Reuse before you build. Prove that a capability is absent by reading the code that would use it, not the documentation or `--help`.
+  - Fix the root cause. Check every other call site before you call a fix complete.
+  - Match the style and the names of the file you edit.
+  - Leave no dead code and no debug output. Never swallow an error: it becomes a wrong answer.
+  - Keep tests deterministic. A bug fix ships with a regression test.
+  - Back every claim with evidence: the file you read, the command you ran, the test that passed.

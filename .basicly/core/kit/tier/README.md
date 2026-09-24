@@ -1,95 +1,79 @@
 # Tier injection kit
 
-**A subagent declares a portable tier; this kit makes the spawn actually run on the
-model that tier resolves to.** Three Python files and one JSON map, with **no
-basicly**: no `import basicly`, nothing on `PATH`, no third-party package, no
-network.
+**A subagent declares a portable tier. This kit makes the spawn run on the model that the
+tier resolves to.** The kit needs no basicly: no `import basicly`, nothing on `PATH`, no
+third-party package and no network.
 
 | File | What it does |
 | --- | --- |
-| `tier_resolver.py` | answers _which model_ a tier means, for one host surface |
-| `claude_tier_hook.py` | rewrites a Claude Code spawn to use it |
-| `install_hook.py` | wires the hook into the host's settings |
-| `model-map.json` | the committed data all three read, vendored beside them by `init` |
+| `tier_resolver.py` | tells which model a tier means for one host surface |
+| `claude_tier_hook.py` | rewrites a Claude Code spawn to use that model |
+| `install_hook.py` | writes the hook into the host settings |
+| `model-map.json` | the data that all three files read; `init` vendors it beside them |
 
-The `tier-injection` skill is the entry point for using it. This file is the
-reference for how it behaves and where it stops.
+The `model-tier` skill, which `init` writes, tells an agent when to use the kit. A repository
+that installs basicly also gets the `tier-injection` skill. This file tells how the kit
+behaves and where it stops.
 
-## The hybrid: one host resolves at spawn time, the other cannot
+## How each host applies a tier
 
-| Host | How a tier is applied | Why |
-| --- | --- | --- |
-| **Claude Code** | **dynamically**, at spawn time, by the hook here | it exposes a `PreToolUse` hook that can rewrite the `Agent` tool's input |
-| **Copilot CLI** | **statically** — frontmatter in the definition, plus `copilot --model` for the session | it exposes no hook that fires for a spawn, so there is nothing to intercept |
+| Host | How the kit applies a tier |
+| --- | --- |
+| Claude Code | At spawn time. A `PreToolUse` hook adds the resolved model to the `Agent` tool input. |
+| Copilot CLI | The kit does not apply it. The installer declines and gives the reason below. |
+| Codex | The resolver answers for the `openai` surface. The installer has no Codex host. |
 
-Dynamic is preferred because a model pinned into a definition file is a fact
-duplicated in every definition, and it goes stale silently. The static path is the
-documented **fallback**, and it is supported.
+The spawn-time path is preferred. A model id in every definition file is a duplicated fact,
+and it becomes wrong without a warning when the vendor retires the id.
 
-**Corrected 2026-08-08.** This section previously said copilot "has no hook surface
-at all", citing no hooks directory under `~/.copilot`, no hook key in `settings.json`
-and no hook option in `--help`. **All three were artifacts of the probe.** Copilot CLI
-does support hooks: they are documented under `copilot help config` and in GitHub's
-own reference, configured **inline** under a `hooks` key in `config.json` (user level)
-or `settings.json` (repo level), or as `.github/hooks/*.json` files — and basicly
-already ships one, `basicly-tool-usage-copilot.json` on `postToolUse`. The documented
-events are `sessionStart`, `sessionEnd`, `userPromptSubmitted`, `preToolUse`,
-`postToolUse` and `errorOccurred`.
-
-**What remains true is narrower, and it is the part this kit depends on.** Across three
-probes on **1.0.77** a `preToolUse` hook never fired _for an agent spawn_ — on agent
-delegation, on a shell tool with `--allow-all-tools`, and on the same without it. And
-even where `preToolUse` does fire, GitHub documents it as able to **approve or deny** a
-tool call; this kit needs to **rewrite** one, which is a strictly stronger capability.
-So the static fallback stands until someone demonstrates a spawn-time rewrite, and the
-open question is _"can a copilot hook modify an `Agent` call?"_, never _"does copilot
-have hooks?"_
-
-So the installer **declines for copilot and says why**, rather than reporting a
-success for a hook that would never fire:
+For Copilot, the installer writes nothing, gives this reason and exits 1:
 
 ```console
-$ python3 .basicly/core/kit/tier/install_hook.py --host copilot
-copilot: nothing installed - no copilot hook is known to fire
-for a spawn (...); use static frontmatter plus `copilot --model` instead
+$ python3 .basicly/kit/tier/install_hook.py --host copilot
+copilot: nothing installed - this kit wires no copilot spawn yet. That host selects a subagent's model in configuration rather than through a hook, so a declared tier is projected into .github/agents and nothing there reads it. Claude is wired and works
 ```
 
-It exits **1**, so a script can branch on it without parsing the report.
+A script can use the exit code and does not need to parse the text.
 
 ## Install
 
-**`uvx` is the way in.** The kit is published as its own package, so a repository that has
-never heard of this harness gets it in one command:
+Install the kit with `uvx`. The kit is a separate package, so a repository without basicly
+gets it with one command:
 
-```console
-$ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tier basicly-tier init
-tier: 5 file(s) written, 0 unchanged, in .basicly/kit/tier
+```sh
+uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tier basicly-tier init
 ```
 
-`init` **vendors** the kit into `.basicly/kit/tier`, so from then on plain `python3` runs
-it with no `uvx`, no network and nothing on `PATH`. `update` re-vendors and reports what
-changed, `status` says whether the installed copy matches, and `uninstall` removes exactly
-the files `init` wrote and nothing else.
+`init` does these steps:
 
-`init` also writes the kit's **skill** into `.claude/skills/tier/` and `.agents/skills/tier/`,
-so an agent in that repository knows the kit exists and when to
-reach for it. That is the half a code-only install leaves out: a kit nothing calls is a kit
-nobody has.
+- It vendors the kit into `.basicly/kit/tier`. After that, plain `python3` runs the kit
+  with no `uvx`, no network and nothing on `PATH`.
+- It adds `.basicly/kit/tier/__pycache__/` to `.gitignore`.
+- It writes the kit skill into `.claude/skills/tier/` and `.agents/skills/tier/`. Without
+  the skill, no agent knows that the kit exists.
+- It runs `install_hook.py`, so the Claude Code hook is written at project scope.
 
-Add `--with-instructions` and it also writes a short always-on block into whichever of
-`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` are
-present, inside a marked region that a second run does not duplicate and `uninstall` removes
-byte for byte. Without the flag it prints the block instead, because editing your instruction
-file is not something an installer should do unasked.
+`init` refuses when basicly already manages the kit at `.basicly/core/kit/tier`, because
+two copies would drift. Then run `basicly install` to update that copy.
 
-Running it without vendoring works too — `basicly-tier --host claude --tier low` passes
-straight through to the resolver. The model map travels with the kit, so a vendored copy
-resolves with nothing else on disk.
+The other subcommands:
 
-**Copying the files by hand is the fallback, not the route.** It still works, because the
-kit imports nothing but the standard library, and it is the right answer when you are
-driving the kit from another harness rather than adopting it. The rest of this document
-describes the kit itself, which behaves identically however it arrived.
+- `update` vendors the kit again and reports what changed.
+- `status` tells whether the installed copy matches the package.
+- `uninstall` removes the hook, the skill and only the files that `init` wrote.
+
+With `--with-instructions`, `init` also writes a short always-on block into each of these
+files that exists: `CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and
+`.github/copilot-instructions.md`. The block is inside marked lines. A second run does not
+duplicate it, and `uninstall` removes it. Without the flag, `init` does not edit your
+instruction files. It tells you where to read the block.
+
+You can also run the kit without vendoring: `basicly-tier --host claude --tier low` passes
+the arguments to the resolver. The map is part of the package, so no other file is
+necessary.
+
+You can copy the files by hand, because the kit imports only the standard library. Use this
+when another harness drives the kit. The kit behaves the same for each install method.
 
 ## Install the spawn hook
 
@@ -97,83 +81,89 @@ describes the kit itself, which behaves identically however it arrived.
 python3 .basicly/kit/tier/install_hook.py --dry-run   # print what it would write
 python3 .basicly/kit/tier/install_hook.py             # this repository
 python3 .basicly/kit/tier/install_hook.py --user      # every repository on this machine
+python3 .basicly/kit/tier/install_hook.py --uninstall # remove only this hook
 ```
 
-Re-running converges: it never duplicates the hook, and it matches hooks by the
-script they run, so one you wrote yourself is never touched. A `settings.json` that
-exists but cannot be parsed is **refused, never overwritten**.
+A second run changes nothing. The installer finds its own hook by the script name, so it
+never duplicates the hook and never changes a hook that you wrote. If `settings.json` exists
+but is not valid JSON, the installer refuses and does not overwrite it.
 
-**If this was the first hook or agent written into a directory the host did not
-already have, quit and relaunch — the whole CLI process.** Hooks and agent
-definitions are otherwise file-watched and reload within seconds of an edit
-(measured against claude 2.1.226, 2026-08-09), so a _later_ change needs nothing.
-A _newly created_ scope directory does. Clearing the conversation is not the same
-thing and reloads neither, which is the wrong lever a consumer reaches for first —
-the hook then appears to do nothing while every diagnostic says it is correctly
-installed.
+**If the installer wrote the first hook or agent into a directory that the host did not
+have before, quit and start the CLI process again.** The installer prints this notice after
+each write. A later edit reloads on its own. To clear the conversation does not reload hooks
+or agent definitions.
 
-### The two scopes are written differently, on purpose
+### The two scopes use different commands
 
-A repository's `.claude/settings.json` is **committed and shared**, so it gets a
-command with nothing machine-specific in it:
+The project file `.claude/settings.json` is committed and shared. Its command has nothing
+that is specific to one machine. For a kit at `.basicly/kit/tier`, it is:
 
 ```json
-"command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/kit/tier/claude_tier_hook.py\""
+"command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/kit/tier/claude_tier_hook.py\""
 ```
 
-`${CLAUDE_PROJECT_DIR}` is substituted by the host itself, before any shell sees
-it, so it resolves to the project root whatever the working directory is and it
-works under PowerShell too. `--no-python-downloads` keeps the spawn path network
-free: it fails closed rather than fetching an interpreter mid-spawn. Pass
-`--interpreter "py -3"` if you have no `uv`.
+`--no-python-downloads` keeps the spawn path off the network: the command fails and does not
+download an interpreter. If you have no `uv`, pass `--interpreter "py -3"` or another
+command that runs Python.
 
-`~/.claude/settings.json` is machine-local, so `--user` keeps absolute paths and
-needs nothing on `PATH`. A project-scope install that cannot name the hook relative
-to the repository **refuses** rather than falling back to an absolute path.
+The user file `~/.claude/settings.json` is local to one machine. `--user` writes absolute
+paths, so it needs nothing on `PATH`. When `CLAUDE_CONFIG_DIR` is set, `--user` writes
+`settings.json` in that directory.
 
-## Check a resolution without spawning anything
+If the hook is outside the repository, a project-scope install refuses. It does not write an
+absolute path. Use `--user`, or copy the kit into the repository.
 
-The resolver is a CLI in its own right. It prints one JSON object and exits 0 when
-it resolved, 1 when it did not.
+## Check a resolution without a spawn
+
+The resolver prints one JSON object. It exits 0 when it resolved a model and 1 when it did
+not.
 
 ```console
-$ python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier low
-{"alias": "haiku", "model": "claude-haiku-4-5", "reason": null, "source": "argument",
+$ python3 .basicly/kit/tier/tier_resolver.py --host claude --tier low
+{"alias": "haiku", "model": "claude-haiku-4-5", "reason": null, "skipped": [], "source": "argument",
  "surface": "anthropic", "tier": "low", "vendor": "anthropic"}
 ```
 
-Surface matters, and not only for spelling — the same model is `claude-haiku-4-5`
-to Anthropic and `claude-haiku-4.5` to Copilot:
+The surface changes the model name. The same model is `claude-haiku-4-5` on Anthropic and
+`claude-haiku-4.5` on Copilot:
 
 ```console
-$ python3 .basicly/core/kit/tier/tier_resolver.py --host copilot --tier low
+$ python3 .basicly/kit/tier/tier_resolver.py --host copilot --tier low
 {"alias": null, "model": "claude-haiku-4.5", ... "surface": "github-copilot", ...}
 ```
 
-`--name` looks a definition up by subagent name, and `--default-tier` supplies one
-for a definition that declares none:
+`--name` finds a definition by subagent name. `--default-tier` gives a tier to a definition
+that declares none, or to a name with no definition:
 
 ```console
-$ python3 .basicly/core/kit/tier/tier_resolver.py --host claude --name code-reviewer --default-tier medium
+$ python3 .basicly/kit/tier/tier_resolver.py --host claude --name my-agent --default-tier medium
 {"alias": "sonnet", "model": "claude-sonnet-5", ... "source": "default", "tier": "medium", ...}
 ```
 
-**It fails closed.** An unavailable cell carries no model, and the resolver never
-substitutes a neighbouring tier's:
+Other options:
+
+- `--definition PATH` reads the tier from one definition file.
+- `--tier` outranks the tier in the definition.
+- `--vendor` sets the vendor. Without it, the resolver tries the vendors in the order that
+  the map gives for the tier, and lists each vendor it skipped in `skipped`.
+- `--map PATH` or the `BASICLY_MODEL_MAP` variable sets the map file.
+- The `BASICLY_DEFAULT_TIER` variable gives the default tier when `--default-tier` is absent.
+
+**The resolver fails closed.** An unavailable cell has no model, and the resolver never uses
+the model of a different tier:
 
 ```console
-$ python3 .basicly/core/kit/tier/tier_resolver.py --host copilot --tier low --vendor google
+$ python3 .basicly/kit/tier/tier_resolver.py --host copilot --tier low --vendor google
 {"alias": null, "model": null, "reason": "google low is unavailable on github-copilot:
  provider 'github-copilot' serves no model named 'Gemini 3.1 Flash Lite'", ...}
 $ echo $?
 1
 ```
 
-## Drive the map from another harness, with no basicly
+## Use the map from another harness, without basicly
 
-The kit is four files, and `basicly-tier init` puts them where the resolver expects.
-You can also copy them anywhere by hand: keep the two directories beside each
-other or point `--map` wherever you put the map, and call it:
+You can copy the four files to a different location. Keep the two directories beside each
+other, or give `--map` the path to the map:
 
 ```console
 $ find . -type f
@@ -186,87 +176,70 @@ $ env -i python3 -S -I kit/tier/tier_resolver.py --host claude --tier high --map
 {"alias": "opus", "model": "claude-opus-5", ... "tier": "high", "vendor": "anthropic"}
 ```
 
-That is an **empty environment** — no `PATH`, no `HOME`, `-S` for no `site`, `-I`
-for isolated mode — which is how the no-basicly constraint is checked rather than
-merely claimed. Your harness reads `model`, or `alias` where the surface wants the
-short form, and pins it however it pins models. The JSON is the contract.
+This command runs in an empty environment: no `PATH`, no `HOME`, no `site` (`-S`) and
+isolated mode (`-I`). It checks that the kit needs no basicly. Your harness reads `model`, or
+`alias` where the surface uses the short name, and sets the model in its own way. The JSON
+output is the contract.
 
-## Traps
+## How the hook changes a spawn
 
-Five, each of which has cost real debugging time.
+1. **The hook copies every key of the original tool input and adds only `model`.** It does
+   not remove or change other keys.
+2. **The hook adds `model` only when the tool input has none.** If the input or the
+   definition frontmatter already names a model, the hook does nothing.
+3. **The hook writes the short alias, not the full model id.** The aliases are `haiku`,
+   `sonnet`, `opus` and `fable` for the tiers `low`, `medium`, `high` and `maximum`.
+4. **When `CLAUDE_CODE_SUBAGENT_MODEL` is set, the hook does nothing.** Examine that
+   variable first when an injection seems to have no effect.
+5. **The host loads a hook in a new directory only when the CLI process starts.** See the
+   restart notice in [Install the spawn hook](#install-the-spawn-hook). A dry run or a run
+   that changes nothing does not print the notice, because there is nothing to reload.
 
-1. **`updatedInput` replaces the tool input, it does not merge into it** — contrary
-   to the general hooks documentation. The hook therefore copies every original key
-   through and adds only `model`. Drop a key and it is gone from the spawn.
-2. **`model` is absent from `tool_input` unless the caller set it**, so it has to be
-   **added**, not rewritten. Code that looks for an existing key to overwrite finds
-   nothing and does nothing.
-3. **The `Agent` tool's `model` is an alias, not an id.** Measured against the
-   2.1.220 binary: it is `enum(["sonnet","opus","haiku","fable"])`, so
-   `claude-opus-5` is rejected there — a different vocabulary from the same host's
-   definition _frontmatter_, which takes a full id. The hook injects the alias.
-4. **`CLAUDE_CODE_SUBAGENT_MODEL` outranks** the per-invocation parameter the hook
-   writes. Where it is set, every injection is inert and the hook stays deliberately
-   silent. **Check that variable first** when an injection appears not to work.
-5. **Installing the hook has no effect until the host CLI process is restarted**, and
-   clearing the conversation reloads neither hooks nor agent definitions. Measured with
-   a control on 2026-08-01: a definition written by an earlier conversation _and_ a
-   brand-new one written seconds before were both rejected as "Agent type not found" in
-   a conversation begun by `/clear`, while agents predating the process start loaded
-   normally — which rules out the alternative explanation that an unrecognised `tier:`
-   frontmatter key was getting the definitions rejected. This is the fifth trap and it
-   is the one a reader hits first, so it is in the install steps too rather than only
-   here. A dry run and an already-installed converge run do not say it: nothing changed
-   for a restart to pick up.
+## Debug an injection
 
-## Debugging an injection
-
-Drive the hook the way the host does — a `PreToolUse` payload on stdin:
+Give the hook a `PreToolUse` payload on stdin, as the host does:
 
 ```console
 $ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"my-agent","prompt":"x"}}' \
-    | python3 .basicly/core/kit/tier/claude_tier_hook.py
+    | python3 .basicly/kit/tier/claude_tier_hook.py
 {"hookSpecificOutput": {"hookEventName": "PreToolUse",
  "updatedInput": {"model": "haiku", "prompt": "x", "subagent_type": "my-agent"}}}
 ```
 
-**Silence is a valid answer**, and the common one. The hook declines — exit 0, empty
-stdout, host default stands — in six cases: the call is not an `Agent` spawn;
-`CLAUDE_CODE_SUBAGENT_MODEL` is set; the input or the frontmatter already names a
-model; the spawn's directory tree has no map; or nothing resolves (no tier, an
-unknown tier, or a cell the map marks unavailable). A definition declaring no tier
-is the usual reason:
+**No output is a valid answer, and it is the usual one.** The hook exits 0 with no output,
+and the host default model stays, in these cases:
+
+- The call is not an `Agent` spawn.
+- `CLAUDE_CODE_SUBAGENT_MODEL` is set.
+- The tool input or the definition frontmatter already names a model.
+- The hook finds no map in the directory tree of the spawn.
+- The hook finds no definition file `.claude/agents/<name>.md` in the spawn directory or
+  the home directory.
+- Nothing resolves: the definition declares no tier, the tier is unknown, or the map marks
+  the cell unavailable.
+
+A definition that declares no tier is the usual cause:
 
 ```console
-$ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"code-reviewer","prompt":"x"}}' \
-    | python3 .basicly/core/kit/tier/claude_tier_hook.py
+$ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"no-tier-agent","prompt":"x"}}' \
+    | python3 .basicly/kit/tier/claude_tier_hook.py
 $ echo $?
 0
 ```
 
-To tell "declined" from "broken", ask the resolver the same question directly — it
-reports a `reason` where the hook is silent.
+To find out if the hook declined or is broken, ask the resolver the same question. The
+resolver gives a `reason` where the hook gives no output.
 
 ## Constraints this kit must keep
 
-The kit-wide constraints are in [`../README.md`](../README.md). These are this kit's own.
+The constraints for all kits are in [`../README.md`](../README.md). These constraints are
+for this kit only.
 
-- **Fail closed.** An unavailable cell carries no `model` key, so a lookup raises
-  rather than defaulting, and `alias` is never set without `model`.
-- **A bug here must never stop an agent from spawning.** Malformed input, an
-  unreadable file, or any unexpected error exits 0 with no output. This is a
-  convenience in the spawn path, not a security boundary.
-- **The map is looked up from the spawn's own directory tree**, with the
-  kit-adjacent fallback off. The kit is always beside itself, so with that fallback
-  on, a hook installed once per machine would inject a model into every unrelated
-  repository on it.
-
-## Where the evidence lives
-
-The standalone design note (`docs/design/tier-kit.md`) was deleted 2026-08-08 once the kit
-shipped: this README is now the whole record, and the traps above are the part that was worth
-keeping. The hybrid rationale — why injection is preferred over static emission, and why copilot
-cannot take it — is in the section above.
-The work records carry the measurements: `basicly-wbsz.1` the resolver, `wbsz.2` the hook
-and the alias finding, `wbsz.3` the installer and the live end-to-end proof,
-`basicly-dukb` the portable project-scope command.
+- **Fail closed.** An unavailable cell has no `model` key, so a lookup gives no model and
+  does not use a default. `alias` is never set without `model`.
+- **A defect in the hook must not stop a spawn.** Input that is not valid JSON, and a file
+  that the hook cannot read, give exit 0 with no output. The hook is a convenience in the
+  spawn path, not a security boundary.
+- **The hook looks for the map in the directory tree of the spawn.** A map beside the kit
+  counts only when the kit is inside that tree. Without this limit, a hook installed once
+  per machine would inject a model into each unrelated repository on that machine.

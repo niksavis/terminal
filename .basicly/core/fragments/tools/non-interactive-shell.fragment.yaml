@@ -1,21 +1,20 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 209
-  codex: 209
-  copilot: 208
+  claude: 157
+  codex: 156
+  copilot: 157
 id: non-interactive-shell
-description: Avoid shell commands that hang waiting on interactive confirmation.
+description: Shell rules for a non-interactive agent.
 category: tools
 priority: medium
-applies_to:
-- all
+applies_to: [all]
 tags:
 - shell
-- tooling
 status: active
+title: Non-Interactive Shell
 body: |
-  - Prefer cross-platform implementations over shell-specific behavior when a choice exists.
-  - Use non-interactive flags (`cp -f`, `mv -f`, `rm -f`, package-manager `-y`, `ssh -o BatchMode=yes`) for ops that can hang on a prompt — some shells alias these to interactive mode.
-  - Never loop over an unquoted variable (`for x in $LIST`): zsh does not word-split, so it runs once with the whole string and the silent no-op looks like success. Use an inline list, an array (`for x in "${arr[@]}"`), or one batch command — then check the count actually changed.
-  - Name the expected site count before a scripted multi-site replace, and reconcile after. More sites than named means it also matched the definition the replacement refers to, rewriting it into a call to itself; a count delta is a stop, not a footnote.
+  - Prefer a cross-platform command to shell-specific behaviour.
+  - Pass a non-interactive flag to a command that can wait for an answer: `cp -f`, `mv -f`, `rm -f`, `-y`, `ssh -o BatchMode=yes`. Some shells alias these commands to interactive mode.
+  - Never loop over an unquoted variable (`for x in $LIST`). zsh does not split it, so the loop runs once and looks like success. Use an array (`"${arr[@]}"`), an inline list or one batch command, and check that the count changed.
+  - Before a scripted replace across many sites, state the expected count, and compare it after. A different count is a stop.

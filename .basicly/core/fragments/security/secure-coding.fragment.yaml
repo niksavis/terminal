@@ -1,23 +1,21 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 123
-  codex: 123
-  copilot: 122
+  claude: 126
+  codex: 126
+  copilot: 126
 id: secure-coding
-description: Secure-coding checklist covering trust boundaries, secrets, and data leakage.
+description: Secure coding rules at the trust boundary.
 category: security
 priority: critical
-applies_to:
-- all
+applies_to: [all]
 tags:
 - security
-- privacy
-- data-leakage
 status: active
+title: Secure Coding
 body: |
-  - Validate external input at the trust boundary; past it every caller assumes it is safe.
-  - Parameterize shell commands and queries; concatenation lets input read as syntax, not data.
-  - Keep secrets in env vars or a secret manager, out of the repo and logs; a commit outlives the fix.
-  - Log internal detail, return a generic message; a stack trace or path maps the system.
-  - Keep defaults portable; a committed path, username or hostname breaks the next clone.
+  - Validate external input at the trust boundary. Code past the boundary assumes the input is safe.
+  - Pass shell arguments and query values as parameters. Concatenated input runs as syntax.
+  - Keep secrets in environment variables or a secret manager, out of the repository and the logs. A commit outlives the fix.
+  - Log the internal detail and return a generic message. A stack trace or a path maps the system.
+  - Commit no machine path, user name or host name. It breaks the next clone.

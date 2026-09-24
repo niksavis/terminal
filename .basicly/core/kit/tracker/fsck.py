@@ -30,6 +30,7 @@ snapshot = _load("snapshot.py", "basicly_tracker_kit_snapshot")
 migrate = _load("migrate.py", "basicly_tracker_kit_migrate")
 provenance = _load("provenance.py", "basicly_tracker_kit_provenance")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
+forks = _load("forks.py", "basicly_tracker_kit_forks")
 events = snapshot.events
 
 
@@ -49,6 +50,7 @@ EXIT_BROKEN = 2
 UNPARSEABLE = "unparseable"
 MALFORMED = "malformed"
 FORKED_SEQUENCE = "forked-sequence"
+CONFLICTING_FORK = "conflicting-fork"
 SEQUENCE_GAP = "sequence-gap"
 DUPLICATE_ID = "duplicate-id"
 DANGLING_RECORD = "dangling-record"
@@ -213,24 +215,36 @@ def _malformed_findings(malformed: Iterable[tuple[int, Any, str]]) -> list[Findi
 
 def _fork_findings(ordered: Sequence[Any]) -> list[Finding]:
 
-    claimed: dict[tuple[str, int], list[str]] = {}
-    for event in ordered:
-        claimed.setdefault((event.record, event.seq), []).append(event.id)
-    return [
+    clashes = forks.conflicts(ordered)
+    clashing = {(one.record, one.seq) for one in clashes}
+    findings = [
+        Finding(
+            kind=CONFLICTING_FORK,
+            severity=BROKEN,
+            subject=one.record,
+            detail=(
+                f"two branches set {one.key} to {', '.join(one.values)} at sequence {one.seq}, "
+                f"so the value is a tie broken by id; choose it with update, or keep the "
+                f"current value with resolve"
+            ),
+        )
+        for one in clashes
+    ]
+    findings += [
         Finding(
             kind=FORKED_SEQUENCE,
-            severity=BROKEN,
+            severity=WARNING,
             subject=record,
             detail=(
-                f"{len(found)} events claim sequence {seq} on this record, so their order is a "
-                f"tie broken by id rather than a decision, and its carried totals are void "
-                f"until a fold restates them"
+                f"{len(group)} writers appended sequence {seq} on this record from different "
+                f"branches; nothing they set conflicts"
             ),
-            event_ids=tuple(sorted(found)),
+            event_ids=tuple(sorted(event.id for event in group)),
         )
-        for (record, seq), found in sorted(claimed.items())
-        if len(found) > 1
+        for (record, seq), group in sorted(forks.forked_groups(ordered).items())
+        if (record, seq) not in clashing
     ]
+    return findings
 
 
 def sequence_gaps(ordered: Sequence[Any]) -> dict[str, tuple[int, ...]]:
@@ -689,3 +703,14 @@ def _dumps(obj: Mapping[str, object]) -> str:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+def shards_report(directory: Path | str) -> dict[str, object]:
+
+    held = snapshot.events.pending_paths(directory)
+    return {
+        "count": len(held),
+        "writers": [snapshot.events.writer_of(path) for path in held],
+        "warn_above": SHARDS_WARN_ABOVE,
+        "refuse_above": SHARDS_REFUSE_ABOVE,
+    }

@@ -6,44 +6,25 @@ description: Write or revise prose a person will read — a README, a release no
 
 # Plain English
 
-## Scope
+Write prose that a reader with a different first language and culture understands on the first pass. The skill covers a README, a landing page, a release note, a design document, a commit body, a tracker record and an error message. For a catalog guidance body, use the `catalog-authoring` skill.
 
-Every prose surface a human reads: `README.md`, the landing page, release
-notes, `docs/`, a commit body, a tracker record, an error message. Code
-carries no prose at all here — see the `no-comments` gate.
+## Rules
 
-Not for: catalog guidance bodies, which the `catalog-authoring` skill covers,
-because those are read by a model under a character budget and have their own
-rules.
+Write ASD-STE100 Simplified Technical English:
 
-## The one rule
-
-Write ASD-STE100 Simplified Technical English. A reader should not need a
-first language of English, a shared culture, or the writer's mood to
-understand a sentence on the first pass.
-
-- **One word, one meaning.** Use the same word for the same thing every time.
-  A synonym reads as a second thing.
-- **Active voice.** "The gate refused the commit", not "the commit was
-  refused".
-- **Short sentences.** About 20 words for an instruction, 25 for a
-  description.
-- **One idea per sentence.** Do not join two facts with a dash, a colon or a
-  semicolon.
-- **Keep `a`, `an`, `the` and `that`.** Dropping them saves nothing and costs
-  the reader a re-read.
-- **Three nouns together at most.** "the cost of a lane", not "lane token
-  cost floor".
-- **No idiom, no slang, no metaphor** unless this repository defines the term.
-  Idiom is the part that does not survive translation.
-- **No `-ing` verb where a plain one works.** "the gate refuses", not "the
-  gate is refusing".
+- **One word, one meaning.** A synonym reads as a second thing.
+- **Active voice.** "The gate refused the commit", not "the commit was refused".
+- **Short sentences.** 20 words or fewer for an instruction, 25 or fewer for a description.
+- **One idea per sentence.** Do not join two facts with a dash, a colon or a semicolon.
+- **Keep `a`, `an`, `the` and `that`.** Without them the reader reads the sentence twice.
+- **Three nouns together at most.** "the cost of a lane", not "lane token cost floor".
+- **No idiom, slang or metaphor**, unless this repository defines the term. Idiom does not survive translation.
+- **No `-ing` verb where a plain verb works.** "the gate refuses", not "the gate is refusing".
 - **Write an abbreviation in full the first time.**
+- **Put bad news first.** A correction, a limit, an overrun or a broken assumption goes above the good news.
+- **Mark every number as measured, sourced or assumed.** Name the command for a measured number and the source for a sourced one.
 
-## Marketing constructions to delete
-
-These read as advertising rather than description. Each one was found on this
-repository's own landing page (`basicly-t6s4whq`, 2026-09-12).
+## Delete marketing
 
 | Delete | Write |
 | --- | --- |
@@ -51,68 +32,31 @@ repository's own landing page (`basicly-t6s4whq`, 2026-09-12).
 | `Read the design, not just the pitch` | `Read the design` |
 | `One command, into any git repo` | `Install into any git repo` |
 | `The process is code, and so is the enforcement` | `The workflow and the gates are code` |
-| `What is unusual here is that …` | state the fact |
+| `What is unusual here is that …` | the fact |
 
-The pattern is **"X, not Y"**. It has an honest use and a dishonest one, and
-deleting both is the wrong repair.
+The pattern is **"X, not Y"**. Test it: name Y and ask who believed it.
 
-**Keep it when Y is a specific misreading the reader would otherwise make.**
-It removes an error:
+- **Keep it when Y is a misreading that a careful reader would make.** "A lane claim is a lease, not ownership" removes an error.
+- **Delete it when Y is a strawman, an unnamed competitor or nothing.** Then it only adds emphasis.
+- **In a title, delete it almost always.** A title names the section.
 
-- "a lane claim is a **lease**, not ownership"
-- "`uvx` is one of three ways to reach the same verb, not the command itself"
-- "this is a status map, not a schedule"
+Also delete:
 
-Take Y away from those and the sentence gets less accurate.
+- A comma that joins a second clause to a title to make it sound important. Put that clause in the body.
+- `Plenty of projects …`, `What is unusual …`, `The only harness that …`. A comparison is a claim and needs evidence. Measure it or delete it.
 
-**Delete it when Y is a strawman, an unnamed competitor, or nothing at all.**
-It only adds emphasis:
+## Structure
 
-- "Four pillars, **not a bundle of files**"
-- "Read the design, **not just the pitch**"
+| Form | Use |
+| --- | --- |
+| Table | Compares two or more things |
+| List | Counts things |
+| Code block | Real output that you copied, never output that you imagined |
+| Paragraph | Explains one thing |
 
-The test: name Y out loud and ask who believed it. If a careful reader would
-have, the contrast is doing work. If nobody would, it is decoration and the
-sentence is stronger without it.
-
-A title is the strict case. A title names the section, so the contrast almost
-never earns its place there.
-
-Two more to watch:
-
-- A comma splicing a second clause onto a title to make it sound weightier.
-  A title names the section. Anything else belongs in the body.
-- `Plenty of projects …`, `What is unusual …`, `The only harness that …`.
-  A comparison is a claim, and a claim needs evidence. Either measure it or
-  drop it.
-
-## Structure carries the meaning
-
-- A **table** compares two or more things.
-- A **list** counts them.
-- A **code block** holds real output you copied, never output you imagined.
-- A **paragraph** explains one thing.
-
-A paragraph describing a shape does not render. Draw the shape.
-
-## Numbers
-
-Mark every number as measured, sourced or assumed. For a measured number,
-name the command. For a sourced one, name the source. A number with no origin
-is a guess wearing a uniform, and a reader cannot tell the difference.
-
-## Bad news first
-
-Put a correction, a limitation, an overrun or a broken assumption above the
-good news, not in a closing paragraph. A reader who reads the first and last
-line must still see it.
+A paragraph that describes a shape does not show it. Draw the shape.
 
 ## Before you commit the text
 
-Read the sentence aloud in your head as a person with a different first
-language. If a word only works because the reader shares your culture, it is
-the wrong word.
-
-Then check the claims: every command quoted must exist, every path must
-resolve, and every transcript must be one you ran. A stale claim in a README
-outlives the code it described.
+1. Read each sentence as a person with a different first language. Replace a word that works only in your culture.
+2. Check each claim. Every quoted command must exist, every path must resolve, and every transcript must be one you ran.

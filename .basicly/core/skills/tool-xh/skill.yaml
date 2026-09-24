@@ -5,15 +5,20 @@ token_cost:
 name: tool-xh
 invocation: user
 instructions: |
-  # tool-xh
+  # xh
 
-  ## When To Use
+  Send HTTP requests with short syntax. Use it to test an API. Use curl when you need low-level transfer control.
 
-  - Probe HTTP endpoints quickly with clean CLI syntax.
-  - Send JSON requests and inspect response headers/status.
-  - Validate API behavior with straightforward failure handling.
+  ## Rules
 
-  ## Trusted Commands
+  - **Use `--check-status` in scripts.** A 4xx or 5xx response then gives a non-zero exit.
+  - **Use `--ignore-stdin` in scripts.** Without a terminal, xh reads stdin as the body and refuses `key=value` data.
+  - **Use `key:=value` for a JSON number or boolean.** `key=value` always sends a string.
+  - **Write the method (`get`, `post`).** The request is then clear to read.
+  - **Keep tokens out of the command line.** Use an environment variable such as `$TOKEN`.
+  - **Do not map curl flags to xh flags one to one.** Many options differ.
+
+  ## Commands
 
   ```bash
   xh get httpbin.org/json
@@ -26,38 +31,15 @@ instructions: |
   xh -b get api.example.com
   xh -h get api.example.com
   xh --download get example.com/file.zip
+  xh --offline --ignore-stdin post example.com name=Alice
   ```
 
-  ## Safe Defaults
+  ## Output
 
-  - Use `--check-status` in scripts so 4xx/5xx produce non-zero exits.
-  - Use explicit method forms (`get`, `post`) for readability.
-  - Use `key:=value` for raw JSON numbers/booleans, not quoted strings.
-
-  ## Common Pitfalls
-
-  - `key=value` sends strings; `key:=value` sends typed JSON.
-  - Headers and bodies can leak secrets in shell history if not handled carefully.
-  - xh option behavior is not one-to-one with curl flags.
-
-  ## Output Interpretation
-
-  - Pretty response body is written to stdout by default.
-  - `-b` prints body only; `-h` prints headers only.
-  - `--print=hHbB` controls request/response header/body visibility.
-
-  ## Why It Matters For Agents
-
-  - Reduces curl quoting complexity for API tests.
-  - Combines readable defaults with strict exit handling when needed.
-
-  ## Repo Conventions
-
-  - Prefer xh for interactive API probing.
-  - Use curl when low-level transfer or compatibility control is required.
-
-  ## Trigger Examples
-
-  - Should trigger: "Quickly test this webhook endpoint with JSON body."
-  - Should trigger: "Show response headers for this API URL."
-  - Should not trigger: "Rename a function symbol across source files."
+  | Option | Prints |
+  | --- | --- |
+  | default | the response headers and the formatted body |
+  | `-b` | the response body only |
+  | `-h` | the response headers only |
+  | `--print=hHbB` | `H` and `B` for the request, `h` and `b` for the response |
+  | `--offline` | the request only, and sends nothing |

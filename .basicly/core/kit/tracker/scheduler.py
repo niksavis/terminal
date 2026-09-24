@@ -39,6 +39,25 @@ differential = _load_differential()
 events = differential.events
 
 
+def _load_sibling(file_name: str, module_name: str) -> ModuleType:
+
+    cached = sys.modules.get(module_name)
+    if cached is not None:
+        return cached
+    spec = importlib.util.spec_from_file_location(module_name, _HERE / file_name)
+    if spec is None or spec.loader is None:
+        raise SchedulerError(f"the tracker kit's {file_name} is missing from beside scheduler.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+shaping = _load_sibling("shaping.py", "basicly_tracker_kit_shaping")
+label_shape = _load_sibling("label_shape.py", "basicly_tracker_kit_label_shape")
+templates = _load_sibling("templates.py", "basicly_tracker_kit_templates")
+
+
 SCHEMA = "basicly.scheduler.v1"
 
 SORT = "priority ASC, dependents DESC, id ASC"
@@ -58,6 +77,7 @@ class Candidate:
     view: Any
     priority: int = DEFAULT_PRIORITY
     title: str = ""
+    held: bool = False
 
     @property
     def record(self) -> str:
@@ -125,7 +145,7 @@ def rank(
     scored = [
         (score(candidate.priority, dependents.get(record, 0)), record, candidate.title)
         for record, candidate in candidates.items()
-        if differential.is_ready(candidate.view, views, children, vocabulary)
+        if not candidate.held and differential.is_ready(candidate.view, views, children, vocabulary)
     ]
     scored.sort(key=lambda entry: (-entry[0], entry[1]))
     ordered = scored if limit is None else scored[:limit]
@@ -145,7 +165,9 @@ def _priority(fields: Mapping[str, object]) -> int:
     return value
 
 
-def candidates_from_events(ledger_events: Iterable[Any]) -> dict[str, Candidate]:
+def candidates_from_events(
+    ledger_events: Iterable[Any], template: Any = None
+) -> dict[str, Candidate]:
 
     collected = list(ledger_events)
     views = differential.views_from_events(collected)
@@ -154,10 +176,12 @@ def candidates_from_events(ledger_events: Iterable[Any]) -> dict[str, Candidate]
     for record, view in views.items():
         fields = folded.records[record].fields
         title = fields.get(TITLE_FIELD)
+        labelled = shaping.REFINE_LABEL in label_shape.labels_of(fields.get("labels"))
         candidates[record] = Candidate(
             view=view,
             priority=_priority(fields),
             title=title if isinstance(title, str) else "",
+            held=shaping.held_from_ready(fields, labelled=labelled, template=template),
         )
     return candidates
 
@@ -165,7 +189,7 @@ def candidates_from_events(ledger_events: Iterable[Any]) -> dict[str, Candidate]
 def ranking(directory: Path | str, *, limit: int | None = None, vocabulary: Any = None) -> Ranking:
 
     return rank(
-        candidates_from_events(differential.read_ledger(directory)),
+        candidates_from_events(differential.read_ledger(directory), templates.load(directory)),
         vocabulary=vocabulary,
         limit=limit,
     )

@@ -1,15 +1,18 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 62
-  codex: 62
-  copilot: 61
+  claude: 99
+  codex: 98
+  copilot: 99
 id: catalog-authoring
-description: How catalog content (skills and fragments) is authored and projected.
+description: Where and how to author catalog sources.
 category: project
 priority: medium
 applies_to: [all]
-tags: [catalog, authoring]
+tags:
+- catalog
 status: active
+title: Catalog Authoring
 body: |
-  - Author catalog content as YAML sources, never a discoverable `.md`; scaffold with `basicly catalog new skill`/`catalog new fragment` and follow the `catalog-authoring` skill — `basicly catalog lint` enforces the format.
+  - Write catalog sources as YAML, never as a discoverable `.md` file. In a repository that installs basicly, put your sources in `.basicly-local/`, because `basicly install` overwrites `.basicly/core/`.
+  - Start a source with `basicly catalog new skill` or `basicly catalog new fragment`, and follow the `catalog-authoring` skill. `basicly catalog lint` checks the format.

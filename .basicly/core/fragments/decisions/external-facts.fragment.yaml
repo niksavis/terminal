@@ -1,38 +1,21 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 399
-  codex: 399
-  copilot: 399
+  claude: 163
+  codex: 162
+  copilot: 163
 id: external-facts
-description: Fetch a third-party interface fact instead of recalling it, and never read your own empty probe as proof.
+description: Establish external facts and numbers from evidence, never from recall.
 category: decisions
 priority: high
 applies_to: [all]
 tags:
 - evidence
-- external
+- research
 status: active
 title: External Facts
 body: |
-  - **Your training data has a cutoff and third-party interfaces move.** A flag, field,
-    model id, price, limit or version may have changed. Never answer from recall: grep
-    our own adapter, then the vendor's live docs. `interface-facts` is the long form.
-  - **An empty probe is not evidence of absence.** A search returning nothing is
-    ambiguous between "absent" and "wrong probe", and the second is the common case.
-    Run a **positive control** that must return something before you report a zero; if
-    the control is empty too, the zero belongs to the probe. Build that control from a
-    failure you have **seen**, never from what you assume one looks like: a control that
-    is the right idea and the wrong instance is valid input, returns zero, and reads
-    exactly like a dead probe. Check the denominator moved — if adding the control did
-    not change the count of things examined, it was never examined.
-  - **A number in a claim is derived twice, by paths sharing no step.** One green test
-    on one path is still one path; treat a disagreement as an instrument fault first.
-    When a person reports one against a vendor's own figure, run the vendor's path
-    before defending ours.
-  - **A probe bounds what it proves.** Report the claim the probe supports, not the
-    one you hoped for. Where two hypotheses predict the same observation, say so and
-    change the probe until they differ.
-  - **A cost claim names its priced components, never a token count.** A cache write,
-    a cache read and an output token carry different prices, so a total in tokens
-    hides which one moved.
+  - Do not answer from memory about a third-party interface. A flag, field, model id, price, limit or version can change. Read our own adapter first, then the vendor's current documentation. The `interface-facts` skill gives the steps.
+  - An empty search result does not prove absence. Before you report a zero, run a positive control: a search that must match a case you have seen. When the control is also empty, the search is wrong.
+  - Derive a number twice, by two paths that share no step. When they disagree, suspect the instrument first.
+  - When two causes predict the same result, say so and change the probe until they differ.

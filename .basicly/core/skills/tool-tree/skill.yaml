@@ -5,54 +5,31 @@ token_cost:
 name: tool-tree
 invocation: user
 instructions: |
-  # tool-tree
+  # tree
 
-  ## When To Use
+  Show a directory hierarchy. Use it to see the shape of a project or to check where generated files are.
 
-  - Understand repository structure at a glance.
-  - Share compact hierarchy snapshots in terminal workflows.
-  - Verify output locations for generated files and folders.
+  ## Rules
 
-  ## Trusted Commands
+  - **Limit the depth with `-L`.** A deep tree fills the context and hides the important paths.
+  - **Exclude generated directories with `-I`.** Caches and build output add noise.
+  - **Add `-a` for hidden files.** tree skips them by default.
+  - **Use `--charset ascii` in CI logs.** Line-drawing characters can break in plain text.
+
+  ## Commands
 
   ```bash
   tree
   tree -L 2
   tree -d
+  tree -a -L 2
   tree -I 'node_modules|dist|__pycache__'
   tree -sh
   tree -J .
   ```
 
-  ## Safe Defaults
+  ## Output
 
-  - Limit depth (`-L`) to keep output concise.
-  - Exclude heavy or generated directories with `-I`.
-  - Use `--charset ascii` for plain-text CI logs.
-
-  ## Common Pitfalls
-
-  - Large trees can flood context and hide important paths.
-  - Hidden files may be missed without explicit options.
-  - Tree output does not represent git status semantics.
-
-  ## Output Interpretation
-
-  - Text output shows parent-child structure and totals.
-  - `-J` outputs structured JSON with type/name/children fields.
-
-  ## Why It Matters For Agents
-
-  - `tree -J` provides a one-call structural map for programmatic workflows.
-  - It is often the most token-efficient way to understand project shape.
-
-  ## Repo Conventions
-
-  - Prefer concise tree snapshots for architecture and layout discussions.
-  - Filter caches and generated directories unless task scope needs them.
-
-  ## Trigger Examples
-
-  - Should trigger: "Show me the top-level shape of this workspace."
-  - Should trigger: "Verify where generated skill files landed."
-  - Should not trigger: "Find every regex match inside Python files."
+  - Text output shows the hierarchy and the totals.
+  - `-J` prints JSON with `type`, `name` and `contents` fields.
+  - tree does not show git status.

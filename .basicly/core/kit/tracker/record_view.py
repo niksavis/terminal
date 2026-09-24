@@ -24,8 +24,13 @@ def _load(file_name: str, module_name: str) -> Any:
 
 queries = _load("queries.py", "basicly_tracker_kit_queries")
 shaping = _load("shaping.py", "basicly_tracker_kit_shaping")
+templates = _load("templates.py", "basicly_tracker_kit_templates")
+label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
+forks = _load("forks.py", "basicly_tracker_kit_forks")
 snapshot = queries.snapshot
 events = snapshot.events
+
+REFINE_LABEL = shaping.REFINE_LABEL
 
 
 def is_closed(state: Any) -> bool:
@@ -39,11 +44,12 @@ def owed_of(directory: Path | str, record: str) -> dict[str, object]:
     state = events.fold(found).records.get(record)
     held = dict(state.fields) if state is not None else {}
     closed = state is not None and is_closed(state)
-    missing = shaping.owed(held, closed=closed)
-    blocking = shaping.refused(held, closed=closed)
+    template = templates.load(directory)
+    missing = shaping.owed(held, closed=closed, template=template)
+    blocking = shaping.refused(held, closed=closed, template=template)
     return {
         "owed": list(missing),
-        "refused": list(blocking),
+        "blocking": list(blocking),
         "remedy": shaping.remedy(blocking) if blocking else "",
     }
 
@@ -88,4 +94,36 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
     views, _ = queries.views_and_children(directory)
     shown = snapshot.record_to_dict(state)
     shown.update(_edges(record, views, states))
+    stale_days = templates.load(directory).stale_days
+    now = queries.holders.newest(states)
+    shown["holder"] = queries.holders.holding(state, stale_days, now)
+    ordered = events.canonical_order(events.read_events(directory)[0])
+    shown["conflicts"] = forks.of_record(ordered, record)
     return shown
+
+
+def scaffold_of(directory: Path | str, kind: str) -> dict[str, object]:
+    return {"type": kind, **shaping.body(kind, templates.load(directory))}
+
+
+def refine_queue(directory: Path | str) -> dict[str, object]:
+
+    template = templates.load(directory)
+    states = queries.folded(directory)
+    now = queries.holders.newest(states)
+    rows = []
+    for record, state in sorted(states.items()):
+        if is_closed(state):
+            continue
+        held = dict(state.fields)
+        labelled = REFINE_LABEL in label_shape.labels_of(held.get(label_shape.LABELS_FIELD))
+        blocking = shaping.refused(held, template=template)
+        if labelled or blocking:
+            rows.append({
+                "record": record,
+                "title": str(held.get("title", "")),
+                "labelled": labelled,
+                "blocking": list(blocking),
+                "holder": queries.holders.holding(state, template.stale_days, now),
+            })
+    return {"label": REFINE_LABEL, "count": len(rows), "records": rows}

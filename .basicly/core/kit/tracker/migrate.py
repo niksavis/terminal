@@ -442,3 +442,29 @@ def import_snapshot(  # noqa: PLR0913 — every keyword past the snapshot is an 
     finally:
         if acquired:
             lock.release()
+
+
+def import_report(
+    directory: Path | str,
+    export: Path | str,
+    *,
+    source: str = "",
+    redact: Any = None,
+    dry_run: bool = False,
+) -> dict[str, object]:
+
+    named = source or Path(export).name
+    read = read_snapshot(export, name=named)
+    report = import_snapshot(directory, read, redact=redact, dry_run=dry_run)
+    return {
+        "source": named,
+        "dry_run": dry_run,
+        "imported": report.imported,
+        "diverged": report.diverged,
+        "absent": report.absent,
+        "tombstoned": report.tombstoned,
+        "rejected": [
+            {"subject": one.subject, "reason": one.reason}
+            for one in (*report.rejected, *report.unreadable)
+        ],
+    }

@@ -1,6 +1,6 @@
 ---
 name: python-guidelines
-description: Make the design calls no linter can check — where an oversized file splits, whether a name or docstring carries meaning, whether an abstraction earns its keep, when a suppression is legitimate, and how to satisfy a size or complexity ratchet without gaming it. Use when a size or complexity gate has just failed, before adding a noqa or nosec, when deciding what to raise and what to catch, or when shared state is reached from more than one concurrent lane.
+description: Make the design decisions that no linter checks, such as where an oversized file splits, whether an abstraction earns its keep and when to silence a warning. Use when a size or complexity gate fails, before you add a noqa or nosec suppression, when you decide what to raise and catch, or when concurrent lanes share state.
 paths:
 - '**/*.py'
 ---
@@ -8,207 +8,99 @@ paths:
 
 # Python Guidelines
 
-The judgement half of code quality: what a gate can only *report*. Formatting,
-import order, naming case, docstring shape, return/branch counts, dead code,
-import layering and module size are already enforced by `ruff`, `pyright`,
-`vulture`, `lint-imports` and `.scripts/check_module_size.py` — never restate
-them here or in a review comment. Read this before the build, not after the hook
-rejects: a violation discovered at the gate has already spent a round.
+Make the design decisions that a gate can only report. Read this before you build, because
+a violation found at the gate costs a round. The linters own format, import order, name
+case, branch counts and dead code. The `test-discipline` skill owns test quality.
 
-Test quality is out of scope — `test-discipline` owns it.
+## Rules
 
-## Where a module splits
+- **Fix the metric, do not move the score.** State the change without the gate name.
+  "Split the collision report out of pass admission" is a fix. "Got the file under its
+  limit" is a score.
+- **Say the responsibility of a module in one sentence.** If the sentence needs "and", the
+  module is two modules.
+- **Name the domain effect, not the location.** Refuse `utils`, `helpers`, `common`,
+  `misc`, `manager` and `_part1`. Each one says where code sits, not what it answers for.
+- **Add indirection only for two present call sites,** or for one call site and a named
+  test seam. An expected second caller does not count.
+- **Give every parameter a caller that passes a value other than its default.** A
+  parameter "for later" is a speculative abstraction.
+- **Catch only what this frame can act on.** Recover, translate or annotate. Delete a
+  handler whose body is a bare `raise`.
+- **Take the lock that the module already owns** for read-modify-write on shared state.
+  Do not use the Global Interpreter Lock (GIL) as an argument, because Python 3.14 has a
+  free-threaded build.
 
-- Say the module's responsibility in one sentence. **If the sentence needs an
-  "and", it is two modules.** Write that sentence into the module docstring
-  together with the boundary against its nearest neighbour, in the form "the
-  boundary is X against Y". If you cannot write the boundary, you have not
-  found the seam yet — do not cut.
-- `.scripts/check_module_size.py` reports **that** a module is over the
-  4,000-token cap and never **where** to cut it. Moving the last N functions
-  into a `_helpers` module clears the number and cuts nothing.
-- A real seam does not import back. `read_cost` imports nothing from the
-  package it left; `plan_record` satisfies `plan_gate.PlannedFields`
-  structurally rather than importing the module that judges it. If your
-  extraction needs an import back into its origin, you cut across the
-  responsibility instead of along it.
-- Four worked examples landed 2026-08-08 — read one before your first split:
-  `repair_brief` (out of `loop`), `plan_record` (out of `plan_gate`),
-  `read_cost` (out of `decompose`), `contention` (out of `supervise`). Each
-  docstring states the responsibility, the boundary, and what forced the split.
+## Split a module
 
-## Names, because the name is the only prose left
+- The size gate reports that a module is too big, never where to cut it. Moving the last
+  functions into a `_helpers` module clears the number and cuts nothing.
+- Find the boundary against the nearest neighbour module first. If you cannot state it,
+  you have not found the seam. Do not cut.
+- A real seam does not import back into its origin. The new module satisfies a type of the
+  origin structurally, with a `Protocol`. An import back means that the cut crosses the
+  responsibility.
+- Before you write code, measure the room in each file that the change touches. Decide the
+  extraction before the gate refuses.
+- A new module needs its own test file and its place in the import layers, if the
+  repository declares layers.
 
-A code file carries **no comment and no docstring** (`code-is-authoritative`,
-enforced by `no-comments`). So the name is where meaning goes, and a vague one
-now costs the reader everything a docstring used to buy back.
+## When the cut does not exist
 
-- `N` checks case, not meaning. Name the domain effect, not the location:
-  `contention`, `read_cost`, `repair_brief`. Reject `utils`, `helpers`,
-  `common`, `misc`, `manager`, `_part1` — each names where code sits rather
-  than what it is answerable for, and reaching for one is the signal that the
-  split above is wrong.
-- **A fact that would have been a docstring goes somewhere it stays true.** A
-  measurement, a vendor quirk, the incident a guard exists for: put it on the
-  tracker record, in the module's README or design document, or in a test name
-  that asserts it. A fact with nowhere to live is a fact nobody verified.
-- Name a function for what a caller needs to know: what it answers, what it
-  raises, what it mutates. `mint_root_id` and `unsplit_command_vars` need no
-  prose; `process` and `handle` needed a paragraph and would not have earned it.
+Use these routes in this order:
 
-## Whether an abstraction earns its keep
+1. Split along a real seam.
+2. Raise the baseline openly, with a reason that a reviewer can read.
+3. Waive the module, when it truly is one responsibility. The waiver states its kind:
+   permanent cohesion, or a debt that names the record that retires it.
 
-- New indirection needs two present call sites, or one call site plus a named
-  test seam (a module-level alias that tests patch counts as one). One caller
-  plus an anticipated second is a redirect, not an abstraction.
-- Apply the deletion test before adding it: inline the candidate. If the
-  inlined version is no longer and no less clear, leave it inlined.
-- A parameter added "for later" is the same defect in miniature. Every
-  parameter needs a caller that passes something other than its default.
+Never raise a baseline silently, for example by a hand edit of a frozen table.
 
-## Fix the metric, do not move the score
+## Names
 
-- **Run the ratchet directly, not through the suite.** It prints the same
-  refusal `pytest` does, in about a tenth of a second (measured 2026-09-12)
-  against about four minutes for the suite:
+A code file carries no comment and no docstring, so the name carries the meaning. See the
+`no-comments` skill for where a fact goes instead.
 
-      uv run python .scripts/check_module_size.py
+- Name a function for what a caller needs: what it answers, what it raises, what it
+  changes. `mint_root_id` needs no prose. `process` and `handle` do.
+- Apply the deletion test to a new abstraction. Inline it. If the inline form is not
+  longer and not less clear, keep it inline.
 
-  It reads no argument — it sweeps the whole tracked tree, and the full sweep is
-  still far cheaper than the wait. Measure while writing, not after the gate
-  refuses.
-- `module-size` can be satisfied without improving anything: extracting
-  `_part1()`/`_part2()` clears the number and cuts nothing. Since the comment ban
-  the cap counts code alone, so the old escape of deleting prose is gone — 21
-  modules graduated out of the frozen table on 2026-09-12 when the prose went.
-- The check: state what you did without naming the gate. "Split the collision
-  reporting out of pass admission" is a fix; "got `cli.py` back under its
-  baseline" is a score. If only the second sentence is available, you gamed it.
-- **Two legitimate routes when the cut does not exist. Rebaselining is the
-  usual one and is not a defeat.** Record it in `basicly.d/<record-id>.toml`
-  under `[ratchet.module_size]` as `rebaselined`, with a non-empty
-  `rebaseline_reason` and a `base_commit` that is an ancestor of HEAD. It is
-  counted and printed on the pass line, so it is reviewable rather than silent.
-  It is used 72 times across 25 entries today.
-  What is forbidden is only the *silent* raise: hand-editing `[tool.*.frozen]`
-  in `pyproject.toml`, or a `frozen` delta that loosens, are both refused.
-- **The waiver, when the module genuinely is one responsibility.** A column-0
-  marker in the file, and it **must state a kind** or the gate refuses it. It is
-  a directive rather than prose, so `no-comments` leaves it alone:
+## Suppressions
 
-      # module-size-waiver: cohesion: <why this module is one responsibility>
-      # module-size-waiver: cost(<record-id>): <what is owed back>
+- Give each new `noqa` its code and a reason that names the alternative you refused:
+  `# noqa: PLR0913 — one parameter per recorded fact`.
+- Suppress on the line. A file-level or configuration-level ignore also hides the next
+  violation.
+- Before you write a `noqa` or `nosec`, confirm that the tool runs over that path. The
+  `[[verify.checks]]` entry in `basicly.toml` names its roots. A suppression that no tool
+  reads looks reviewed and is not. Delete it.
 
-  `cohesion` is permanent; `cost(<record-id>)` is debt and expires when that
-  record closes, policed by `.scripts/check_waivers.py`. A waiver with no kind
-  parses as unclassified and is rejected — *states no kind, so nothing says
-  whether this is permanent or owed back*. Count it in the same
-  `basicly.d/<record-id>.toml` with `count_delta`, **not** with `waiver_count`
-  in `pyproject.toml`, which is the shared anchor that bounced three of five
-  lanes on 2026-08-08 and which `basicly-ef7t` replaced.
-- **A waiver on a frozen module replaces its frozen entry outright**, so
-  waiving a module that sits far above the cap deletes its ceiling and
-  licenses unbounded growth. Rebaseline that one instead.
-- A stated waiver is reviewable; a fake split is not. But reach for the split's
-  ratio first, then rebaseline, then the waiver — in that order.
+## Exceptions
 
-## Suppressions — `noqa`, and the `nosec` that does nothing
+- Chain a translated exception: `raise ValueError(...) from err`. Without `from`, the cause
+  is lost.
+- For a step that is truly optional, use `contextlib.suppress(<specific type>)`, not a
+  broad `except` with `pass`.
+- Keep `except Exception` for a boundary that must not stop, and name that boundary in the
+  function name.
+- Put the operand in the message: the path, the command, the id.
+- Raise the user-facing exit, such as `SystemExit(<message>)`, at the command layer. Below
+  it, raise a typed exception and let the command decide what the user sees.
 
-- Every new `noqa` carries the code and a reason naming the alternative you
-  rejected: `# noqa: PLR0913 — one parameter per recorded fact`. Debt today is
-  46 suppressions across 20 files, six of them a bare code with no reason. Do
-  not add the seventh.
-- Suppress on the line. A file-level or config-level ignore also silences the
-  next violation, which nobody looked at.
-- Before writing a suppression, confirm the tool that emits the finding runs
-  over that path — the `[[verify.checks]]` entry in `basicly.toml` names its
-  roots. `src/` carries 21 `# nosec` comments while bandit is scoped to
-  `.scripts`, `.basicly/core/hooks` and `.basicly/core/kit`, so all 21 are
-  inert and read as "reviewed" to everyone after you. A suppression no tool
-  reads is worse than none — write the reasoning as an ordinary comment.
+## New language features
 
-## Where a fact goes now that a comment cannot hold it
+- For the paren-free `except A, B:` form, see the `python` skill.
+- Adopt a new idiom when it removes a construct that the tree holds now. Name that construct
+  in the commit message.
 
-A code file carries no comment and no docstring. That removes the divergence
-problem outright — a claim beside the code can no longer go stale, because there
-is no claim beside the code. It also removes the place most facts used to land,
-so the discipline is now about **relocation**, not about restraint.
+## Concurrent lanes
 
-- **A measurement goes on the record.** "Measured 2026-09-12: 92 of 2977 rg calls
-  carry the trap" belongs on the tracker record and in the commit message, where
-  it is dated and attributable. The ledger is permanent; a comment was not.
-- **A contract goes in a name, a type, or an assertion.** What a bare `str` may
-  hold is a type or a validator. What a function raises is a test that asserts it.
-- **A why goes in the design document or the module's README.** The tracker kit's
-  birthday-bound derivation moved from a docstring to `SPEC.md` §9.4.1, and the
-  test that checked the docstring now parses the section. That is the pattern:
-  move the fact and re-point the check at its new home.
-- **A directive is not prose and stays.** `noqa`, `nosec`, `type: ignore`,
-  `pragma: no cover`, `fmt: off`, a shebang, `SPDX-License-Identifier`, a `/*!`
-  banner. Measured over this tree: 335 of them, all preserved by the strip.
-- Removing prose is not licence to write unreadable code. Everything a comment
-  used to excuse — a five-letter name, a nine-branch function, a magic number —
-  is now unexcused. `.basicly/core/kit/comments/cli.py check <path>` reports what
-  is left; the `no-comments` hook refuses it at commit.
-
-## Exception design
-
-- Catch only what this frame can act on, and let the handler show it: recover,
-  translate, or annotate. A handler whose body is a bare `raise` is noise;
-  delete it and let the exception travel.
-- When translating, chain: `raise ValueError(...) from err`. A `raise X(...)`
-  inside an `except` with no `from` drops the cause the next debugger needs.
-- For a step that is genuinely optional use
-  `contextlib.suppress(<specific type>)`, not a broad catch with `pass`. Reserve
-  `except Exception` for a boundary that must not die, and say in a comment
-  which boundary that is.
-- Put the operand in the message — the path, the command, the id — so the error
-  names the input that produced it.
-- `raise SystemExit(<message>)` is this repo's user-facing error and belongs at
-  the command layer. Below it, raise a typed exception and let the command
-  decide what a user is shown.
-
-## Choosing a 3.14 idiom
-
-- **Paren-free `except A, B:` is the house form** (PEP 758). The floor is
-  `requires-python = ">=3.14"`, so there is no compatibility argument.
-  Parentheses stay required only when the clause binds:
-  `except (ValueError, OSError) as err:`. Never add parentheses to an existing
-  paren-free clause; that is a no-op diff.
-- **This is enforced, and the correction matters.** This bullet used to say no
-  linter enforces either direction. `ruff format` does: measured 2026-08-20
-  under this repo's config, it rewrites `except (ValueError, OSError):` to the
-  paren-free form, and `except* (A, B):` likewise. `ruff check` has no rule
-  either way. Because the `ruff-format` verify entry declares a `fix_command`,
-  the hook rewrites the clause **silently** — which is why a parenthesised
-  clause reached a commit in `pre-push.py` and left no trace, and why the rule
-  read as unenforced. Two consequences. A single-line clause needs no vigilance.
-  A **multi-line** one is the opposite: the formatter rewrites a
-  backslash-continued paren-free clause *into* the paren-wrapped form, so there
-  the parens are correct and the `except-form` gate exempts them. That gate
-  binds where the formatter does not — under `--target-version py313` the parens
-  are kept, so a target-version change would otherwise un-enforce this silently.
-- Otherwise, adopt a new-version idiom when it removes a construct that is in
-  the tree today, and name that construct in the commit message. PEP 750
-  t-strings, for example, exist for injection boundaries and this repo has none
-  to convert: every shell-out passes an argv list rather than an interpolated
-  string, which is the stronger fix and is already in place.
-
-## Free-threading safety (PEP 779)
-
-- 3.14 supports the free-threaded build, and this repo already runs lanes
-  concurrently: `supervise` drives a `ThreadPoolExecutor`, and `decisions`,
-  `run_record` and `runner` each hold a `threading.Lock`. GIL atomicity is not
-  an argument you may use here.
-- Read-modify-write on shared state is two operations, not one: `count += 1`,
-  `d[k] = d.get(k, 0) + 1`, and check-then-append all race. Take the lock the
-  module already owns (`_QUEUE_LOCK`, `_RECORD_LOCK`, `_BUDGET_LOCK`) rather
-  than adding a second one beside it.
-- Prefer per-lane state to a process-global toggle, which one lane sets and
-  every other reads. `br._read_only` is the worked example — a `ContextVar`,
-  whose comment also states the honest bound: a section that hands work to a
-  *new* thread does not guard that thread.
-- Two lanes writing one path race whatever the interpreter does. Give each lane
-  its own path, or make the write append-only; `basicly loop preflight` reports
-  both shapes of shared path (`contention.append_only_report` and
-  `generated_report`) before a pass starts.
+- Read-modify-write is two operations: `count += 1`, `d[k] = d.get(k, 0) + 1`, and
+  check-then-append all race.
+- Prefer per-lane state, such as a `ContextVar`, to a process-global toggle that one lane
+  sets and every lane reads. A `ContextVar` does not guard a new thread that the section
+  starts.
+- Two lanes that write one path race on every interpreter. Give each lane its own path, or
+  make the write append-only. `basicly loop preflight <id>` reports shared paths before a
+  pass starts.

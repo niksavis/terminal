@@ -1,261 +1,259 @@
 # The tracker kit's specification
 
-What this store guarantees, for a reader who has **only the kit**. The engine's own
-tracker rules live in that repository's architecture document; nothing here depends on
-reading it, because a consumer who installs the kit never receives it.
+This file states what the tracker store guarantees to a reader who has only the kit. Nothing
+here depends on a document outside the kit, because a consumer who installs the kit receives
+no other document.
 
 ## How to read the section numbers
 
-They are **inherited, not designed**. This kit's modules cite their requirements as bare
-section marks, and the authoring repository gates every one of them against a heading
-defined below, so the numbering of the requirements document this file replaces is kept
-exactly as it stood rather than renumbered under its own pointers. The gaps are real: a
-number absent here was engine-side, or was decision narrative that ended with that
-document.
+The kit's modules cite their requirements as bare section marks, and a gate checks each mark
+against a heading below. So the numbers stay as they are, and a gap in the numbers is
+intentional.
 
-Two rules govern what is written here, and the second is why this file is short:
+Two rules control the content:
 
-- A rule the kit **implements** is stated as a rule, with the reason the code cannot
-  carry — which measurement fixed a threshold, which defect a guard exists for.
-- A claim that merely **restated shipped code** was dropped rather than relocated. The
-  code is the authority; this file is the contract it is held to.
+- A rule that the kit implements is stated as a rule. The rule carries the reason that the
+  code cannot show, such as a measured threshold or the defect that a guard prevents.
+- The code is the authority. This file is the contract that the code must meet, not a
+  second description of the code.
 
 ## 3. Install
 
-**`uvx` is the way in**, and it is not merely a convenience here: the tracker's central
-promise depends on a git attribute the host repository must declare, and the installer is
-what declares it.
+Install the kit with `uvx`. The installer also declares the git attributes that the ledger
+needs, so a hand copy is not equivalent.
 
 ```console
 $ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tracker basicly-tracker init
 tracker: added to .gitattributes: events-*.jsonl -text merge=union
+tracker: added to .gitattributes: pending-*.jsonl -text merge=union
 tracker: added to .gitignore: .basicly/ledger/snapshot.jsonl
 tracker: added to .gitignore: .basicly/ledger/checkpoint-*.jsonl
-tracker: 18 file(s) written, 0 unchanged, in .basicly/kit/tracker
+tracker: added to .gitignore: .basicly/kit/tracker/__pycache__/
+tracker: 31 file(s) written, 0 unchanged, in .basicly/kit/tracker
+tracker: wrote the skill to .claude/skills/tracker/SKILL.md
+tracker: wrote the skill to .agents/skills/tracker/SKILL.md
 ```
 
-The attribute is written **before** the first kit file, and an install that cannot write it
-refuses and leaves nothing behind. Without `merge=union` two branches that each append an
-event conflict, and the reason this tracker exists is that they must not. The glob and the
-derived-file patterns are read off `events.LOG_GLOB` and `snapshot.DERIVED_PATTERNS`, never
-spelled a second time (§9.4, and the same rule `.scripts/kit_deployment.py` follows).
+- The installer writes the attributes before the first kit file. If it cannot write them,
+  it refuses and leaves nothing behind. Without `merge=union`, two branches that each append
+  an event conflict.
+- The installer reads the globs from `events.LOG_GLOB`, `events.PENDING_GLOB` and
+  `snapshot.DERIVED_PATTERNS`. It never spells them a second time (§9.4).
+- `init` creates the ledger directory, `.basicly/ledger`.
+- `update` vendors the kit again and reports what changed. `status` tells whether the
+  installed copy and its rules are current. `uninstall` removes exactly what `init` wrote.
+- `init` writes the kit's skill into `.claude/skills/tracker/` and `.agents/skills/tracker/`.
+  The skill tells an agent that the kit exists and when to use it.
+- `--with-instructions` also writes a short always-on block into each of `CLAUDE.md`,
+  `.claude/CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` that exists. The
+  block sits in a marked region. A second run does not duplicate it, and `uninstall` removes
+  it byte for byte. Without the flag, the installer only tells where the block is, because
+  an installer must not edit an instruction file unasked.
+- `--fold-on-merge` wires a `post-merge` git hook that runs `compact` on the default branch
+  and commits the result (§4.0). Without it, the installer says that no fold is wired.
 
-Afterwards plain `python3` runs it — no `uvx`, no network, nothing on `PATH`. Every
-subcommand takes the repository directory as its first argument:
+After the install, plain `python3` runs the kit, with no `uvx`, no network and nothing on
+`PATH`. Each subcommand takes the ledger directory as its first argument. The command refuses
+a repository root, or a directory that holds no ledger, instead of reporting an empty
+backlog:
 
 ```console
-$ python3 .basicly/kit/tracker/cli.py create . --prefix demo --title "try the tracker"
+$ python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix demo --title "try the tracker"
 {
-  "events": ["demo-hbms#ev-59a934da3f", "demo-hbms#ev-04bc122532"],
-  "record": "demo-hbms"
+  "blocking": ["## Trigger", "## Acceptance Criteria", "## Requirements"],
+  "events": ["demo-qeom#ev-cdc2f647a4", "demo-qeom#ev-04bc122532"],
+  "owed": ["## Trigger", "## Acceptance Criteria", "## Requirements"],
+  "record": "demo-qeom",
+  "remedy": "state the trigger in either voice - ...",
+  "schema": "basicly.tracker.create.v2"
 }
-$ python3 .basicly/kit/tracker/cli.py ready .
+$ python3 .basicly/kit/tracker/cli.py ready .basicly/ledger
 {
   "count": 1,
-  "records": [{"rank": 1, "record": "demo-hbms", "score": 2000, "title": "try the tracker"}],
+  "records": [{"rank": 1, "record": "demo-qeom", "score": 2000, "title": "try the tracker"}],
   "schema": "basicly.scheduler.v1",
   "sort": "priority ASC, dependents DESC, id ASC"
 }
 ```
 
-`update` re-vendors and reports what changed, `status` says whether the installed copy and
-its rules are current, and `uninstall` removes exactly what `init` wrote.
+Each write reports the sections of the definition of ready that the record still owes, and
+`dor` refuses a record that cannot be verified against.
 
-`init` also writes the kit's **skill** into `.claude/skills/tracker/` and `.agents/skills/tracker/`,
-so an agent in that repository knows the kit exists and when to
-reach for it. That is the half a code-only install leaves out: a kit nothing calls is a kit
-nobody has.
-
-Add `--with-instructions` and it also writes a short always-on block into whichever of
-`CLAUDE.md`, `.claude/CLAUDE.md`, `AGENTS.md` and `.github/copilot-instructions.md` are
-present, inside a marked region that a second run does not duplicate and `uninstall` removes
-byte for byte. Without the flag it prints the block instead, because editing your instruction
-file is not something an installer should do unasked.
-
-**Copying the files by hand is the fallback, not the route.** It still works — the kit
-imports nothing but the standard library — but a hand copy does not write the git
-attribute, so a repository installed that way keeps the conflicts this design removes.
+A hand copy of the files still runs, because the kit imports only the standard library. But
+a hand copy does not write the git attributes, so that repository keeps the merge conflicts
+that this design removes.
 
 ## 4. The store: an append-only event log, and a one-way boundary
 
-**The event log is the truth; every other file is derived.** Every change is a new
-line, and a record's state is a fold over its events. Conflicts are rare by
-construction because two writers append different lines, and history is *in the data*,
-so an audit trail does not depend on git history surviving a squash, a rebase or a
-shallow clone.
+**The event log is the truth. Every other file is derived.** Each change is a new line, and
+the state of a record is a fold over its events. Two writers append different lines, so
+conflicts are rare. The history is in the data, so the audit trail does not depend on git
+history after a squash, a rebase or a shallow clone.
 
-The alternative it rejects, stated because it is the one a reader proposes: a
-line-per-record snapshot rewrites a record's whole line on every change. It is not
-append-only, two edits to one record conflict, and the file alone cannot answer *how
-did this get here*. So the log is authoritative and both the record snapshot and any
-index are derived and disposable — a corrupt derivative is something you delete, not
-something you repair.
+The rejected alternative is a snapshot with one line per record. Such a file rewrites the
+whole line of a record on each change. It is not append-only, two edits to one record
+conflict, and the file cannot tell how a state came to be. So the log is authoritative, and
+each snapshot or index is derived. You delete a corrupt derived file; you do not repair it.
 
-The cost is honest: a fold is O(events) and a naive reader re-folds per query. §4.6 is
-the one field that answers the common query without an index at all.
+The cost of a fold grows with the number of events. A naive reader folds again for each
+query. §4.6 answers the common query without an index.
 
-**The derived snapshot is gitignored, never committed.** Calling a file derived and then
-committing it recreates the dual-store failure this design exists to escape: two
-branches each rebuild it, any record changed on both sides is a same-line conflict git
-cannot union-merge, and until someone rebuilds, the repository holds two sources of truth
-that disagree — which kills requirement 1 in §4.3. It is regenerated on a stale read and
-by a checkout hook. **Its first line carries the id and count of the last folded event**,
-so any reader can detect staleness against the log; without that, a crash between append
-and rename serves stale state forever with nothing to notice it.
+**The derived snapshot is gitignored, never committed.** A committed derived file makes two
+sources of truth: two branches each rebuild it, and git cannot union-merge a record that
+changed on both sides. That breaks requirement 1 in §4.3.
 
-**Rotation is by period, archived and never pruned**, because §4.3's requirement 6 folds
-the whole history. A rebuild therefore globs `events-*.jsonl` **by contract, not by
-convention**. Rotation alone does not reduce steady-state fold cost — the same events are
-parsed however many files hold them — so the scaling answer is a derived **checkpoint
-snapshot at each rotation boundary**: steady state becomes checkpoint plus current file,
-while the full-history fold stays available.
+- A reader rebuilds the snapshot when it finds the snapshot stale.
+- The first line of the snapshot is a header. It carries the id of the last folded event,
+  the event count, the log line count and the snapshot format version, which is 2.
+- A snapshot is stale when its line count, last event or format version differs from the
+  log. So a crash between an append and a rename cannot serve old state.
+- A reader refuses a snapshot whose format version is newer than its own, and folds the log
+  instead.
 
-**The dependency direction is one-way: the engine imports the kit; the kit imports
-nothing.** The kit may not read the engine's config loader, its logging, its session
-state or its policy module. It reads its own committed data and takes everything else as
-arguments — including redaction, which is why the entry points accept a redactor rather
-than importing one. Standard library only, no third party, no network, no subprocess, and
-no interpreter syntax newer than 3.9, because a consumer's Python is older than the
-authoring repository's floor.
+**Rotation is by period. The kit archives old log files and never prunes them**, because
+requirement 6 in §4.3 folds the whole history. A rebuild reads every `events-*.jsonl` file
+by contract. Rotation alone does not make a fold cheaper, because the fold parses the same
+events in any number of files. So each rotation writes a derived checkpoint snapshot. A
+normal fold then reads the latest checkpoint plus the newer logs, and the full fold stays
+available.
 
-That direction is **gated, not intended**: `kit-boundary` is a commit hook that ships
-with the kit and a check in the authoring repository's full verify run. It replaced a
-claim that an import linter already enforced it — which was *unenforceable, not merely
-unimplemented*: an import linter analyses one root package, and the kit is flat modules
-with no `__init__.py`, outside that package and not on `sys.path`, so the tool never
-opened a kit file and would have reported success forever. A fail-open gate is
-indistinguishable from a pass.
+**The dependency direction is one-way: the engine imports the kit, and the kit imports
+nothing.** The kit does not read the engine's configuration, logging, session state or
+policy. It reads its own committed data and takes everything else as arguments. Redaction is
+also an argument: each entry point accepts a redactor and imports none. The kit uses only the standard
+library, with no third-party package, no network and no subprocess. It uses no syntax newer
+than Python 3.9, because a consumer's Python can be older.
 
-Three reasons the kit is a requirement rather than a nicety:
+The `kit-boundary` commit hook enforces this direction. It ships with the kit and also runs in
+the authoring repository's full verify run. An import linter cannot enforce it. The kit is
+flat modules with no `__init__.py` and outside any package, so the linter never opens a kit
+file and always passes.
 
-1. It turns "no external binary in the critical path" into a test instead of a claim.
-2. It de-risked the migration: a kit can be built and tested standalone and swapped
-   behind one seam, rather than as N simultaneous parser rewrites.
-3. **The data outlives the tool.** A work ledger is the longest-lived artifact a harness
-   owns. If the harness is abandoned, the ledger and its scripts must stay usable — a
-   property no in-package-only design has.
+The kit is a requirement for three reasons:
+
+1. It makes "no external binary in the critical path" a test instead of a claim.
+2. A kit can be built and tested alone and changed behind one seam.
+3. **The data outlives the tool.** A work ledger is the longest-lived artifact of a harness.
+   If the harness is abandoned, the ledger and its scripts must stay usable.
 
 ### 4.0 Sharding — a writer appends to its own file
 
-**`merge=union` does not stop a pull request being flagged as conflicting.** GitHub
-computes mergeability ahead of the merge and that computation ignores a repository's
-`.gitattributes`; its own auto-merge then refuses a pull request it has flagged. The
-request has been open since 2021-12-24 and was still unimplemented at 2026-08
-(github/community discussion 9288).
+**`merge=union` does not stop a forge from flagging a pull request as conflicting.** GitHub
+computes mergeability before the merge and ignores `.gitattributes`, and its auto-merge
+refuses a flagged pull request (GitHub community discussion 9288).
 
-**Measured on GitHub rather than argued from that thread**, on a throwaway private
-repository, 2026-09-17. Two arms, each carrying the identical `.gitattributes` above on
-its own base branch, each advancing that base by one append and then opening a pull
-request for a second append:
+A test on GitHub used two arms with the same `.gitattributes`. Each arm advanced its base by
+one append and then opened a pull request for a second append:
 
 | arm | the pull request changes | `git merge` locally | GitHub `mergeable` |
 | --- | --- | --- | --- |
 | one shared log | `events-0001.jsonl` | MERGEABLE | **CONFLICTING**, state DIRTY |
 | one file per writer | `pending-<writer>.jsonl` | MERGEABLE | **MERGEABLE**, state CLEAN |
 
-The first row is the whole argument: **the same commits, under the same declared
-attribute, merge clean locally and are refused by the forge.** So a local `git merge` that
-succeeds proves nothing about the pull request, and the conflicting arm is the positive
-control without which the clean one would be worth nothing. A shared log is a conflict
-surface on a forge however the attribute is declared. That is the defect this section
-exists for, not a hypothetical.
+The same commits merge cleanly in a local git and are refused by the forge. So a local merge
+that succeeds proves nothing about the pull request. A shared log is a conflict surface on a
+forge, whatever the attributes say.
 
-**A writer appends to `pending-<writer>.jsonl`, never to the trunk.** Two branches then
-change two different paths, and a forge has nothing to flag. The writer is derived from
-`.git/HEAD` — a file read, not a subprocess — and a linked worktree's `.git` file is
-followed to its own `HEAD`, so a lane is its own writer without the engine telling it so.
-A directory outside a repository keeps the single trunk log, which is what keeps an
-existing ledger reading and writing exactly as it did.
+**A writer appends to `pending-<writer>.jsonl`, never to the trunk log.** Two branches then
+change two different paths, and the forge has nothing to flag.
 
-**Sharding separates branches, not clones, and `merge=union` still carries the rest.** The
-writer name comes from `.git/HEAD`, so two checkouts both sitting on the trunk write the
-same shard path and their appends meet in one file. That is not a defect in the design and
-it is not covered by the measurement above, which used two branches: it is the case the
-union driver exists for, which is why the install declares the attribute on the shard glob
-as well as the trunk one and why an installer that writes only one of them leaves a hole.
-State it this way round — a shard removes the conflict *between branches*, and the
-attribute removes the one *within* a branch.
+- The kit derives the writer name from `.git/HEAD` by a file read, not a subprocess.
+- In a linked worktree, the kit follows the `.git` file to that worktree's own `HEAD`, so
+  each lane is its own writer.
+- A directory outside a repository keeps the single trunk log, so an existing ledger reads
+  and writes as before.
+- `events.append` accepts `writer=` for a caller that knows the writer better.
 
-**This is the one place the kit reads a file it does not own.** §4's rule is otherwise
-that the kit reads its own committed data and takes everything else as arguments. The
-exception is narrow and stated rather than assumed: git is already the substrate the
-whole design rests on, and the alternative — a required `--writer` on every call — would
-make the standalone install worse than the bundled one, which is the split this kit
-exists to avoid. `events.append` still accepts `writer=` for a caller that knows better.
+**A shard separates branches, not clones.** Two checkouts on the same branch write the same
+shard path, and their appends meet in one file. The union merge driver handles that case, so
+the install declares the attribute on the shard glob as well as the trunk glob. A shard
+removes the conflict between branches, and the attribute removes the conflict within a
+branch.
 
-**A shard is transient. `compact` folds it into the trunk and unlinks it.** The count of
-files must be bounded by how many writers are open at once, never by how many have ever
-existed. Measured 2026-09-17, one `git add` over a directory of shards costs 2.89s at
-1,000 files and 35.59s at 10,000 on NTFS, against 0.16s and 0.66s on ext4 — and the ratio
-doubles every decade, reaching 374.27s against 3.48s at 100,000. At a measured 8.2 lanes a
-day a shard kept forever reaches 3,000 files inside a year, so `fsck` warns above 1,000 and
-refuses above 10,000.
+**This is the one place where the kit reads a file that it does not own.** Git is already
+the substrate of the design. The alternative, a required `--writer` on each call, would make
+the standalone install worse than the bundled one.
 
-Compaction needs no central serializer, which is why it is a kit command rather than an
-engine one. Two clones that each compact the same shards and push converge: union merge
-concatenates, event ids are content-derived so a duplicate folds once, and a shard removed
-on both sides is a delete that git resolves. An engine above the kit calls that same
-command at whatever seam commits tracker state; it is a caller, not a second mechanism.
+**A shard is temporary. `compact` folds it into the trunk log and deletes it.** The number of
+files must stay bounded by the number of open writers, not by all writers that ever existed.
+One `git add` over a directory of shards costs:
 
-**What sharding buys depends on who commits the ledger, and the two are not one claim.**
-Where a developer commits the ledger on a feature branch — the standalone shape — sharding
-is what keeps the pull request mergeable, which is the measurement above. Where a harness
-commits tracker state only from one base checkout and every worktree redirects to that one
-ledger, there is a single committer and no branch to conflict with, so sharding buys
-tidiness and a bounded file count rather than merge safety. Stating only the first would
-overclaim for the second.
+| shards | NTFS | ext4 |
+| --- | --- | --- |
+| 1,000 | 2.89 s | 0.16 s |
+| 10,000 | 35.59 s | 0.66 s |
+| 100,000 | 374.27 s | 3.48 s |
 
-**Rotation refuses while any shard is uncompacted.** A checkpoint records the line count
-of the logs it covers, and `fold_resumed` matches that count to decide whether it may
-resume. A rotation taken while a writer still holds events would write a checkpoint no
-resumed fold can match, and the failure would be a silent fall back to a whole-history
-fold rather than an error. So the shard namespace is separate from `events-*` in the first
-place: `period_of` parses everything after `events-` as a period and `rotate` compares
-file names, so a writer component inside that namespace corrupts both.
+At about 8 lanes a day, shards that are never compacted pass 3,000 files in a year. So `fsck`
+warns above 1,000 uncompacted shards and refuses above 10,000. `shards` lists the pending
+shards.
+
+Compaction needs no central serializer, so it is a kit command. Two clones that compact the
+same shards and push converge. The union merge concatenates, and a duplicate event folds
+once because event ids are content-derived. Git resolves a shard deleted on both sides. An engine calls
+the same command where it commits tracker state; it is a caller, not a second mechanism.
+
+**The benefit depends on who commits the ledger.** When a developer commits the ledger on a
+feature branch, sharding keeps the pull request mergeable. A harness that commits tracker
+state from one base checkout has one committer and no branch conflict. There, sharding gives
+only a bounded file count.
+
+**Rotation refuses while a shard holds uncompacted events.** A checkpoint records the line
+count of the logs that it covers, and `fold_resumed` resumes only when that count matches. A
+rotation during an open shard writes a checkpoint that no resumed fold can match, and the
+fold silently falls back to the whole history. Shards also use their own
+`pending-*` namespace. `period_of` reads all text after `events-` as a period, so a writer
+name there would corrupt both `period_of` and `rotate`.
 
 ### 4.1 Ordering — the per-item sequence
 
-Every event carries a **per-item integer sequence number**. The writer reads the item's
-current max and writes max+1; ties break by event id. The fold **sorts into that
-canonical order before folding**, which is what makes "the fold is a deterministic
-function of the event *set*" true rather than aspirational.
+Each event carries a **per-item integer sequence number**. The writer reads the item's
+current maximum and writes the maximum plus one, and the event id breaks a tie. The fold
+**sorts into this order before it folds**, so the fold is a deterministic function of the
+event set.
 
-This is necessary and it is not a CRDT. Idempotency by event id handles union-merge
-**duplication** and does nothing about **ordering** — and status is inherently ordered:
-`open → in_progress → done` and a `done → open` reopen fold to different states depending
-on sequence. A union merge concatenates conflicting hunks in arbitrary side-order and
-guarantees neither ordering nor dedup, so a genuinely commutative fold over raw events
-*would* be a CRDT, which §15 rejects. One integer field and one sort rule is a degenerate
-Lamport clock without the subsystem, and it is the whole cost.
+Deduplication by event id handles the duplicates of a union merge, but not the order. Status
+is ordered: `open → in_progress → done` and a reopen from `done` give different states in a
+different order. A union merge puts conflicting hunks in any order. A fold that commutes over
+raw events would be a conflict-free replicated data type, which costs far more than this
+problem needs. One integer field and one sort rule give the needed order at the lowest cost.
 
-**A timestamp may not be the sort key** (§9.5). One skewed clock would resurrect a `done`
-item.
+**A timestamp is never the sort key** (§9.5). One skewed clock would reopen a `done` item.
 
-Two branches incrementing one item's sequence concurrently produce a **visible,
-fsck-reportable fork**, which is strictly better than silent misordering: a conflict you
-can see beats a state you cannot explain.
+Two branches that increment the sequence of one item at the same time make a **visible fork
+that `fsck` reports**. A visible conflict is better than a silent wrong order. A fork is a
+warning when its events set nothing in common, such as two comments. It is broken, as
+`conflicting-fork`, when two of its events set one status or one field to different values
+and no later event sets that key again. `resolve` appends that later event with the current
+value, so the tie becomes a decision.
 
 ### 4.2 Secrets, size, and the committed-ledger trust boundary
 
-Agents paste command output, so a token, an environment fragment or an absolute path
-**will** eventually be written. Every property that makes this design good makes a leak
-permanent: append-only, delete is a tombstone, archives are never pruned, and true
-removal means a history rewrite that needs explicit confirmation.
+Agents paste command output, so a token, an environment fragment or an absolute path will be
+written some day. The design makes such a leak permanent. The log is append-only, a delete is
+a tombstone, archives are never pruned, and true removal needs a history rewrite.
 
-Nearer and more concrete: a repository that forbids committed machine-specific paths will
-have a path in a gate event trip its own scanner and **wedge tracker writes entirely** —
-the tracker becomes unable to commit its own state.
+A repository that forbids committed machine paths has a second risk. A path in one event
+trips that repository's own scanner, and the tracker can no longer commit its state.
 
-The control is prevention inside the validation that already runs on every write: a
-**redaction pass** (secret patterns, absolute paths rewritten repository-relative) and a
-**per-event size cap**. The cap does double duty — §4.4 needs it as the interleave bound.
-Comments were 45% of tracker traffic when this was measured, so agent verbosity is the
-growth driver and the cap is the only thing bounding it.
+Two controls run inside the validation of each write:
 
-What survives here is that **trust-boundary framing**, because it is the argument for the
-cap rather than the cap's contract: a leak into an append-only committed log is
-permanent, and the cap is the only bound on a single pasted payload. The cap's own rules
-are built and asserted in `events.py`, which is where a reader should check them.
+- **Redaction.** Each write passes its values through the redactor that the caller supplies,
+  for secret patterns and absolute paths. The kit's command line runs no redactor unless its
+  caller passes one to `main`.
+- **A per-event size cap.** Each free-text value is cut at 4,096 bytes
+  (`events.MAX_TEXT_BYTES`). The event records `<key>_truncated` and
+  `<key>_original_length_bytes`, so the cut is visible (§9.1). On a kind with no declared
+  bound, a value above the cap is refused, not stored unbounded. The cap also bounds
+  interleaving (§4.4).
+
+Comments are the largest share of tracker traffic (45% in one measured ledger), so agent
+verbosity drives growth, and the cap is its only bound. `events.py` holds and tests the
+cap's exact rules.
+
+`events.withdraw` removes the free text of one event from the log. It rewrites that line
+under the ledger lock and appends a `withdrawn` event that names the new line and the reason.
+Git history still holds the old line.
 
 ### 4.3 The ten requirements, and the weakest link in each
 
@@ -272,288 +270,254 @@ are built and asserted in `events.py`, which is where a reader should check them
 | 9 | Work reports | Fold over events |
 | 10 | Visualisation | **Restated** — on-demand, not real-time |
 
-**Requirement 6 is spec, sequencing and rationale reconstruction — not the software.** A
-ledger can faithfully rebuild *what was decided, in what order, and why*, and with the
-commit sha recorded per landed item it can point at what was built. Literal
-reimplementation would need every interface decision articulated in events, which no
-write-time gate can verify. To make even the honest version real, **decisions and
-acceptance criteria must be first-class events carrying their reasoning**, not prose
-buried in a description field.
+**Requirement 6 means the specification, the order of work and the reasons, not the
+software.** A ledger can rebuild what was decided, in what order and why. With the commit
+recorded for each landed item, it can point at what was built. A literal reimplementation
+would need each interface decision in events, and no write-time gate can verify that. So
+**decisions and acceptance criteria must be first-class events with their reasons**, not
+prose in a description field.
 
-**Requirement 10 is on-demand regeneration.** A generated graph and a static board
-rebuilt on write is not real-time, and calling it that would be an overclaim one notch
-smaller.
+**Requirement 10 means regeneration on demand.** A generated graph or a static board, such
+as the page that `board` writes, is not real-time.
 
-Item 5's `actor` is the field a caller uses to say who a write was made under. It is an
-opaque lease holder — a lane, a session, an agent — and never assignee-as-person
-modelling (§4.5).
+The `actor` of requirement 5 tells under which identity a write was made. It is an opaque
+lease holder, such as a lane, a session or an agent, never a person as assignee (§4.5). The
+kit's command line sets it from the environment: `agent:<name>` from `BR_AGENT_NAME` or
+`AI_AGENT`, `agent:claude-code` when `CLAUDECODE` is `1`, and `operator` otherwise.
 
 ### 4.4 Concurrency and resilience
 
-Single writer per ledger, one lock, snapshot published write-temp-then-atomic-rename,
-events by plain append, writes only from the base checkout. Contention is reported as
-**retryable** so callers back off rather than failing a gate.
+One lock serializes the writers of a ledger. Events are appended as plain lines. A snapshot
+is published by a write to a temporary file and an atomic rename. Contention is reported as
+**retryable**, so a caller waits and tries again instead of failing a gate.
 
-- **Torn line.** Before appending, check the last byte is a newline and write one first if
-  not, or the next append concatenates onto a partial line and corrupts a **good** event.
-  The fold tolerates exactly one unparseable *trailing* line silently; interior garbage is
-  an fsck finding, quarantined by line number and **never edited**.
-- **`O_APPEND` is not the guarantee — the lock is.** POSIX makes the offset update atomic
-  per `write()` on a regular file, but a buffered writer flushes in ~8 KiB chunks, so one
-  logical line larger than that becomes several syscalls a concurrent appender can
-  interleave between; and `O_APPEND` is not atomic on NFS at all. §4.2's size cap bounds
-  the exposure; it mitigates interleaving and is not the concurrency guarantee.
-- **No `fsync` per event.** The push is the durability boundary. Stated explicitly so
-  nobody later adds one and destroys the millisecond-scale lock hold that makes
-  single-writer viable.
-- **An orphaned lock must not wedge every lane.** The lock file carries a pid and a
-  monotonic reading and is stolen when the pid is known dead, when the reading is from
-  another monotonic epoch, or when the hold outlives its stale bound. `O_CREAT|O_EXCL`
-  plus that steal rule, because **`fcntl.flock` does not exist on Windows** and §12
-  commits to three platforms.
-- **A writer that rewrites a whole log takes the same lock an append takes.** The rule is
-  stated because the exception was found: an operation that rewrote a log rather than
-  extending it — reading the file, writing a temp file, renaming — destroyed a concurrent
-  append *silently*. The rename succeeded, the log parsed, and the fold stayed consistent,
-  because the lost line was never in the text that was re-emitted.
-- **Encoding, line endings and merging.** Declare `events-*.jsonl -text merge=union` in
-  `.gitattributes`: without `-text` a Windows `autocrlf` checkout rewrites the ledger in
-  place, and without `merge=union` two branches that each append an event conflict instead
-  of concatenating (basicly-aabirfj). Pass `encoding="utf-8"` to
-  **every** `open()` — the interpreter default is still locale-dependent, so an unmarked
-  open on a cp1252 host corrupts on the first non-ASCII comment.
-- **`fsck` repairs only by appending corrective events**, never by editing lines, or it
-  quietly becomes an editor and the log stops being the truth.
+- **Torn line.** Before an append, the writer checks that the last byte is a newline, and
+  writes one if not. Otherwise the next append joins a partial line and corrupts a good
+  event. The fold skips one unparseable last line with no final newline, silently. `fsck`
+  quarantines any other unparseable line by line number, and nothing edits it.
+- **The lock is the guarantee, not `O_APPEND`.** POSIX makes each `write()` call atomic on a
+  regular file, but a buffered writer can split one long line into several calls, and
+  `O_APPEND` is not atomic on NFS. The size cap of §4.2 limits the exposure; it does not
+  replace the lock.
+- **No `fsync` for each event.** The push is the durability boundary. An `fsync` would
+  destroy the short lock hold that makes one writer at a time practical.
+- **An orphaned lock must not block every lane.** The lock file holds a process id and a
+  monotonic clock reading. A writer steals the lock in three cases: the process is dead,
+  the reading is from another monotonic epoch, or the hold is older than 30 seconds. The lock uses `O_CREAT|O_EXCL` and this steal rule, because `fcntl.flock`
+  does not exist on Windows (§12).
+- **A writer that rewrites a whole log takes the same lock as an append.** A rewrite reads
+  the file, writes a temporary file and renames it. Without the lock, it silently deletes an
+  append made in between, and the log still parses.
+- **Encoding, line endings and merging.** Declare `events-*.jsonl -text merge=union` and
+  `pending-*.jsonl -text merge=union` in `.gitattributes`. Without `-text`, a Windows
+  `autocrlf` checkout rewrites the ledger. Without `merge=union`, two branches that each
+  append an event conflict. Pass `encoding="utf-8"` to each `open()`, because the default is
+  locale-dependent and corrupts a non-ASCII comment on a cp1252 host.
+- **Repairs only append corrective events.** `fsck` never edits a line; otherwise the log
+  stops being the truth.
 
 ### 4.5 Claiming, and forward compatibility
 
-With concurrent lanes, reading the ready set and writing the claim must be **one locked
-read-check-write inside the kit, not two calls**, or two lanes take the same item. Every
-event carries an opaque `actor` string; a lane claim is a **lease**, not an assignment.
+With concurrent lanes, the read of the ready set and the write of the claim must be **one
+locked read-check-write, not two calls**, or two lanes take the same item. The kit's
+`update` reads the record and appends under one held ledger lock. It does not check
+readiness again, so a caller that dispatches concurrent lanes owns that check. Each event
+carries an opaque `actor` string, and a lane claim is a **lease**, not an assignment.
 
-Forward compatibility has to be tolerant in the right direction:
+Forward compatibility must be tolerant in the correct direction:
 
-- The fold **skips unknown event kinds and unknown fields, preserving them verbatim** on
+- The fold **skips unknown event kinds and unknown fields, and preserves them verbatim** on
   any rewrite.
-- `fsck` **warns** on unknown rather than erroring, or an old reader hitting a newer
-  ledger reports false corruption. A warning is printed and never fatal.
-- One `format_version` event. A reader below it **still reads but refuses to write**.
-- The limit no rule fixes: a new kind that semantically supersedes an old one makes old
-  readers silently wrong. The discipline is therefore **never change a kind's meaning,
-  never reuse a kind name, only add kinds and optional fields.**
+- `fsck` **warns** on an unknown kind and never fails on it. Otherwise an old reader reports
+  false corruption in a newer ledger.
+- The ledger carries no format version event. The snapshot header carries a format version
+  (§4), and a reader refuses a snapshot newer than its own.
+- No rule catches a new kind that replaces the meaning of an old one: old readers become
+  silently wrong. So **never change the meaning of a kind, never reuse a kind name, and only
+  add kinds and optional fields.**
 
-The line shape is **JSON objects, one event per line** — safe, extensible, and the shape
-the harness's other ledgers already use. A derived edge list and a derived record
-snapshot are projections of it, which costs nothing architecturally because derivatives
-are already mandated disposable.
+**A write names only fields from the field table.** `fields.py` gives each record field a
+role and the reader that uses it; `fields` prints the table. A write refuses an unknown field
+name, an import-history field that only `import` writes, and a derived field such as `dates`.
+A section that the ledger's `template.json` declares is also writable.
 
-The measurement that governs the choice, and the reason not to re-litigate it on parse
-speed: at 603 records and roughly 2 MB, a full open-read-parse cost 5.8–7.6 ms and a full
-serialize-rewrite-rename 5.5–5.8 ms. The machine does not care which line format is
-picked at this scale. What matters instead is that reading the whole ledger is on the
-order of half a million tokens, so no on-disk format saves an agent that reads all of it:
-the dominant variable is whether a **scoped view** exists — one record plus its edges plus
-its open blockers — which is a command rather than a format.
+The line format is **one JSON object for each event, one event on each line**. It is safe,
+extensible and the format of the harness's other ledgers. A derived edge list and a derived
+record snapshot are projections of it.
 
-**Cross-repo shape:** each repository owns its ledger under its own prefix and is its only
-writer. Cross-repo work moves as offers recorded by each participant in its *own* ledger,
-so no component ever writes across a repository boundary and there is no shared artifact
-to coordinate on.
+Parse speed does not decide the format. At 603 records and about 2 MB, a full read and parse
+costs 5.8 to 7.6 ms. A full serialize, rewrite and rename costs 5.5 to 5.8 ms. But the
+whole ledger is about half a million tokens, so no file format helps an agent that reads all
+of it. A **scoped view** helps: one record, its edges and its open blockers. That is a
+command, not a format.
+
+**Cross-repository shape.** Each repository owns its ledger under its own prefix and is its
+only writer. Work across repositories moves as offers that each participant records in its
+own ledger. So no component writes across a repository boundary, and no shared artifact
+needs coordination.
 
 ### 4.6 The running aggregate — the tail answers the common query, the fold stays the authority
 
-**Every event carries the value of the item's running aggregates as they hold immediately
-after that event.** One field — `totals` — and the overwhelmingly common query (*what is
-this item's spend, how many attempts has it had, how many events does it carry*) is
-answered by reading the item's last event instead of folding its history. It costs one
-field per line.
+**Each event carries the item's running aggregates as they are immediately after that
+event.** This field is `totals`: the event count, the attempt count, the spend
+(`spend_micros`) and the last status. The common query (the spend, the attempts and the event
+count of an item) then reads the item's last event and folds nothing.
 
-Four rules, and the first is what keeps a denormalized total from recreating the
-dual-store defect §4 exists to escape:
+Four rules keep this cache from becoming a second source of truth:
 
-- **The fold is the authority; a carried total is a cache that happens to live in the
-  log.** Any reader that must be *right* folds. `fsck` (§13) recomputes the fold and
-  reports every event whose carried totals disagree with it, which is what makes the
-  denormalization checkable instead of a second source of truth — and a disagreement is a
-  **finding, never a repair in place** (§4.4).
-- **One accumulator, called from both sides.** The writer computes the totals by calling
-  the *fold's* accumulator over `(predecessor totals, this event)`, never a hand-written
-  increment. Two copies that disagree is the defect this shape invites, and a
-  denormalized aggregate is exactly the shape that invites a third.
-- **Only pure functions of the events qualify, and only per item.** A carried value must
-  be a pure function of the events up to and including its own: counts, sums, and the last
-  status. Never a wall clock (§9.5), never anything read from outside the log. Per *item*
-  rather than per ledger, because the writer already reads the item's max sequence to
-  assign the next one (§4.1) — so the predecessor's totals arrive in a read it is making
-  anyway — while a ledger-wide counter would put every item behind one number and fork on
-  every branch.
-- **The totals are trustworthy exactly when the item's sequence chain is unforked.** Two
-  branches appending to one item both compute from the same predecessor, so after a union
-  merge the tail carries totals that omit the other side. This needs no new detector: it is
-  the same visible, fsck-reportable fork §4.1 already produces, and the rule is that a
-  forked item's carried totals are **void until a fold restates them**. A cache with a
-  known invalidation condition is safe; one without is the hand-wave.
+- **The fold is the authority, and a carried total is a cache in the log.** A reader that
+  must be correct folds. `fsck` (§13) folds again and reports each event whose totals
+  disagree. A disagreement is a **finding, never a repair in place** (§4.4).
+- **One accumulator, called from both sides.** The writer computes the totals with the
+  fold's own accumulator over the previous totals and the new event. Two copies of the rule
+  would drift.
+- **Only pure functions of the events, and only for each item.** A carried value depends
+  only on the events up to and including its own, such as counts, sums and the last status. It never
+  reads a clock (§9.5) or anything outside the log. The writer already reads the item's
+  maximum sequence (§4.1), so the previous totals come with that read. A ledger-wide counter
+  would put every item behind one number and fork on every branch.
+- **The totals are correct only while the item's sequence chain has no fork.** Two branches
+  that append to one item compute from the same predecessor. After a union merge, the last
+  event omits the other side. This is the fork that §4.1 already reports. The carried totals
+  of a forked item are **void until a fold restates them**.
 
-**What the tail read costs, stated rather than implied.** Whole-ledger totals are the last
-line of the current file. A single item's totals are a **reverse scan that stops at that
-item's first hit** — cheap in the ordinary case, and bounded in the worst by rotation,
-because §4's checkpoint at each rotation boundary carries every item's totals as of that
-boundary. That last part is a **requirement on the checkpoint**, stated here rather than
-assumed, because the bound depends on it: without it the reverse scan for a long-idle item
-walks the whole archive. So the bound is "current file, then one checkpoint", never "the
-whole history". It also narrows the index's trigger: an index earns its place when a
-**cross-item** query cannot be served this way, not merely when some fold got slow.
+**The cost of the tail read.** The whole-ledger totals are the last line of the current file.
+The totals of one item come from a reverse scan that stops at the item's first hit. Each
+rotation checkpoint (§4) carries the totals of every item, so the worst case is the current
+file plus one checkpoint, never the whole history. This is a **requirement on the
+checkpoint**. An index is justified only when a query across items cannot be served this way.
 
-**The second payoff is evidential.** Because the total is recorded at the moment of the
-write, *what did this item's spend say when this dispatch marker was written* is
-answerable without folding anything — which a snapshot holding only the present cannot
-give.
+**The totals are also evidence.** The total is recorded at the moment of the write. So the
+spend that an item showed when a dispatch marker was written is available without a fold. A
+snapshot of the present cannot give that.
 
 ## 5. Import and coexistence with a tracker being replaced
 
-A cutover is never a big bang, because the work being tracked continues throughout. The
-kit ships the three mechanisms that make one incremental, and the rules below are their
-contract.
+A cutover is never done in one step, because the tracked work continues. The kit ships the
+three mechanisms that make the cutover incremental. The rules below are their contract.
 
-**Import** an existing tracker's JSONL export. Every extracted event carries provenance
-`EXTRACTED` (§9.6) and the export's digest, and every imported record carries the
-importer's own marker, so no flip point has to be kept in step with the tree.
+**Import** reads another tracker's JSONL export with `import`.
 
-- **The import is re-runnable, and refuses a ledger that already holds a post-cutover
-  record.** A one-shot with no entry point is how a ledger drifts behind an export from the
-  day after it ran, and a fresh consumer could not build one at all. The dry run reports
-  how far behind the ledger is and writes nothing; it reports that same **refusal** rather
-  than a count, because a preview saying "would add 200" for a run that will refuse is
-  worse than no preview.
-- **The order is not negotiable:** import while the other tracker is still authoritative,
-  declare the residual baseline, then begin the dual write. Importing after the dual write
-  has begun lets the owned side track the other one instead of being compared against it.
-- **The kit's own entry point covers a record, deliberately not the graph.** Create, show
-  and list, with no engine import and redaction taken as an argument. So a copied kit can
-  create, read and query a work item and cannot build a dependency graph.
+- Each imported event carries provenance `EXTRACTED` (§9.6) and the source name
+  (`imported_from`). Each created record also carries the export's digest (`import_digest`).
+- **The import can run again.** A record that the ledger already holds is not created again.
+  The report names a record whose fields differ as `diverged`, and a record from the same
+  source that the export no longer holds as `absent`. It overwrites neither.
+- `--dry-run` reports the same plan and writes nothing.
+- **The order is fixed.** Import while the other tracker is still authoritative, then
+  declare the residual baseline, then start the dual write. An import after the dual write
+  starts makes the owned side follow the other one instead of being compared with it.
+- **The kit's own entry point covers the records and their edges.** It creates, reads,
+  queries, updates, closes, links and tombstones records, with no engine import and with
+  redaction as an argument.
 
-**Shadow mode** reads the same ledger, answers the same queries read-only, and asserts
-identical verdicts for phase derivation, the ready set and gate status. Four rules, and
-the first is the one that unwedged it:
+**Shadow mode** reads the same ledger, answers the same queries read-only, and asserts the
+same verdicts for phase derivation, the ready set and gate status. Four rules apply:
 
-- **It proves the dual write agrees, not that history agrees.** The run is judged on
-  records created after the cutover; the pre-existing delta is *declared*, not compared.
-- A record the **reference** holds and the ledger does not has no ledger event to classify,
-  so the declaration captures that set once, at the cutover, into a committed sidecar. A
-  **second declaration is refused** — re-declaring after the dual write has begun would
-  absorb a genuine failure into history.
-- **An empty in-scope population is inconclusive, never clean.** Until post-cutover records
-  exist the run refuses to license the flip, and that refusal is correct rather than a
-  defect in the instrument. `clean` and `conclusive` are two separate answers.
-- A **refused reference voids the run** whatever the scoping says. The boundary decides
-  which records are judged, never whether the reference was the live tracker.
+- **It proves that the dual write agrees, not that history agrees.** The run judges records
+  created after the cutover. The earlier difference is *declared*, not compared.
+- A record that the **reference** holds and the ledger does not has no event to classify. So
+  the declaration captures that set once, at the cutover, in a committed baseline file. **A
+  second declaration is refused**, because it would absorb a real failure into history.
+- **An empty set of records in scope is inconclusive, never clean.** Until records exist
+  after the cutover, the run does not permit the flip. `clean` and `conclusive` are two
+  separate answers.
+- A **refused reference voids the run**, whatever the scope. The boundary decides which
+  records are judged, never whether the reference was the live tracker.
 
-**Dual-write** for one release with the other tracker still authoritative, and a write
-surface with no translator **raises** rather than logging, so it stops the work instead of
-silently diverging. The two defects found by using it were one mistake wearing two faces —
-**a guard placed after the write cannot refuse it** — and the order that follows is decide,
-then spawn, then mirror.
+**Dual write** runs for one release with the other tracker still authoritative. A write
+surface with no translator **raises** instead of logging, so the work stops instead of
+silently diverging. A guard placed after the write cannot refuse it, so the order is:
+decide, then spawn, then mirror.
 
-**Flip** the source of truth once the differential is clean and conclusive and no
-unimplemented surface is in use.
+**Flip** the source of truth when the differential is clean and conclusive and no surface
+without a translator is in use.
 
 ### 5.1 Three risks in the import step
 
-An export whose owner has demoted it to an interchange format — *"not the canonical
-cross-machine sync channel"* — carries three consequences for an importer reading it. None
-is fatal, and all three are cheaper known than discovered at the flip.
+An export that its owner calls "not the canonical cross-machine sync channel" has three
+consequences for an importer. None is fatal.
 
-- **The export path is a second-class citizen upstream and will drift.** Pin the import
-  against a known-good export and treat format drift as expected, not exceptional.
-- **Import is upsert-only.** An upstream export *"cannot infer that records absent from an
-  export were deleted, pruned, or simply never exported"*, so a snapshot **cannot express
-  deletion** and the importer must treat tombstones as a first-class concern. §13's rule
-  that an unknown event kind is preserved and skipped handles forward compatibility; this
-  is the different problem of *absence*, which is ambiguous by construction in an
-  upsert-only format.
-- **A one-shot import is the only import.** Because the import cannot round-trip deletions,
-  the differential must compare against the **live** tracker, never against a re-import of
-  its export: two derivatives of one lossy snapshot agree with each other and prove
-  nothing.
+- **The export format will drift.** Pin the import against a known good export and expect
+  format changes.
+- **Import is upsert-only.** An export "cannot infer that records absent from an export were
+  deleted, pruned, or simply never exported". So an export cannot express a deletion, and the
+  importer treats tombstones as a first-class concern. Absence is ambiguous by construction
+  in an upsert-only format, which is a different problem from an unknown event kind (§13).
+- **A one-shot import is the only import.** The import cannot carry deletions, so the
+  differential compares against the **live** tracker, never against a second import of its
+  export. Two copies derived from one lossy export agree with each other and prove nothing.
 
 ## 9.1 Compaction — declined
 
-**No lossy compaction.** Git's delta plus zlib already compresses a ledger of
-near-identical JSON records better than any record-shrinking scheme, and it does so
-**losslessly**, which is the half compaction cannot match. Compaction discards evidence,
-which is fatal to a store whose purpose is evidence.
+**No lossy compaction.** Git's delta and zlib compression already compress a ledger of
+similar JSON lines well, and without loss. Compaction discards evidence, and evidence is the
+purpose of the store.
 
-Growth is bounded four ways instead: git compression; a rollup at the point work ships,
-where the harness above the store keeps one, so a package's cost survives independently of
-its detail; the event log itself, which bounds each write by the size of the change rather
-than by the record's accumulated history; and **honest truncation**.
+Four things bound growth instead:
 
-Honest truncation is the bound the other three leave out (§4.2). None of them bounds a
-single pasted payload, so an agent that pastes a 5 MB log puts it in every clone —
-compressed, but not removable. The per-event cap makes that ceiling explicit, and the
-recorded original length is what keeps the cap from *being* the lossy compaction this
-section rejects. The distinction is the whole point: compaction discards evidence after
-the fact and leaves the record looking whole, while truncation drops it at the boundary
-and **says on the record that it did, and by how much**. "We kept the first N bytes of a
-5 MB payload" is a checkable statement that tells a reader the rest exists elsewhere; "we
-summarised this" tells them neither.
+- git compression;
+- a rollup at the point where work ships, where the harness above the store keeps one;
+- the event log itself, which makes each write as large as the change, not as the record;
+- **honest truncation**.
 
-The early warning to watch is **maximum line length**, not total size.
+None of the first three bounds one pasted payload: a 5 MB log in one event goes into every
+clone. The per-event cap of §4.2 makes that limit explicit. The recorded original length
+keeps the cap from being lossy compaction. Compaction hides that it discarded evidence.
+Truncation **says on the record that it cut, and by how much**.
+
+Watch the **maximum line length**, not the total size, as the early warning.
 
 ## 9.2 Ranking — a pure function of the graph
 
-The ranking is a pure function of the graph: unblocked items only, then priority, then the
-descending count of still-live blocking dependents, then the id. It deliberately **drops
-creation time**, because an age-based order makes dispatch order clock-dependent for an
+The ranking is a pure function of the graph. It keeps only ready items, then orders them by
+priority, then by the descending count of live blocking dependents, then by id. It **ignores
+creation time**, because an order by age makes the dispatch order depend on the clock for an
 unchanged graph.
 
-Two decisions the ordering does not settle on its own, recorded because they are the kind
-of thing a reader re-litigates:
+- The dependent count uses only **blocking edges from live dependents**. A `related`
+  dependent never waited, and a closed dependent is finished work.
+- The score packs both terms into one integer, capped at 999 dependents, and `explain()`
+  decodes it. So a **recorded** score stays readable without the graph.
+- `ready` **holds back a record labelled `refine`**, so a record that waits for refinement
+  is never dispatched. `refine` lists the open records that a refinement pass owes: each one
+  labelled `refine`, or refused by the definition of ready.
 
-- The dependent count is over **blocking edges to still-live dependents** only: a
-  `related` dependent was never waiting, and a closed one is work already done.
-- The score packs both terms into one integer that an `explain()` decodes, so a **recorded**
-  score stays readable without the graph that produced it.
+**The absence of age is structural.** The input type of the ranking carries no timestamp,
+although the ledger has timestamps. So nobody can break the rule by accident.
 
-**Age-freedom is structural rather than disciplinary** — the ranking's input type carries
-no timestamp at all, though the ledger it is folded from does. That is the difference
-between a rule and a rule nobody can break.
-
-A recorded rank is also evidence: a dispatch marker carries the score, the rank, the
-fallback rank and the **policy version**, without which a score is an uninterpretable
-integer. A ranker that recommends only unclaimed work has no opinion about an
-already-claimed lane, so a null rank must stay distinguishable from an unrecorded one.
+A recorded rank is also evidence. A dispatch marker carries the score, the rank, the
+fallback rank and the **policy version**, because a score without its policy version cannot
+be read. The ranker recommends only unclaimed work, so a null rank must stay different from
+an unrecorded rank.
 
 ## 9.4 Identity — opaque record ids, content-derived evidence ids
 
-- **Records are mutable** — titles, descriptions and criteria are edited constantly. An id
-  derived from content would either drift or lie. So a record id is **opaque and stable**: a
-  short random root token, collision-checked, plus a dotted monotonic child suffix
-  (`<prefix>-<root>.<n>`), which sorts naturally. Ids are never reused, and a delete leaves
-  a tombstone.
-- **State the collision budget rather than saying "collision-checked".** Size the id length
-  from the birthday paradox, `P(collision) ≈ 1 - e^(-n²/2N)` with `N = 36^length`, against a
-  declared maximum probability, and scale the length as the ledger grows. **Adaptive length
-  is safe because existing ids never change** — only newly minted ones get longer.
-- **Evidence is immutable** — a decision, a found-info record, a dispatch marker is a fact
-  about a moment. Those ids **are** content-derived, which is what makes re-recording
-  idempotent rather than duplicating.
-- **No slugs in ids.** A slug embeds hyphens that read as a prefix boundary, which breaks a
-  commit-message gate that parses the prefix — a shipped defect, not a hypothetical.
+- **Records change.** Titles, descriptions and criteria are edited often, so an id derived
+  from content would drift or lie. A record id is **opaque and stable**: a prefix, a short
+  random root, and a dotted child suffix that counts up (`<prefix>-<root>.<n>`). It sorts
+  naturally. An id is never reused, and a delete leaves a tombstone.
+- **The id length comes from a stated collision budget** (§9.4.1), and it grows with the
+  ledger. Only new ids get longer, because an existing id never changes.
+- **Evidence does not change.** A decision, a found fact or a dispatch marker records one
+  moment. So its id **is** derived from content, and a second recording of the same evidence
+  changes nothing.
+- **No slugs in ids.** A slug adds hyphens that read as a prefix boundary, and that breaks a
+  commit-message gate that parses the prefix.
 
 ### 9.4.1 The declared collision budget, derived
 
-"Collision-checked" is a hand-wave: a mint can only check the ids *this* writer can see, and
-two branches minting from the same base collide invisibly and merge into one id. So the root
-length is sized from the birthday bound against a declared maximum probability instead:
+A mint can check only the ids that its own writer can see. Two branches that mint from the
+same base can collide without a sign, and merge into one id. So the root length comes from
+the birthday bound against a declared maximum probability:
 
 ```text
 P(collision) ≈ 1 - e^(-n² / 2N),   N = RADIX ** length
 ```
 
-where *n* is the number of **distinct roots** under one prefix, not the number of records —
-children share their root. The declared target is `MAX_COLLISION_PROBABILITY` = `1e-4`: one
-chance in ten thousand that any pair of all roots ever minted collides. It yields:
+Here *n* is the number of **distinct roots** under one prefix, not the number of records,
+because children share their root. The declared target is `MAX_COLLISION_PROBABILITY` =
+`1e-4`: one chance in ten thousand that any two roots ever minted collide. The target gives:
 
 | root length | id space N | max roots at P ≤ 1e-4 |
 | --- | --- | --- |
@@ -562,66 +526,57 @@ chance in ten thousand that any pair of all roots ever minted collides. It yield
 | 6 | 2,176,782,336 | 659 |
 | 7 | 78,364,164,096 | 3,958 |
 
-That table is derived, not typed. `max_population` recomputes every row and
-`tests/test_kit_tracker_ids.py` parses **this section** and asserts the two agree, so the
-number a reader checks here cannot drift from the number a mint uses. The exact birthday
-probability, `1 - Π(1 - i/N)`, is lower than the approximation at every row above, so the
-approximation is the conservative side to be on — also asserted.
+The table is derived. `max_population` computes each row, and a test parses this section and
+asserts that the two agree. The exact birthday probability, `1 - Π(1 - i/N)`, is lower than
+the approximation on each row, so the approximation is the conservative side. The test also
+asserts this.
 
-Why `1e-4` rather than something tighter: a collision is not data loss (the local check
-retries, and a cross-branch collision is a visible fork rather than a silent overwrite), and
-ids are read and typed by people, so length is a real cost. For scale, this repo's own ledger
-held 311 roots across 636 records at 3-4 characters, measured 2026-08-06 — a 4-character root
-at that population carries P ≈ 2.8e-2, which is 284 times the target this module declares.
-Sizing from a stated bound is what turns that from an opinion into a check.
+The target is `1e-4` and not tighter for two reasons. A collision loses no data: the local
+check tries again, and a collision across branches is a visible fork, not a silent
+overwrite. And people read and type ids, so each extra character has a cost.
 
-**Adaptive length is safe because an existing id never changes.** Only a newly minted root
-gets longer; every id already handed out keeps the length it was minted at, and `mint_root_id`
-treats it as taken forever regardless. That is also why ids are never reused: the caller
-passes every id ever minted, a deleted record's id included, and a candidate matching any of
-them is discarded.
+**Adaptive length is safe because an existing id never changes.** Only a new root gets
+longer, and each issued id keeps its length. `mint_root_id` treats every issued id as taken
+forever. The caller passes every id ever minted, including the ids of deleted records, and
+the mint discards a candidate that matches any of them.
 
 ## 9.5 Time — a timestamp is evidence, never a constraint
 
-Ordering comes from the log, not from the clock. The fold reads events in sequence order
-(§4.1) and nothing else. Two events with equal or out-of-order timestamps are a normal
-occurrence, not a conflict to resolve.
+The order comes from the log, not from the clock. The fold reads events in sequence order
+(§4.1) and nothing else. Two events with equal or reversed timestamps are normal, not a
+conflict.
 
-- **A write is never refused because of timestamp ordering.** Validating
-  `updated_at >= created_at` hard-errors when the machine's clock steps backwards between
-  two writes, which an unconverged NTP resync does routinely — turning a host's clock into
-  a source of tracker failures in the middle of a landing. Record what the clock said and
-  move on.
-- **No derived value is a function of a timestamp.** Ranking drops creation time (§9.2);
-  the same rule holds for staleness, dedup and idempotence, which key on sequence and
-  content (§9.4), never on time.
-- **Durations are measured on a monotonic clock.** Anything the store times itself uses a
-  monotonic counter; the wall clock is only ever *recorded*.
+- **A write is never refused because of timestamp order.** A check that
+  `updated_at >= created_at` fails when the clock steps back between two writes, and an NTP resync does
+  that often. Record what the clock said and continue.
+- **No order, rank, staleness check, deduplication or idempotence depends on a timestamp.**
+  Ranking ignores creation time (§9.2), and the other rules key on sequence and content
+  (§9.4).
+- **The derived dates only display recorded times.** The fold computes `dates` for each
+  record: `created` is the first event time, `updated` the last event time, and `closed` the
+  time of the closing status. An imported record uses the times that its export asserts.
+  `show` and the snapshot carry these dates, and nothing orders or refuses by them.
+- **Durations use a monotonic clock.** The store times itself with a monotonic counter. It
+  only records the wall clock.
 
-**This was an assertion until the alternative was measured.** A production append-only
-journal carrying no sequence numbers, minting event ids from the wall clock plus a random
-component, has as its only total order the order its lines happen to sit in the file. In
-its own published 6,467-event fixture, **44.5% of events share a millisecond** with another
-event.
+**Measured evidence.** One production append-only journal has no sequence numbers and mints
+event ids from the wall clock plus a random part. In its published fixture of 6,467 events,
+**44.5% of events share a millisecond** with another event.
 
-Three things follow. At that collision rate a millisecond timestamp **is not an ordering at
-all** for nearly half the log — sorting by it yields an arbitrary permutation inside every
-collided group. The order that does exist is **unrecorded**: it survives as file position,
-which a union merge, a rebuild or any sort destroys silently, and nothing in the data says
-the order was lost. And a harness writes in **bursts** — a multi-lane pass appends for
-several lanes inside the same few milliseconds — which is precisely the shape that produces
-collisions. §4.1's one integer field buys the ordering that design leaves to chance.
+- At that rate, a millisecond timestamp gives no order for nearly half the log. A sort by it
+  gives an arbitrary order inside each group.
+- The only real order is the file position. A union merge, a rebuild or any sort destroys it
+  silently, and nothing in the data shows the loss.
+- A harness writes in bursts: one pass appends for several lanes in the same few
+  milliseconds. That is exactly the pattern that makes collisions.
 
-The general form: **the ledger must be totally ordered by something we assign, so that a
-misbehaving host clock degrades the quality of our evidence and never the correctness of
-our state.**
+The general rule: **we assign the total order of the ledger, so a bad host clock reduces the
+quality of the evidence and never the correctness of the state.**
 
 ## 9.6 Provenance — every edge says how it got there
 
-Without this, a dependency edge a human asserted, an edge an agent proposed from a
-scope-glob overlap, and an edge a merge queue inferred after a conflict are
-**indistinguishable in the graph** — yet only the first should be trusted, unexamined, to
-gate a landing.
+Without provenance, three kinds of edge look the same in the graph. A human asserts one. An
+agent proposes one from overlapping scope globs. A merge queue infers one after a conflict. Only the first can gate a landing without review.
 
 | Label | Meaning | Disposition |
 | --- | --- | --- |
@@ -629,86 +584,89 @@ gate a landing.
 | `INFERRED` | proposed by an agent, or deduced from a second-order signal (a bounce, a co-occurrence) | usable, but visible as a proposal |
 | `AMBIGUOUS` | the derivation is uncertain | **routes a decision item**; never silently gates anything |
 
-Three reasons this belongs in the schema rather than in a convention:
+Provenance is part of the schema, not a convention, for three reasons:
 
-- Evidence must be attributable, and an edge is evidence about the shape of the work — the
-  only kind that otherwise carries no attribution.
-- It gives `AMBIGUOUS` a disposition path that already exists: an uncertain machine
-  judgment belongs in the decision queue.
-- It makes the coupling-edge feedback loop honest. An edge added because "the decomposition
-  missed a coupling" is an inference from one observation; recording it as `INFERRED` keeps
-  a later reader from mistaking it for a declared dependency, and makes *how often are our
-  inferred couplings right* a question the ledger can answer.
+- Evidence must be attributable. An edge is evidence about the shape of the work, and it
+  otherwise carries no attribution.
+- `AMBIGUOUS` uses a path that already exists: an uncertain machine judgment goes to the
+  decision queue.
+- A coupling edge added after one observation is an inference. Recorded as `INFERRED`, it
+  does not pass for a declared dependency, and the ledger can tell how often inferred
+  couplings are correct.
 
 ## 12. Portability
 
-- **No absolute paths, ever** — in any field, including provenance. A path is
-  machine-specific by definition and the ledger is shared.
-- **LF and UTF-8 explicitly.** A data ledger must not rely on `text=auto` heuristics: mark
-  it explicitly, write newlines and UTF-8 without depending on platform defaults, and read
-  tolerantly — a stray carriage return must not corrupt a fold.
-- **No POSIX-only locking.** The lock must work on Windows, so no bare `fcntl`; the atomic
-  temp-write-then-rename pattern is portable and is the intended mechanism (§4.4).
-- **No new runtime dependency**, which is most of §4's argument: a pure-Python store
-  inherits the platform matrix the host already tests rather than adding its own.
-- **Nothing machine-specific in anything the kit writes or installs.** An installer that
-  wrote an interpreter path and a repository path into a *tracked* file leaked a username
-  into a commit and broke every teammate. Two things generalise from it. A committed
-  rendering uses a host-substituted placeholder and a launcher every committer already has
-  — never a bare `python3`, which on Windows hits an execution alias that opens a store
-  page, a worse failure than a clean one. And **where neither a portable nor a
-  machine-local rendering is possible, refuse**; falling back to the absolute one
-  reinstates the bug. A kit test fixture must be *a repository containing the kit*, or the
-  test pins nothing.
+- **No absolute paths, in any field**, provenance included. A path is specific to one
+  machine, and the ledger is shared.
+- **LF and UTF-8, explicitly.** Mark the ledger in `.gitattributes`, not by `text=auto`.
+  Write newlines and UTF-8 without platform defaults. Read tolerantly: a stray carriage
+  return must not corrupt a fold.
+- **No POSIX-only locking.** The lock must work on Windows, so no bare `fcntl`. The
+  temporary write and atomic rename is portable and is the intended mechanism (§4.4).
+- **No new runtime dependency.** A pure-Python store works on each platform that the host
+  already tests (§4).
+- **Nothing machine-specific in any file that the kit writes or installs.** A tracked file
+  with an interpreter path or a repository path leaks a user name into a commit and breaks
+  each teammate's checkout.
+  - A committed file uses a placeholder that the host substitutes, and a launcher that each
+    committer has. It never uses a bare `python3`, which on Windows can open a store page
+    through an execution alias.
+  - **When neither a portable nor a machine-local form is possible, refuse.** A fallback to
+    the absolute path brings the defect back.
+  - A kit test fixture must be a repository that contains the kit, or the test proves
+    nothing.
 
 ## 13. Failure modes and recovery
 
-An append-only log fails differently from a database, and the differences are the design's
-payoff:
+An append-only log fails differently from a database, and these differences are the benefit
+of the design:
 
 | Failure | Recovery |
 | --- | --- |
-| Torn write (crash mid-append) | Last line is unparseable → quarantine it and report; the fold before it is intact |
-| Corrupt derived index | Delete and rebuild from the log; never repaired in place |
+| Torn write (crash mid-append) | The fold skips the partial last line; the events before it are intact |
+| Unparseable interior line | Quarantined by line number and reported; never edited |
+| Corrupt derived snapshot or index | Delete and rebuild from the log; never repaired in place |
 | Bad merge (both sides appended) | Both event sets survive; the fold is order-independent for distinct events |
-| Bad merge (same record edited) | Two events, both retained; conflict resolution is a *later event*, not a lost one |
+| Bad merge (same record edited) | Two events, both kept; the resolution is a *later event*, not a lost one |
 | Unknown event kind (newer writer) | Preserved verbatim and skipped by the fold, with a warning |
 
-Two commands this implies, and they are requirements rather than nice-to-haves: an
-**fsck** that folds the whole log and reports anything unparseable, unknown or
-referentially broken; and a **rebuild** that regenerates every derivative from the log
-alone. Without them, "the log is the truth" is a claim nobody can check. They belong
-together: without a check that the derivative still matches the log, a rebuild is a guess.
+Two commands are requirements:
+
+- **`fsck`** folds the whole log and reports each line that is unparseable, unknown or
+  referentially broken.
+- **`fsck --rebuild`** regenerates each derived file from the log alone, then checks.
+
+Without them, nobody can check that the log is the truth. They belong together: a rebuild
+with no check that the derived file matches the log is a guess.
 
 ## 14. Testability
 
-The properties worth asserting, beyond the differential in §5:
+The properties to assert, in addition to the differential of §5:
 
-- **Fold determinism** — folding the same log twice yields byte-identical derivatives.
-- **Order independence** — folding a shuffled log of distinct events yields the same state,
-  which is what makes concurrent appends safe.
-- **Idempotent replay** — re-appending an event with an existing id changes nothing.
-- **Round-trip** — every field survives read-modify-write, including fields the current
-  version does not understand (the upgradability requirement, tested rather than asserted).
-- **Property-based generation** over event sequences, because the interesting bugs are in
-  interleavings a hand-written case will not find.
+- **Fold determinism.** Two folds of the same log give byte-identical derived files.
+- **Order independence.** A fold of a shuffled log of distinct events gives the same state,
+  so concurrent appends are safe.
+- **Idempotent replay.** A second append of an event with an existing id changes nothing.
+- **Round trip.** Each field survives a read, change and write, including a field that the
+  current version does not know.
+- **Property-based generation** over event sequences, because the interesting defects are in
+  interleavings that a hand-written case does not find.
 
 ## 15. Non-goals
 
-Naming these is how the scope argument stays honest. This is not: a general-purpose issue
-tracker; multi-user authentication or authorization; a sync server or hosted service; a web
-application; sprint, estimation or reporting ceremony beyond what a loop consumes; a
-maintained TUI; real-time collaboration; or import from third-party trackers beyond the
-one-off in §5. Each is how a tool like this becomes unmaintainable, and none is required by
-the loop.
+This kit is not a general-purpose issue tracker. It has no user authentication or
+authorization, no sync server or hosted service, and no web application. It has no sprint,
+estimate or reporting ceremony beyond what a loop uses. It has no maintained terminal
+interface, no real-time collaboration, and no import from other trackers beyond §5. Each of
+these makes a tool like this one hard to maintain, and the loop needs none of them.
 
-One rejection is worth naming rather than listing, because it is the plausible one: **LLM
-monitoring of the ledger**. It puts a paid third-party service in the store's runtime path,
-which fails the test of whether a component's breaking change can be absorbed on our own
-schedule — model ids are deprecated, prices change, availability is somebody else's
-operational decision. It contradicts the kit boundary, which never calls the network or a
-model (§4). And it is nondeterministic where every other part of this design is
-deterministic: a monitor whose verdict on the *same* log can differ between two runs cannot
-be a thing a gate reads. The condition it would exist to catch — a lane that has stopped
-making progress — is already covered deterministically by a stall watchdog on a monotonic
-clock, as §9.5 requires.
+**No LLM monitoring of the ledger.** This rejection is the plausible one, so it has reasons:
+
+- It puts a paid third-party service in the runtime path of the store. Model ids, prices
+  and availability change on another party's schedule.
+- It breaks the kit boundary, which never calls the network or a model (§4).
+- It is not deterministic. A monitor that can give two verdicts on the same log cannot feed a
+  gate.
+
+A stall watchdog on a monotonic clock already detects a lane that stops making progress, as
+§9.5 requires.

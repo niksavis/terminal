@@ -1,145 +1,77 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 91
+  listing: 71
 name: interface-facts
 invocation: model
-description: Establish a fact about an external interface - a CLI flag, an API field, a model id, a price, a limit, a version - by fetching the vendor's current documentation instead of recalling it. Use before writing code, a design note, or any claim that depends on how a third-party tool behaves, and whenever a repo document already asserts such a behaviour.
+description: Establish a fact about an external interface - a CLI flag, an API field, a model id, a price, a limit, a version - from the installed binary and the vendor's current documentation, never from recall. Use before code or a claim depends on how a third-party tool behaves.
 instructions: |
   # Interface Facts
 
-  A model's knowledge of an external interface is a snapshot of whenever it was
-  trained, and vendors ship. So **an external interface fact is unverified until it is
-  fetched**. The cost is asymmetric: a wrong fact about our own code fails a gate, a
-  wrong fact about someone else's interface gets committed as prose and is believed for
-  months.
+  Establish how a third-party interface behaves from evidence you fetch now. A model knows an interface only as it was at training time, and vendors change interfaces.
 
-  Covers CLI flags and output formats, API fields and endpoints, model ids, context
-  windows, token accounting, pricing, rate limits, config schemas, and version-gated
-  behaviour.
+  The skill covers CLI flags and output formats, API fields and endpoints, model ids, context windows, token accounting, prices, rate limits, config schemas and behaviour that changes with a version.
 
-  ## The order of evidence
+  ## Rules
 
-  1. **Our own code that already touches the interface.** If an adapter, parser or hook
-     reads the thing, that code is the evidence — it was written against a real probe
-     and it is under test.
-  2. **The installed binary, interrogated.** `--help`, `--version`, a `--dry-run`, an
-     invalid flag whose error names the valid set. This outranks documentation when the
-     question is what *this* version accepts: the docs describe a release, the binary on
-     the path is the one the command will run.
+  - **An external interface fact is unverified until you fetch it.** A wrong fact about another vendor's interface gets committed as prose and believed for months.
+  - **Read our own code before our own prose.** A design document's summary of an interface is a claim about a claim.
+  - **Run the installed binary before you read the documentation.** The documentation describes a release. The binary on the path is the one that runs.
+  - **Record the version and the date with every fact.** A claim with no version cannot be checked again, only argued again.
+  - **Only the vendor's own host counts as a source.** An aggregator, a mirror or a summary site does not.
+  - **Never cache or commit fetched documentation.** The cache lands in a consumer tree, and the upstream licence is not ours to give.
+  - **Correct the stale document in place.** Two claims that disagree cost more than one wrong claim.
+
+  ## Order of evidence
+
+  1. **Our own code that touches the interface.** An adapter, a parser or a hook was written against a real probe and is under test.
+  2. **The installed binary.** Use `--help`, `--version`, `--dry-run`, or an invalid flag whose error names the valid set. For a default behaviour, run the command itself. A flag list does not show a default.
   3. **The vendor's current documentation**, fetched now.
   4. **The vendor's changelog**, which dates the change.
-  5. **The vendor's source or issue tracker**, where a documented feature that does not
-     work gets contradicted.
-  6. **Third-party writing** — weakest, never sufficient alone.
+  5. **The vendor's source or issue tracker**, which shows a documented feature that does not work.
+  6. **Third-party writing.** This is the weakest evidence and is never sufficient alone.
 
-  A landing page or feature grid is marketing. A README is a claim.
-
-  ## Prefer our own code over our own prose
-
-  This is the rule that gets skipped and the one that has cost the most. A design
-  document's *summary* of an interface is a claim about a claim. Read the implementation
-  before quoting the document, and read the section a summary cites before trusting the
-  summary.
-
-  Measured instance: a design note carried "copilot has no counts" in
-  a components table while section 7.5 immediately below documented the extraction
-  mechanism and `runner.py` implemented it — mapping copilot's `session.shutdown`
-  `modelMetrics` onto our usage split, with summation semantics verified against 15
-  local stores. The stale summary was read, it matched a prior assumption, and it was
-  repeated to the owner as fact.
-
-  ## Pin the version and the date
-
-  Record what you verified against; the answer has a shelf life. This repo already does
-  it where it does it at all — `copilot 1.0.77`, `codex 0.146.0`, "re-probed 1.0.75".
-  An unpinned capability claim cannot be re-checked, only re-argued.
+  A landing page or a feature grid is marketing. A README is a claim.
 
   ## How to fetch
 
-  Scope the search to the vendor so third-party summaries cannot outrank the source,
-  then fetch the specific page and ask a **narrow** question — exact flag names, exact
-  field names, whether a machine-readable output mode exists — rather than "tell me
-  about X". Use browser tools only when a page needs JavaScript to render.
+  1. Limit the search to the vendor's host, so a third-party summary cannot rank above the source.
+  2. Fetch the specific page.
+  3. Ask a narrow question: the exact flag name, the exact field name, whether a machine-readable output mode exists.
+  4. Use browser tools only when a page needs JavaScript to render.
 
-  ## Machine-readable routes, reached only after the binary
+  ## Machine-readable routes
 
-  **Run the installed binary first.** This table makes rung 3 cheap, and cheap is how it
-  goes wrong. Recorded incident, 2026-08-19 on this repo's own toolchain before it was
-  updated: `uv` was installed at 0.11.28 while 0.12.5 was released, and uv's changelog
-  gives 0.12.0 "Define build systems by default with `uv init`" — so the current
-  documentation described a `uv init` the installed binary did not have. `uv init --help`
-  on 0.11.28 already listed both `--package` and `--no-package`, so even a flag probe
-  missed it and only running the command found the default. A route below answers "what
-  does this release document", never "what will this command do".
+  A route tells you what a release documents. It does not tell you what the installed command does. Probe a route before you quote it. Follow redirects. Read an unexpected redirect or a 404 as a moved route, not as a missing fact.
 
-  Every row was fetched, not recalled, on 2026-08-19. Follow redirects, and read an
-  unexpected hop or a 404 as route rot rather than as absence of the fact:
-  `docs.claude.com/llms.txt` 301s to `platform.claude.com/llms.txt`, and
-  `developers.openai.com/codex/llms.txt` 308s to `learn.chatgpt.com/docs/llms.txt`
-  while the OpenAI index still advertises the old path. Probe the row before you quote it.
-
-  | dependency | route, fetched 2026-08-19 |
+  | Dependency | Route |
   | --- | --- |
-  | uv | `docs.astral.sh/uv/llms.txt`; per page `docs.astral.sh/uv/<page>/index.md` |
-  | ruff | `docs.astral.sh/ruff/llms.txt`; per page `docs.astral.sh/ruff/<page>/index.md` |
-  | Claude Code | `code.claude.com/docs/llms.txt`; per page `code.claude.com/docs/en/<slug>.md` |
-  | Anthropic API | `platform.claude.com/llms.txt`; per page `platform.claude.com/docs/en/<path>.md`. `llms-full.txt` exists and is 32 MB — never fetch it whole |
-  | Codex | `developers.openai.com/codex/llms.txt` → `learn.chatgpt.com/docs/llms.txt`; per page `learn.chatgpt.com/docs/<slug>.md` |
-  | GitHub Docs, and so Copilot CLI and Actions | `docs.github.com/llms.txt`; any page as markdown by appending `.md` (`text/markdown`); or the APIs below |
-  | Python | no `llms.txt` (404); Sphinx `docs.python.org/3/_sources/<path>.rst.txt` and `docs.python.org/3/objects.inv` |
-  | pytest | no `llms.txt` (404); `docs.pytest.org/en/stable/_sources/<path>.rst.txt` and `docs.pytest.org/en/stable/objects.inv` |
-  | git | none served (404) — rung 2, `git <cmd> --help` on the installed binary |
-  | pre-commit | none served (404) — rung 2, `pre-commit <cmd> --help` on the installed binary |
-  | any other dependency the repo declares (in basicly: jinja2, jsonschema, pyyaml, rich, ruamel.yaml, pyright, bandit, vulture, import-linter, pip-audit, djlint) | probe `<docs-host>/llms.txt`, then the Sphinx pair `objects.inv` + `_sources/<path>.rst.txt` (both answered 200 for jinja2 and rich), else rung 2 |
+  | uv | `docs.astral.sh/uv/llms.txt`; one page: `docs.astral.sh/uv/<page>/index.md` |
+  | ruff | `docs.astral.sh/ruff/llms.txt`; one page: `docs.astral.sh/ruff/<page>/index.md` |
+  | Claude Code | `code.claude.com/docs/llms.txt`; one page: `code.claude.com/docs/en/<slug>.md` |
+  | Anthropic API | `platform.claude.com/llms.txt`; one page: `platform.claude.com/docs/en/<path>.md`. Never fetch the whole `llms-full.txt`, which is very large |
+  | Codex | `developers.openai.com/codex/llms.txt`, which redirects to `learn.chatgpt.com/docs/llms.txt`; one page: `learn.chatgpt.com/docs/<slug>.md` |
+  | GitHub Docs (Copilot CLI, Actions) | `docs.github.com/llms.txt`; append `.md` to any page URL for markdown |
+  | Python | no `llms.txt`; `docs.python.org/3/_sources/<path>.rst.txt` and `docs.python.org/3/objects.inv` |
+  | pytest | no `llms.txt`; `docs.pytest.org/en/stable/_sources/<path>.rst.txt` and `docs.pytest.org/en/stable/objects.inv` |
+  | git, pre-commit | none; run `<tool> <cmd> --help` on the installed binary |
+  | any other dependency | probe `<docs-host>/llms.txt`, then the Sphinx pair `objects.inv` and `_sources/<path>.rst.txt`, else the installed binary |
 
-  GitHub Docs names its Article, Article Body, Page List and Search APIs the preferred
-  route for automated tools, and **the Search API requires an undocumented `client_name`
-  parameter**: the example GitHub prints in its own `llms.txt`,
-  `/api/search/v1?query=actions&language=en&version=free-pro-team@latest`, answers 400
-  `Missing required parameter 'client_name' for external requests`, and the same URL with
-  `&client_name=<something naming us>` answers 200. `/api/article` and
-  `/api/article/body` answered 200 without it — send it anyway rather than depending on
-  that asymmetry holding.
+  The GitHub Docs Search API refuses a request with no `client_name` parameter. The error is `Missing required parameter 'client_name' for external requests`. Add `&client_name=<a name for this tool>` to every GitHub Docs API request.
 
-  Three refusals go with the table. Never cache or commit fetched documentation: a cache
-  lands in a consumer tree and the upstream licence is not ours to redistribute. Never
-  cite an aggregator, mirror or docs-summarising site as the source of an interface fact
-  — only the vendor's own host counts. Never record a fact a route gave you without the
-  version it describes and the date you fetched it.
+  ## State the claim precisely
 
-  ## Distinguish "the capability exists" from "we can reach it"
+  - **Keep "the capability exists" apart from "we can reach it".** A documented feature can have no flag or output mode that our dispatch can read. A value that is not on stdout can still be readable from another place.
+  - **Write the claim at the precision the evidence supports.** "Has no config-file deny rule" is correct where "has no config file" is not. A vague note invites the next reader to remove what it justifies.
 
-  Separate questions; conflating them produces a confident wrong answer in either
-  direction. Copilot reports per-model token usage interactively via `/usage`, and every
-  plan moved to token-based billing on 2026-06-01 — yet the docs show no flag or JSON
-  mode that emits it, and the mechanism our adapter uses is out of band: the dispatch
-  supplies the session UUID with `--session-id`, which makes the store path knowable
-  before the store exists. "It is documented" does not mean "our dispatch can read it",
-  and "not on stdout" does not mean unmeterable.
+  ## Record the fact
 
-  ## State the claim at the precision the evidence supports
+  Put the fact on the tracker record, with the version, the date and the URL:
 
-  A correct-but-vague note invites a future reader to "fix" it. Copilot genuinely has no
-  config-file *deny* — but a config file does exist,
-  `~/.copilot/permissions-config.json`, which stores approvals. Written as "has no
-  config file", the next reader finds that file, reads the note as stale, and removes
-  the invocation-time injection it justifies.
+  ```sh
+  basicly tracker write -- comments add <id> "verified <date> against <url> (<tool> <version>): ..."
+  ```
 
-  ## Record it where the next reader will hit it
+  When a repo document and the vendor disagree, the vendor decides what the interface does. The repo decides what we chose to do. Correct the document in place and name what refuted it.
 
-  A fact established and not written down gets re-derived or re-guessed. Put it on the
-  bead (`basicly tracker write -- comments add <id> "verified <date> against <url>:
-  ..."`), and **correct the
-  document that carried the stale version** rather than adding the new claim beside it —
-  two claims that disagree cost more than one that is wrong.
-
-  ## When a repo document and the vendor disagree
-
-  The vendor wins on what the interface *does*; the repo wins on what we *decided*.
-  Correct the document in place and name what refuted it — a fresher number pasted over
-  an older one with no provenance is the same unchecked declaration one generation on.
-  Where a value we depend on can be checked against data we already record, wire the
-  comparison as a gate: `runner.window_violations` exists because a declared context
-  window of 200000 sat against a recorded occupancy of 223221 for months, mechanically
-  detectable the whole time.
+  When a value we depend on can be compared with data we already record, make the comparison a gate. A declared limit that recorded data contradicts is a defect that a machine can detect.

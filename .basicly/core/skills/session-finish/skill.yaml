@@ -1,146 +1,82 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 86
+  listing: 73
 name: session-finish
 invocation: model
-description: Close out a working session with a usage-statistics report, a self-improvement retro, and a pickup-clean handoff summary. Use when the user says the session is done ("wrap up", "finish the session", "close out"), before ending a long autonomous run, or whenever a summary of what changed and what the agent actually used is wanted.
+description: Close out a working session with a usage-statistics report, a self-improvement retro and a clean handoff summary of what changed and what is still open. Use when the user says the session is done ("wrap up", "finish for today", "close out"), or before a long autonomous run ends.
 instructions: |
   # Session Finish
 
-  ## Scope
+  Close a session in three steps: report what the session used, run the retro, and leave the repository clean for the next session. Run it after the work has landed. For commits, gates and record closure, use `harness-loop`, `work-tracker` and `conventional-commits`.
 
-  Owns the end-of-session ritual: report what the session actually used
-  (tools and skills, from recorded telemetry), run the self-improvement
-  retro, and leave the repo pickup-clean with a handoff summary.
+  ## Rules
 
-  It is **not** for shipping the work itself — commits, gates, and issue
-  closure belong to the loop and its skills (`harness-loop`, `work-tracker`,
-  `conventional-commits`). Run this after the work has landed.
+  - **Write the handover as a ledger note, never as a file.** `basicly session start` prints the newest note first, and nothing reads a `HANDOVER.md`.
+  - **Stop every background process before you summarise.** A watcher that outlives the session reports a stale state.
+  - **Keep every durable artifact in the repository.** The host cleans the scratchpad without warning.
+  - **Write scratch files to a subdirectory unique to your lane.** A concurrent lane can overwrite a file at a shared path.
+  - **Never apply a retro edit yourself.** Present it for explicit approval.
+  - **Never invent a retro finding.** When nothing concrete happened, skip the retro and say so.
+  - **Never reset or delete the usage counters.** They accumulate across sessions.
 
-  ## 1) Usage statistics
-
-  The `tool-usage` PostToolUse hook counts every shell command's pipeline
-  heads and every `Skill` invocation into `.basicly/usage/tool-usage.json`
-  (git-ignored, survives between sessions). Report it with:
+  ## 1. Usage statistics
 
   ```sh
   basicly usage report
   ```
 
-  - The report tables terminal tools and skills by count with `last used`
-    dates, and names never-used catalog skills — the culling candidates.
-  - A third table, **Unresolved heads**, holds what resolves to no command
-    here: recorder misses (heredoc terminators, keywords, flag fragments)
-    and tools this machine has not installed. Cite neither side of it —
-    those rows are evidence of nothing about usage.
-  - The counter file accumulates across sessions by design; do not reset or
-    delete it. When the command reports no usage data, say so (the hook may
-    not be active in this repo) and continue with the rest of the ritual.
+  - The `tool-usage` hook counts shell commands and `Skill` calls into `.basicly/usage/tool-usage.json`.
+  - The report lists tools and skills by count with the date of last use. It names the catalog skills that nothing used, which are the candidates for removal.
+  - Do not cite the **Unresolved heads** table. Its rows are recorder misses and tools that this machine does not have.
+  - When the report has no data, say so and continue. The hook may not be active in this repository.
 
-  ### Are the factory's own numbers still right?
-
-  The dispatch ledger answers a second question the close-out should ask:
+  Then check the settings of the factory:
 
   ```sh
   basicly usage tuning
   ```
 
-  - One row per governed parameter — the value in force for the dispatches
-    it summarises, the outcome distribution under that value, and a
-    recommendation with its sample size, labelled `measured` or `seeded`.
-  - It changes nothing, by design. Report a recommendation worth acting on;
-    never edit `basicly.toml` from it without the owner's say-so.
-  - A `seeded` row means the sample is under the calibration minimum, so the
-    declared prior stands — do not cite it as a measurement. A row with zero
-    samples is naming a bound nothing records, which is itself the finding.
+  - Each row is one governed parameter: the value in force, the outcomes under it, and a recommendation with its sample size.
+  - The command changes nothing. Report a recommendation worth an action. Never edit `basicly.toml` from it without the owner's approval.
+  - A `seeded` row has too few samples, so the declared prior stands. Do not cite it as a measurement.
+  - A row with zero samples names a limit that nothing records. That is a finding.
 
-  Where a supervised pass persisted lane transcripts, one more question is
-  answerable and is worth asking before a briefing change is proposed:
+  When a supervised pass kept lane transcripts, split the spend:
 
   ```sh
   basicly usage lane-split
   ```
 
-  - Per lane, the share of spend that went on **acquiring context** against
-    the share that went on **implementing**. Read the shares, never the
-    tokens: those are stream-denominated and over-report the run record by
-    1.46x-1.79x, which is a different unit from the one a grant is metered in.
-  - A lane reported `unclassifiable` predates the tool-name field; it is not a
-    lane that did no reading. A lane with no transcript is missing, not zero.
-  - Claude only. No other family emits the per-tool event it reads.
+  - Each lane shows the share of spend on context acquisition and the share on implementation. Read the shares, never the token counts. The counts use a different unit from the run record.
+  - `unclassifiable` means the transcript has no tool-name field. It does not mean the lane read nothing. A lane with no transcript is missing, not zero.
+  - Only Claude transcripts carry the event this command reads.
 
-  Then the denominator, which the per-lane views cannot supply:
+  Then the denominator:
 
   ```sh
   basicly usage outcomes
   ```
 
-  - How every recorded dispatch ended, and the failure share as a rate. A run
-    that felt like a string of failures is judged against this, not against
-    memory of it.
-  - These are **dispatch** outcomes — whether the agent process finished. No
-    record says whether a lane reached a result, so this cannot answer "how
-    many lanes found nothing", and a retro that reads it that way is wrong.
+  - It shows how every recorded dispatch ended and the failure rate. Judge a run against this rate, not against your memory of it.
+  - These are dispatch outcomes: did the agent process finish. They do not show whether a lane found a result.
 
-  ## 2) Self-improvement retro
+  ## 2. Retro
 
-  Follow the repo's retro rules:
+  - Run it only after a refused change or a mistake that the user corrected. Use the `root-cause` skill to find the cause.
+  - Propose the exact fragment, skill or hook change that would have refused it.
+  - Record an environment, timing or platform trap as one bullet in a quirks fragment: the trap and the avoidance.
 
-  - Only when the session hit a real rejection or a user-corrected mistake:
-    find the root cause and propose the exact fragment/skill/hook change
-    that would have prevented it. The `root-cause` skill is the method —
-    it carries the signal-not-incident guard, the observation-per-link rule
-    and the branch-not-taken record, none of which this list teaches.
-  - Environment/timing/platform traps become a quirks-fragment bullet: one
-    incident, one bullet, trap plus avoidance.
-  - Present proposals for explicit approval — never self-apply a retro edit.
-  - Nothing concrete surfaced? Skip the retro and say so; inventing findings
-    is the anti-pattern.
+  ## 3. Clean handoff
 
-  ## 3) Pickup-clean handoff
+  1. Run `git status`. Remove partial edits, debug output and stray files. Name in the summary anything that you leave on purpose.
+  2. Run `basicly loop status <id>` for each record you touched. Close each claimed record, or add a note with its true state.
+  3. List the running background processes and stop them.
+  4. Before you restore a file from a backup, compare the backup with `git show HEAD:<path>`.
+  5. Write the handover note on the root record of the session:
 
-  - `git status` must be clean: no partial edits, stray debug output, or
-    unexplained files. Anything intentional left behind gets named in the
-    summary; anything unintentional gets removed before finishing.
-  - Confirm the tracker matches reality (`basicly loop status <id>` for each
-    track touched; claimed records either closed or annotated with their true
-    state).
-  - **No background process may outlive the session.** A watcher left spinning keeps
-    burning CPU and, worse, reports stale state — an `until`-loop waiting on a job that
-    had already succeeded claimed it was still running for 30 minutes. List what is
-    running and stop it before summarising.
-  - **Anything worth keeping is in the repo, not in a temp directory.** The scratchpad is
-    cleaned mid-session without warning: an 846-line design document and the agent
-    transcript that produced it were both destroyed between writing and installing them,
-    and only survived because the decisions were still recoverable from the conversation.
-    Write a durable artifact straight to its final path, or have the agent that produces
-    it write there. Treat a scratchpad file as lost the moment you stop looking at it.
-  - **The scratchpad is shared between concurrent lanes, which is the worse reason.**
-    Cleaning loses a file loudly; a sibling lane writing the same path substitutes one
-    silently. Nine lanes ran against one session directory, a `measure.py` was
-    overwritten between the write and the run, and the run printed the sibling's numbers
-    under this lane's command. Write to a lane-unique subdirectory, never the scratchpad
-    root, and verify any backup against `git show HEAD:<path>` before restoring from it.
-  - **The handover is a ledger note, never a file.** Write where the session stopped
-    and what comes next as one note on the root record the session worked, its text
-    starting with `[session handover <date>]`; `basicly session start` prints the
-    newest such note first, on whichever root carries it, so the next session reads
-    one store. A `HANDOVER.md` beside the repo is unverified by construction, goes
-    stale between the sessions it serves, and is untracked dirt that blocks every
-    landing — D-42 retired it and nothing reads one.
+     ```sh
+     basicly tracker write -- comments add <root-id> "[session handover $(date +%F)] STATE: ... NEXT: ..."
+     ```
 
-    ```sh
-    basicly tracker write -- comments add <root-id> "[session handover $(date +%F)] STATE: ... NEXT: ..."
-    ```
-
-  - End with a summary of: what changed (with issue ids), what was verified
-    (gates run, their results), what remains open, and the usage-statistics
-    highlights from step 1.
-
-  ## Trigger examples
-
-  - Should trigger: "wrap up the session" / "finish for today".
-  - Should trigger: "what did this session actually use and change?"
-  - Should not trigger: "close this issue" (that is `work-tracker`).
-  - Should not trigger: mid-task status updates while work is still open.
+  6. End with a summary: what changed (with record ids), what you verified (the gates and their results), what is still open, and the main usage figures from step 1.

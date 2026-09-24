@@ -1,18 +1,18 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 54
-  codex: 54
-  copilot: 54
+  claude: 103
+  codex: 102
+  copilot: 103
 id: session-completion
-description: What "done" requires before ending a turn or session.
+description: How to end a session, including the retro after a mistake.
 category: project
 priority: medium
-applies_to:
-- all
+applies_to: [all]
 tags:
-- completion
-- handoff
+- session
 status: active
+title: Session Completion
 body: |
-  - Before ending, close out per the `session-finish` skill: leave the repo pickup-clean (no partial edits or stray output) and summarize what changed, what was verified, and what remains open.
+  - Before you end a session, follow the `session-finish` skill. Leave the repository clean, with no partial edits and no stray files. Report what changed, what you verified and what is still open.
+  - After a refused change or a mistake the user corrected, name the root cause. Propose the fragment, skill or hook change that would have refused it. A note to "be careful" changes nothing.

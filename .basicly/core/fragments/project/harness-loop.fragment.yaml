@@ -1,19 +1,20 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 111
-  codex: 111
-  copilot: 110
+  claude: 83
+  codex: 82
+  copilot: 83
 id: harness-loop
-description: How non-trivial development runs through the basicly harness loop.
+description: Session start, session end and the harness loop.
 category: project
 priority: high
-applies_to:
-- all
+applies_to: [all]
 tags:
 - harness
-- loop
 - workflow
 status: active
+title: Harness Loop
 body: |
-  - Open a session with `basicly session start`; end it with a `[session handover <date>]` note on the root record. The ledger is the source of truth. Drive non-trivial work through the harness loop; the `harness-loop` skill is the runbook: the phases, `basicly loop status/run`, multi-lane `loop preflight`/`loop supervise`, engine-enforced checkpoints, bounded rework, and the block-don't-guess `needs-input.json` protocol.
+  - Start a session with `basicly session start`. End it with a note tagged `[session handover <date>]` on the root record.
+  - The tracker ledger is the source of truth for the work.
+  - Drive non-trivial work through the harness loop. The `harness-loop` skill describes the phases, the commands and the checkpoints.

@@ -1,125 +1,129 @@
 ---
 name: work-tracker
-description: Use the append-only work tracker as this repository's issue tracker — read what is ready, file and close records, record dependencies, and reference an id from a commit. Use when planning work, deciding what to do next, filing or closing an issue, or preparing a commit that must name one.
+description: Use the append-only work tracker as this repository's issue tracker. Use when you plan work, choose what to do next, file, refine or close a record, or write a commit that must name a record id.
 ---
 
 # The work tracker
 
-**An append-only event ledger under `.basicly/ledger/`, committed with the code.** Records
-are events, never rows edited in place, which is why two people or two agents working the
-same backlog in parallel do not conflict. There is no server, no database and no binary to
-install.
+The tracker is an append-only event ledger in `.basicly/ledger/`, committed with the code.
+Every command takes the ledger directory as its first argument and prints one JSON object.
+`.basicly/kit/tracker/REFERENCE.md` lists every command with one example.
 
-## Why it is append-only, and what that buys you
+## Rules
 
-A tracker whose file is rewritten on every change conflicts the moment two branches touch
-the backlog, and resolving it by hand risks losing a record. Here every write appends one
-event to `events-*.jsonl`, and the install declares `merge=union` on that glob, so two
-branches that each append merge clean and keep both events. State is *folded* from the log,
-so the fold is the same whichever branch merged first.
+- **Many people share this tracker. Never take a story that someone holds.** `ready` names
+  the holder of each reserved story. `assign` and `claim` refuse a held story and name the
+  holder; `--take` is for an agreed handover only.
+- **Reserve a story before you plan it, and push at once.** Run `assign` when you plan to
+  work on a story, even days ahead, then commit and push the ledger. Others see a
+  reservation only after they pull. Run `claim` when you start, and `unassign` when you
+  drop it.
+- **Read `ready` before you propose work.** Take the top row that nobody holds. Do not
+  invent a task.
+- **Run `dor` before you build.** `ready` leaves out a record labelled `refine` and a new
+  record that fails `dor`, but it keeps an older unshaped record. `dor` refuses a record
+  that has no trigger, acceptance criteria or requirements.
+- **Criteria and requirements are fields.** Pass them as `--acceptance` and
+  `--requirements`. A description that holds either heading is refused.
+- **A close reason is evidence.** Name what shipped, the command you ran and its result.
+- **Put a finding on the record**, not in a code comment.
+- **Name the record id in the commit message.** It is the only link from a change to its
+  reason.
+- **File what you notice.** A defect that you do not file is invisible to everyone else.
 
-That is the reason to prefer it, and it only holds if the git attribute is present. Check
-with `basicly-tracker status` if a merge ever conflicts on the log.
-
-## Read before you write
-
-Every subcommand takes the repository directory as its first argument.
+## Read
 
 ```sh
-python3 .basicly/kit/tracker/cli.py ready .        # what is workable now, ranked
-python3 .basicly/kit/tracker/cli.py blocked .      # what is waiting, and on what
-python3 .basicly/kit/tracker/cli.py stats .        # counts by status
-python3 .basicly/kit/tracker/cli.py show . <id>    # one record in full
-python3 .basicly/kit/tracker/cli.py list .         # every record
+python3 .basicly/kit/tracker/cli.py ready .basicly/ledger        # workable now, ranked
+python3 .basicly/kit/tracker/cli.py blocked .basicly/ledger      # waiting, and on what
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger <id>    # one record, its edges and dates
+python3 .basicly/kit/tracker/cli.py dor .basicly/ledger <id>     # exit 0 shaped, exit 1 with what is missing
+python3 .basicly/kit/tracker/cli.py ready .basicly/ledger --mine # the stories you hold
 ```
 
-`ready` is the one to start from: it excludes anything blocked by an open dependency and
-ranks what is left, so the top row is the next thing to do. Read it before proposing work
-rather than inventing a task.
+A `holder` marked `stale` had no event for `stale_days` (14 by default); ask the holder
+before you take it. A story marked `contested` was reserved by two people on different
+branches; the two agree who keeps it, then run `resolve` to keep the current holder, or
+`claim --take` to change it.
 
 ## Write
 
 ```sh
-python3 .basicly/kit/tracker/cli.py create . --prefix <p> --title "<what>" \
+python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix <p> --title "<what>" \
     --description "<the trigger>" --acceptance "<how it is checked>" --requirements "<the standard>"
-python3 .basicly/kit/tracker/cli.py update . <id> --status in_progress
-python3 .basicly/kit/tracker/cli.py comment . <id> "<what you learned>"
-python3 .basicly/kit/tracker/cli.py dep . <id> <the-id-it-waits-on>
-python3 .basicly/kit/tracker/cli.py close . <id> --reason "<what shipped, and the evidence>"
-python3 .basicly/kit/tracker/cli.py child . <parent-id> --title "<a piece of it>"
+python3 .basicly/kit/tracker/cli.py assign .basicly/ledger <id>                 # reserve it for you
+python3 .basicly/kit/tracker/cli.py claim .basicly/ledger <id>                  # reserve it and start
+python3 .basicly/kit/tracker/cli.py unassign .basicly/ledger <id>               # give it back
+python3 .basicly/kit/tracker/cli.py comment .basicly/ledger <id> "<what you learned>"
+python3 .basicly/kit/tracker/cli.py dep .basicly/ledger <id> <the-id-it-waits-on>
+python3 .basicly/kit/tracker/cli.py child .basicly/ledger <parent-id> --title "<a piece of it>"
+python3 .basicly/kit/tracker/cli.py close .basicly/ledger <id> --reason "<what shipped, and the evidence>"
 ```
 
-Run `cli.py <verb> --help` for the exact flags; they are checked and a wrong one is refused
-by name rather than ignored.
+## Shape a record
 
-## Check the log itself
+A shaped record carries three things:
+
+1. **A trigger** in the description, in one of two voices. Situation: "When <situation>, I
+   want to <motivation>, so I can <outcome>." Persona: "As a <persona>, I want <goal>, so
+   that <benefit>." Do not invent a persona when a situation triggers the work.
+2. **Acceptance criteria** as `--acceptance`. Write one bullet per check: "When <event>, the
+   <system> shall <response>."
+3. **Requirements** as `--requirements`. Name the standard that the result must obey, not
+   the method.
+
+A placeholder counts as absent. One record is one change that a person can see. A record
+that needs more than one session is two records: split it with `child`.
+
+`scaffold --type <type>` prints what a record of that type must carry. A `template.json`
+beside the log adds sections (`extend`) or replaces them (`override`), for all records or
+for one `issue_type`. A field named after a section, such as `--field risks="<text>"`,
+satisfies it.
+
+## Refine a record
+
+A person writes or edits a story, often in the served page. The page adds the label
+`refine`. The record is not ready to build until an agent does a refinement pass:
+
+1. Run `refine` to list the open records that carry the label or fail `dor`.
+2. For each record, read it with `show` and rewrite it with `update`: the trigger, the
+   acceptance criteria, the requirements, the type, the priority and the `dep` edges.
+3. Run `dor`. When it passes, remove the label: `update <id> --remove-label refine`.
+
+Keep the intent of the person. When the intent is unclear, add a comment with the question
+and leave the label on.
+
+## What it refuses
+
+Every refusal exits 1, names the reason and the fix, and writes nothing. Read it and fix the
+cause. It refuses:
+
+- a record id that the ledger does not hold, and an edge that makes a cycle;
+- a status outside `open`, `in_progress`, `blocked`, `deferred`, `closed`;
+- a priority outside 0 (critical) to 4 (backlog), and a `close` without `--reason`;
+- a field that no code reads, an import-history field, or a derived date. `fields` prints
+  each field, its role and its reader;
+- a directory that is not a ledger, and a malformed `template.json`.
+
+## Show a person the state
 
 ```sh
-python3 .basicly/kit/tracker/cli.py fsck .            # exit 0 clean, 1 stale derivative, 2 broken
-python3 .basicly/kit/tracker/cli.py fsck . --rebuild  # write the derivatives again first
+python3 .basicly/kit/tracker/cli.py board .basicly/ledger --out tracker-board.html
 ```
 
-The log is the truth and everything else is derived from it, which is only worth saying if
-you can check it. Run this after a merge you are unsure about, or when a query answers
-something that surprises you. A finding names the record and the reason; a broken log is
-repaired by appending a corrective event, never by editing a line.
+`board` writes one static page. The optional board kit serves a live page and an HTTP API
+where a person reads, creates and edits records: see the `tracker-board` skill.
 
-## Show a human where the work stands
+## Merges and the log
 
-```sh
-python3 .basicly/kit/tracker/cli.py board . --out tracker-board.html
-```
-
-One self-contained page: the counts, the ranked ready set, what is blocked and what holds
-it, a dependency drawing, and every record with what it still owes. No server and no
-network — it is a file, and nothing on it updates until you run the command again. Write
-it when someone asks what the state of the work is, rather than pasting JSON at them.
-
-## Shape a record before you build against it
-
-A record is **shaped** when it carries three things: a trigger in either story voice, the
-acceptance criteria a check is derived from, and the requirements validation judges the
-built thing against. Every write prints what the record still `owed`, and the gate refuses
-one that is not shaped:
-
-```sh
-python3 .basicly/kit/tracker/cli.py dor . <id>     # exit 0 ready, exit 1 with what is missing
-```
-
-Run it before you start work, not after. The three sections are what you verify and
-validate against; without them you are checking the code against your own reading of a
-title, which is the failure this tracker exists to stop.
-
-State the trigger as a situation — *"When <situation>, I want to <motivation>, so I can
-<outcome>."* — or as a persona — *"As a <persona>, I want <goal>, so that <benefit>."* A
-persona is never required: where a situation triggers the work and nobody in particular
-wants it, inventing one is the defect. A placeholder counts as absent, so pasting either
-template unfilled does not satisfy the gate.
-
-`--acceptance` and `--requirements` are the direct route. A `## Acceptance Criteria` or
-`## Requirements` section of dash-space bullets in the description counts too, so a record
-written as prose stays valid.
-
-**`ready` is not the gate.** It offers every unblocked record, shaped or not; `dor` is what
-refuses. Read `ready` to choose, then run `dor` before you build.
-
-## How to use it well
-
-- **Claim before you build.** Set the record to in-progress so a second agent reading
-  `ready` does not pick up the same thing.
-- **A close reason is evidence, not a summary.** Name what shipped, what was run, and the
-  number it produced. The reason is the permanent record; the diff is not searchable.
-- **Put a finding on the record, not in a comment in the code.** The ledger is where a
-  measurement stays true and stays attributable.
-- **Reference the id in the commit message.** That is the only link between a change and
-  why it was made.
-- **Shape it as you file it.** `create` takes the three sections; adding them later costs
-  a second write and the record is unusable in between.
-- **File the thing you noticed.** A defect you found and did not file is one nobody else
-  can see; `create` costs one command.
-
-## What it will refuse
-
-A record id that does not exist. A dependency edge that would make a cycle. A write to a
-record the snapshot says is already closed, unless you say so deliberately. Each refusal
-names the reason; read it rather than working around it.
+- A write appends to `pending-<branch>.jsonl`, and `merge=union` in `.gitattributes` keeps
+  both sides of a merge. A merge needs nothing from you. If a merge conflicts on the log,
+  run `basicly-tracker status`: the attribute is missing.
+- `fsck` checks the log: exit 0 clean, 1 stale derivative, 2 broken. Two writers on one
+  record are a warning. When they set one value differently, `fsck` names both values:
+  keep the current one with `resolve`, or choose with `update`. Never edit a line.
+- `compact` folds the shards into the trunk log. Run it on the default branch as its own
+  pull request. Use `init --fold-on-merge` only where one writer pushes straight to the
+  default branch, because two pull requests that each carry a fold conflict.
+- An event's `actor` is `agent:<name>` or `operator`. It never names a person. To find the
+  person, ask git: `git log -S'<record-id>' -- .basicly/ledger`.

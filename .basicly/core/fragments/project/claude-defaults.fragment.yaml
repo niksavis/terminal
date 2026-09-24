@@ -1,20 +1,18 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 62
+  claude: 43
   codex: 0
   copilot: 0
 id: claude-defaults
-description: Claude-specific defaults and file layout conventions.
+description: Claude Code file locations.
 category: project
 priority: medium
-applies_to:
-- claude
+applies_to: [claude]
 tags:
 - claude
-- layout
 status: active
-title: Claude-specific notes
+title: Claude Notes
 body: |
-  - Author skills and rules at `.basicly/core/` (or `.basicly-local/`); `.claude/skills/` and `.claude/rules/*.md` (scoped by `paths:`) are projected output.
-  - Put Claude-only prompts/commands/runbooks in `.claude/*.md`.
+  - `.claude/skills/` and `.claude/rules/*.md` are generated. Edit their catalog sources.
+  - Put a Claude-only prompt, command or runbook in `.claude/*.md`.

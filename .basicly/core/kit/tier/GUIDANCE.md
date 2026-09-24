@@ -5,31 +5,29 @@ description: Declare and resolve a portable model tier for a subagent, so a spaw
 
 # Model tiers
 
-**A subagent declares a tier, not a model id.** `low`, `medium`, `high`, `maximum`. The kit
-resolves that tier into the concrete model for the host and vendor in play, so one
-definition works across agent families and a model rename is one edit to a map rather than
-one per definition.
+**A subagent declares a tier, not a model id.** The tiers are `low`, `medium`, `high` and
+`maximum`. The kit resolves the tier into the model for the host and vendor in use. Thus one
+definition works for different agent families, and a model rename is one edit to the map.
 
 ## Why a tier and not a model id
 
-A model id pinned into a definition is a fact duplicated in every definition, and it goes
-stale silently: the id is retired, the spawn falls back, and nothing says so. A tier is a
-statement about the *work* — how much judgment it needs — which stays true when the vendor's
-line-up changes.
+A model id in each definition is a duplicated fact. It becomes wrong without a warning: the
+vendor retires the id, the spawn uses a different model, and nothing tells you. A tier tells
+how much judgment the work needs. That stays true when the vendor changes its models.
 
-Choose by the work, not by caution:
+Choose the tier by the work, not by caution:
 
 | Tier | The work |
 | --- | --- |
-| `low` | mechanical, checkable, high volume — a sweep, a format, a count |
-| `medium` | ordinary implementation with a clear specification |
-| `high` | design judgment, an ambiguous requirement, a review that must catch subtle faults |
-| `maximum` | the few decisions that are expensive to get wrong and hard to reverse |
+| `low` | mechanical, checkable, high volume: a sweep, a format, a count |
+| `medium` | usual implementation with a clear specification |
+| `high` | design judgment, an unclear requirement, a review that must find small faults |
+| `maximum` | the few decisions that cost much when wrong and are difficult to undo |
 
-Defaulting everything to `high` wastes budget; defaulting everything to `low` produces work
-that has to be redone. The tier is the decision.
+If all work gets `high`, you use too much budget. If all work gets `low`, you must do the
+work again. The tier is the decision.
 
-## Resolve one
+## Resolve a tier
 
 ```sh
 python3 .basicly/kit/tier/tier_resolver.py --host claude --tier low
@@ -37,35 +35,31 @@ python3 .basicly/kit/tier/tier_resolver.py --host copilot --tier high
 python3 .basicly/kit/tier/tier_resolver.py --host claude --name <subagent> --default-tier medium
 ```
 
-It prints one JSON object and exits 0 when it resolved, 1 when it did not. **It fails
-closed**: an unavailable cell carries no model and it never substitutes a neighbouring
-tier's, so a wrong answer is never returned quietly.
+The resolver prints one JSON object. It exits 0 when it resolved a model and 1 when it did
+not. **It fails closed:** an unavailable cell has no model, and the resolver never uses the
+model of a different tier. Thus it never gives a wrong answer without a sign.
 
-The same model can be spelled differently per surface, which is why `--host` matters and
-not only for cosmetics.
+One model can have a different name on each surface. Thus `--host` changes the answer.
 
-## Make a spawn actually use it
+## Make a spawn use the tier
 
 ```sh
 python3 .basicly/kit/tier/install_hook.py --dry-run   # print what it would write
 python3 .basicly/kit/tier/install_hook.py             # this repository
 ```
 
-On Claude Code this installs a `PreToolUse` hook that rewrites a spawn to the resolved
-model. **Quit and relaunch the CLI afterwards** if this was the first hook written into a
-directory the host did not already have — clearing the conversation does not reload hooks,
-and the hook then appears to do nothing while every diagnostic says it is installed.
+On Claude Code, this installs a `PreToolUse` hook that adds the resolved model to a spawn.
+**Quit and start the CLI again** if this was the first hook in a directory that the host did
+not have before. To clear the conversation does not reload hooks. Without a restart, the hook
+seems to do nothing, but each check says that it is installed.
 
-On hosts with no hook that can rewrite a spawn, the installer **declines and says why**
-rather than reporting a success for a hook that would never fire. There the fallback is to
-put the resolved model in the definition's own frontmatter and pass it on the session
-command line.
+On Copilot, the installer declines and tells why: that host selects the model of a subagent
+in configuration, not through a hook. There, write the resolved model into the agent
+definition yourself.
 
-## Two traps that cost real time
+## Two traps
 
-- **An environment variable that pins the subagent model outranks the hook.** Where it is
-  set every injection is inert and the hook stays silent. Check it first when an injection
-  appears not to work.
-- **The spawn parameter takes a short alias, the definition frontmatter takes a full id.**
-  They are different vocabularies on the same host. The resolver prints both; use the one
-  the surface wants.
+- **When `CLAUDE_CODE_SUBAGENT_MODEL` is set, the hook does nothing.** Examine that variable
+  first when an injection seems to have no effect.
+- **The hook writes the short alias, not the full model id.** The resolver prints both
+  `alias` and `model`. Use the one that the surface uses.

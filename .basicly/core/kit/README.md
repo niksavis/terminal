@@ -14,6 +14,7 @@ module no gate is looking at. That is how the tier kit's three files went ungate
 | [`tier/`](tier/README.md) | resolving a declared model tier into the model a host will actually spawn, by a hook installed into that host | [`tier/README.md`](tier/README.md) |
 | `tracker/` | the owned append-only work-tracker ledger: events, snapshot, `fsck`, import, ranking | [`tracker/SPEC.md`](tracker/SPEC.md) |
 | [`comments/`](comments/README.md) | reporting and removing prose comments from code files, so the code is the only source of truth | [`comments/README.md`](comments/README.md) |
+| [`board/`](board/README.md) | an optional add-on to `tracker/`: a web page and an HTTP API over the ledger, on localhost | [`board/README.md`](board/README.md) |
 
 ## How a consumer gets one
 
@@ -24,7 +25,7 @@ run `basicly` installs one directly:
 ```console
 $ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tracker basicly-tracker init
 tracker: added to .gitattributes: events-*.jsonl -text merge=union
-tracker: 18 file(s) written, 0 unchanged, in .basicly/kit/tracker
+tracker: 31 file(s) written, 0 unchanged, in .basicly/kit/tracker
 ```
 
 `init` vendors the kit into `.basicly/kit/<name>`, writes the kit's skill into every agent
@@ -50,7 +51,9 @@ These bind **every** kit, and each one is cited from the modules it governs.
 
 - **No basicly, no third party, no network.** A kit module imports the standard library and
   its own siblings, nothing else. `kit-boundary` enforces the first half; the rest is on the
-  author.
+  author. The one exception is the board kit: it may import `http.server`, `http` and
+  `urllib.parse` to listen on loopback when a person serves it, and nothing else that
+  reaches outside.
 - **Parseable by an interpreter older than this repo's 3.14 floor**: no syntax newer than
   3.9, and **one exception class per handler**. This repo's `ruff format` targets 3.14 and
   will rewrite a parenthesized multi-exception `except` into syntax a consumer's Python may

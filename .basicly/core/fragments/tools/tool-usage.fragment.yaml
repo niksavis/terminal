@@ -5,7 +5,7 @@ token_cost:
   codex: 0
   copilot: 0
 id: tool-usage
-description: Retired 2026-08-22 - its retrieval ladder taught the habit that hid a live config key.
+description: Retired. Kept so that an overlay that replaces this id still loads.
 category: tools
 priority: medium
 applies_to:

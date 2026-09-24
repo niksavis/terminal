@@ -1,58 +1,44 @@
-# Cross-platform Python: the two shell-out traps that fail only on Windows CI
+# Shell out on every platform
 
-Both bugs below are deterministic, not flaky. They pass every local POSIX run and
-fail only on a Windows runner, which is exactly what makes them expensive: the red
-build looks intermittent when it is not. The catalog's deterministic gates cannot
-catch either — they are runtime behavior — so they live here as judgment.
+Each mistake below passes on Linux and macOS and fails only on Windows. Each depends on a
+POSIX fallback, so a green local run proves nothing about Windows. The failure is
+deterministic, not flaky.
 
-## 1. A subprocess env must inherit `os.environ`
+## 1. Copy `os.environ` into a child environment
 
-Passing a hand-built `env` dict to `subprocess.run(..., env=...)` **replaces** the
-child's environment; it does not merge. Drop `PATH` and the child can no longer
-resolve bare executables.
+`subprocess.run(..., env=...)` replaces the environment of the child. It does not merge.
+Without `PATH`, the child cannot find a bare executable name.
 
 ```python
-# Wrong: PATH is gone. `git` still resolves on POSIX (the shell/loader has
-# fallbacks) but on Windows the CreateProcess call raises [WinError 2].
+# Wrong: PATH is gone. POSIX still finds git; Windows raises [WinError 2].
 subprocess.run(["git", "status"], env={"GIT_AUTHOR_NAME": "ci"})
 
-# Right: start from the real environment, then add or override.
+# Right: copy the real environment, then add or override keys.
 env = {**os.environ, "GIT_AUTHOR_NAME": "ci"}
 subprocess.run(["git", "status"], env=env)
 ```
 
-Rule: build a child env by copying `os.environ` and layering your keys on top.
-Only pass a bare dict when you deliberately want a scrubbed environment *and* have
-put an absolute executable path (and any required `PATH`) back in yourself.
+Pass a bare dict only for a deliberately clean environment. Then give an absolute
+executable path, and put back any `PATH` that the child needs.
 
-## 2. A backslash OS path in a shell string is eaten by `shlex.split`
+## 2. Keep a Windows path out of a shell string
 
-POSIX `shlex.split` (and anything that shell-splits a command *string*) treats `\`
-as an escape character. A Windows path such as `sys.executable`
-(`C:\Users\...\python.exe`) is silently mangled — the backslashes vanish or merge
-the next character — and the command fails to launch. On POSIX there are no
-backslashes in the path, so the same code passes. (Incident: basicly-5tjk.)
+POSIX `shlex.split` reads `\` as an escape character. It removes the backslashes of a
+Windows path such as `sys.executable` (`C:\Users\...\python.exe`), and the command does
+not start. A POSIX path has no backslashes, so the same code passes there.
 
 ```python
-# Wrong: a shell STRING carrying a Windows path. shlex.split mangles the backslashes.
-cmd = f"{sys.executable} -m basicly.cli build"
+# Wrong: a shell string that carries a Windows path.
+cmd = f"{sys.executable} -m tool build"
 subprocess.run(shlex.split(cmd))
 
-# Right (preferred): an argv LIST — no shell splitting happens at all.
-subprocess.run([sys.executable, "-m", "basicly.cli", "build"])
+# Right: an argv list. Nothing splits it.
+subprocess.run([sys.executable, "-m", "tool", "build"])
 
-# Right (when a string is unavoidable): normalize to forward slashes first.
-cmd = f"{Path(sys.executable).as_posix()} -m basicly.cli build"
+# Right, when a string is necessary: change the path to forward slashes first.
+cmd = f"{Path(sys.executable).as_posix()} -m tool build"
 subprocess.run(shlex.split(cmd))
 ```
 
-Rule: prefer an argv list over a shell string for anything you launch. When a
-string is unavoidable, run every embedded OS path through `Path(...).as_posix()`
-before it reaches `shlex.split`.
-
-## Why "only Windows CI"
-
-Both traps hinge on a POSIX-only fallback (a resolvable `PATH`, a backslash-free
-path). A green local run on Linux or macOS proves nothing about the Windows path.
-When a subprocess-touching change lands, reason about the Windows runner explicitly
-rather than trusting the local pass.
+Use an argv list for every process you start. When a string is necessary, pass each
+embedded path through `Path(...).as_posix()` before `shlex.split`.

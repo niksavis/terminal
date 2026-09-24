@@ -1,22 +1,19 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 108
-  codex: 108
-  copilot: 108
+  claude: 111
+  codex: 110
+  copilot: 111
 id: git-discipline
-description: How to commit safely in a hook-gated repo.
+description: How to commit through the repository gates.
 category: commands
 priority: high
-applies_to:
-- all
+applies_to: [all]
 tags:
 - git
-- commits
-- hooks
 status: active
 title: Git Discipline
 body: |
-  - Run `git commit` as its own command; never chain follow-ups (tracker updates, tagging, `git push`) after it — a hook rejection leaves the chain half-run.
-  - Commits are gated by `commit-msg` hooks (Conventional Commits + a trailing record id) — the `conventional-commits` skill formats one, the `work-tracker` skill claims the record first.
-  - When a hook rejects a commit, fix the reported cause and re-commit.
+  - Run `git commit` as its own command. Do not chain `git push`, a tag or a tracker update after it, because a refused commit leaves the chain half done.
+  - The `commit-msg` hooks require a Conventional Commits subject and a trailing record id. The `conventional-commits` skill writes the message, and the `work-tracker` skill claims the record first.
+  - When a hook refuses a commit, fix the cause it names and commit again.

@@ -1,39 +1,32 @@
-# Putting the repo's node on PATH in a non-interactive WSL shell
+# Put the Linux node on PATH in a non-interactive WSL shell
 
-## Why it happens
+## Cause
 
-Login and interactive shells source `~/.bashrc` / `~/.zshrc`, which run `nvm` and
-prepend the active node's `bin` to `PATH`. Scripts, background jobs, and hooks
-launched by a headless agent run *non-interactively* and skip that profile. With no
-nvm `bin` on `PATH`, WSL interop can resolve `node` / `npx` to a Windows install
-(`node.exe` under `/mnt/c/...`), which either runs the wrong runtime or cannot see
-the Linux-installed `markdownlint-cli2`.
+An interactive shell reads `~/.bashrc` or `~/.zshrc`. That profile runs nvm and puts the
+active node `bin` directory first on `PATH`. A script, a background job or a hook runs
+non-interactively and does not read the profile. Then WSL interop can resolve `node` or
+`npx` to a Windows `node.exe` under `/mnt/c/...`. That node is the wrong runtime, or it
+cannot find the packages installed on Linux.
 
-Symptom: a node-based hook (markdownlint) fails or misbehaves only from scripts, CI,
-or background jobs, and passes when you commit interactively. It reads as flaky; it
-is deterministic.
+The symptom is a node tool that fails only from a script or a background job, and passes
+in your terminal. The failure is deterministic, not flaky.
 
-## The fix
+## Fix
 
-Prepend the active nvm node's `bin` to `PATH` before running git or npx from a
-script or background job:
+Put the nvm node `bin` directory first on `PATH` before the script runs git, node or npx:
 
 ```sh
 NODE_BIN="$HOME/.nvm/versions/node/$(ls "$HOME/.nvm/versions/node" | tail -1)/bin"
 export PATH="$NODE_BIN:$PATH"
 ```
 
-Then confirm the resolution points at the Linux node, not the Windows one:
+Then make sure that the Linux node resolves:
 
 ```sh
-command -v node   # -> /home/<user>/.nvm/versions/node/vXX/bin/node, NOT /mnt/c/.../node.exe
+command -v node   # expect ~/.nvm/versions/node/<version>/bin/node, not /mnt/c/.../node.exe
 ```
 
-## Alternatives
+## Other ways
 
-- Run the command from an interactive login shell so the profile loads nvm for you:
-  `bash -lc 'git commit ...'`.
-- If several node versions are installed, pin the exact one instead of `tail -1`.
-
-This is the node-resolution half of the WSL interop story; the shell and filesystem
-interop model is covered by the `wsl` skill.
+- Run the command in a login shell, which loads nvm: `bash -lc 'git commit ...'`.
+- When more than one node version is installed, name the version instead of `tail -1`.

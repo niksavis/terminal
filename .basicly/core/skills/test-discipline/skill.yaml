@@ -1,112 +1,74 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 91
+  listing: 76
 name: test-discipline
 invocation: model
 description: >-
-  Write isolated order-independent automated tests that assert on observable
-  behavior rather than private internals. Use when writing reviewing or debugging
-  any test (unit integration or end-to-end) in any language especially when tests
-  share fixtures touch global or filesystem state flake depending on run order or
-  reach into implementation details.
+  Write isolated, order-independent tests that assert on observable behavior, not private
+  internals. Use when you write, review or debug a test in any language, especially when
+  tests share fixtures, touch global or filesystem state, fail by run order, or reach into
+  implementation details.
 instructions: |
   # Test Discipline
 
-  Keep a test suite trustworthy as it grows. These are judgment rules, not lint —
-  the deterministic floor (formatters, type checkers, the test runner itself)
-  cannot catch a test that passes today but lies. Apply them when authoring or
-  reviewing any automated test, in any language.
+  Keep a test suite true as it grows. These rules catch a test that passes today and lies,
+  which no formatter, type checker or test runner can see.
 
-  ## Isolation and ownership
+  ## Rules
 
-  - A test owns its inputs. Build the fixtures it needs and tear them down; never
-    read or assert on state that another test, a previous run, or the developer's
-    machine happened to leave behind — a test that reads state it did not create is
-    broken even when it passes today.
-  - A test must pass alone, in any order, and in parallel: no shared mutable state,
-    no reliance on execution order, no hidden dependency on a sibling running first.
+  - **A test owns its inputs.** Build each fixture it needs and remove it after. A test that
+    reads state it did not make is broken, even when it passes.
+  - **A test passes alone, in any order and in parallel.** Share no mutable state, and do not
+    depend on a sibling test that runs first.
+  - **Assert on behavior, not internals.** Assert on return values, output and visible side
+    effects. A test that breaks on a pure refactor tests the implementation.
+  - **Remove nondeterminism at the source.** Pin the clock, seed randomness, and stub the
+    network and the filesystem. Fix or quarantine a flaky test. Never hide it with a retry.
+  - **Wait for a condition, not a duration. Measure time with a monotonic clock.** Poll the
+    predicate with a generous timeout, so that the assertion says that the event happened.
+  - **Set a wall-clock limit to twice the time on the slowest runner in the CI matrix.** A
+    limit set from a local run fails on a slower runner.
+  - **Watch a regression test fail before the fix.** Then you know that it exercises the
+    defect.
 
-  ## Assert on behavior, not internals
+  ## Set up the condition that the code reads
 
-  - Assert on observable behavior and public contracts — return values, emitted
-    output, externally visible side effects — not private fields, call counts, or
-    internal structure a refactor should be free to change.
-  - A test that breaks on a pure refactor is testing the implementation, not the
-    contract. Prefer the coarsest assertion that still proves the behavior.
+  - When the code loads its own configuration or environment, put the values where the code
+    reads them: the file, the directory, the environment variable. A configuration object
+    that the test gives to a helper never reaches a function that calls its own loader.
+  - Prove that the condition is live. Assert that your input changes the value that the
+    code branches on. A threshold at its default or a window too small to trigger stages a
+    case that the code never sees.
+  - When you write a test after its fix, delete the fix and watch the test fail for the
+    stated reason.
 
-  ## Determinism
+  ## Mutate the fix in both directions
 
-  - Remove nondeterminism at the source: pin the clock, seed randomness, stub the
-    network and the filesystem. A flaky test is a broken test, not a "sometimes"
-    test — fix or quarantine it, never mask it with a blind retry.
-  - When you fix a bug, add the regression test that would have caught it first, and
-    watch it fail before the fix so you know it exercises the defect.
-  - Wait for the condition, never for a duration: poll the predicate with a generous
-    timeout so the assertion says the thing happened, not when. Where elapsed time is
-    the claim, measure it on a monotonic clock, and set any wall-clock cap to clear the
-    slowest runner in the CI matrix by 2x — a 3.0 s cap measured 0.48 s locally and
-    3.1 s on windows-latest, and was a flake generator, not a flake (basicly-7aler3).
+  1. Delete the fix. A test must fail. This proves that the tests see the fix.
+  2. Make the check fire on every input: always warn, always refuse, always the same verdict.
+     A control must fail. If none fails, the suite proves only that the check reacts, not
+     that it discriminates. This direction finds the missing control.
+  3. Record which direction found what, so that the next reader can tell a verified check
+     from an exercised one.
 
-  ## Set up the condition the code actually reads
+  **Restore from a copy, never with `git checkout -- <file>`.** The working tree usually
+  holds the change under test, and `git checkout` restores from the index and discards it.
+  Copy the file aside first and copy it back.
 
-  - When the code under test loads its own configuration, settings, or environment,
-    put those values where that code reads them from — the file, the directory, the
-    environment variable. A config object built in the test and handed to a helper
-    never reaches a function that calls its own loader, so the test exercises the
-    defaults and passes whatever you changed.
-  - Then prove the condition is live rather than merely arranged: assert that the
-    input you set up actually moves the value the code branches on. A threshold left
-    at its default, a window too small to trigger, a flag read from somewhere else —
-    each leaves a test that stages a scenario the code never sees.
-  - The tell is a test that passes with the fix removed. Whenever a test is written
-    after the fix it pins, delete the fix and watch it fail for the stated reason
-    before trusting it.
+  ## An absence needs a positive control
 
-  ## Mutate the fix in both directions, not just off
-
-  - Deleting the fix proves the tests notice it is gone. It does not prove they
-    describe what it *does*. So run the second mutation too: make the check fire on
-    everything — always warn, always refuse, always report the same verdict — and
-    watch a control fail. If nothing fails, the suite pins "it reacts" and not "it
-    discriminates", and a check that fires on every input passes every test you wrote
-    while being useless.
-  - This is the direction that finds the missing test, and it has done so every time
-    it was run. A per-lane report that labelled each lane refused passed the whole
-    file, because every case in it was a refused lane; the over-trigger mutation is
-    what showed the admitted-lane control was never written.
-  - Say which direction found what when recording the result, so the next reader can
-    tell a check that was verified from one that was merely exercised.
-  - **Restore from a copy, never `git checkout -- <file>`.** A mutation is applied to
-    a working tree that usually holds the very change being verified, and `git
-    checkout` restores from the index — silently discarding all of it. Copy the file
-    aside first and copy it back. (Recovering from this mid-session cost a full
-    re-apply of an uncommitted module.)
-
-  ## A zero result needs a positive control
-
-  - A search, scan or query that finds nothing proves nothing by itself. It is
-    evidence only if the same method, run the same way, finds a control you already
-    know is present; without that control the honest finding is "the method was
-    inconclusive", not "the thing is absent".
-  - The incident: `strings` over the copilot CLI binary found no hook identifiers,
-    and that was reported as the capability being absent. A control retracted it —
-    strings the CLI had been directly observed emitting (`allow-all-tools`,
-    `premiumRequests`) also returned zero matches, because the payload is a
-    compressed JS bundle.
-  - The same trap in a test: an assertion that something is *absent* passes just as
-    happily when the locator is wrong, so pin the locator with a case that must
-    match before trusting the case that must not.
+  - A search, scan or query that finds nothing proves nothing alone. Run the same method on a
+    case that you know is present. When that control also finds nothing, the method is wrong.
+  - An assertion that something is absent also passes when the locator is wrong. Pin the
+    locator with a case that must match before you trust the case that must not.
 
   ## A seam is not duplication
 
-  - A module-level alias or thin wrapper around an external dependency — a CLI, a
-    clock, an HTTP client — is usually a deliberate test seam: it is the thing tests
-    replace. Several modules each holding their own is not accidental repetition.
-  - So before consolidating duplicated access behind one shared helper, look at what
-    the tests patch. Moving the call behind a new module silently bypasses every patch
-    of the old alias, and the suite fails en masse for a reason unrelated to the
-    refactor's intent.
-  - If the consolidation is still right, migrate the seam deliberately: move the patch
-    points in the same commit, and keep one seam per module rather than one for the
-    whole codebase.
+  - A module-level alias or thin wrapper around a dependency (a CLI, a clock, an HTTP client)
+    is usually a test seam. Tests replace it.
+  - Before you move repeated access behind one shared helper, look at what the tests patch.
+    A new module bypasses each patch of the old alias, and many tests fail for a reason that
+    is not the refactor.
+  - If the change is still correct, move the patch points in the same commit. Keep one seam
+    per module, not one for the whole codebase.

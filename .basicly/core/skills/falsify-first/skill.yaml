@@ -1,159 +1,74 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 100
+  listing: 83
 name: falsify-first
 invocation: model
-description: Attempt to break a claim - an invariant, a design premise, a measurement - with a concrete counterexample search before defending or adopting it, and read each kill for the precondition that carried the weight. Use before an invariant enters a plan, a design note or a gate, before a measured number becomes a claim, and whenever a candidate rule survived only because nobody attacked it.
+description: Attempt to break a claim - an invariant, a design premise, a measurement - with a concrete counterexample search before you defend or adopt it, and read each kill for the precondition that carried the weight. Use before an invariant enters a plan, a design note or a gate, or before a measured number becomes a claim.
 covers:
   work_types: [feature, epic]
   phases: [decompose]
 instructions: |
   # Falsify First
 
-  ## The move
+  Before you argue for a claim, try to make it false. A claim that nobody attacked is not evidence.
 
-  Before you argue for a claim, spend the cheaper effort trying to make it false. A
-  claim nobody attacked is not evidence; it is a claim nobody attacked.
+  ## Rules
 
-  This is not review and it is not testing. A reviewer reads what you wrote. A test
-  fixes the behaviour you already chose. This runs *before* either: you have a
-  candidate rule, invariant, threshold or premise, and you go looking for the input
-  that kills it.
+  - **Search for the counterexample before you defend the claim.** A failed candidate shows the shape of the correct one.
+  - **When the claim breaks, find the precondition that carried the weight.** A patch that makes it pass hides the cause.
+  - **Split a precondition that does two jobs, and attack each half alone.** A double-duty condition is the most frequent hidden cause.
+  - **Measure the baseline of a claim about a difference first.** "X is present where it should not be" is false when X is already present by another route.
+  - **Exclude the instrument from its own population.** A probe that counts its own definition agrees with itself and proves nothing.
+  - **State what measured a number and where it ran.** A swapped instrument or a wrong tree gives a wrong number with no symptom.
+  - **Never report a manual search as a proof.** Write "attacked this way, did not break" and name the way.
 
-  ## Why it pays: the kills design the answer
+  ## Runbook
 
-  In the campaign this comes from, one run proposed five candidate inequalities and an
-  adversarial numerical search killed every one of them:
+  1. **State the claim so it can be false.** Name the observation that refutes it. If you cannot name one, you have a preference. Sharpen it into a claim first.
+  2. **Pick the cheapest oracle that can say no.** From cheapest to most expensive:
+     - run it;
+     - a property test over generated inputs;
+     - a set of adversarial inputs that you build by hand;
+     - a second implementation;
+     - a type checker or a contract checker.
+  3. **Search, do not sample for confirmation.** Bias the inputs toward the boundary, the degenerate case, the empty case and the case the author finds inconvenient.
+  4. **When it breaks, read the counterexample.** The precondition that carried the weight is usually visible in it.
+  5. **Stop on a survivor and record the attack.** "Survived N generated cases and these three adversaries" is evidence. "I could not find a counterexample" is not.
 
-  | Candidate | Gap found | What the counterexample said |
-  | --- | --- | --- |
-  | G2, G1 | -4.000000 | a free **phase** makes the term contribute nothing while still being charged |
-  | G2re | -1.000000, -2.000000 | same cause; the gap grows with the pair count |
-  | G3 | -0.500 / -1.333 | a negative term is priced at zero and still subtracts |
-  | G4 | -0.25 to -0.728 | the magnitude cannot be freed; one constraint was doing **two** jobs |
-  | the sixth | **0.0** | 400 random instances, no counterexample found |
+  ## Build the adversary from the failure
 
-  The run's own line is the method: *"Before trying to prove the claim I try to break
-  it."* The five failures are not waste. Reading them produced the finding that the
-  correct inequality was **linear** where every dead candidate had been quadratic. The
-  right answer was derived from the shape of the wrong ones.
+  When an analysis finds a mechanism by which the claim can fail, make that mechanism the next test case. Write it down while you have it. A generic fixture set is weak.
 
-  ## The runbook
+  When no cheap oracle exists, name the input that would falsify the claim and look for it by hand. Say in the deliverable that the search was manual and what it covered.
 
-  1. **State the claim so it can be false.** Name the observation that would refute it.
-     If you cannot name one, you have a preference, and the work is to sharpen it into
-     a claim first.
-  2. **Pick the cheapest oracle you have.** In descending order of cheapness: run it ·
-     a property test over generated inputs · an adversarial input set you build by hand
-     · a second implementation · a type or contract checker. Reach for the cheapest one
-     that could actually say no.
-  3. **Search for the counterexample, do not sample for confirmation.** Inputs chosen to
-     show the claim working are not a search. Bias the generator toward the boundary,
-     the degenerate case, the empty case, and the case the claim's author would find
-     inconvenient.
-  4. **When it breaks, autopsy - do not patch.** The question is never "how do I make
-     this pass". It is *which precondition was carrying the weight*. Read the actual
-     counterexample; the answer is usually visible in it.
-  5. **Suspect any precondition doing two jobs.** The most productive kill in the record
-     found that one normalisation was simultaneously fixing a phase and quantising a
-     mass. Split a double-duty condition and attack each half alone.
-  6. **Stop on a survivor, and record the attack.** "Survived N generated cases and
-     these three hand-built adversaries" is the evidence. "I could not think of a
-     counterexample" is not.
+  ## A difference needs its baseline
 
-  ## Build the adversary from the failure you just found
+  A finding of the form "X is present where it should not be" is two claims. The second claim is that X is not already present by another route. Attack the second claim first. It is the cheaper kill, and it decides the severity.
 
-  A generic fixture set is weak. The strongest control in the record was built from a
-  weakness the analysis had exposed two sections earlier: having found that two terms
-  offset by half a grid cell nearly cancel, the run then tested its result against a
-  world constructed from exactly that cancellation, and against a lattice designed to
-  sit at the claimed bound.
+  Example: an e-mail address in a tracker file is not a new exposure when `git log --format='%ae' | sort -u` already shows it as a commit author.
 
-  So: when an analysis turns up a mechanism by which the claim *could* fail, that
-  mechanism is the next test case. Write it down while you have it.
+  ## Exclude the instrument
 
-  ## Where this degrades
+  When a probe counts the file that defines its vocabulary, the probe and the thing it checks share a step. Their agreement is then not a second derivation.
 
-  The record's oracle was cheap and near-exact - a closed form to check numerics
-  against. Most claims here do not have that. When no cheap oracle exists the practice
-  weakens but does not vanish: name the input that would falsify the claim, go look for
-  it by hand, and say in the deliverable that the search was manual and what it covered.
+  1. **Name the population and what defines it.** Exclude the definition: the gate's own module, the schema, the fixture, the test that lists the set.
+  2. **Run the probe again without the definition.** If the number moves, the agreement was the instrument that read itself.
+  3. **Split the hits by population before you report one total.** One number over two populations reads as evidence and is not.
 
-  Do not upgrade a manual search into a proof in the write-up. The honest form is
-  "attacked this way, did not break" with the way named.
+  ## Pin the instrument and the tree
 
-  ## A claim about a difference needs its baseline
+  Two substitutions keep the population correct and make the number wrong:
 
-  A finding of the form "X is present where it should not be" is two claims, and the
-  second is usually unmeasured: that X is not *already* there by some other route. Attack
-  the second first, because it is the cheaper kill and it decides the severity.
+  - **The instrument was swapped.** Another lane can overwrite a script at a shared path between the write and the run. Keep an instrument where only you can write it.
+  - **The tree was wrong.** `uv run --project <worktree> pytest` from another directory selects the environment, not the tree. It collects the tests of the other tree. Run from inside the tree. Prove the tree with a control that only it can satisfy, such as a symbol, a file or a string that exists nowhere else.
 
-  Measured instance: an identity was found in two committed tracker files and filed as a
-  published exposure at the top priority, with a history rewrite on the table. One command
-  killed it - `git log --format='%ae' | sort -u` returns that same address as the author of
-  every commit in the repository, so git had published it long before the tracker did. The
-  finding was real and the exposure was not, and the difference is a baseline nobody had
-  measured.
+  Take the measurement again when it came from a shared path or an unpinned tree.
 
-  ## Exclude the instrument from its own population
+  ## Limits
 
-  A probe must not count the file that defines its own vocabulary. **The instrument is
-  not a member of its own population**, and when it is, the probe and the thing it
-  checks share a step - so an agreement between them is a derived route, not a second
-  derivation.
-
-  Measured instance: a tree-wide grep for marker families returned 12 and was reported
-  as independent confirmation of a gate's own 12. Every hit for one family was inside
-  that gate's docstring and frozen literal. The census had counted itself, so the two
-  numbers could not have disagreed, and the "confirmation" carried no information at all.
-
-  The always-on rule that a number is derived twice by paths sharing no step is what
-  this violates. So before believing an agreement:
-
-  1. **Name the population**, then name what defines it. The definition is excluded -
-     the gate's own module, the schema, the fixture, the test that enumerates the set.
-  2. **Re-run the probe with the definer excluded.** If the number moves, the agreement
-     was the instrument reading itself. If it holds, you have a second derivation.
-  3. **Split the hits by population before reporting one total.** A single number over
-     two populations - real occurrences and the definition of "occurrence" - reads as
-     evidence and is not.
-
-  ## A number is only valid against the instrument and the tree it came from
-
-  Excluding the definer fixes the *population*. Two other substitutions leave the
-  population correct and the number wrong, and neither has a symptom on the corpus - so
-  no positive control over the data can catch either.
-
-  - **The instrument was swapped.** A measurement script written to a path other lanes
-    can write is not yours. A sibling overwrote one between the write and the run, and
-    the run printed the sibling's numbers under this lane's command. Keep an instrument
-    where only you can write it.
-  - **The tree was wrong.** `uv run --project <worktree> pytest` from another checkout's
-    directory selects the *environment*, not the tree, so it collects the other tree's
-    tests. A lane read three drifting suite counts as its own progress; the tell is that
-    the count moved without a matching change. Run it with the tree as the working
-    directory, and prove the tree is the one you meant with a control that only it can
-    satisfy - a symbol, a file or a string that exists in your tree and nowhere else.
-
-  Both are the same error as counting the census: the answer arrived by a route you did
-  not check. So state, with any number that will be believed, *what* measured it and
-  *where* it ran - and re-take anything that came from a shared path or an unpinned tree.
-
-  ## What this is not
-
-  - Not `test-discipline`, which is about how a test is *structured* once the behaviour
-    is settled - isolation, order independence, observable behaviour.
-  - Not `root-cause`, which runs *after* a failure to establish why it happened.
-  - Not the `reviewer` role, which is an adversary aimed at a diff that already exists.
-  - Not a gate. Nothing here refuses work; it changes what you believe before you settle
-    on it.
-
-  ## The honest limit
-
-  This practice is drawn from a campaign whose published record contains only the two
-  runs that produced a result. Sixty agents were launched and fifty-eight ran; thirty
-  are binned "refuted, closed or unused". Nothing in the record separates the winners'
-  practices from those thirty, and their transcripts are not printed, so this is the
-  winner's process and cannot be shown to be the reason it won. Use it because cheap
-  falsification makes a wrong belief cheap to hold, not because it produces right ones.
+  - This method changes what you believe. It is not a gate and refuses nothing.
+  - It makes a wrong belief cheap to drop. It does not prove that a surviving claim is correct.
+  - Not `test-discipline`, which structures a test after the behaviour is settled.
+  - Not `root-cause`, which runs after a failure to find why it happened.
+  - Not the `reviewer` role, which attacks a diff that already exists.

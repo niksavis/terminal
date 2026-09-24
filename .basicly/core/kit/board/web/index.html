@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracker</title>
+<style>
+  :root { color-scheme: light dark; --line: #8884; --muted: #888; --accent: #2563eb; }
+  body { font: 14px/1.45 system-ui, sans-serif; margin: 0; }
+  header { display: flex; gap: 1.5rem; align-items: baseline; padding: .8rem 1.2rem; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 1.1rem; margin: 0; }
+  #counts span { margin-right: 1rem; color: var(--muted); }
+  #counts b { color: CanvasText; }
+  main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 1rem; padding: 1rem 1.2rem; }
+  section h2 { font-size: .95rem; margin: 0 0 .5rem; }
+  ol, ul { list-style: none; margin: 0; padding: 0; }
+  li button.row { all: unset; display: block; width: 100%; box-sizing: border-box; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 6px; margin-bottom: .35rem; cursor: pointer; }
+  li button.row:hover, li button.row:focus-visible { outline: 2px solid var(--accent); }
+  .id { font-family: ui-monospace, monospace; color: var(--muted); font-size: .85em; }
+  .owed { color: #b45309; font-size: .85em; }
+  form { display: grid; gap: .45rem; }
+  label { display: grid; gap: .15rem; font-size: .85rem; color: var(--muted); }
+  input, textarea, select { font: inherit; padding: .3rem .4rem; border: 1px solid var(--line); border-radius: 5px; background: Canvas; color: CanvasText; }
+  textarea { min-height: 4.5rem; resize: vertical; }
+  .buttons { display: flex; gap: .5rem; flex-wrap: wrap; }
+  button.act { font: inherit; padding: .3rem .8rem; border-radius: 5px; border: 1px solid var(--accent); background: var(--accent); color: white; cursor: pointer; }
+  button.act.plain { background: transparent; color: var(--accent); }
+  #message { min-height: 1.2rem; font-size: .85rem; }
+  #message.bad { color: #dc2626; }
+  #comments li { border-left: 3px solid var(--line); padding-left: .5rem; margin: .3rem 0; white-space: pre-wrap; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Tracker</h1>
+  <div id="counts" aria-live="polite"></div>
+  <button class="act plain" id="new" type="button">New story</button>
+</header>
+<main>
+  <section aria-labelledby="h-refine"><h2 id="h-refine">Needs refinement</h2><ol id="refine"></ol></section>
+  <section aria-labelledby="h-ready"><h2 id="h-ready">Ready</h2><ol id="ready"></ol></section>
+  <section aria-labelledby="h-blocked"><h2 id="h-blocked">Blocked</h2><ol id="blocked"></ol></section>
+  <section aria-labelledby="h-detail">
+    <h2 id="h-detail">Story</h2>
+    <form id="story">
+      <div class="id" id="story-id">new record</div>
+      <label>Title <input name="title" required></label>
+      <label>Story (trigger and context) <textarea name="description" placeholder="When &lt;situation&gt;, I want to &lt;motivation&gt;, so I can &lt;outcome&gt;."></textarea></label>
+      <label>Acceptance criteria <textarea name="acceptance"></textarea></label>
+      <label>Requirements <textarea name="requirements"></textarea></label>
+      <label>Type <select name="issue_type"><option>task</option><option>feature</option><option>bug</option><option>chore</option><option>epic</option></select></label>
+      <label>Priority <select name="priority"><option value="0">0 critical</option><option value="1">1 high</option><option value="2" selected>2 medium</option><option value="3">3 low</option><option value="4">4 backlog</option></select></label>
+      <label>Status <select name="status"><option>open</option><option>in_progress</option><option>blocked</option><option>deferred</option></select></label>
+      <div class="owed" id="owed"></div>
+      <div class="buttons">
+        <button class="act" type="submit">Save for refinement</button>
+        <button class="act plain" type="button" id="refined">Mark refined</button>
+      </div>
+      <div class="owed" id="holder"></div>
+      <div class="buttons">
+        <button class="act plain" type="button" data-hold="assign">Assign to me</button>
+        <button class="act plain" type="button" data-hold="claim">Claim</button>
+        <button class="act plain" type="button" data-hold="take">Take over</button>
+        <button class="act plain" type="button" data-hold="unassign">Unassign</button>
+      </div>
+      <div id="message" role="status"></div>
+    </form>
+    <h2>Comments</h2>
+    <ul id="comments"></ul>
+    <form id="comment"><label>Add a comment <textarea name="text" required></textarea></label><div class="buttons"><button class="act plain" type="submit">Comment</button></div></form>
+  </section>
+</main>
+<script>
+"use strict";
+const API = "/api/v1";
+const REFINE = "refine";
+let current = null;
+
+async function call(method, path, body) {
+  const init = { method, headers: {} };
+  if (body !== undefined) {
+    init.headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body);
+  }
+  const response = await fetch(API + path, init);
+  const report = await response.json();
+  if (!response.ok) throw new Error(report.refused || JSON.stringify(report.blocking || report));
+  return report;
+}
+
+function say(text, bad) {
+  const node = document.getElementById("message");
+  node.textContent = text;
+  node.className = bad ? "bad" : "";
+}
+
+function holderNote(held) {
+  if (!held) return "";
+  let note = held.name ? "held by " + held.name : "";
+  if (held.stale) note += " (stale)";
+  if (held.contested && held.contested.length) note += " (contested: " + held.contested.join(", ") + ")";
+  return note;
+}
+
+function notes(...parts) {
+  return parts.filter(Boolean).join(" · ");
+}
+
+function row(record, title, note) {
+  const item = document.createElement("li");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "row";
+  const id = document.createElement("div");
+  id.className = "id";
+  id.textContent = record;
+  const name = document.createElement("div");
+  name.textContent = title || record;
+  button.append(id, name);
+  if (note) {
+    const owed = document.createElement("div");
+    owed.className = "owed";
+    owed.textContent = note;
+    button.append(owed);
+  }
+  button.addEventListener("click", () => open(record));
+  item.append(button);
+  return item;
+}
+
+function fill(listId, rows) {
+  const list = document.getElementById(listId);
+  list.replaceChildren(...rows);
+  if (!rows.length) {
+    const empty = document.createElement("li");
+    empty.className = "id";
+    empty.textContent = "nothing here";
+    list.append(empty);
+  }
+}
+
+async function refresh() {
+  const [stats, ready, blocked, refine] = await Promise.all([
+    call("GET", "/stats"), call("GET", "/ready?limit=50"), call("GET", "/blocked"), call("GET", "/refine"),
+  ]);
+  const counts = document.getElementById("counts");
+  counts.replaceChildren(...[["records", stats.records], ["ready", stats.ready], ["blocked", stats.blocked], ["refine", refine.count]].map(([name, value]) => {
+    const span = document.createElement("span");
+    const bold = document.createElement("b");
+    bold.textContent = value;
+    span.append(bold, " " + name);
+    return span;
+  }));
+  fill("refine", refine.records.map((one) => row(one.record, one.title, notes(one.blocking.join(", "), holderNote(one.holder)))));
+  const owing = new Set(refine.records.map((one) => one.record));
+  fill("ready", ready.records.map((one) => row(one.record, one.title, notes(owing.has(one.record) ? "owes refinement" : "", holderNote(one.holder)))));
+  fill("blocked", blocked.records.map((one) => row(one.record, "", "waits on " + one.blocked_by.map((b) => b.record).join(", "))));
+}
+
+function blank() {
+  current = null;
+  const form = document.getElementById("story");
+  form.reset();
+  document.getElementById("story-id").textContent = "new record";
+  document.getElementById("owed").textContent = "";
+  document.getElementById("comments").replaceChildren();
+  say("");
+}
+
+async function open(record) {
+  const shown = await call("GET", "/records/" + encodeURIComponent(record));
+  current = shown;
+  const f = shown.fields;
+  const form = document.getElementById("story");
+  form.title.value = f.title || "";
+  form.description.value = f.description || "";
+  form.acceptance.value = f.acceptance_criteria || "";
+  form.requirements.value = f.requirements || "";
+  form.issue_type.value = f.issue_type || "task";
+  form.priority.value = String(f.priority ?? 2);
+  form.status.value = shown.status || "open";
+  document.getElementById("story-id").textContent = record + (shown.dates && shown.dates.updated ? "  updated " + shown.dates.updated.slice(0, 16) : "");
+  document.getElementById("holder").textContent = holderNote(shown.holder) || "not reserved";
+  const dor = await fetch(API + "/records/" + encodeURIComponent(record) + "/dor").then((r) => r.json());
+  document.getElementById("owed").textContent = dor.blocking && dor.blocking.length ? "owes: " + dor.blocking.join(", ") : "";
+  document.getElementById("comments").replaceChildren(...shown.comments.map((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    return item;
+  }));
+  say("");
+}
+
+function edited(form) {
+  const body = {
+    title: form.title.value,
+    description: form.description.value,
+    fields: { issue_type: form.issue_type.value, priority: Number(form.priority.value) },
+  };
+  if (form.acceptance.value.trim()) body.acceptance = form.acceptance.value;
+  if (form.requirements.value.trim()) body.requirements = form.requirements.value;
+  return body;
+}
+
+document.getElementById("story").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  try {
+    let record;
+    if (current) {
+      record = current.record;
+      const body = edited(form);
+      if (form.status.value !== current.status) body.status = form.status.value;
+      body.add_labels = [REFINE];
+      await call("PATCH", "/records/" + encodeURIComponent(record), body);
+    } else {
+      const body = edited(form);
+      body.fields.labels = REFINE;
+      record = (await call("POST", "/records", body)).record;
+    }
+    await refresh();
+    await open(record);
+    say("saved; an agent refinement pass owes it before it is ready");
+  } catch (error) {
+    say(error.message, true);
+  }
+});
+
+document.getElementById("refined").addEventListener("click", async () => {
+  if (!current) return say("open a record first", true);
+  try {
+    await call("PATCH", "/records/" + encodeURIComponent(current.record), { remove_labels: [REFINE] });
+    await refresh();
+    await open(current.record);
+    say("the refine label is removed");
+  } catch (error) {
+    say(error.message, true);
+  }
+});
+
+document.getElementById("comment").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  if (!current) return say("open a record first", true);
+  const form = event.currentTarget;
+  try {
+    await call("POST", "/records/" + encodeURIComponent(current.record) + "/comments", { text: form.text.value });
+    form.reset();
+    await open(current.record);
+  } catch (error) {
+    say(error.message, true);
+  }
+});
+
+for (const button of document.querySelectorAll("[data-hold]")) {
+  button.addEventListener("click", async () => {
+    if (!current) return say("open a record first", true);
+    const kind = button.dataset.hold;
+    const action = kind === "take" ? "claim" : kind;
+    const body = kind === "take" ? { take: true } : {};
+    try {
+      await call("POST", "/records/" + encodeURIComponent(current.record) + "/" + action, body);
+      await refresh();
+      await open(current.record);
+      say(kind === "unassign" ? "the reservation is released" : "reserved");
+    } catch (error) {
+      say(error.message, true);
+    }
+  });
+}
+
+document.getElementById("new").addEventListener("click", blank);
+refresh().catch((error) => say(error.message, true));
+</script>
+</body>
+</html>

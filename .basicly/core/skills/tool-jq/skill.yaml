@@ -5,15 +5,18 @@ token_cost:
 name: tool-jq
 invocation: user
 instructions: |
-  # tool-jq
+  # jq
 
-  ## When To Use
+  Read, filter and reshape JSON in the shell. Use it instead of a custom parser script.
 
-  - Extract fields from API responses and config outputs.
-  - Transform nested JSON into concise pipeline-friendly structures.
-  - Validate JSON shape and enforce required keys in scripts.
+  ## Rules
 
-  ## Trusted Commands
+  - **Start with `jq .`.** It shows that the input is valid JSON.
+  - **Use `-r` for a string that goes to another command.** Without it, the string keeps its quotes.
+  - **Use `-e` when a missing value must fail.** A missing key gives `null`, not an error.
+  - **Build a long filter one step at a time.** Check the output after each step.
+
+  ## Commands
 
   ```bash
   jq . file.json
@@ -28,35 +31,7 @@ instructions: |
   jq -e '.token' file.json
   ```
 
-  ## Safe Defaults
+  ## Output
 
-  - Start with `jq .` to confirm valid JSON.
-  - Use `-r` for raw strings passed to other commands.
-  - Use `-e` where null/false must fail a pipeline step.
-
-  ## Common Pitfalls
-
-  - Missing keys return `null` instead of raising an error.
-  - Quoted JSON strings are not suitable when raw output is required.
-  - Large one-liner filters become brittle without iterative checks.
-
-  ## Output Interpretation
-
-  - Pretty JSON by default; use `-c` for compact JSON lines.
-  - `-e` returns non-zero on null/false, useful for guard conditions.
-
-  ## Why It Matters For Agents
-
-  - jq is the standard adapter between JSON output and shell automation.
-  - It reduces custom parser code and keeps pipelines deterministic.
-
-  ## Repo Conventions
-
-  - Prefer jq over ad-hoc JSON parsing scripts.
-  - Keep filters readable and scoped to required fields.
-
-  ## Trigger Examples
-
-  - Should trigger: "Extract tool names from this JSON report."
-  - Should trigger: "Convert API JSON into a compact table-friendly shape."
-  - Should not trigger: "Lint shell scripts for quoting errors."
+  - Default output is indented JSON. `-c` prints one compact value on each line.
+  - `-e` exits non-zero when the last value is `null` or `false`.

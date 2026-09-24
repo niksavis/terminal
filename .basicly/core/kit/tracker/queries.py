@@ -25,6 +25,8 @@ def _load(file_name: str, module_name: str) -> Any:
 differential = _load("differential.py", "basicly_tracker_kit_differential")
 scheduler = _load("scheduler.py", "basicly_tracker_kit_scheduler")
 snapshot = _load("snapshot.py", "basicly_tracker_kit_snapshot")
+holders = _load("holders.py", "basicly_tracker_kit_holders")
+templates = _load("templates.py", "basicly_tracker_kit_templates")
 events = differential.events
 
 
@@ -64,18 +66,28 @@ def views_and_children(directory: Path | str) -> tuple:
     return views, differential.children_of(views, differential.DEFAULT_VOCABULARY)
 
 
-def ready(directory: Path | str, limit: int | None = None) -> dict[str, object]:
+def ready(directory: Path | str, limit: int | None = None, mine: str = "") -> dict[str, object]:
 
-    order = scheduler.ranking(ledger_dir(directory), limit=limit)
-    return {
-        "schema": order.schema,
-        "sort": order.sort,
-        "count": len(order.records),
-        "records": [
-            {"rank": row.rank, "score": row.score, "record": row.record, "title": row.title}
-            for row in order.records
-        ],
-    }
+    ledger = ledger_dir(directory)
+    order = scheduler.ranking(ledger, limit=None if mine else limit)
+    states = events.fold(events.read_events(ledger)[0]).records
+    stale_days = templates.load(ledger).stale_days
+    now = holders.newest(states)
+    rows = []
+    for row in order.records:
+        state = states.get(row.record)
+        held = holders.holding(state, stale_days, now) if state is not None else None
+        if mine and (held is None or held["name"] != mine):
+            continue
+        rows.append({
+            "rank": row.rank,
+            "score": row.score,
+            "record": row.record,
+            "title": row.title,
+            "holder": held,
+        })
+    rows = rows if limit is None else rows[:limit]
+    return {"schema": order.schema, "sort": order.sort, "count": len(rows), "records": rows}
 
 
 def blocked(directory: Path | str) -> dict[str, object]:

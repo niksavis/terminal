@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 83
-  codex: 83
-  copilot: 82
+  claude: 0
+  codex: 0
+  copilot: 0
 id: self-improvement-retro
-description: End-of-session retrospective proposing concrete, approvable fixes to this repo's own instructions/skills/hooks.
+description: Merged into session-completion.
 category: project
 priority: medium
 applies_to:
@@ -13,6 +13,6 @@ applies_to:
 tags:
 - retro
 - self-improvement
-status: active
+status: deprecated
 body: |
   - After a rejection or a user-corrected mistake, run the retro from the `session-finish` skill: name the root cause and propose the fragment, skill or hook change that would have refused it. A vague "be careful" changes nothing; a self-applied fix dies with the session. Skip it when nothing surfaced.

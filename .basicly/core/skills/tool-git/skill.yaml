@@ -5,15 +5,18 @@ token_cost:
 name: tool-git
 invocation: user
 instructions: |
-  # tool-git
+  # git
 
-  ## When To Use
+  Read the working tree state and history, review diffs, and stage focused changes. Set the commit identity for each remote.
 
-  - Inspect working tree state and commit history.
-  - Review and stage focused diffs before commit.
-  - Compare branches and verify what changed.
+  ## Rules
 
-  ## Trusted Commands
+  - **Use `--no-pager` in a non-interactive shell.** The pager waits for a key.
+  - **Stage only the files of the task.** Unrelated edits hide which change failed.
+  - **Check `git status` before and after your edits.** It shows files that you did not mean to change.
+  - **Set the identity for each repository, not globally.** Git without an email uses a `...@hostname.local` address.
+
+  ## Commands
 
   ```bash
   git status --short
@@ -25,57 +28,29 @@ instructions: |
   git restore --staged path/to/file
   ```
 
-  ## Safe Defaults
+  ## Short Status
 
-  - Use `--no-pager` in non-interactive contexts.
-  - Stage only task-relevant files.
-  - Check status before and after edits to avoid accidental scope creep.
+  | Mark | Meaning |
+  | --- | --- |
+  | `??` | untracked file |
+  | `M` in the left column | change in the index |
+  | `M` in the right column | change in the working tree |
 
-  ## Common Pitfalls
+  ## Commit Identity
 
-  - Mixing unrelated edits into one commit.
-  - Using destructive reset/checkout patterns without explicit approval.
-  - Misreading staged vs unstaged columns in short status output.
+  1. Before you commit, run `git config user.email`.
+  2. If it is empty, or a `.local` or `(none)` value, set `user.name` and `user.email` with `git config --local`.
+  3. To make the identity follow the remote URL, use conditional includes. Set the email only in the included files:
 
-  ## Output Interpretation
+     ```gitconfig
+     [includeIf "hasconfig:remote.*.url:https://github.com/**"]
+         path = ~/.gitconfig-github
+     [includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
+         path = ~/.gitconfig-work
+     ```
 
-  - `??` indicates untracked files.
-  - Left/right `M` columns in short status represent index/worktree changes.
+  The `identity-guard` pre-commit hook refuses a commit with a missing or generated identity. To require an email domain in one repository, run this command:
 
-  ## Why It Matters For Agents
-
-  - Git state determines safe automation and review boundaries.
-  - High-signal diff workflows prevent accidental regressions.
-
-  ## Commit Identity (per remote host)
-
-  - Commits must carry the identity that matches the remote; set it **per repo**, not
-    globally. Leaving the global `user.email` unset is deliberate — with no email git
-    silently commits a `…@hostname.local` address, which pollutes and de-anonymizes history.
-  - Before committing, verify `git config user.email` is set for this repo; if empty or a
-    `.local`/`(none)` hostname value, set `git config --local user.name/user.email` first.
-  - Automate it with git conditional includes so identity follows the remote URL:
-
-    ```gitconfig
-    # ~/.gitconfig  (email is set only inside the includes; global email stays unset)
-    [includeIf "hasconfig:remote.*.url:https://github.com/**"]
-        path = ~/.gitconfig-github
-    [includeIf "hasconfig:remote.*.url:https://git.example.com/**"]
-        path = ~/.gitconfig-work
-    ```
-
-    Scaffold this with `.scripts/setup_git_identity.py add --host <host> --name <n> --email <e>`.
-  - Enforcement: the `identity-guard` pre-commit hook blocks a commit whose identity is
-    missing or auto-generated. Optionally require a domain per repo with
-    `git config basicly.identityAllowEmail '@example\.com$'`.
-
-  ## Repo Conventions
-
-  - Never rewrite history or run destructive git commands without explicit confirmation.
-  - Keep diffs minimal and avoid unrelated reformatting.
-
-  ## Trigger Examples
-
-  - Should trigger: "Review my staged diff for regressions before commit."
-  - Should trigger: "Show what changed in this branch compared to main."
-  - Should not trigger: "Lint this shell script for POSIX issues."
+  ```bash
+  git config basicly.identityAllowEmail '@example\.com$'
+  ```

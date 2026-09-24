@@ -1,25 +1,22 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 283
-  codex: 283
-  copilot: 284
+  claude: 187
+  codex: 187
+  copilot: 187
 id: quality-gate
-description: Quality gate rules before finishing work.
+description: How to verify a change before you report it done.
 category: project
 priority: high
-applies_to:
-- all
+applies_to: [all]
 tags:
-- quality
-- review
+- verification
 status: active
+title: Quality Gate
 body: |
-  - Review the diff, then run the change as a consumer runs it and read the output; tests passing is not a working feature.
-  - Run the repo's checks on anything touched and after the final edit; a later change breaks what passed. Point at a gate, don't restate it: a restatement goes stale.
-  - Confirm success from the explicit pass/fail summary line; truncated output hides failures.
-  - State only the scope you exercised. Say what you did not run. Never "expected to work" → "works".
-  - A coverage claim names the list the code iterates; a general mechanism proves nothing about membership.
-  - In a plan awaiting approval, mark parts resting on unread code as assumptions, not design; an approval on a false premise costs the checkpoint and the rework behind it.
-  - Same for a README, release note or repo description claim: exercise it before publishing; `docs-claims` catches only an invented command.
-  - A design document sentence naming a call the code does not make is a claim, not a plan; write it once the call exists or say what is owed, because `docs-claims` reads a command and not a call, so nothing refuses it.
+  - Review the diff. Then run the change the way a consumer runs it, and read the output. Passing tests do not prove a working feature.
+  - Run the repository checks on what you touched, after the last edit. A later edit can break what passed.
+  - Read the pass or fail summary line. Truncated output hides failures.
+  - Report only what you ran, and say what you did not run. Do not turn "expected to work" into "works".
+  - When you claim that a check covers every item, name the list that the code reads. A general mechanism does not prove which items it covers.
+  - Check a claim against the code before it goes into a plan, a design document, a README or a release note. Mark a part that rests on code you did not read as an assumption.

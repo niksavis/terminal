@@ -3,19 +3,17 @@ schema_version: 1
 token_cost:
   claude: 0
   codex: 0
-  copilot: 86
+  copilot: 66
 id: copilot-defaults
-description: Copilot-specific defaults and file layout conventions.
+description: GitHub Copilot file locations.
 category: project
 priority: medium
-applies_to:
-- copilot
+applies_to: [copilot]
 tags:
 - copilot
-- layout
 status: active
-title: Copilot-specific notes
+title: Copilot Notes
 body: |
-  - Author skills and rules at `.basicly/core/` (or `.basicly-local/`); `.claude/skills/` and `.claude/rules/*.md` are projected output; no `.github/instructions/` twins (double-load).
-  - Prefer skills over prompt files — VS Code is migrating `*.prompt.md` to skills.
-  - Put custom agents in `.github/agents/*.agent.md`.
+  - `.claude/skills/` is generated. Edit its catalog sources.
+  - Do not add copies under `.github/instructions/`, because Copilot then loads the same rule twice.
+  - Prefer a skill to a prompt file. Put a custom agent in `.github/agents/*.agent.md`.

@@ -1,26 +1,30 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 86
+  listing: 75
 name: root-cause
 invocation: model
-description: Establish why something actually happened by iterating why until the answer stops changing, with each link citing an observation - and know the two ways the method lies. Use before filing a bead off a failure, before proposing a rule or a gate to prevent a recurrence, when a fix addresses a symptom, or when a retro asks for a cause.
+description: Establish why something happened by asking why until the answer stops changing, with an observation for each link, and name the control that would have refused it. Use before you file a record or propose a gate after a failure, when a fix treats a symptom, or when a retro asks for a cause.
 covers:
   work_types: [bug]
   phases: [build, repair]
 instructions: |
   # Root Cause
 
-  ## First: is this one occurrence?
+  Find why a failure happened by asking why until the answer stops changing. Then name the control that would have refused it.
 
-  **A single failure inside the normal range is common cause, and acting on it makes
-  things worse.** Deming's funnel experiment: adjusting a stable process in response to
-  ordinary variation "invariably increases variation in the results". Run this analysis
-  on a *signal*, not on an incident.
+  ## Rules
 
-  A signal is a point beyond 3σ, or a non-random pattern — a run, a trend — inside the
-  limits (NIST/SEMATECH e-Handbook §pmc31). In this repo the practical test is cheaper:
-  **has this shape happened before?** Query the ledger before you analyse.
+  - **Analyse a signal, not one occurrence.** A change made in response to normal variation increases the variation.
+  - **Every link cites an observation.** A link that you reasoned to is where the chain becomes a story.
+  - **Stop at a cause you control.** A vendor decision or "the model was wrong" gives you nothing to build a control against.
+  - **Never stop on a person.** "Someone forgot" means the chain stopped early. Ask what let the mistake reach a commit.
+  - **Record the branch you did not take.** Two analysts reach different causes from the same incident.
+  - **Deliver a control, not advice.** "Be careful" and "add a note" prevent nothing.
+
+  ## 1. Check that it is a signal
+
+  A signal is a point beyond three standard deviations, or a run or a trend inside the limits. The cheaper test is this question: has this shape happened before? Query the ledger before you analyse:
 
   ```sh
   jq -r 'select(.kind=="created")|.payload.title // empty' .basicly/ledger/events-*.jsonl \
@@ -28,86 +32,48 @@ instructions: |
   rg -c '<the marker>' .basicly/usage/run-records.json
   ```
 
-  A record's title is on its `created` event and nowhere else, so a query over every
-  event returns nothing — and nothing reads as "no prior", which is the answer that ends
-  the analysis. Confirm the pipeline's first stage prints titles before believing a zero.
+  A record title is only on its `created` event. A query over every event returns nothing, and nothing reads as "no prior". Confirm that the first stage of the pipeline prints titles before you believe a zero.
 
-  One occurrence with no prior: record it and stop. Filing a bead off a single event is
-  how twelve records came to name one truncation while none asked why the trigger fired.
+  One occurrence with no prior: record it and stop.
 
-  ## The method
+  ## 2. Ask why
 
-  Iterate *why* until the answer stops changing. Two rules make it worth doing:
+  Ask why until the answer stops changing. Each link cites a `file:line`, a command and its output, a ledger row or a recorded verdict. When the next why leaves this repository, go back one link and build the control there.
 
-  1. **Every link cites an observation, not an inference.** A `file:line`, a command and
-     its output, a ledger row, a recorded verdict. A link you reasoned to is where the
-     chain stops being evidence and starts being a story.
-  2. **Stop at a cause you control.** If the next *why* leaves this repository — a
-     vendor's decision, a person's attention, "the model was wrong" — you have left the
-     zone where a control can be built. Back up one link and build there.
+  At each link where a second answer was available, name it and say why you took the other one.
 
-  ## The two ways it lies
+  ## 3. Test the chain
 
-  **It yields exactly one path, chosen by the asker.** Card, *BMJ Quality & Safety* 2017,
-  is the repo's recorded caution: iterated-why is not reproducible between analysts, and
-  two competent people reach different causes from the same incident. The remedy is not
-  to abandon it but to **record the branch you did not take**. At any link where a
-  second answer was available, name it and say why you went the other way.
+  - **Per cause: would the removal of this cause block this path?** If the failure still reaches the same end, the cause is a condition you noticed. Continue the chain.
+  - **For the set: would the removal of all retained causes block the observed failure?** If a route stays open, a link is missing. That link is the one that needs the control.
 
-  **It terminates on a person.** "The agent guessed", "someone forgot", "human error" —
-  each of those is a place the chain stopped early, because none of them is a thing you
-  can build a control against. Ask what let the guess reach a commit.
+  A second person can run these two tests against your chain without a new derivation.
 
-  ## Output contract
+  ## 4. Output
 
-  Three things, and prose is not one of them:
+  | Field | Content |
+  | --- | --- |
+  | Control | A check, a gate, a schema field or a refusal that would have refused this defect |
+  | Tier | `control` (fails a gate), `warning` (reports and continues) or `documentation` (a person must read it). Record a `documentation` tier as a downgrade, with the reason that no stronger control was available |
+  | Covers | The whole class of defects, not this one instance. A control for one incident is a patch |
+  | Branch not taken | One line |
 
-  - **A named control** that would have refused this defect. Not "be careful", not "add a
-    note" — a check, a gate, a schema field, a refusal.
-  - **Its tier**: `control` (fails a gate), `warning` (reports and continues), or
-    `documentation` (a human must read it). A documentation-tier outcome is recorded as a
-    **downgrade, with the reason no stronger control was available**.
-  - **The class of defects it covers** — the whole set, not this one instance. A control
-    that covers exactly one incident is a patch wearing a rule's clothes.
+  Deliver the control as a diff against catalog YAML: a fragment, a skill, a hook or a schema field. A person approves it before it lands. `basicly catalog lint` and the projection checks limit what they approve.
 
-  Then the branch not taken, in one line.
-
-  ## The counterfactual, which is what makes a cause a cause
-
-  A chain that ends somewhere plausible is not the same as a chain that ends somewhere
-  load-bearing. Two questions, and they are cheap because they are answerable from the
-  same observations you already cited:
-
-  - **Per cause: would removing this one block this pathway?** If the failure still
-    reaches the same end with the cause removed, it is a condition you noticed, not a
-    cause you found — say so and keep going.
-  - **At set level: would removing the retained set block the observed failure?** A set
-    that leaves a route open has a link missing, and the missing link is the one worth
-    the control.
-
-  This is the check a second party can run against your chain without re-deriving it,
-  which is why it is here rather than in the prose above.
-
-  ## Where the answer goes
-
-  Under D25 an agent never lands catalog guidance without a human. The output is a
-  **diff against catalog YAML** — a fragment, a skill, a hook, a schema field — never
-  advice, so `catalog lint` and the projection checks bound what the human approves.
-
-  ## Worked shape
+  ## Example
 
   ```text
-  Signal      3 of 5 lanes bounced on a shared landing anchor, twice in one pass
-  Why 1       the rebase conflicted           (merge.py:722, conflicts= on the result)
+  Signal      3 of 5 lanes failed to land on one shared anchor, twice in one pass
+  Why 1       the rebase conflicted            (the merge result names the conflict)
   Why 2       two lanes appended at one anchor (both scope globs name basicly.toml)
-  Why 3       decompose grouped by scope-glob overlap, which is file adjacency
+  Why 3       decompose grouped the work by scope-glob overlap, which is file adjacency
   Why 4       scope globs are the only structure the decomposer can see
   STOP        we control that
 
-  Branch not taken: "the anchors should be generated" — real, but it fixes three files
-  rather than the slicing rule that keeps producing collisions.
+  Branch not taken: "generate the anchors". Real, but it fixes three files, not the
+  slicing rule that keeps producing collisions.
 
   Control     a plan-gate refusal when two children declare an overlapping anchor
   Tier        control
-  Covers      every decomposition that slices by file adjacency, not just this anchor
+  Covers      every decomposition that slices by file adjacency
   ```

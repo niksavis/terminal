@@ -40,7 +40,7 @@ CHECKPOINT_GLOB = CHECKPOINT_PREFIX + "*" + _LOG_SUFFIX
 
 DERIVED_PATTERNS = (SNAPSHOT_NAME, CHECKPOINT_GLOB)
 
-SNAPSHOT_VERSION = 1
+SNAPSHOT_VERSION = 3
 
 PERIOD_PATTERN = re.compile(r"^[0-9]{4,}[a-z0-9]*$")
 
@@ -109,6 +109,8 @@ def record_to_dict(state: Any) -> dict[str, object]:
         "tombstoned": state.tombstoned,
         "totals": state.totals.as_dict(),
         "max_seq": state.max_seq,
+        "dates": dict(state.dates),
+        "contested": list(state.contested),
     }
 
 
@@ -149,6 +151,14 @@ def record_from_dict(raw: Mapping[str, object]) -> Any:
         parsed = events.Totals.from_dict(totals)
     except events.InvalidEventError as exc:
         raise SnapshotError(f"{record}: {exc}") from exc
+    dates = raw.get("dates", {})
+    if not isinstance(dates, dict) or not all(
+        value is None or isinstance(value, str) for value in dates.values()
+    ):
+        raise SnapshotError(f"{record}: dates map a name to a time or null, got {dates!r}")
+    contested = raw.get("contested", [])
+    if not isinstance(contested, list) or not all(isinstance(name, str) for name in contested):
+        raise SnapshotError(f"{record}: contested must be a list of names, got {contested!r}")
     return events.RecordState(
         record=record,
         status=status,
@@ -159,6 +169,8 @@ def record_from_dict(raw: Mapping[str, object]) -> Any:
         tombstoned=tombstoned,
         totals=parsed,
         max_seq=int(max_seq),  # type: ignore[arg-type]
+        dates={**events.RecordState(record).dates, **dates},
+        contested=list(contested),
     )
 
 
@@ -371,6 +383,9 @@ def staleness(directory: Path | str) -> Staleness:
         return Staleness(True, f"the snapshot's header is unusable: {exc}", tally, None)
     if header is None:
         return Staleness(True, "no snapshot has been written", tally, None)
+    if header.version != SNAPSHOT_VERSION:
+        reason = f"the snapshot is format {header.version} and this kit writes {SNAPSHOT_VERSION}"
+        return Staleness(True, reason, tally, header)
     if header.log_lines != tally.lines:
         reason = f"the log holds {tally.lines} lines and the snapshot folded {header.log_lines}"
         return Staleness(True, reason, tally, header)
@@ -412,7 +427,7 @@ def fold_resumed(directory: Path | str) -> Fold:
     if checkpoint is None:
         return fold_all(ledger)
     base = read_snapshot(checkpoint)
-    if base is None:
+    if base is None or base.header.version != SNAPSHOT_VERSION:
         return fold_all(ledger)
     boundary = period_of(checkpoint)
     folded_before = [path for path in events.log_paths(ledger) if period_of(path) <= boundary]

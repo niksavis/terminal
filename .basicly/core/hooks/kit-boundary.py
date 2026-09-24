@@ -30,6 +30,9 @@ _REACHES_OUT = {
     "webbrowser": "reaches the host desktop",
 }
 
+LISTENER_KIT = "board"
+LISTENER_IMPORTS = frozenset({"http", "http.server", "urllib.parse"})
+
 _PATH_CALLS = frozenset({"Path", "PurePath", "PurePosixPath", "PureWindowsPath"})
 _JOIN_CALLS = frozenset({"join", "joinpath"})
 
@@ -109,14 +112,16 @@ def _statement_strings(tree: ast.Module) -> set[int]:
     return ids
 
 
-def _reaches_out(rel: str, lineno: int, name: str, shown: str) -> list[Finding]:
+def _reaches_out(
+    rel: str, lineno: int, name: str, shown: str, allowed: frozenset[str]
+) -> list[Finding]:
     why = _REACHES_OUT.get(_root_package(name))
-    if why is None:
+    if why is None or name in allowed:
         return []
     return [Finding(rel, lineno, "reaches-outside", f"{shown} — it {why}")]
 
 
-def _import_findings(rel: str, tree: ast.Module) -> list[Finding]:
+def _import_findings(rel: str, tree: ast.Module, allowed: frozenset[str]) -> list[Finding]:
     findings: list[Finding] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -126,7 +131,8 @@ def _import_findings(rel: str, tree: ast.Module) -> list[Finding]:
                 if _root_package(alias.name) == "basicly"
             ]
             for alias in node.names:
-                findings += _reaches_out(rel, node.lineno, alias.name, f"import {alias.name}")
+                shown = f"import {alias.name}"
+                findings += _reaches_out(rel, node.lineno, alias.name, shown, allowed)
         elif isinstance(node, ast.ImportFrom):
             if node.module and _root_package(node.module) == "basicly":
                 findings.append(
@@ -134,7 +140,7 @@ def _import_findings(rel: str, tree: ast.Module) -> list[Finding]:
                 )
             if node.module:
                 findings += _reaches_out(
-                    rel, node.lineno, node.module, f"from {node.module} import ..."
+                    rel, node.lineno, node.module, f"from {node.module} import ...", allowed
                 )
         elif isinstance(node, ast.Call) and _callee(node) in _IMPORT_CALLS and node.args:
             target = node.args[0]
@@ -186,14 +192,15 @@ def _dedupe(findings: list[Finding]) -> list[Finding]:
     return unique
 
 
-def module_findings(module: Path, rel: str) -> list[Finding]:
+def module_findings(module: Path, rel: str, kit: str = "") -> list[Finding]:
 
     source = module.read_text(encoding="utf-8")
     try:
         tree = ast.parse(source, filename=str(module))
     except SyntaxError as exc:
         return [Finding(rel, exc.lineno or 1, "unparseable", exc.msg)]
-    return _import_findings(rel, tree) + _path_findings(rel, tree)
+    allowed = LISTENER_IMPORTS if kit == LISTENER_KIT else frozenset()
+    return _import_findings(rel, tree, allowed) + _path_findings(rel, tree)
 
 
 def scan(kit_root: Path, repo_root: Path | None = None) -> list[Finding]:
@@ -204,7 +211,7 @@ def scan(kit_root: Path, repo_root: Path | None = None) -> list[Finding]:
             rel = module.relative_to(base).as_posix()
         except ValueError:
             rel = module.as_posix()
-        findings += module_findings(module, rel)
+        findings += module_findings(module, rel, module.relative_to(kit_root).parts[0])
     return findings
 
 
@@ -232,7 +239,8 @@ def main(argv: list[str] | None = None) -> int:
         "kit-boundary: the kit crossed a boundary .basicly/core/kit/tracker/SPEC.md §4 "
         "declares — the dependency "
         "direction is one-way, and the kit imports nothing but the standard library, "
-        "reaching no network and spawning no process.",
+        "reaching no network and spawning no process. Only the board kit may import "
+        f"{', '.join(sorted(LISTENER_IMPORTS))}, to listen on loopback when a person serves it.",
         file=sys.stderr,
     )
     for finding in findings:

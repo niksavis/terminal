@@ -6,15 +6,19 @@ name: tool-tmux
 invocation: user
 technologies: [tmux]
 instructions: |
-  # tool-tmux
+  # tmux
 
-  ## When To Use
+  Manage terminal sessions that continue after a disconnect. Use it to run logs, tests and commands side by side in panes.
 
-  - Manage persistent terminal sessions across restarts and disconnects.
-  - Verify keybindings, splits, windows, and session behavior.
-  - Coordinate concurrent logs/tests/commands in panes.
+  ## Rules
 
-  ## Trusted Commands
+  - **Use `tmux new -A -s <name>`.** It attaches to the session if it exists and creates it if not.
+  - **Run `tmux ls` before you create a session.** It shows the sessions that already run.
+  - **Reload with `source-file` before you restart.** A reload keeps the running sessions.
+  - **Do not start tmux inside tmux.** The two prefix keys conflict.
+  - **Keep key bindings the same as the repository templates.** A difference confuses the user.
+
+  ## Commands
 
   ```bash
   tmux new -A -s dev
@@ -26,35 +30,11 @@ instructions: |
   tmux source-file ~/.tmux.conf
   ```
 
-  ## Safe Defaults
+  ## Output
 
-  - Reuse named sessions with `new -A -s` for idempotent workflows.
-  - Reload config with `source-file` before restarting everything.
-  - Inspect running state (`tmux ls`) before creating new sessions.
+  | Message | Meaning |
+  | --- | --- |
+  | `no server running` | no tmux session exists |
+  | `duplicate session` | a session with that name exists |
 
-  ## Common Pitfalls
-
-  - Terminal emulator shortcuts can be confused with tmux shortcuts.
-  - Nested tmux sessions cause keybinding conflicts.
-  - Config reload does not retroactively change shell startup behavior.
-
-  ## Output Interpretation
-
-  - `no server running` means no active tmux server/session exists.
-  - `duplicate session` means the target name is already in use.
-
-  ## Why It Matters For Agents
-
-  - Long-running tasks become safer and easier to recover.
-  - Pane/session orchestration reduces context switching overhead.
-
-  ## Repo Conventions
-
-  - Keep keybindings aligned with repo templates and cheat sheet docs.
-  - Favor predictable session names for repeatable workflows.
-
-  ## Trigger Examples
-
-  - Should trigger: "Reload tmux config and verify split shortcuts."
-  - Should trigger: "Create a reusable tmux session for tests and logs."
-  - Should not trigger: "Parse JSON from an API response."
+  A config reload does not change shell startup files. A terminal shortcut is not a tmux shortcut.

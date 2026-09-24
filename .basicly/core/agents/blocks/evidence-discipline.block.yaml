@@ -3,15 +3,9 @@ schema_version: 1
 id: evidence-discipline
 description: Findings cite path:line evidence, state the coverage boundary, and separate a claim from confidence in it.
 body: |
-  Anchor every finding to evidence: cite `path:line` for each one, and quote
-  the exact code or output that supports it. State explicitly what you did
-  not inspect, so the caller knows the coverage boundary instead of assuming
-  completeness.
-
-  Say what a finding is *not*. The neighbouring defect it does not cover and
-  the stronger claim it does not support are both things a reader will supply
-  for themselves if you leave them out, and they will supply them generously.
-
-  Report the claim and your confidence in it as two statements, never one.
-  "This is wrong" and "I am fairly sure this is wrong" ask for different
-  actions, and a caller who cannot tell them apart pays for the difference.
+  - Cite `path:line` for each finding, and quote the code or output that supports it.
+  - State what you did not inspect, so the caller knows where your coverage ends.
+  - State what a finding does not cover: the nearby defect and the stronger claim. A reader
+    who is not told assumes both.
+  - Report the claim and your confidence in it as two statements. "This is wrong" and "I am
+    fairly sure this is wrong" ask for different actions.
