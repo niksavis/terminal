@@ -314,7 +314,9 @@ def test_deploy_claude_statusline_installs(tmp_path: Path) -> None:
 
     script = claude / "statusline.sh"
     assert script.exists()
-    assert "Claude Code status line" in script.read_text(encoding="utf-8")
+    assert script.read_text(encoding="utf-8") == template_path("statusline.sh").read_text(
+        encoding="utf-8"
+    )
     settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
     assert settings["statusLine"] == {
         "type": "command",

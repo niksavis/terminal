@@ -333,3 +333,11 @@ def test_statusline_glyphs_render_in_every_target_font(tmp_path: Path, nerdfont:
 def test_statusline_exits_quietly_on_unparseable_input() -> None:
     output = render("not json at all")
     assert output.strip() == ""
+
+
+@pytest.mark.parametrize(
+    "construct",
+    ["mapfile", "readarray", "declare -A", "local -A", ",,}", "^^}", "|&", "&>>", ";;&"],
+)
+def test_statusline_uses_no_construct_newer_than_bash_3_2(construct: str) -> None:
+    assert construct not in template_path("statusline.sh").read_text(encoding="utf-8")
