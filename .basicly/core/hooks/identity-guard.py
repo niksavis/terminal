@@ -4,6 +4,7 @@ import json
 import re
 import subprocess  # nosec B404
 import sys
+from collections import Counter
 from pathlib import Path
 
 FALLBACK_EMAIL_PATTERN = re.compile(r"\.(local|lan|localdomain)$|\.?\(none\)$", re.IGNORECASE)
@@ -74,12 +75,26 @@ def added_lines(repo_root: Path) -> list[tuple[str, str]]:
         text=True,
         check=False,
     )  # nosec
-    found, path = [], ""
-    for line in result.stdout.splitlines():
+    return net_added(result.stdout)
+
+
+def net_added(diff: str) -> list[tuple[str, str]]:
+    added, removed, path = [], Counter(), ""
+    for line in diff.splitlines():
         if line.startswith("+++ "):
             path = line[6:] if line.startswith("+++ b/") else ""
+        elif line.startswith("--- "):
+            continue
         elif line.startswith("+") and path:
-            found.append((path, line[1:]))
+            added.append((path, line[1:]))
+        elif line.startswith("-"):
+            removed[line[1:]] += 1
+    found = []
+    for path, text in added:
+        if removed[text] > 0:
+            removed[text] -= 1
+            continue
+        found.append((path, text))
     return found
 
 
@@ -92,7 +107,13 @@ def _only_the_holder(line: str, name: str, holder: str) -> bool:
         event = json.loads(line)
     except ValueError:
         return False
-    payload = event.get("payload") if isinstance(event, dict) else None
+    if not isinstance(event, dict):
+        return False
+    fields = event.get("fields")
+    if isinstance(fields, dict) and fields.get(HOLDER_FIELD) == holder:
+        rest = json.dumps({**event, "fields": {**fields, HOLDER_FIELD: ""}})
+        return not any(form in rest for form in _forms(name))
+    payload = event.get("payload")
     if not isinstance(payload, dict) or payload.get("name") != HOLDER_FIELD:
         return False
     if payload.get("value") != holder:

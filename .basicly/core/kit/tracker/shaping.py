@@ -30,6 +30,7 @@ _USER_STORY = re.compile(
 )
 
 _PLACEHOLDER = re.compile(r"<[^>]+>|\bTODO\b")
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
 _BULLET = re.compile(r"^- (.+)$")
 
 JOB_VOICE = "job"
@@ -40,7 +41,7 @@ def trigger_voice(description):
 
     for voice, pattern in ((JOB_VOICE, _JOB_STORY), (USER_VOICE, _USER_STORY)):
         for match in pattern.finditer(description):
-            if not _PLACEHOLDER.search(match.group(0)):
+            if not unfilled(match.group(0)):
                 return voice
     return None
 
@@ -61,8 +62,12 @@ def section_entries(description: str, heading: str):
     return tuple(entries)
 
 
+def unfilled(text: str) -> bool:
+    return bool(_PLACEHOLDER.search(_CODE_SPAN.sub("", text)))
+
+
 def states_something(text) -> bool:
-    return bool(isinstance(text, str) and text.strip()) and not _PLACEHOLDER.search(text)
+    return bool(isinstance(text, str) and text.strip()) and not unfilled(text)
 
 
 def _held(record: Mapping[str, object], field: str, heading: str, closed: bool) -> bool:
