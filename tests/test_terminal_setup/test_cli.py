@@ -83,6 +83,7 @@ def test_main_runs_wsl_setup_when_inside_wsl() -> None:
         mock.patch("terminal_setup.cli.platform.detect_platform") as mock_detect,
         mock.patch("terminal_setup.cli.run_check", return_value=0),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
@@ -145,6 +146,7 @@ def test_run_setup_config_only_skips_package_installs() -> None:
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras") as mock_extras,
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.prerequisites.ensure_node") as mock_node,
@@ -193,6 +195,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.configs.deploy_all"),
@@ -242,6 +245,7 @@ def _run_setup_install_mode(
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_shell_tools"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_host_cli_extras") as mock_extras,

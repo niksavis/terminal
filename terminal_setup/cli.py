@@ -100,16 +100,17 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         dest="no_sudo",
         help=(
-            "Force the user-local, no-sudo install path everywhere (the default on Windows "
-            "and WSL); on a native Linux host, missing base packages are skipped with a warning."
+            "Never use sudo: force the user-local install path everywhere (the default on "
+            "Windows and WSL), and print the apt command for missing WSL system packages "
+            "instead of offering to run it."
         ),
     )
     install.add_argument(
         "--update",
         action="store_true",
         help=(
-            "Refresh user-local tools (and Node) to their latest releases by re-running "
-            "the installers even when a copy already exists."
+            "Install the latest release of each user-local tool (and Node) that is out of "
+            "date; without it, setup only reports which ones are."
         ),
     )
     install.add_argument(
@@ -425,6 +426,17 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 runner.reporter.info(
                     "Running inside WSL; installing tools into the current distro."
                 )
+            prerequisites.attempt(
+                runner,
+                "install WSL system packages",
+                partial(
+                    prerequisites.ensure_wsl_system_packages,
+                    runner,
+                    platform_info,
+                    allow_sudo=not no_sudo,
+                    assume_yes=system_install,
+                ),
+            )
             prerequisites.ensure_wsl_tools(
                 runner,
                 platform_info,

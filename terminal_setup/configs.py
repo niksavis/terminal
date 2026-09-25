@@ -5,7 +5,7 @@ import os
 import shlex
 import shutil
 import sys
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .prerequisites import _add_to_user_path, attempt
@@ -579,8 +579,14 @@ def _cli_tools_skills_script() -> str:
     )
 
 
+def _is_windows_builtin(path: str) -> bool:
+    system_root = PureWindowsPath(os.environ.get("SYSTEMROOT") or "C:\\Windows")
+    return PureWindowsPath(path).is_relative_to(system_root)
+
+
 def _native_tool_present(runner: Runner, platform: PlatformInfo, command: str) -> bool:
-    if runner.which(command):
+    found = runner.which(command)
+    if found and not _is_windows_builtin(found):
         return True
     local_bin = platform.home / ".local" / "bin"
     return (local_bin / command).exists() or (local_bin / f"{command}.exe").exists()

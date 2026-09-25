@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
+from . import release_install
 from .platform import (
     OperatingSystem,
     PackageManager,
@@ -426,25 +427,43 @@ def _run_shell_read(
     return runner.run(command, check=False, dry_run_safe=True)
 
 
-def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    if (wsl_distro is None or is_running_in_wsl()) and (
-        Path.home() / ".cargo" / "bin" / "cargo"
-    ).exists():
-        return
-    if wsl_distro is not None and not is_running_in_wsl():
-        result = runner.run(
-            wsl_exec_command(wsl_distro, ["sh", "-c", "test -x ~/.cargo/bin/cargo"]),
-            check=False,
-            dry_run_safe=True,
-        )
-        if result.returncode == 0:
-            return
-    _run_shell_command(
-        runner,
-        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
-        label="install rustup and cargo",
-        wsl_distro=wsl_distro,
-    )
+_RUST_ASSETS = (
+    r"[^/]*-{arch}-unknown-linux-musl\.(?:tar\.gz|zip)",
+    r"[^/]*-{arch}-unknown-linux-gnu\.(?:tar\.gz|zip)",
+)
+RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
+    "fd-find": ("sharkdp/fd", "fd", _RUST_ASSETS),
+    "bat": ("sharkdp/bat", "bat", _RUST_ASSETS),
+    "ripgrep": ("BurntSushi/ripgrep", "rg", _RUST_ASSETS),
+    "xh": ("ducaale/xh", "xh", _RUST_ASSETS),
+    "ast-grep": ("ast-grep/ast-grep", "ast-grep", _RUST_ASSETS),
+    "sd": ("chmln/sd", "sd", _RUST_ASSETS),
+    "just": ("casey/just", "just", _RUST_ASSETS),
+    "git-delta": ("dandavison/delta", "delta", _RUST_ASSETS),
+    "typos": ("crate-ci/typos", "typos", _RUST_ASSETS),
+    "fzf": ("junegunn/fzf", "fzf", (r"fzf-[0-9.]+-linux_{arch}\.tar\.gz",)),
+    "jq": ("jqlang/jq", "jq", (r"jq-linux-{arch}",)),
+    "yq": ("mikefarah/yq", "yq", (r"yq_linux_{arch}",)),
+    "shellcheck": (
+        "koalaman/shellcheck",
+        "shellcheck",
+        (r"shellcheck-v[0-9.]+\.linux\.{arch}\.tar\.xz",),
+    ),
+    "git-lfs": ("git-lfs/git-lfs", "git-lfs", (r"git-lfs-linux-{arch}-v[0-9.]+\.tar\.gz",)),
+    "direnv": ("direnv/direnv", "direnv", (r"direnv\.linux-{arch}",)),
+}
+
+
+def _install_release_tool(
+    runner: Runner, package: str, *, update: bool, wsl_distro: str | None = None
+) -> None:
+    repo, binary, patterns = RELEASE_TOOLS[package]
+    source = Path(release_install.__file__).read_text(encoding="utf-8")
+    command = ["python3", "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
+    result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=f"install {package}")
+    message = (result.stdout or "").strip()
+    if message:
+        runner.reporter.info(message)
 
 
 def _failure_reason(error: Exception) -> str:
@@ -466,24 +485,8 @@ def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
 
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
-    rust_fallback = {
-        "ast-grep": ("ast-grep", "ast-grep"),
-        "typos": ("typos-cli", "typos"),
-        "just": ("just", "just"),
-    }
-    if package in rust_fallback:
-        crate, command = rust_fallback[package]
-        if not _command_available(runner, command, wsl_distro=wsl_distro):
-            _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
-            _run_shell_command(
-                runner,
-                (
-                    'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; '
-                    f"cargo install --locked --force --root ~/.local {crate}"
-                ),
-                label=f"install {crate} with cargo",
-                wsl_distro=wsl_distro,
-            )
+    if package in {"ast-grep", "typos", "just"}:
+        _install_release_tool(runner, package, update=False, wsl_distro=wsl_distro)
         return True
 
     if package == "xh":
@@ -898,173 +901,6 @@ def _warn_or_uninstall_system_version(
         )
 
 
-def _install_cargo_tool(
-    runner: Runner,
-    crate: str,
-    binary: str,
-    *,
-    wsl_distro: str | None = None,
-) -> None:
-
-    _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
-    _run_shell_command(
-        runner,
-        (
-            'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; '
-            f"want=$(curl -fsSL -H 'User-Agent: terminal-setup' "
-            f"https://crates.io/api/v1/crates/{crate} 2>/dev/null | "
-            'sed -n \'s/.*"max_stable_version":"\\([^"]*\\)".*/\\1/p\'); '
-            f'have=$("$HOME/.local/bin/{binary}" --version 2>/dev/null | '
-            "grep -oE '[0-9]+\\.[0-9]+(\\.[0-9]+)?' | head -n 1); "
-            'if [ -n "$want" ] && [ "$want" = "$have" ]; then '
-            f'echo "{crate} is up to date ($have); skipping rebuild"; '
-            f"else cargo install --locked --force --root ~/.local {crate}; fi"
-        ),
-        label=f"install {crate} with cargo",
-        wsl_distro=wsl_distro,
-    )
-
-
-def _github_latest_release_snippet(repo: str) -> str:
-
-    return (
-        f"release=$(curl -fsSL https://api.github.com/repos/{repo}/releases/latest | "
-        'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
-        '[ -n "$release" ] || { echo "'
-        f"{repo}: could not resolve the latest release (GitHub API rate limit?)"
-        '" >&2; rm -rf "$tmp"; exit 1; }; '
-    )
-
-
-def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "tmp=$(mktemp -d); "
-        + _github_latest_release_snippet("junegunn/fzf")
-        + "version=${release#v}; "
-        'url="https://github.com/junegunn/fzf/releases/download/${release}/'
-        'fzf-${version}-linux_${arch}.tar.gz"; '
-        "curl -fsSL -o $tmp/fzf.tar.gz $url; "
-        'curl -fsSL -o $tmp/checksums.txt "https://github.com/junegunn/fzf/releases/download/'
-        '${release}/fzf_${version}_checksums.txt"; '
-        'expected=$(grep " fzf-${version}-linux_${arch}.tar.gz$" $tmp/checksums.txt '
-        '| cut -d" " -f1); '
-        'actual=$(sha256sum $tmp/fzf.tar.gz | cut -d" " -f1); '
-        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
-        '|| { echo "fzf checksum verification failed" >&2; rm -rf $tmp; exit 1; }; '
-        "tar -xzf $tmp/fzf.tar.gz -C $tmp; "
-        "mkdir -p ~/.local/bin; "
-        "mv $tmp/fzf ~/.local/bin/fzf; "
-        "rm -rf $tmp"
-    )
-    _run_shell_command(runner, script, label="install fzf", wsl_distro=wsl_distro)
-
-
-def _install_jq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "tmp=$(mktemp -d); "
-        'curl -fsSL -o "$tmp/jq" '
-        "https://github.com/jqlang/jq/releases/latest/download/jq-linux-${arch}; "
-        'curl -fsSL -o "$tmp/sha256sum.txt" '
-        "https://github.com/jqlang/jq/releases/latest/download/sha256sum.txt; "
-        'expected=$(grep " jq-linux-${arch}$" "$tmp/sha256sum.txt" | cut -d" " -f1); '
-        'actual=$(sha256sum "$tmp/jq" | cut -d" " -f1); '
-        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
-        '|| { echo "jq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
-        "mkdir -p ~/.local/bin; "
-        'install -m 0755 "$tmp/jq" ~/.local/bin/jq; '
-        'rm -rf "$tmp"'
-    )
-    _run_shell_command(runner, script, label="install jq", wsl_distro=wsl_distro)
-
-
-def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "tmp=$(mktemp -d); "
-        'curl -fsSL -o "$tmp/yq" '
-        "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${arch}; "
-        'curl -fsSL -o "$tmp/checksums-bsd" '
-        "https://github.com/mikefarah/yq/releases/latest/download/checksums-bsd; "
-        'expected=$(grep "^SHA256 (yq_linux_${arch}) = " "$tmp/checksums-bsd" '
-        '| cut -d" " -f4); '
-        'actual=$(sha256sum "$tmp/yq" | cut -d" " -f1); '
-        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
-        '|| { echo "yq checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
-        "mkdir -p ~/.local/bin; "
-        'install -m 0755 "$tmp/yq" ~/.local/bin/yq; '
-        'rm -rf "$tmp"'
-    )
-    _run_shell_command(runner, script, label="install yq", wsl_distro=wsl_distro)
-
-
-def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=x86_64;; aarch64) arch=aarch64;; esac; "
-        "tmp=$(mktemp -d); "
-        + _github_latest_release_snippet("koalaman/shellcheck")
-        + 'url="https://github.com/koalaman/shellcheck/releases/download/${release}/'
-        'shellcheck-${release}.linux.${arch}.tar.xz"; '
-        "curl -fsSL -o $tmp/sc.tar.xz $url; "
-        "tar -xf $tmp/sc.tar.xz -C $tmp; "
-        "mkdir -p ~/.local/bin; "
-        "mv $tmp/shellcheck-${release}/shellcheck ~/.local/bin/shellcheck; "
-        "rm -rf $tmp"
-    )
-    _run_shell_command(runner, script, label="install shellcheck", wsl_distro=wsl_distro)
-
-
-def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "tmp=$(mktemp -d); "
-        + _github_latest_release_snippet("git-lfs/git-lfs")
-        + "version=${release#v}; "
-        'pkg="git-lfs-linux-${arch}-${release}.tar.gz"; '
-        'base="https://github.com/git-lfs/git-lfs/releases/download/${release}"; '
-        'curl -fsSL -o "$tmp/$pkg" "$base/$pkg"; '
-        'curl -fsSL -o "$tmp/sha256sums.asc" "$base/sha256sums.asc"; '
-        'expected=$(grep " [*]$pkg$" "$tmp/sha256sums.asc" | cut -d" " -f1); '
-        'actual=$(sha256sum "$tmp/$pkg" | cut -d" " -f1); '
-        '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
-        '|| { echo "git-lfs checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
-        'tar -xzf "$tmp/$pkg" -C "$tmp"; '
-        "mkdir -p ~/.local/bin; "
-        'install -m 0755 "$tmp/git-lfs-${version}/git-lfs" ~/.local/bin/git-lfs; '
-        'rm -rf "$tmp"'
-    )
-    _run_shell_command(runner, script, label="install git-lfs", wsl_distro=wsl_distro)
-
-
-def _install_direnv_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-
-    script = (
-        "set -e; "
-        "arch=$(uname -m); "
-        "case $arch in x86_64) arch=amd64;; aarch64) arch=arm64;; esac; "
-        "tmp=$(mktemp -d); "
-        'curl -fsSL -o "$tmp/direnv" '
-        "https://github.com/direnv/direnv/releases/latest/download/direnv.linux-${arch}; "
-        "mkdir -p ~/.local/bin; "
-        'install -m 0755 "$tmp/direnv" ~/.local/bin/direnv; '
-        'rm -rf "$tmp"'
-    )
-    _run_shell_command(runner, script, label="install direnv", wsl_distro=wsl_distro)
-
-
 def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
 
     script = (
@@ -1130,12 +966,15 @@ def _is_version_at_least(current: str, latest: str) -> bool:
     return padded_current >= padded_latest
 
 
+LAZYGIT_LATEST_QUERY = (
+    "curl -fsSLI -o /dev/null -w '%{url_effective}' "
+    "https://github.com/jesseduffield/lazygit/releases/latest "
+    "| sed -n 's|.*/releases/tag/v||p'"
+)
+
+
 def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
-    script = (
-        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
-    )
-    result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
+    result = _run_shell_read(runner, LAZYGIT_LATEST_QUERY, wsl_distro=wsl_distro)
     if result.returncode != 0:
         return None
     version = result.stdout.strip()
@@ -1243,35 +1082,12 @@ def _install_user_local_tool(
     runner: Runner,
     package: str,
     platform: PlatformInfo,
+    *,
+    update: bool = False,
 ) -> bool:
-
-    cargo_tools: dict[str, tuple[str, str]] = {
-        "fd-find": ("fd-find", "fd"),
-        "bat": ("bat", "bat"),
-        "ripgrep": ("ripgrep", "rg"),
-        "xh": ("xh", "xh"),
-        "ast-grep": ("ast-grep", "ast-grep"),
-        "sd": ("sd", "sd"),
-        "just": ("just", "just"),
-        "git-delta": ("git-delta", "delta"),
-        "typos": ("typos-cli", "typos"),
-    }
     distro = _wsl_distro(platform)
-    if package in cargo_tools:
-        crate, binary = cargo_tools[package]
-        _install_cargo_tool(runner, crate, binary, wsl_distro=distro)
-        return True
-
-    static_binaries = {
-        "fzf": _install_fzf_binary,
-        "jq": _install_jq_binary,
-        "yq": _install_yq_binary,
-        "shellcheck": _install_shellcheck_binary,
-        "git-lfs": _install_gitlfs_binary,
-        "direnv": _install_direnv_binary,
-    }
-    if package in static_binaries:
-        static_binaries[package](runner, wsl_distro=distro)
+    if package in RELEASE_TOOLS:
+        _install_release_tool(runner, package, update=update, wsl_distro=distro)
         return True
 
     if package == "uv":
@@ -1290,8 +1106,10 @@ def _install_user_local_tool(
     return False
 
 
-def _install_one_user_local_tool(runner: Runner, package: str, platform: PlatformInfo) -> None:
-    if not _install_user_local_tool(runner, package, platform):
+def _install_one_user_local_tool(
+    runner: Runner, package: str, platform: PlatformInfo, *, update: bool = False
+) -> None:
+    if not _install_user_local_tool(runner, package, platform, update=update):
         runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
 
 
@@ -1307,6 +1125,70 @@ def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
         "This step may require a sudo password but stdin is not an interactive "
         "terminal. Re-run from an interactive shell, or use --user-install / "
         "--no-sudo to install into user-writable locations without sudo."
+    )
+
+
+WSL_SYSTEM_PACKAGES = ("zsh", "tree", "podman", "bubblewrap", "socat")
+_DOCKER_PACKAGES = ("docker.io", "docker-ce-cli")
+
+
+def _dpkg_installed(runner: Runner, package: str, *, wsl_distro: str | None) -> bool:
+    script = (
+        f"dpkg-query -W -f='${{Status}}' {package} 2>/dev/null | grep -q 'install ok installed'"
+    )
+    return _run_shell_read(runner, script, wsl_distro=wsl_distro).returncode == 0
+
+
+def missing_wsl_system_packages(runner: Runner, *, wsl_distro: str | None) -> list[str]:
+    missing = [
+        package
+        for package in WSL_SYSTEM_PACKAGES
+        if not _dpkg_installed(runner, package, wsl_distro=wsl_distro)
+    ]
+    docker_present = _command_available(runner, "docker", wsl_distro=wsl_distro) or any(
+        _dpkg_installed(runner, package, wsl_distro=wsl_distro) for package in _DOCKER_PACKAGES
+    )
+    if not docker_present and not _dpkg_installed(runner, "podman-docker", wsl_distro=wsl_distro):
+        missing.append("podman-docker")
+    return missing
+
+
+def wsl_system_packages_command(packages: list[str]) -> str:
+    return (
+        "sudo apt-get update && sudo apt-get upgrade -y && "
+        f"sudo apt-get install -y {' '.join(packages)}"
+    )
+
+
+def ensure_wsl_system_packages(
+    runner: Runner, platform: PlatformInfo, *, allow_sudo: bool, assume_yes: bool
+) -> None:
+    distro = _wsl_distro(platform)
+    missing = missing_wsl_system_packages(runner, wsl_distro=distro)
+    if not missing:
+        runner.reporter.info(f"System packages present: {', '.join(WSL_SYSTEM_PACKAGES)}.")
+        return
+    command = wsl_system_packages_command(missing)
+    runner.reporter.warn(f"WSL is missing system packages: {', '.join(missing)}.")
+    run_now = allow_sudo and (
+        assume_yes
+        or runner.dry_run
+        or (
+            sys.stdin.isatty()
+            and runner.confirm(
+                "Update the package lists, upgrade installed packages and install "
+                f"{', '.join(missing)} with sudo apt now?"
+            )
+        )
+    )
+    if not run_now:
+        runner.reporter.step(f"To add them, run this in WSL: {command}")
+        return
+    _run_shell_command(
+        runner,
+        command,
+        label=f"apt update, upgrade and install {' '.join(missing)}",
+        wsl_distro=distro,
     )
 
 
@@ -1366,13 +1248,14 @@ def ensure_wsl_tools(  # noqa: PLR0913
             if (
                 not update
                 and package != "lazygit"
+                and package not in RELEASE_TOOLS
                 and _is_user_local_command_available(runner, command, wsl_distro=distro)
             ):
                 continue
             attempt(
                 runner,
                 f"install {package}",
-                partial(_install_one_user_local_tool, runner, package, platform),
+                partial(_install_one_user_local_tool, runner, package, platform, update=update),
             )
         _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return

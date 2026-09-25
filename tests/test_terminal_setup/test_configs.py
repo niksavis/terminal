@@ -1115,3 +1115,21 @@ def test_scripted_claude_steps_print_labels_not_scripts(
     assert "wsl -d Ubuntu --exec sh: install the Claude Code status line" in out
     assert "wsl -d Ubuntu --exec sh: install the img-zoom skill" in out
     assert "wsl -d Ubuntu --exec sh: install the basicly cli-tools skills" in out
+
+
+def test_deploy_cli_tools_skills_windows_ignores_windows_builtins(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setenv("UV", "uv.exe")
+    monkeypatch.setenv("SYSTEMROOT", "C:\\Windows")
+    _make_claude_home(tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+    found = {"tree": "C:\\WINDOWS\\system32\\tree.COM", "rg": "C:\\tools\\rg.exe"}
+    monkeypatch.setattr(runner, "which", found.get)
+
+    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    assert fake.commands[-1][-2:] == ["cli-tools", "tool-ripgrep"]

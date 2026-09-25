@@ -5,16 +5,24 @@ from pathlib import Path
 from typing import cast
 from unittest import mock
 
-from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, detect_os
+import pytest
+
+from terminal_setup import release_install
+from terminal_setup.platform import (
+    OperatingSystem,
+    PackageManager,
+    PlatformInfo,
+    detect_os,
+    wsl_exec_command,
+)
 from terminal_setup.prerequisites import (
     _RECONCILE_BINARIES,
+    LAZYGIT_LATEST_QUERY,
+    RELEASE_TOOLS,
     TARGET_NODE_MAJOR,
     PrerequisiteStatus,
     SystemVersionPolicy,
     _add_to_user_path,
-    _install_fzf_binary,
-    _install_gitlfs_binary,
-    _install_shellcheck_binary,
     check_all,
     check_command,
     check_package_manager,
@@ -22,9 +30,12 @@ from terminal_setup.prerequisites import (
     ensure_host_cli_extras,
     ensure_node,
     ensure_starship,
+    ensure_wsl_system_packages,
     ensure_wsl_tools,
     install_package,
+    missing_wsl_system_packages,
     windows_tool_candidate_dirs,
+    wsl_system_packages_command,
 )
 from terminal_setup.prerequisites import (
     _command_available as command_available,
@@ -54,6 +65,8 @@ from terminal_setup.prerequisites import (
     _wsl_apt_install_script as wsl_apt_install_script,
 )
 from terminal_setup.runner import Runner
+
+RELEASE_INSTALL_SOURCE = Path(release_install.__file__).read_text(encoding="utf-8")
 
 
 def make_platform(os: OperatingSystem, package_manager: PackageManager) -> PlatformInfo:
@@ -449,10 +462,7 @@ def test_ensure_wsl_tools_runs_directly_when_inside_wsl() -> None:
 
 
 def test_install_lazygit_release_skips_when_up_to_date() -> None:
-    latest_query = (
-        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
-    )
+    latest_query = LAZYGIT_LATEST_QUERY
     installed_query = (
         'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
@@ -477,10 +487,7 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
 
 
 def test_install_lazygit_release_uses_first_version_token() -> None:
-    latest_query = (
-        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
-    )
+    latest_query = LAZYGIT_LATEST_QUERY
     installed_query = (
         'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
@@ -572,10 +579,7 @@ def test_install_package_apt_prompts_on_update_and_skips_when_no() -> None:
 
 
 def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
-    latest_query = (
-        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
-    )
+    latest_query = LAZYGIT_LATEST_QUERY
     installed_query = (
         'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
@@ -601,10 +605,7 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
 
 def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
 
-    latest_query = (
-        "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
-        '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
-    )
+    latest_query = LAZYGIT_LATEST_QUERY
     runner = FakeRunner(
         outputs={
             ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", latest_query): (0, "0.63.0\n"),
@@ -956,20 +957,18 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
     assert all(call.kwargs.get("wsl_distro") == "Ubuntu" for call in available.call_args_list)
 
 
-def test_install_user_local_tool_handles_gitlfs_and_direnv() -> None:
+def test_install_user_local_tool_downloads_every_release_tool_through_the_installer() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
 
-    for package, marker in (("git-lfs", "git-lfs-linux-"), ("direnv", "direnv.linux-")):
+    for package, (repo, binary, patterns) in RELEASE_TOOLS.items():
         runner = SpyRunner()
         with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
-            handled = install_user_local_tool(cast(Runner, runner), package, platform)
+            handled = install_user_local_tool(cast(Runner, runner), package, platform, update=True)
 
-        assert handled is True, f"{package} should have a user-local installer"
-        scripts = [command[-1] for command in runner.commands if command[:2] == ["sh", "-c"]]
-        assert any(marker in script for script in scripts), (
-            f"expected a {package} download referencing {marker!r}"
-        )
-        assert any("~/.local/bin" in script for script in scripts)
+        assert handled is True
+        assert runner.commands == [
+            ["python3", "-I", "-c", RELEASE_INSTALL_SOURCE, repo, binary, "1", *patterns]
+        ]
 
 
 def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
@@ -1001,19 +1000,6 @@ def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
     )
 
 
-def test_release_lookup_installers_validate_the_resolved_tag() -> None:
-
-    runner = SpyRunner()
-    for installer in (_install_fzf_binary, _install_shellcheck_binary, _install_gitlfs_binary):
-        installer(cast(Runner, runner))
-
-    scripts = [command[-1] for command in runner.commands]
-    assert len(scripts) == 3
-    for script in scripts:
-        assert "curl -fsSL https://api.github.com" in script
-        assert "could not resolve the latest release" in script
-
-
 def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
 
     runner = SpyRunner()
@@ -1043,14 +1029,108 @@ def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
         ),
         mock.patch(
             "terminal_setup.prerequisites._install_user_local_tool",
-            side_effect=lambda _runner, package, _platform: installed.append(package) or True,
+            side_effect=lambda _runner, package, _platform, **_kwargs: (
+                installed.append(package) or True
+            ),
         ),
         mock.patch("terminal_setup.prerequisites._reconcile_system_versions"),
     ):
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=False)
-        assert installed == ["lazygit"]
+        assert set(installed) == {"lazygit", *RELEASE_TOOLS}
         installed.clear()
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=True)
     assert "fzf" in installed
     assert "jq" in installed
     assert len(installed) > 10
+
+
+def _dpkg_state(installed: set[str], *, docker_command: bool = False):
+    def dpkg(_runner: object, package: str, *, wsl_distro: str | None) -> bool:
+        del wsl_distro
+        return package in installed
+
+    def available(_runner: object, command: str, *, wsl_distro: str | None = None) -> bool:
+        del wsl_distro
+        return docker_command and command == "docker"
+
+    return (
+        mock.patch("terminal_setup.prerequisites._dpkg_installed", side_effect=dpkg),
+        mock.patch("terminal_setup.prerequisites._command_available", side_effect=available),
+    )
+
+
+def test_missing_system_packages_on_a_fresh_image_include_podman_docker() -> None:
+    dpkg, available = _dpkg_state(set())
+    with dpkg, available:
+        missing = missing_wsl_system_packages(cast(Runner, SpyRunner()), wsl_distro="Ubuntu")
+
+    assert missing == ["zsh", "tree", "podman", "bubblewrap", "socat", "podman-docker"]
+
+
+@pytest.mark.parametrize(
+    ("installed", "docker_command"),
+    [({"docker.io"}, False), ({"docker-ce-cli"}, False), (set(), True)],
+)
+def test_podman_docker_is_left_out_when_docker_is_present(
+    installed: set[str], *, docker_command: bool
+) -> None:
+    dpkg, available = _dpkg_state(installed, docker_command=docker_command)
+    with dpkg, available:
+        missing = missing_wsl_system_packages(cast(Runner, SpyRunner()), wsl_distro="Ubuntu")
+
+    assert "podman-docker" not in missing
+    assert "podman" in missing
+
+
+def test_system_packages_command_updates_and_upgrades_before_installing() -> None:
+    assert wsl_system_packages_command(["zsh", "podman"]) == (
+        "sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y zsh podman"
+    )
+
+
+def _run_system_packages(
+    *, allow_sudo: bool, assume_yes: bool, answer: bool, tty: bool
+) -> SpyRunner:
+    runner = SpyRunner()
+    runner.confirm = lambda _message: answer  # type: ignore[attr-defined]
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    dpkg, available = _dpkg_state({"zsh", "tree", "podman", "bubblewrap", "docker.io"})
+    with (
+        dpkg,
+        available,
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites.sys.stdin.isatty", return_value=tty),
+    ):
+        ensure_wsl_system_packages(
+            cast(Runner, runner), platform, allow_sudo=allow_sudo, assume_yes=assume_yes
+        )
+    return runner
+
+
+def test_system_packages_run_after_the_user_agrees() -> None:
+    runner = _run_system_packages(allow_sudo=True, assume_yes=False, answer=True, tty=True)
+
+    assert runner.commands == [
+        wsl_exec_command("Ubuntu", ["sh", "-c", wsl_system_packages_command(["socat"])])
+    ]
+
+
+@pytest.mark.parametrize(
+    ("allow_sudo", "answer", "tty"),
+    [(True, False, True), (True, True, False), (False, True, True)],
+)
+def test_system_packages_print_the_command_when_declined_or_not_allowed(
+    *, allow_sudo: bool, answer: bool, tty: bool
+) -> None:
+    runner = _run_system_packages(allow_sudo=allow_sudo, assume_yes=False, answer=answer, tty=tty)
+
+    assert runner.commands == []
+    assert ("step", f"To add them, run this in WSL: {wsl_system_packages_command(['socat'])}") in (
+        runner.reporter.messages
+    )
+
+
+def test_system_install_runs_the_packages_without_asking() -> None:
+    runner = _run_system_packages(allow_sudo=True, assume_yes=True, answer=False, tty=False)
+
+    assert len(runner.commands) == 1
