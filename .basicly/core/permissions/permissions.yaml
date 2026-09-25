@@ -1,6 +1,29 @@
-# Baseline agent-permissions deny-list, projected per target (basicly-u0zg).
+# Baseline agent permissions: an allow list and a deny list, projected per target
+# (basicly-u0zg, basicly-zem45s8.1).
 #
-# Each entry is a semantic guardrail. `claude` lists the native
+# `allow` lists narrow `permissions.allow` patterns for Claude Code. Each entry names one
+# command family that reads or checks, and no pattern accepts a program named on its
+# command line. `basicly verify` runs the checks that `basicly.toml` configures, the same
+# class as the `Bash(npm test)` rule that the vendor documents as narrow. The loader
+# refuses an allow that auto mode drops, because such a rule grants arbitrary code
+# execution: a blanket `Bash`, a wildcard in the program position, an interpreter, a
+# package manager, a command wrapper, an `Agent` or a `Monitor` rule. Rule syntax is from
+# code.claude.com/docs/en/permissions (read 2026-09-25): a trailing ` *` also matches the
+# bare command, and `:*` is an equivalent spelling that this file does not use.
+#
+# `basicly permissions-build` adds each missing pattern and removes nothing, so a
+# repository's own allow, ask and deny rules survive every install. That includes a
+# blanket `Bash`, `Edit`, `Write`, `WebSearch` or `WebFetch` allow that the repository
+# wrote itself: basicly does not ship them, and it never removes them.
+#
+# A tool is left out of `allow` when a pattern cannot exclude its dangerous form:
+# `rg` (`--pre` and `--hostname-bin` run a command), `fd` (`-x`, `-X`), `find`
+# (`-exec`, `-delete`), `bat` (`--pager`), `yq` (`-i` writes in place), and
+# `git diff`, `git log`, `git show` (`--output` writes a file). `ls`, `cat`, `head`,
+# `grep`, `find` and the read-only forms of git are in Claude Code's built-in read-only
+# set, which needs no rule in any mode.
+#
+# Each deny entry is a semantic guardrail. `claude` lists the native
 # `permissions.deny` patterns Claude Code enforces at tool time, projected into
 # every consumer's co-owned agent config by `basicly permissions-build`.
 # `copilot` (basicly-lqz5) lists native `--deny-tool` specs the copilot runner
@@ -35,6 +58,44 @@
 # destructive and are not denied on any target — they need confirmation all the
 # same. Do not infer permission from the absence of an entry, and do not delete
 # a fragment bullet because no rule here mirrors it.
+allow:
+  - id: file-read-tools
+    description: read and search files in the working directory without a prompt
+    claude:
+      - "Read"
+      - "Glob"
+      - "Grep"
+  - id: git-read
+    description: read the repository state with git commands that write no file and run no program
+    claude:
+      - "Bash(git status *)"
+      - "Bash(git rev-parse *)"
+      - "Bash(git ls-files *)"
+      - "Bash(git worktree list *)"
+      - "Bash(git branch)"
+      - "Bash(git branch --show-current)"
+  - id: basicly-read
+    description: read the repository snapshot and the tracker ledger with basicly on the path
+    claude:
+      - "Bash(basicly status *)"
+      - "Bash(basicly tracker show *)"
+      - "Bash(basicly tracker list *)"
+      - "Bash(basicly tracker ready *)"
+      - "Bash(basicly tracker stats *)"
+  - id: basicly-check
+    description: run the basicly drift checks and the configured verify checks, without a fix or a recorded gate
+    claude:
+      - "Bash(basicly check)"
+      - "Bash(basicly skills-check *)"
+      - "Bash(basicly styles-check *)"
+      - "Bash(basicly agents-check)"
+      - "Bash(basicly hooks-check)"
+      - "Bash(basicly permissions-check)"
+      - "Bash(basicly catalog lint)"
+      - "Bash(basicly verify)"
+      - "Bash(basicly verify --mode fast)"
+      - "Bash(basicly verify --mode full)"
+      - "Bash(basicly verify --mode staged)"
 deny:
   - id: destructive-rm
     description: block recursive force-remove of files
