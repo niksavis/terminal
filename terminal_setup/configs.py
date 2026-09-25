@@ -523,7 +523,7 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
     _deploy_img_zoom_skill_native(runner, platform, source)
 
 
-BASICLY_REF = "v0.18.14"
+BASICLY_REF = "v0.18.15"
 BASICLY_SPEC = f"git+https://github.com/niksavis/basicly@{BASICLY_REF}"
 CLI_TOOLS_SKILL = "cli-tools"
 TOOL_SKILL_COMMANDS: dict[str, tuple[str, ...]] = {

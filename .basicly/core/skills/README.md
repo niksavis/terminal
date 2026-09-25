@@ -12,7 +12,7 @@ Every source in this directory, with its own routing fields — generated and ga
 `.scripts/docs_claims.py`. A technologies-tagged source ships only to a repo that
 selects that tag (`[catalog] technologies` in `basicly.toml`), so this is the catalog,
 not the projection of any one consumer. A user-invoked source carries no description
-by design: that absence is what keeps it out of the model's always-loaded index.
+field: every skill root advertises its first body paragraph instead.
 
 <!-- docs-claims:begin catalog-skills -->
 

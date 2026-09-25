@@ -27,7 +27,7 @@
         "model",
         "user"
       ],
-      "description": "Who can reach this entry. 'model' keeps a description and is advertised to the agent, paying context load every turn. 'user' carries no description and is reached by a human typing it."
+      "description": "Where the advertised description comes from. 'model' takes the description field. 'user' carries no description field and advertises its first body paragraph instead. Both pay context load every turn."
     },
     "description": {
       "type": "string",
