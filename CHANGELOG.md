@@ -2,6 +2,34 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.8.0 - 2026-09-25
+
+Delta: v0.7.0..v0.8.0
+
+### Highlights
+
+- **New: Claude Code gets a skill for each command-line tool setup installs.** Setup now writes the basicly `cli-tools` skill and one `tool-<name>` skill per tool it finds (`rg`, `fd`, `jq`, `bat`, `yq` and the rest) into `~/.claude/skills`. An agent in any repository then picks the fast installed tool instead of a slower default, and knows its flags. Run from Windows, setup writes them both in WSL and in `%USERPROFILE%\.claude`, each side with the tools present there; run inside WSL or on Linux or macOS, there. A tool that is not installed gets no skill, and a rerun removes the skill of a tool that is gone while leaving your other skills alone. It needs network access to fetch basicly v0.18.8 with `uv`, is skipped when `~/.claude` is missing, and `--skip-claude` skips it. A failure is reported as a failed step and does not stop the rest of the config deploy (term-h88v7).
+- **To pick it up, run the setup again**; `--only config` is enough, because the skills are written during config deploy.
+- **Maintainers: the basicly harness moves from 0.18.2 to 0.18.8.** Tracker claims record the holder from git identity, which works on any forge, and identity-guard refuses a commit that adds the git user name anywhere else; the old ledger prose was scrubbed accordingly (term-uqs3o, term-gatuy, term-z8sd4). A test fails whenever the basicly version setup installs skills from drifts from the harness version, or when basicly adds a tool skill that setup does not map (term-h88v7).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-h88v7) (1c32fc8)
+- feat(setup): install the basicly cli-tools skills for the tools it finds (term-h88v7) (332c14b)
+- docs(overlay): require setup features to cover windows and wsl via clone and uvx (term-n5hj3) (27084c6)
+- chore(tracker): close the held fold record (term-z8sd4) (447a61b)
+- chore(tracker): redact the git user name from old ledger prose (term-z8sd4) (3613557)
+- chore(tracker): fold pending writer shards into the trunk log (term-ftosv) (6240efc)
+- chore(harness): upgrade basicly to v0-18-8 (term-z8sd4) (3b32c35)
+- chore(tracker): close the v0-18-7 upgrade record (term-gatuy) (e05a4cb)
+- chore(harness): upgrade basicly to v0-18-7 (term-gatuy) (c8f00e5)
+- chore(tracker): file the v0-18-7 upgrade for next session (term-99z) (846a432)
+- chore(tracker): file the approved retro proposals for next session (term-99z) (518712f)
+- chore(tracker): record the session handover (term-99z) (bd5173b)
+- chore(tracker): close the v0-18-6 upgrade record (term-uqs3o) (a5a8252)
+- chore(harness): upgrade basicly to v0-18-6 (term-uqs3o) (fec9781)
+- chore(tracker): close the v0-7-0 release record (term-m1ubo) (25aed9a)
+
 ## v0.7.0 - 2026-09-24
 
 Delta: v0.6.1..v0.7.0
