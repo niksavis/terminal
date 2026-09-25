@@ -1440,15 +1440,25 @@ def ensure_host_cli_extras(
     _install_lazygit_release(runner, no_sudo=no_sudo)
 
 
+def _powershell_latest_release(repo: str) -> str:
+    return (
+        f"$req = [System.Net.WebRequest]::Create('https://github.com/{repo}/releases/latest'); "
+        "$req.Method = 'HEAD'; $resp = $req.GetResponse(); "
+        "$final = $resp.ResponseUri.AbsoluteUri; $resp.Close(); "
+        "if ($final -notmatch '/releases/tag/') "
+        f"{{ throw '{repo}: could not read the latest release from ' + $final }}; "
+        "$release = $final.Substring($final.LastIndexOf('/') + 1); "
+    )
+
+
 def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
     install_dir = platform.user_programs_dir / "starship"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
-    api_url = "https://api.github.com/repos/starship/starship/releases/latest"
     base_url = "https://github.com/starship/starship/releases/download"
     script = (
-        f"$ErrorActionPreference = 'Stop'; "
-        f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
+        "$ErrorActionPreference = 'Stop'; "
+        f"{_powershell_latest_release('starship/starship')}"
         f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
         f"$zip = Join-Path $env:TEMP 'starship.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
@@ -1546,11 +1556,10 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
     install_dir = platform.user_programs_dir / "WezTerm"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
-    api_url = "https://api.github.com/repos/wez/wezterm/releases/latest"
     base_url = "https://github.com/wez/wezterm/releases/download"
     script = (
-        f"$ErrorActionPreference = 'Stop'; "
-        f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
+        "$ErrorActionPreference = 'Stop'; "
+        f"{_powershell_latest_release('wez/wezterm')}"
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "

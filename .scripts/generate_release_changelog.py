@@ -1,5 +1,3 @@
-"""Generate or update a dated changelog section for a semantic release tag."""
-
 from __future__ import annotations
 
 import argparse
@@ -17,7 +15,6 @@ CHANGELOG_INTRO = (
 
 
 def _run_git(*args: str) -> str:
-    """Run a git command and return stdout or raise on failure."""
     result = subprocess.run(
         ["git", *args],
         check=False,
@@ -31,7 +28,6 @@ def _run_git(*args: str) -> str:
 
 
 def _nearest_previous_tag(tag_to_exclude: str) -> str | None:
-    """Return the nearest reachable semantic tag, excluding the target release tag."""
     result = subprocess.run(
         [
             "git",
@@ -54,7 +50,6 @@ def _nearest_previous_tag(tag_to_exclude: str) -> str | None:
 
 
 def _collect_commit_subjects(previous_tag: str | None) -> list[str]:
-    """Collect commit subjects since the previous tag (or all history for first release)."""
     revision = f"{previous_tag}..HEAD" if previous_tag else "HEAD"
     output = _run_git("log", "--no-merges", "--pretty=%s (%h)", revision)
     return [line.strip() for line in output.splitlines() if line.strip()]
@@ -66,14 +61,14 @@ def _build_section(
     previous_tag: str | None,
     commits: list[str],
 ) -> list[str]:
-    """Build a markdown changelog section for the target release tag."""
     delta_start = previous_tag or "initial"
     section = [
         f"## {tag} - {release_date}",
         "",
         f"Delta: {delta_start}..{tag}",
         "",
-        "### Changes",
+        "### Commit delta (auto-generated)",
+        "",
     ]
     if commits:
         section.extend([f"- {commit}" for commit in commits])
@@ -84,7 +79,6 @@ def _build_section(
 
 
 def _ensure_changelog_header(lines: list[str]) -> list[str]:
-    """Ensure the changelog starts with a standard header and intro text."""
     if not lines:
         return CHANGELOG_INTRO.splitlines()
 
@@ -95,7 +89,6 @@ def _ensure_changelog_header(lines: list[str]) -> list[str]:
 
 
 def _find_section_bounds(lines: list[str], tag: str) -> tuple[int | None, int | None]:
-    """Find start and end line indices for a tag section."""
     start: int | None = None
     end: int | None = None
     for idx, line in enumerate(lines):
@@ -113,7 +106,6 @@ def _find_section_bounds(lines: list[str], tag: str) -> tuple[int | None, int | 
 
 
 def _insert_index(lines: list[str]) -> int:
-    """Return where new release sections should be inserted (newest first)."""
     idx = 1
     while idx < len(lines) and lines[idx].strip() == "":
         idx += 1
@@ -123,7 +115,6 @@ def _insert_index(lines: list[str]) -> int:
 
 
 def _upsert_section(existing_text: str, tag: str, section_lines: list[str]) -> str:
-    """Insert or replace the tag section in the changelog text."""
     lines = _ensure_changelog_header(existing_text.splitlines())
 
     start, end = _find_section_bounds(lines, tag)
@@ -137,7 +128,6 @@ def _upsert_section(existing_text: str, tag: str, section_lines: list[str]) -> s
 
 
 def _parse_args() -> argparse.Namespace:
-    """Parse CLI arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", required=True, help="Semantic release tag, e.g. v0.1.0")
     parser.add_argument("--date", required=True, help="Release date in ISO format, e.g. 2026-07-12")
@@ -150,7 +140,6 @@ def _parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
-    """Generate or update the release section in CHANGELOG.md."""
     args = _parse_args()
 
     if not TAG_PATTERN.fullmatch(args.tag):

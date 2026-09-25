@@ -23,6 +23,16 @@ command = ["uv", "run", "ruff", "format", "--check"]
 modes = ["fast", "full"]
 
 [[verify.checks]]
+name = "pyright"
+command = ["uv", "run", "pyright", "."]
+modes = ["fast", "full"]
+
+[[verify.checks]]
+name = "bandit"
+command = ["uv", "run", "bandit", "-q", "-c", "pyproject.toml", "-r", ".scripts", "terminal_setup"]
+modes = ["fast", "full"]
+
+[[verify.checks]]
 name = "pytest"
 command = ["uv", "run", "pytest", "-q", "tests"]
 modes = ["full"]

@@ -13,6 +13,7 @@ from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInf
 from terminal_setup.prerequisites import (
     _ensure_starship_user_install,
     _ensure_wezterm_appimage,
+    _ensure_wezterm_user_install,
 )
 from terminal_setup.runner import ConsoleReporter, Runner
 
@@ -120,3 +121,22 @@ def test_starship_windows_script_verifies_checksum(tmp_path: Path) -> None:
     scripts = [command[-1] for command in runner.commands if command[0] == "powershell"]
     assert scripts
     assert any("Get-FileHash" in script for script in scripts)
+
+
+@pytest.mark.parametrize(
+    ("installer", "repo"),
+    [
+        (_ensure_starship_user_install, "starship/starship"),
+        (_ensure_wezterm_user_install, "wez/wezterm"),
+    ],
+)
+def test_windows_installers_read_the_latest_release_without_the_api(
+    tmp_path: Path, installer: object, repo: str
+) -> None:
+    runner = ScriptedRunner({})
+    installer(cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, tmp_path))  # type: ignore[operator]
+    scripts = [command[-1] for command in runner.commands if command[0] == "powershell"]
+
+    assert scripts
+    assert all("api.github.com" not in script for script in scripts)
+    assert any(f"https://github.com/{repo}/releases/latest" in script for script in scripts)
