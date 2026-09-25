@@ -16,6 +16,8 @@ Delta: v0.8.1..v0.9.0
 
 ### Commit delta (auto-generated)
 
+- fix(setup): check release download urls and satisfy pyright and bandit (term-hfntv) (c296b85)
+- docs(release): update changelog for v0-9-0 (term-hfntv) (bf59c00)
 - chore(release): bump package version for next release (term-hfntv) (fe71b70)
 - feat(setup): prepare a fresh wsl without a compiler and in one apt step (term-hfntv) (83630b1)
 
