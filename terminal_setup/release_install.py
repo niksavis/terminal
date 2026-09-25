@@ -6,7 +6,7 @@ import json
 import os
 import platform
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import tarfile
 import tempfile
@@ -35,7 +35,7 @@ def installed_version(binary: Path) -> str:
     if not binary.is_file():
         return ""
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             [str(binary), "--version"], capture_output=True, text=True, timeout=30, check=False
         )
     except OSError:
@@ -112,12 +112,14 @@ def install(destination: Path, content: bytes) -> None:
 
 
 def fetch(url: str) -> bytes:
+    if not url.startswith("https://"):
+        raise InstallError(f"refusing a non-https URL: {url}")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": "terminal-setup"}
     token = os.environ.get("GITHUB_TOKEN", "")
     if token and url.startswith("https://api.github.com/"):
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
-    with urllib.request.urlopen(request, timeout=120) as response:
+    with urllib.request.urlopen(request, timeout=120) as response:  # nosec B310
         return response.read()
 
 
@@ -127,7 +129,7 @@ def latest_tag(repo: str) -> str:
         method="HEAD",
         headers={"User-Agent": "terminal-setup"},
     )
-    with urllib.request.urlopen(request, timeout=60) as response:
+    with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310
         final = response.geturl()
     _, marker, tag = final.partition("/releases/tag/")
     if not marker or not tag:
@@ -160,7 +162,10 @@ def run(repo: str, binary: str, update: bool, patterns: list[str]) -> str:
         return f"{binary} {current} is installed; {latest} is available: rerun with --update"
     release = release_of(repo, tag)
     asset = select_asset(release.get("assets", []), patterns, platform.machine())
-    payload = verified(fetch(asset["browser_download_url"]), asset.get("digest") or "")
+    url = asset.get("browser_download_url", "")
+    if not url.startswith(f"https://github.com/{repo}/releases/download/"):
+        raise InstallError(f"refusing a download outside {repo}'s releases: {url}")
+    payload = verified(fetch(url), asset.get("digest") or "")
     install(destination, extract(asset["name"], payload, binary))
     record(binary, latest)
     return f"installed {binary} {latest} into {destination}"

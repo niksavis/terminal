@@ -6,7 +6,9 @@ import io
 import json
 import tarfile
 import zipfile
+from email.message import Message
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -138,7 +140,7 @@ def test_verified_accepts_the_matching_digest() -> None:
     assert release_install.verified(b"payload", digest) == b"payload"
 
 
-def _tar(member: str, content: bytes, mode: str) -> bytes:
+def _tar(member: str, content: bytes, mode: Literal["w:gz", "w:xz"]) -> bytes:
     buffer = io.BytesIO()
     with tarfile.open(fileobj=buffer, mode=mode) as archive:
         info = tarfile.TarInfo(member)
@@ -173,7 +175,7 @@ def _release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: str) ->
         "assets": [
             {
                 "name": "jq-linux-amd64",
-                "browser_download_url": "https://example.invalid/jq",
+                "browser_download_url": "https://github.com/jqlang/jq/releases/download/v2.0.0/jq-linux-amd64",
                 "digest": "sha256:" + hashlib.sha256(content).hexdigest(),
             }
         ],
@@ -256,9 +258,29 @@ def test_the_record_is_ignored_once_the_binary_changes(
 
 def test_a_rate_limited_api_names_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
     def limited(url: str) -> bytes:
-        raise release_install.urllib.error.HTTPError(url, 403, "rate limit exceeded", {}, None)
+        raise release_install.urllib.error.HTTPError(
+            url, 403, "rate limit exceeded", Message(), None
+        )
 
     monkeypatch.setattr(release_install, "fetch", limited)
 
     with pytest.raises(release_install.InstallError, match="GITHUB_TOKEN"):
         release_install.release_of("jqlang/jq", "jq-1.8.2")
+
+
+def test_run_refuses_a_download_outside_the_repositorys_releases(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _release(tmp_path, monkeypatch, "")
+    original = release_install.release_of
+
+    def moved(repo: str, tag: str) -> dict:
+        release = original(repo, tag)
+        release["assets"][0]["browser_download_url"] = "https://evil.invalid/jq"
+        return release
+
+    monkeypatch.setattr(release_install, "release_of", moved)
+
+    with pytest.raises(release_install.InstallError, match="outside jqlang/jq's releases"):
+        release_install.run("jqlang/jq", "jq", False, ["jq-linux-{arch}"])
+    assert not (tmp_path / "jq").exists()
