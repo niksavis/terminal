@@ -1,5 +1,3 @@
-"""Tests for prerequisite checking and installation helpers."""
-
 from __future__ import annotations
 
 import subprocess
@@ -59,7 +57,6 @@ from terminal_setup.runner import Runner
 
 
 def make_platform(os: OperatingSystem, package_manager: PackageManager) -> PlatformInfo:
-    """Build a PlatformInfo for testing."""
     return PlatformInfo(
         os=os,
         package_manager=package_manager,
@@ -74,10 +71,7 @@ def make_platform(os: OperatingSystem, package_manager: PackageManager) -> Platf
 
 
 class SpyRunner:
-    """Lightweight runner that records commands for package-install assertions."""
-
     def __init__(self) -> None:
-        """Initialize the recorded command list."""
         self.commands: list[list[str]] = []
         self.dry_run = False
         self.reporter = FakeReporter()
@@ -91,9 +85,9 @@ class SpyRunner:
         interactive: bool = False,
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
+        label: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Record a command and return a successful completed process."""
-        del check, dry_run_safe, interactive, cwd, env
+        del check, dry_run_safe, interactive, cwd, env, label
         self.commands.append(command)
         script = command[-1] if len(command) >= 3 and command[0] in {"sh", "wsl"} else ""
         if "jesseduffield/lazygit/releases/latest" in script:
@@ -109,51 +103,37 @@ class SpyRunner:
 
 
 class FakeReporter:
-    """Reporter that records messages and answers no to confirmations."""
-
     def __init__(self) -> None:
-        """Initialize the message list."""
         self.messages: list[tuple[str, str]] = []
 
     def info(self, message: str) -> None:
-        """Record an informational message."""
         self.messages.append(("info", message))
 
     def warn(self, message: str) -> None:
-        """Record a warning message."""
         self.messages.append(("warn", message))
 
     def error(self, message: str) -> None:
-        """Record an error message."""
         self.messages.append(("error", message))
 
     def success(self, message: str) -> None:
-        """Record a success message."""
         self.messages.append(("success", message))
 
     def step(self, message: str) -> None:
-        """Record a step message."""
         self.messages.append(("step", message))
 
     def prompt(self, message: str) -> None:
-        """Record a prompt message."""
         self.messages.append(("prompt", message))
 
-    def command(self, command: list[str]) -> None:
-        """Record a command that would run."""
-        self.messages.append(("command", " ".join(command)))
+    def command(self, command: list[str], label: str | None = None) -> None:
+        self.messages.append(("command", label or " ".join(command)))
 
     def confirm(self, message: str) -> bool:
-        """Record a confirmation prompt and answer no by default."""
         self.messages.append(("confirm", message))
         return False
 
 
 class FakeRunner:
-    """Runner that returns configured command outputs and records executions."""
-
     def __init__(self, outputs: dict[tuple[str, ...], tuple[int, str]] | None = None) -> None:
-        """Initialize with a mapping from command tuples to (returncode, stdout)."""
         self.outputs = outputs or {}
         self.commands: list[list[str]] = []
         self.dry_run = False
@@ -170,26 +150,23 @@ class FakeRunner:
         interactive: bool = False,
         cwd: Path | None = None,
         env: dict[str, str] | None = None,
+        label: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
-        """Return a configured output for known commands and record all commands."""
-        del check, dry_run_safe, interactive, cwd, env
+        del check, dry_run_safe, interactive, cwd, env, label
         self.commands.append(command)
         key = tuple(command)
         returncode, stdout = self.outputs.get(key, (0, ""))
         return subprocess.CompletedProcess(args=command, returncode=returncode, stdout=stdout)
 
     def which(self, _command: str) -> str | None:
-        """Pretend the command is missing."""
         return None
 
     def confirm(self, prompt: str) -> bool:
-        """Record the prompt and return the configured answer."""
         self.confirm_prompts.append(prompt)
         return self.confirm_answer
 
 
 def _installed_packages(commands: list[list[str]], manager: PackageManager) -> list[str]:
-    """Extract package names from install commands for a specific package manager."""
     packages: list[str] = []
     for command in commands:
         if manager == PackageManager.APT and command[:4] == ["sudo", "apt-get", "install", "-y"]:
@@ -209,7 +186,6 @@ def _installed_packages(commands: list[list[str]], manager: PackageManager) -> l
 
 
 def test_check_command_finds_existing_command() -> None:
-    """check_command must report present for a command that exists on PATH."""
     runner = Runner(dry_run=True)
     status = check_command(runner, "python", "python")
     assert status.present is True
@@ -217,28 +193,24 @@ def test_check_command_finds_existing_command() -> None:
 
 
 def test_check_command_missing_command() -> None:
-    """check_command must report missing for a non-existent command."""
     runner = Runner(dry_run=True)
     status = check_command(runner, "not-a-real-tool", "not-a-real-tool-xyz")
     assert status.present is False
 
 
 def test_check_package_manager_unknown() -> None:
-    """check_package_manager must report missing when no manager is found."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.UNKNOWN)
     status = check_package_manager(platform)
     assert status.present is False
 
 
 def test_check_package_manager_known() -> None:
-    """check_package_manager must report present for a known manager."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     status = check_package_manager(platform)
     assert status.present is True
 
 
 def test_check_wsl_not_required_on_linux() -> None:
-    """WSL checks must pass on Linux because it is not required."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     runner = Runner(dry_run=True)
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -247,7 +219,6 @@ def test_check_wsl_not_required_on_linux() -> None:
 
 
 def test_check_wsl_present_when_running_inside_wsl() -> None:
-    """WSL checks must pass when the script itself is running inside WSL."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     runner = Runner(dry_run=True)
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
@@ -257,7 +228,6 @@ def test_check_wsl_present_when_running_inside_wsl() -> None:
 
 
 def test_check_wsl_missing_on_windows() -> None:
-    """WSL checks must fail on Windows when WSL is unavailable."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = Runner(dry_run=True)
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -266,7 +236,6 @@ def test_check_wsl_missing_on_windows() -> None:
 
 
 def test_check_all_returns_list() -> None:
-    """check_all must return a list of PrerequisiteStatus objects."""
     platform = make_platform(detect_os(), PackageManager.UNKNOWN)
     runner = Runner(dry_run=True)
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -275,7 +244,6 @@ def test_check_all_returns_list() -> None:
 
 
 def test_command_available_uses_user_local_bin_when_launched_from_windows() -> None:
-    """Windows->WSL checks should see binaries in ~/.local/bin even if PATH misses them."""
     runner = FakeRunner(
         outputs={
             (
@@ -294,7 +262,6 @@ def test_command_available_uses_user_local_bin_when_launched_from_windows() -> N
 
 
 def test_wsl_apt_install_script_removes_legacy_wezterm_repo() -> None:
-    """WSL apt install script should remove legacy fury.wez.dev source entries."""
     script = wsl_apt_install_script(["zsh", "tmux"])
     assert "rm -f /etc/apt/sources.list.d/wezterm.list" in script
     assert "fury\\\\.wez\\\\.dev" in script
@@ -307,7 +274,6 @@ def test_wsl_apt_install_script_removes_legacy_wezterm_repo() -> None:
 
 
 def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
-    """WSL tool install should batch apt packages in one install script."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
@@ -361,7 +327,6 @@ def test_ensure_wsl_tools_installs_agent_first_baseline() -> None:
 
 
 def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
-    """Host extras should install the same baseline with package-name mapping per manager."""
     expected = {
         PackageManager.APT: [
             "git-lfs",
@@ -455,7 +420,6 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
 
 
 def test_ensure_host_cli_extras_noop_on_windows() -> None:
-    """Windows host path should skip host extra package installation."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
@@ -465,7 +429,6 @@ def test_ensure_host_cli_extras_noop_on_windows() -> None:
 
 
 def test_ensure_wsl_tools_runs_directly_when_inside_wsl() -> None:
-    """When running inside WSL, ensure_wsl_tools should not wrap commands with wsl."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     runner = SpyRunner()
 
@@ -486,7 +449,6 @@ def test_ensure_wsl_tools_runs_directly_when_inside_wsl() -> None:
 
 
 def test_install_lazygit_release_skips_when_up_to_date() -> None:
-    """Release install should skip when installed lazygit matches latest version."""
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
@@ -515,7 +477,6 @@ def test_install_lazygit_release_skips_when_up_to_date() -> None:
 
 
 def test_install_lazygit_release_uses_first_version_token() -> None:
-    """Lazygit installed-version parsing must use the first version token."""
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
@@ -547,7 +508,6 @@ def test_install_lazygit_release_uses_first_version_token() -> None:
 
 
 def test_install_package_apt_skips_when_up_to_date() -> None:
-    """Apt installs should be skipped when installed and candidate versions match."""
     runner = FakeRunner(
         outputs={
             ("apt-cache", "show", "ripgrep"): (0, ""),
@@ -568,7 +528,6 @@ def test_install_package_apt_skips_when_up_to_date() -> None:
 
 
 def test_install_package_apt_prompts_on_update_and_installs_when_yes() -> None:
-    """Apt installs should prompt on updates and proceed when the user confirms."""
     runner = FakeRunner(
         outputs={
             ("apt-cache", "show", "ripgrep"): (0, ""),
@@ -591,7 +550,6 @@ def test_install_package_apt_prompts_on_update_and_installs_when_yes() -> None:
 
 
 def test_install_package_apt_prompts_on_update_and_skips_when_no() -> None:
-    """Apt installs should prompt on updates and skip when the user declines."""
     runner = FakeRunner(
         outputs={
             ("apt-cache", "show", "ripgrep"): (0, ""),
@@ -614,7 +572,6 @@ def test_install_package_apt_prompts_on_update_and_skips_when_no() -> None:
 
 
 def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
-    """Lazygit update should ask for consent and skip when user declines."""
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
@@ -643,11 +600,7 @@ def test_install_lazygit_release_prompts_on_update_and_skips_when_no() -> None:
 
 
 def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
-    """Windows->WSL commands must use `wsl --exec` to avoid shell re-parsing.
 
-    Without --exec the guest's default shell expands $variables inside the
-    install script before sh runs, breaking the OS/arch detection.
-    """
     latest_query = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
@@ -675,7 +628,6 @@ def test_install_lazygit_release_wraps_wsl_commands_with_exec() -> None:
 
 
 def test_ensure_node_installs_target_major_in_wsl_when_missing() -> None:
-    """On Windows, ensure_node installs the target Node major into the WSL guest."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
@@ -695,7 +647,6 @@ def test_ensure_node_installs_target_major_in_wsl_when_missing() -> None:
 
 
 def test_ensure_node_skips_when_already_present() -> None:
-    """ensure_node must not reinstall Node when it is already available."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
 
@@ -712,7 +663,6 @@ def test_ensure_node_skips_when_already_present() -> None:
 
 
 def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
-    """A user-local tool with an unowned /usr/local system copy is removed."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
     runner = FakeRunner(
         outputs={
@@ -760,7 +710,6 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
 
 
 def test_reconcile_skips_tools_without_userlocal_copy() -> None:
-    """Reconcile must not touch tools that have no user-local copy."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
     runner = FakeRunner()
     policy = system_version_policy(uninstall_system_versions=True)
@@ -779,7 +728,6 @@ def test_reconcile_skips_tools_without_userlocal_copy() -> None:
 
 
 def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
-    """Reconciling the WSL guest from Windows must resolve ownership via apt, not winget."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = FakeRunner()
     policy = system_version_policy(uninstall_system_versions=True)
@@ -808,9 +756,7 @@ def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
     ):
         reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
 
-    # Ownership must be looked up with apt (dpkg), not the host's winget.
     assert owning.call_args.args[2] == PackageManager.APT
-    # Removal must go through apt-get inside the WSL distro (winget would raise).
     assert [
         "wsl",
         "-d",
@@ -825,7 +771,6 @@ def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
 
 
 def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
-    """Candidate dirs must include the per-user programs directory."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
     starship_dirs = windows_tool_candidate_dirs(platform, "starship")
@@ -835,14 +780,12 @@ def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
 
 
 def test_system_version_policy_defaults() -> None:
-    """The default policy must neither uninstall nor keep system versions."""
     policy = system_version_policy()
     assert policy.uninstall is False
     assert policy.keep is False
 
 
 def test_find_system_command_path_detects_system_binary() -> None:
-    """_find_system_command_path must return the path for a system binary."""
     runner = FakeRunner(
         outputs={
             (
@@ -856,7 +799,6 @@ def test_find_system_command_path_detects_system_binary() -> None:
 
 
 def test_find_system_command_path_ignores_user_local() -> None:
-    """_find_system_command_path must ignore binaries under the user's home."""
     runner = FakeRunner(
         outputs={
             (
@@ -870,7 +812,6 @@ def test_find_system_command_path_ignores_user_local() -> None:
 
 
 def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
-    """_find_system_command_path must query the WSL distro when requested."""
     runner = FakeRunner(
         outputs={
             (
@@ -890,7 +831,6 @@ def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
 
 
 def test_find_owning_package_apt() -> None:
-    """_find_owning_package must parse dpkg -S output on apt systems."""
     runner = FakeRunner(
         outputs={
             ("dpkg", "-S", "/usr/bin/rg"): (0, "ripgrep: /usr/bin/rg"),
@@ -901,7 +841,6 @@ def test_find_owning_package_apt() -> None:
 
 
 def test_find_owning_package_pacman() -> None:
-    """_find_owning_package must parse pacman -Qo output."""
     runner = FakeRunner(
         outputs={
             ("pacman", "-Qo", "/usr/bin/rg"): (0, "/usr/bin/rg is owned by ripgrep 14.1.0-1"),
@@ -912,7 +851,6 @@ def test_find_owning_package_pacman() -> None:
 
 
 def test_find_owning_package_dnf() -> None:
-    """_find_owning_package must parse rpm -qf output."""
     runner = FakeRunner(
         outputs={
             ("rpm", "-qf", "/usr/bin/rg"): (0, "ripgrep-14.1.0-1.fc40.x86_64"),
@@ -923,7 +861,6 @@ def test_find_owning_package_dnf() -> None:
 
 
 def test_warn_or_uninstall_keeps_system_version_when_requested() -> None:
-    """With keep policy, the function must warn and not run any uninstall command."""
     runner = FakeRunner(
         outputs={
             (
@@ -944,7 +881,6 @@ def test_warn_or_uninstall_keeps_system_version_when_requested() -> None:
 
 
 def test_warn_or_uninstall_removes_system_version_when_requested() -> None:
-    """With uninstall policy, the function must run the package manager remove command."""
     runner = FakeRunner(
         outputs={
             (
@@ -965,7 +901,6 @@ def test_warn_or_uninstall_removes_system_version_when_requested() -> None:
 
 
 def test_warn_or_uninstall_prompts_and_removes_on_yes() -> None:
-    """Interactive mode must remove the package when the user answers yes."""
     runner = FakeRunner(
         outputs={
             (
@@ -984,7 +919,6 @@ def test_warn_or_uninstall_prompts_and_removes_on_yes() -> None:
 
 
 def test_warn_or_uninstall_prompts_and_keeps_on_no() -> None:
-    """Interactive mode must keep the package when the user answers no."""
     runner = FakeRunner(
         outputs={
             (
@@ -1002,7 +936,6 @@ def test_warn_or_uninstall_prompts_and_keeps_on_no() -> None:
 
 
 def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -> None:
-    """No-sudo WSL setup launched on Windows must check/install against the WSL distro."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = FakeRunner()
 
@@ -1024,7 +957,6 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
 
 
 def test_install_user_local_tool_handles_gitlfs_and_direnv() -> None:
-    """git-lfs and direnv must have user-local installers instead of being skipped."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
 
     for package, marker in (("git-lfs", "git-lfs-linux-"), ("direnv", "direnv.linux-")):
@@ -1041,13 +973,11 @@ def test_install_user_local_tool_handles_gitlfs_and_direnv() -> None:
 
 
 def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
-    """User-local git-lfs/direnv must participate in system-version reconciliation."""
     assert "git-lfs" in _RECONCILE_BINARIES
     assert "direnv" in _RECONCILE_BINARIES
 
 
 def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
-    """Windows runs must install starship into the WSL guest too (zshrc inits it there)."""
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
     original_run = runner.run
@@ -1072,11 +1002,7 @@ def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
 
 
 def test_release_lookup_installers_validate_the_resolved_tag() -> None:
-    """Installers resolving a latest release must fail loudly on an empty tag.
 
-    An unauthenticated api.github.com call is rate limited; without the guard
-    an empty tag builds a malformed URL that dies with an opaque curl error.
-    """
     runner = SpyRunner()
     for installer in (_install_fzf_binary, _install_shellcheck_binary, _install_gitlfs_binary):
         installer(cast(Runner, runner))
@@ -1089,12 +1015,7 @@ def test_release_lookup_installers_validate_the_resolved_tag() -> None:
 
 
 def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
-    """The PATH script must read/write unexpanded values and compare real segments.
 
-    The [Environment] API round-trip flattened %USERPROFILE% entries to
-    literal paths, and the substring -notlike check missed backslash entries,
-    duplicating PATH on every re-run.
-    """
     runner = SpyRunner()
     with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
         _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
@@ -1104,11 +1025,10 @@ def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> No
     assert "ExpandString" in script
     assert "-ieq" in script
     assert "$dir = 'C:\\Users\\test\\tool'" in script
-    assert "SendMessageTimeout" in script  # notify running shells of the change
+    assert "SendMessageTimeout" in script
 
 
 def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
-    """--update must re-run installers that a presence check would skip."""
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     runner = SpyRunner()
     installed: list[str] = []
@@ -1128,7 +1048,7 @@ def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
         mock.patch("terminal_setup.prerequisites._reconcile_system_versions"),
     ):
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=False)
-        assert installed == ["lazygit"]  # only the self-version-checking installer
+        assert installed == ["lazygit"]
         installed.clear()
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True, update=True)
     assert "fzf" in installed

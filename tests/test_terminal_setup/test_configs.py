@@ -42,7 +42,7 @@ from terminal_setup.configs import (
 )
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, wsl_exec_command
 from terminal_setup.prerequisites import attempt
-from terminal_setup.runner import Runner
+from terminal_setup.runner import ConsoleReporter, Runner
 
 
 class RecordingReporter:
@@ -68,7 +68,8 @@ class RecordingReporter:
     def prompt(self, message: str) -> None:
         self.messages.append(message)
 
-    def command(self, command: list[str]) -> None:
+    def command(self, command: list[str], label: str | None = None) -> None:
+        del label
         self.commands.append(command)
 
     def confirm(self, message: str) -> bool:
@@ -1092,3 +1093,25 @@ def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(
 
     assert len(fake.commands) == 1
     assert any("skipping the cli-tools skills" in message for message in reporter.messages)
+
+
+def test_scripted_claude_steps_print_labels_not_scripts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr("terminal_setup.configs._to_wsl_path", lambda *_a: "/mnt/c/source")
+    monkeypatch.setenv("UV", "uv.exe")
+    _make_claude_home(tmp_path)
+    runner = Runner(dry_run=True, reporter=ConsoleReporter())
+    monkeypatch.setattr(runner, "which", lambda _command: None)
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+
+    deploy_claude_statusline(runner, platform)
+    deploy_claude_img_zoom_skill(runner, platform)
+    deploy_claude_cli_tools_skills(runner, platform)
+
+    out = capsys.readouterr().out
+    assert "not detected" not in out
+    assert "wsl -d Ubuntu --exec sh: install the Claude Code status line" in out
+    assert "wsl -d Ubuntu --exec sh: install the img-zoom skill" in out
+    assert "wsl -d Ubuntu --exec sh: install the basicly cli-tools skills" in out

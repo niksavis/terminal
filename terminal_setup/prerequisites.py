@@ -1,5 +1,3 @@
-"""Prerequisite checking and installation for the terminal setup."""
-
 from __future__ import annotations
 
 import json
@@ -23,27 +21,17 @@ from .runner import Runner
 
 @dataclass(frozen=True)
 class PrerequisiteStatus:
-    """Status of a single prerequisite."""
-
     name: str
     present: bool
     install_command: list[str] | None = None
     message: str = ""
 
 
-# Node.js major version to install in WSL/Linux/macOS, matching the Windows
-# runtime, which this setup does not manage - so this is the knob that keeps the
-# two sides on one major. Track the line that is, or is about to be, Active LTS:
-# v26 becomes LTS 2026-10-28, eight days after v24 drops to maintenance.
 TARGET_NODE_MAJOR = "26"
 
 
 def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:
-    """Return known install directories for a Windows tool.
 
-    Used both to find existing installs and to report tools that are installed
-    but not yet on PATH in the current shell (PATH updates need a restart).
-    """
     if command == "wezterm":
         return [
             Path("C:/Program Files/WezTerm"),
@@ -61,14 +49,11 @@ def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Pa
 
 @dataclass(frozen=True)
 class SystemVersionPolicy:
-    """Policy for handling pre-existing system-wide tool installations."""
-
     uninstall: bool = False
     keep: bool = False
 
 
 def check_command(runner: Runner, name: str, command: str) -> PrerequisiteStatus:
-    """Check whether a command is available on PATH."""
     path = runner.which(command)
     if path:
         return PrerequisiteStatus(name=name, present=True, message=f"found at {path}")
@@ -76,16 +61,13 @@ def check_command(runner: Runner, name: str, command: str) -> PrerequisiteStatus
 
 
 def _wsl_distro(platform: PlatformInfo) -> str:
-    """Return the WSL distribution to use, falling back to Ubuntu."""
     return platform.wsl_distribution or "Ubuntu"
 
 
 def check_wsl_command(
     runner: Runner, platform: PlatformInfo, name: str, command: str
 ) -> PrerequisiteStatus:
-    """Check whether a command is available inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
-    # Prerequisite checks are read-only and should reflect reality even in dry-run.
     if is_running_in_wsl():
         result = runner.run(
             ["sh", "-c", f"command -v {command}"],
@@ -108,7 +90,6 @@ def check_wsl_command(
 
 
 def check_wsl(platform: PlatformInfo, _runner: Runner) -> PrerequisiteStatus:
-    """Check WSL availability and default distribution."""
     if is_running_in_wsl():
         return PrerequisiteStatus(
             name="wsl",
@@ -141,12 +122,10 @@ def check_wsl(platform: PlatformInfo, _runner: Runner) -> PrerequisiteStatus:
 
 
 def _is_wsl_target(platform: PlatformInfo) -> bool:
-    """Return True when the WSL toolset should be installed into a distro."""
     return is_running_in_wsl() or platform.os == OperatingSystem.WINDOWS
 
 
 def check_package_manager(platform: PlatformInfo) -> PrerequisiteStatus:
-    """Check whether a supported package manager is available."""
     if platform.package_manager == PackageManager.UNKNOWN:
         return PrerequisiteStatus(
             name="package-manager",
@@ -161,7 +140,6 @@ def check_package_manager(platform: PlatformInfo) -> PrerequisiteStatus:
 
 
 def check_all(platform: PlatformInfo, runner: Runner) -> list[PrerequisiteStatus]:
-    """Return the status of all prerequisites."""
     statuses = [
         check_package_manager(platform),
         check_wsl(platform, runner),
@@ -181,7 +159,6 @@ def install_package(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Install a package using the detected package manager."""
     if package_manager == PackageManager.WINGET:
         if _is_winget_package_installed(runner, package):
             runner.reporter.success(f"{package} is already installed; skipping")
@@ -211,7 +188,6 @@ def install_package(
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
 
-    # apt/pacman/dnf run under sudo and may prompt for a password.
     interactive = package_manager in {
         PackageManager.APT,
         PackageManager.PACMAN,
@@ -221,7 +197,6 @@ def install_package(
 
 
 def _package_install_command(package_manager: PackageManager, package: str) -> list[str]:
-    """Return the install command for a package manager and package."""
     if package_manager == PackageManager.WINGET:
         return [
             "winget",
@@ -243,7 +218,6 @@ def _package_install_command(package_manager: PackageManager, package: str) -> l
 
 
 def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
-    """Return whether a package exists in apt metadata."""
     command = ["apt-cache", "show", package]
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
@@ -252,7 +226,6 @@ def _apt_package_available(runner: Runner, package: str, *, wsl_distro: str | No
 
 
 def _parse_field(output: str, field: str) -> str | None:
-    """Return a value from `<Field>: <value>` lines in command output."""
     prefix = f"{field}:"
     for line in output.splitlines():
         stripped = line.strip()
@@ -269,7 +242,6 @@ def _package_versions(
     *,
     wsl_distro: str | None = None,
 ) -> tuple[str | None, str | None]:
-    """Return `(installed, latest)` versions for a package manager package."""
     if package_manager == PackageManager.APT:
         return _apt_package_versions(runner, package, wsl_distro=wsl_distro)
 
@@ -291,7 +263,6 @@ def _apt_package_versions(
     *,
     wsl_distro: str | None = None,
 ) -> tuple[str | None, str | None]:
-    """Return `(installed, latest)` versions for apt packages."""
     command = ["apt-cache", "policy", package]
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
@@ -308,7 +279,6 @@ def _apt_package_versions(
 
 
 def _brew_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
-    """Return `(installed, latest)` versions for Homebrew packages."""
     installed_command = ["brew", "list", "--versions", package]
     installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
     installed = None
@@ -335,7 +305,6 @@ def _brew_package_versions(runner: Runner, package: str) -> tuple[str | None, st
 
 
 def _pacman_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
-    """Return `(installed, latest)` versions for pacman packages."""
     installed_command = ["pacman", "-Qi", package]
     latest_command = ["pacman", "-Si", package]
     installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
@@ -346,7 +315,6 @@ def _pacman_package_versions(runner: Runner, package: str) -> tuple[str | None, 
 
 
 def _dnf_package_versions(runner: Runner, package: str) -> tuple[str | None, str | None]:
-    """Return `(installed, latest)` versions for dnf packages."""
     installed_command = ["rpm", "-q", "--qf", "%{VERSION}-%{RELEASE}\\n", package]
     installed_result = runner.run(installed_command, check=False, dry_run_safe=True)
     installed = installed_result.stdout.strip() if installed_result.returncode == 0 else None
@@ -377,7 +345,6 @@ def _should_install_package_update(
     *,
     wsl_distro: str | None = None,
 ) -> bool:
-    """Return whether a package install/update should run."""
     installed, latest = _package_versions(
         runner,
         package_manager,
@@ -402,7 +369,6 @@ def _should_install_package_update(
 
 
 def _command_available(runner: Runner, command: str, *, wsl_distro: str | None = None) -> bool:
-    """Return whether a command is available on host or in WSL."""
     if wsl_distro is None or is_running_in_wsl():
         if runner.which(command) is not None:
             return True
@@ -425,7 +391,6 @@ def _is_user_local_command_available(
     *,
     wsl_distro: str | None = None,
 ) -> bool:
-    """Return whether a command exists as an executable in ~/.local/bin."""
     if wsl_distro and not is_running_in_wsl():
         result = runner.run(
             wsl_exec_command(wsl_distro, ["sh", "-c", f"test -x ~/.local/bin/{command}"]),
@@ -440,12 +405,13 @@ def _is_user_local_command_available(
     return local_bin.exists() and os.access(local_bin, os.X_OK)
 
 
-def _run_shell_command(runner: Runner, script: str, *, wsl_distro: str | None = None) -> None:
-    """Run a shell command on host or in WSL."""
+def _run_shell_command(
+    runner: Runner, script: str, *, label: str, wsl_distro: str | None = None
+) -> None:
     command = ["sh", "-c", script]
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
-    runner.run(command, interactive=True)
+    runner.run(command, interactive=True, label=label)
 
 
 def _run_shell_read(
@@ -454,7 +420,6 @@ def _run_shell_read(
     *,
     wsl_distro: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a read-only shell command on host or in WSL and capture output."""
     command = ["sh", "-c", script]
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
@@ -462,7 +427,6 @@ def _run_shell_read(
 
 
 def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Ensure a modern cargo toolchain is available for Rust fallback installs."""
     if (wsl_distro is None or is_running_in_wsl()) and (
         Path.home() / ".cargo" / "bin" / "cargo"
     ).exists():
@@ -478,12 +442,12 @@ def _ensure_rustup_cargo(runner: Runner, *, wsl_distro: str | None = None) -> No
     _run_shell_command(
         runner,
         "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+        label="install rustup and cargo",
         wsl_distro=wsl_distro,
     )
 
 
 def _failure_reason(error: Exception) -> str:
-    """Render an install failure in one line, preferring the tool's own stderr."""
     if isinstance(error, subprocess.CalledProcessError):
         detail = (error.stderr or error.stdout or "").strip().splitlines()
         return detail[-1] if detail else f"exit code {error.returncode}"
@@ -491,18 +455,7 @@ def _failure_reason(error: Exception) -> str:
 
 
 def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
-    """Run one install step, recording a failure instead of aborting the run.
 
-    Installing a tool reaches the network and a third party's release assets, so
-    it fails for reasons that have nothing to do with the rest of the setup: an
-    outage, a renamed asset, an API rate limit. Every such failure used to reach
-    the one top-level handler and end the run, taking with it the steps that had
-    not run yet - including config deployment, which needs no network at all.
-
-    The failure is not swallowed: it is reported here and again in the summary
-    the caller prints from ``runner.failures``, which is what makes the exit
-    status non-zero.
-    """
     try:
         action()
     except (subprocess.CalledProcessError, RuntimeError, OSError) as error:
@@ -513,9 +466,6 @@ def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
 
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
-    """Install unsupported apt packages via a supported fallback path."""
-    # ast-grep is checked via its full binary name: probing `sg` false-positives
-    # on util-linux's /usr/bin/sg.
     rust_fallback = {
         "ast-grep": ("ast-grep", "ast-grep"),
         "typos": ("typos-cli", "typos"),
@@ -531,6 +481,7 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
                     'if [ -f "$HOME/.cargo/env" ]; then . "$HOME/.cargo/env"; fi; '
                     f"cargo install --locked --force --root ~/.local {crate}"
                 ),
+                label=f"install {crate} with cargo",
                 wsl_distro=wsl_distro,
             )
         return True
@@ -540,6 +491,7 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
             _run_shell_command(
                 runner,
                 "curl -sfL https://raw.githubusercontent.com/ducaale/xh/master/install.sh | sh",
+                label="install xh",
                 wsl_distro=wsl_distro,
             )
         return True
@@ -549,6 +501,7 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
             _run_shell_command(
                 runner,
                 "curl -LsSf https://astral.sh/uv/install.sh | sh",
+                label="install uv",
                 wsl_distro=wsl_distro,
             )
         return True
@@ -566,7 +519,6 @@ def update_packages(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Update package lists/indexes."""
     command: list[str]
     if package_manager == PackageManager.APT:
         command = ["sudo", "apt-get", "update"]
@@ -582,17 +534,12 @@ def update_packages(
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
 
-    # apt/pacman may prompt for a password via sudo.
     interactive = package_manager in {PackageManager.APT, PackageManager.PACMAN}
     runner.run(command, check=False, interactive=interactive)
 
 
 def install_wsl_ubuntu(runner: Runner) -> None:
-    """Install Ubuntu as the default WSL distribution.
 
-    ``wsl --install`` needs administrator rights; fail with clear guidance
-    instead of an opaque error when they are missing.
-    """
     if runner.which("wsl") is None:
         raise RuntimeError(
             "the 'wsl' command is not available on this system; install WSL "
@@ -612,10 +559,7 @@ def install_wsl_ubuntu(runner: Runner) -> None:
 
 
 def _wsl_apt_install_script(packages: list[str]) -> str:
-    """Return a shell script that updates apt and installs packages in one session."""
     package_list = " ".join(packages)
-    # Safety: remove only known legacy WezTerm source files/entries before apt update.
-    # Using rm -f keeps this cleanup idempotent and avoids failures when files are absent.
     return (
         "set -e; "
         "sudo sh -c '"
@@ -646,21 +590,21 @@ def _run_in_wsl_or_host(
     command: list[str],
     *,
     distro: str | None,
+    label: str,
     interactive: bool = False,
 ) -> subprocess.CompletedProcess[str]:
-    """Run a command directly on the host or wrap it for WSL when called from Windows."""
     if distro and not is_running_in_wsl():
         command = wsl_exec_command(distro, command)
-    return runner.run(command, interactive=interactive)
+    return runner.run(command, interactive=interactive, label=label)
 
 
 def _wsl_apt_install_command(runner: Runner, packages: list[str], distro: str) -> None:
-    """Run the apt install script either directly in WSL or via wsl.exe from Windows."""
     script = _wsl_apt_install_script(packages)
     _run_in_wsl_or_host(
         runner,
         ["sh", "-c", script],
         distro=distro,
+        label=f"apt install {' '.join(packages)}",
         interactive=True,
     )
 
@@ -671,7 +615,6 @@ def _split_wsl_packages_by_install_path(
     *,
     distro: str,
 ) -> tuple[list[str], list[str]]:
-    """Split WSL packages into apt-installable and fallback groups."""
     apt_packages: list[str] = []
     fallback_packages: list[str] = []
     for package in packages:
@@ -691,11 +634,7 @@ def _find_system_command_path(
     *,
     wsl_distro: str | None = None,
 ) -> str | None:
-    """Return the path to a system-wide command, or None if it is absent.
 
-    Resolves against a system-only PATH so a user-local copy in ~/.local/bin
-    never shadows the system copy we are looking for.
-    """
     system_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
     lookup_command = ["sh", "-c", f"PATH={system_path} command -v {command}"]
     if wsl_distro and not is_running_in_wsl():
@@ -717,7 +656,6 @@ def _find_owning_package(
     *,
     wsl_distro: str | None = None,
 ) -> str | None:
-    """Return the package that owns a given file path, if detectable."""
     command: list[str] | None = None
     if package_manager == PackageManager.APT:
         command = ["dpkg", "-S", path]
@@ -752,7 +690,6 @@ def _uninstall_package(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Remove a package using the detected package manager."""
     command: list[str]
     if package_manager == PackageManager.APT:
         command = ["sudo", "apt-get", "remove", "-y", package]
@@ -769,11 +706,7 @@ def _uninstall_package(
 
 
 def _command_version(runner: Runner, path: str, *, wsl_distro: str | None = None) -> str:
-    """Return a short version string for the binary at ``path``.
 
-    Extracts the first version-like token from ``<path> --version``; returns
-    "unknown" when no version can be determined.
-    """
     script = (
         f'"{path}" --version 2>/dev/null | head -n 5 '
         '| grep -Eo "[0-9]+\\.[0-9]+(\\.[0-9]+)?" | head -n 1'
@@ -784,7 +717,6 @@ def _command_version(runner: Runner, path: str, *, wsl_distro: str | None = None
 
 
 def _remove_system_file(runner: Runner, path: str, *, wsl_distro: str | None = None) -> None:
-    """Remove a system file with sudo (for binaries no package owns)."""
     command = ["sudo", "rm", "-f", path]
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
@@ -799,12 +731,7 @@ def _handle_unowned_system_version(
     wsl_distro: str | None = None,
     policy: SystemVersionPolicy,
 ) -> None:
-    """Apply the system-version policy to a binary no package manager owns.
 
-    Only files under ``/usr/local`` are removable; other unowned paths are left
-    in place with a warning so the setup never deletes unmanaged system files it
-    does not understand.
-    """
     removable = path.startswith("/usr/local/")
     if policy.keep or not removable:
         suffix = "" if removable else " (outside /usr/local; not removed automatically)"
@@ -835,8 +762,6 @@ def _handle_unowned_system_version(
         runner.reporter.info(f"Keeping the system binary at {path}.")
 
 
-# Managed tools that may exist both user-locally and system-wide; reconciled so
-# a user-local copy takes precedence over a duplicate system install.
 _RECONCILE_BINARIES = (
     "fd",
     "bat",
@@ -867,23 +792,7 @@ def _reconcile_system_versions(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Report and reconcile tools installed both user-locally and system-wide.
 
-    Runs after every install. A managed tool is a conflict when a copy exists in
-    ~/.local/bin *and* a system-wide copy exists; the user-local copy already
-    wins on PATH, so the system copy is redundant. Behavior by policy:
-
-    - ``--system-versions keep``: report only.
-    - ``--system-versions uninstall``: remove every system copy (needs sudo).
-    - default: prompt per tool when stdin is interactive; otherwise report and
-      explain how to remove them, so headless runs never hang.
-
-    On Windows the WSL guest is managed by apt, so ownership is resolved with
-    dpkg regardless of the host's package manager.
-    """
-    # When reconciling the WSL Ubuntu guest from a Windows host, the guest is
-    # managed by apt, not the host's package manager (winget), so package
-    # ownership must be resolved with dpkg.
     package_manager = platform.package_manager
     if wsl_distro is not None and not is_running_in_wsl():
         package_manager = PackageManager.APT
@@ -946,12 +855,7 @@ def _warn_or_uninstall_system_version(
     wsl_distro: str | None = None,
     policy: SystemVersionPolicy | None = None,
 ) -> None:
-    """Warn about a system-wide version and optionally offer to remove it.
 
-    When ``policy.uninstall`` is True the system package is removed without
-    prompting. When ``policy.keep`` is True only a warning is printed.
-    Otherwise the user is asked interactively.
-    """
     resolved_policy = policy or SystemVersionPolicy()
     path = _find_system_command_path(runner, command, wsl_distro=wsl_distro)
     if path is None:
@@ -1001,15 +905,7 @@ def _install_cargo_tool(
     *,
     wsl_distro: str | None = None,
 ) -> None:
-    """Install a Rust crate into ~/.local using cargo, unless it is already current.
 
-    ``--force`` rebuilds from source whether or not anything changed, which on a
-    refresh run costs minutes of compilation to land the identical binary. Ask
-    crates.io first - that is the version cargo would install, and it is not
-    always the project's newest git tag: sd's latest release is tagged v1.1.0 but
-    only 1.0.0 was ever published, so comparing against the tag would rebuild for
-    ever. An unreadable or empty answer falls through to installing.
-    """
     _ensure_rustup_cargo(runner, wsl_distro=wsl_distro)
     _run_shell_command(
         runner,
@@ -1024,17 +920,13 @@ def _install_cargo_tool(
             f'echo "{crate} is up to date ($have); skipping rebuild"; '
             f"else cargo install --locked --force --root ~/.local {crate}; fi"
         ),
+        label=f"install {crate} with cargo",
         wsl_distro=wsl_distro,
     )
 
 
 def _github_latest_release_snippet(repo: str) -> str:
-    """Return a shell snippet that resolves ``$release`` to a repo's latest tag.
 
-    Validates the result: unauthenticated api.github.com calls are limited to
-    60/hour, and an empty tag would otherwise build a malformed download URL
-    that fails later with an opaque curl error. Expects ``$tmp`` to exist.
-    """
     return (
         f"release=$(curl -fsSL https://api.github.com/repos/{repo}/releases/latest | "
         'sed -n \'s/.*"tag_name": *"\\([^"]*\\)".*/\\1/p\'); '
@@ -1045,7 +937,6 @@ def _github_latest_release_snippet(repo: str) -> str:
 
 
 def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the fzf binary to ~/.local/bin."""
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1068,11 +959,10 @@ def _install_fzf_binary(runner: Runner, *, wsl_distro: str | None = None) -> Non
         "mv $tmp/fzf ~/.local/bin/fzf; "
         "rm -rf $tmp"
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install fzf", wsl_distro=wsl_distro)
 
 
 def _install_jq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the jq binary to ~/.local/bin."""
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1090,11 +980,10 @@ def _install_jq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         'install -m 0755 "$tmp/jq" ~/.local/bin/jq; '
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install jq", wsl_distro=wsl_distro)
 
 
 def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the yq binary to ~/.local/bin."""
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1113,16 +1002,11 @@ def _install_yq_binary(runner: Runner, *, wsl_distro: str | None = None) -> None
         'install -m 0755 "$tmp/yq" ~/.local/bin/yq; '
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install yq", wsl_distro=wsl_distro)
 
 
 def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the shellcheck binary to ~/.local/bin.
 
-    shellcheck publishes no checksum file alongside its release archives, so —
-    like direnv and the xh/uv/rustup/starship vendor installers — the download
-    is trusted over HTTPS with no separate sha256 step.
-    """
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1137,15 +1021,11 @@ def _install_shellcheck_binary(runner: Runner, *, wsl_distro: str | None = None)
         "mv $tmp/shellcheck-${release}/shellcheck ~/.local/bin/shellcheck; "
         "rm -rf $tmp"
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install shellcheck", wsl_distro=wsl_distro)
 
 
 def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the git-lfs binary to ~/.local/bin.
 
-    Installs the binary only, matching the apt package: the user still runs
-    ``git lfs install`` once to register the global filters.
-    """
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1157,7 +1037,6 @@ def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> 
         'base="https://github.com/git-lfs/git-lfs/releases/download/${release}"; '
         'curl -fsSL -o "$tmp/$pkg" "$base/$pkg"; '
         'curl -fsSL -o "$tmp/sha256sums.asc" "$base/sha256sums.asc"; '
-        # sha256sums.asc lists each asset as "<sha256> *<filename>".
         'expected=$(grep " [*]$pkg$" "$tmp/sha256sums.asc" | cut -d" " -f1); '
         'actual=$(sha256sum "$tmp/$pkg" | cut -d" " -f1); '
         '{ [ -n "$expected" ] && [ "$expected" = "$actual" ]; } '
@@ -1167,16 +1046,11 @@ def _install_gitlfs_binary(runner: Runner, *, wsl_distro: str | None = None) -> 
         'install -m 0755 "$tmp/git-lfs-${version}/git-lfs" ~/.local/bin/git-lfs; '
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install git-lfs", wsl_distro=wsl_distro)
 
 
 def _install_direnv_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Download the direnv binary to ~/.local/bin.
 
-    direnv publishes no checksum file alongside its release binaries, so — like
-    the upstream install.sh and the xh/uv installers — the download is trusted
-    over HTTPS with no separate sha256 step.
-    """
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1188,16 +1062,11 @@ def _install_direnv_binary(runner: Runner, *, wsl_distro: str | None = None) -> 
         'install -m 0755 "$tmp/direnv" ~/.local/bin/direnv; '
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install direnv", wsl_distro=wsl_distro)
 
 
 def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
-    """Install the latest Node.js ``TARGET_NODE_MAJOR`` release into ~/.local.
 
-    Downloads the official prebuilt tarball and merges its bin/lib/include/share
-    into ~/.local (npm and npx are relative symlinks into lib), so Node installs
-    without sudo and matches the Windows major version.
-    """
     script = (
         "set -e; "
         "arch=$(uname -m); "
@@ -1218,17 +1087,11 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
         'cp -R "$tmp/${pkg}/." ~/.local/; '
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install Node.js", wsl_distro=wsl_distro)
 
 
 def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
-    """Install Node.js user-locally where it is missing.
 
-    Node is installed without sudo into ~/.local, matching the major version
-    used on Windows. On Windows the WSL guest is targeted; Windows-native Node
-    is managed outside this setup. ``update=True`` reinstalls the latest
-    release of the target major even when a copy exists.
-    """
     if platform.os == OperatingSystem.WINDOWS:
         distro = _wsl_distro(platform)
         if update or not _is_user_local_command_available(runner, "node", wsl_distro=distro):
@@ -1242,7 +1105,6 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
 
 
 def _parse_version_tuple(version: str) -> tuple[int, ...]:
-    """Convert a version string into an integer tuple for comparison."""
     core = version.split("-", 1)[0].split("+", 1)[0]
     values: list[int] = []
     for chunk in core.split("."):
@@ -1258,7 +1120,6 @@ def _parse_version_tuple(version: str) -> tuple[int, ...]:
 
 
 def _is_version_at_least(current: str, latest: str) -> bool:
-    """Return True when current version is greater than or equal to latest."""
     current_tuple = _parse_version_tuple(current)
     latest_tuple = _parse_version_tuple(latest)
     if not current_tuple or not latest_tuple:
@@ -1270,7 +1131,6 @@ def _is_version_at_least(current: str, latest: str) -> bool:
 
 
 def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
-    """Return the latest tagged lazygit version from upstream releases."""
     script = (
         "curl -fsSL https://api.github.com/repos/jesseduffield/lazygit/releases/latest "
         '| sed -n \'s/.*"tag_name": *"v\\([^"]*\\)".*/\\1/p\' | head -n 1'
@@ -1283,9 +1143,6 @@ def _latest_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) ->
 
 
 def _installed_lazygit_version(runner: Runner, *, wsl_distro: str | None = None) -> str | None:
-    """Return the installed lazygit version, or None when unavailable."""
-    # Prefer ~/.local/bin: non-login shells miss it on PATH, and reporting the
-    # stale system copy would re-prompt for an update on every run.
     script = (
         'PATH="$HOME/.local/bin:$PATH"; '
         "if ! command -v lazygit >/dev/null 2>&1; then exit 0; fi; "
@@ -1305,7 +1162,6 @@ def _install_lazygit_release(
     wsl_distro: str | None = None,
     no_sudo: bool,
 ) -> None:
-    """Install the latest lazygit binary from upstream releases."""
     latest_version = _latest_lazygit_version(runner, wsl_distro=wsl_distro)
     if latest_version is None:
         raise RuntimeError("Unable to resolve latest lazygit version")
@@ -1348,8 +1204,6 @@ def _install_lazygit_release(
         'base="https://github.com/jesseduffield/lazygit/releases/download/v${version}"; '
         'curl -fsSLo "$tmp/${pkg}" "${base}/${pkg}"; '
         'curl -fsSLo "$tmp/checksums.txt" "${base}/checksums.txt"; '
-        # checksums.txt lists lowercase file names while release assets use
-        # capitalized OS names, so compare digests instead of sha256sum -c.
         "sumname=$(printf '%s' \"$pkg\" | tr 'A-Z' 'a-z'); "
         'expected=$(grep " ${sumname}$" "$tmp/checksums.txt" | cut -d" " -f1); '
         'actual=$(sha256sum "$tmp/${pkg}" | cut -d" " -f1); '
@@ -1359,13 +1213,10 @@ def _install_lazygit_release(
         f"{install_command}; "
         'rm -rf "$tmp"'
     )
-    _run_shell_command(runner, script, wsl_distro=wsl_distro)
+    _run_shell_command(runner, script, label="install lazygit", wsl_distro=wsl_distro)
 
 
 def _command_for_package(package: str) -> str:
-    """Return the command name for a package (Debian package names differ from binaries)."""
-    # ast-grep maps to its full binary name: probing `sg` false-positives on
-    # util-linux's /usr/bin/sg.
     mapping = {
         "fd-find": "fd",
         "bat": "bat",
@@ -1382,7 +1233,6 @@ def _system_version_policy(
     uninstall_system_versions: bool = False,
     keep_system_versions: bool = False,
 ) -> SystemVersionPolicy:
-    """Build a policy from the CLI flags."""
     return SystemVersionPolicy(
         uninstall=uninstall_system_versions,
         keep=keep_system_versions,
@@ -1394,12 +1244,7 @@ def _install_user_local_tool(
     package: str,
     platform: PlatformInfo,
 ) -> bool:
-    """Install a tool into user-writable locations without sudo.
 
-    Conflicts with system-wide copies are handled afterwards by
-    ``_reconcile_system_versions``; this function only installs the user-local
-    copy. Returns True when a user-local install path is known for the package.
-    """
     cargo_tools: dict[str, tuple[str, str]] = {
         "fd-find": ("fd-find", "fd"),
         "bat": ("bat", "bat"),
@@ -1433,6 +1278,7 @@ def _install_user_local_tool(
         _run_shell_command(
             runner,
             "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            label="install uv",
             wsl_distro=distro,
         )
         return True
@@ -1445,23 +1291,16 @@ def _install_user_local_tool(
 
 
 def _install_one_user_local_tool(runner: Runner, package: str, platform: PlatformInfo) -> None:
-    """Install one tool, naming it when no user-local path is known."""
     if not _install_user_local_tool(runner, package, platform):
         runner.reporter.warn(f"No user-local install path known for {package}; skipping.")
 
 
 def _stdin_is_interactive(runner: Runner) -> bool:
-    """Return whether prompts can reach the user (or are simulated in dry-run)."""
     return runner.dry_run or sys.stdin.isatty()
 
 
 def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
-    """Fail fast when sudo would prompt for a password without a terminal.
 
-    sudo reads the password from the controlling terminal, so in headless
-    contexts (agents, CI, hidden consoles) the setup would hang forever on an
-    invisible prompt instead of failing.
-    """
     if _stdin_is_interactive(runner):
         return
     raise RuntimeError(
@@ -1480,12 +1319,7 @@ def ensure_wsl_tools(  # noqa: PLR0913
     uninstall_system_versions: bool = False,
     keep_system_versions: bool = False,
 ) -> None:
-    """Install core tools inside the WSL Ubuntu guest.
 
-    ``update=True`` re-runs the user-local installers even when a copy
-    already exists, refreshing tools to their latest release; the default
-    presence check keeps plain re-runs fast and rate-limit friendly.
-    """
     distro = _wsl_distro(platform)
     policy = _system_version_policy(
         uninstall_system_versions=uninstall_system_versions,
@@ -1529,9 +1363,6 @@ def ensure_wsl_tools(  # noqa: PLR0913
                         "skipping."
                     )
                 continue
-            # Install a user-local copy even when a system copy exists so the
-            # setup owns the tool; a stale system copy is reconciled afterwards.
-            # lazygit always runs (its installer version-checks before download).
             if (
                 not update
                 and package != "lazygit"
@@ -1564,11 +1395,10 @@ def ensure_wsl_tools(  # noqa: PLR0913
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
-    """Install post-package CLI extras inside the WSL Ubuntu guest."""
     distro = _wsl_distro(platform)
-    _run_in_wsl_or_host(runner, ["sh", "-c", "mkdir -p ~/.local/bin"], distro=distro)
-    # Create common binary aliases for Debian/Ubuntu package names. Skip when a
-    # user-local binary already exists so cargo-installed copies are not clobbered.
+    _run_in_wsl_or_host(
+        runner, ["sh", "-c", "mkdir -p ~/.local/bin"], distro=distro, label="create ~/.local/bin"
+    )
     fd_alias = (
         "[ -e ~/.local/bin/fd ] || { command -v fdfind >/dev/null "
         "&& ln -sf $(command -v fdfind) ~/.local/bin/fd; } || true"
@@ -1577,12 +1407,11 @@ def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
         "[ -e ~/.local/bin/bat ] || { command -v batcat >/dev/null "
         "&& ln -sf $(command -v batcat) ~/.local/bin/bat; } || true"
     )
-    _run_in_wsl_or_host(runner, ["sh", "-c", fd_alias], distro=distro)
-    _run_in_wsl_or_host(runner, ["sh", "-c", bat_alias], distro=distro)
+    _run_in_wsl_or_host(runner, ["sh", "-c", fd_alias], distro=distro, label="link fd to fdfind")
+    _run_in_wsl_or_host(runner, ["sh", "-c", bat_alias], distro=distro, label="link bat to batcat")
 
 
 def _is_winget_package_installed(runner: Runner, package_id: str) -> bool:
-    """Return whether a winget package is already installed."""
     if runner.which("winget") is None:
         return False
     result = runner.run(
@@ -1596,7 +1425,6 @@ def _is_winget_package_installed(runner: Runner, package_id: str) -> bool:
 
 
 def _add_to_process_path(directory: Path) -> None:
-    """Add a directory to the current process PATH so checks in this run can find it."""
     directory_str = str(directory)
     current = os.environ.get("PATH", "")
     entries = current.split(";") if current else []
@@ -1609,7 +1437,6 @@ def _ensure_windows_command_in_path(
     command_name: str,
     candidate_dirs: list[Path],
 ) -> bool:
-    """Try to locate a Windows executable in known directories and add it to PATH."""
     if runner.which(command_name):
         return True
     executable_name = f"{command_name}.exe"
@@ -1624,7 +1451,6 @@ def _ensure_windows_command_in_path(
 
 
 def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
-    """Install core shell tools on the host."""
     if platform.os == OperatingSystem.WINDOWS:
         return
     packages = {
@@ -1640,7 +1466,6 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
 def ensure_host_cli_extras(
     runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False
 ) -> None:
-    """Install agent-first CLI tools on the host."""
     if platform.os == OperatingSystem.WINDOWS:
         return
     extras = {
@@ -1733,7 +1558,6 @@ def ensure_host_cli_extras(
 
 
 def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
-    """Install starship into the user's programs directory without admin rights."""
     install_dir = platform.user_programs_dir / "starship"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
@@ -1753,11 +1577,10 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
         f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
         f"Remove-Item $zip"
     )
-    runner.run(["powershell", "-Command", script], interactive=True)
+    runner.run(["powershell", "-Command", script], interactive=True, label="install starship")
     _add_to_user_path(runner, install_dir)
 
 
-# User-local starship install for Linux hosts and the WSL guest (no sudo).
 _STARSHIP_INSTALL_SCRIPT = (
     "mkdir -p ~/.local/bin && "
     "curl -fsSL https://starship.rs/install.sh | sh -s -- -y -b ~/.local/bin"
@@ -1765,24 +1588,19 @@ _STARSHIP_INSTALL_SCRIPT = (
 
 
 def _ensure_starship_wsl_guest(runner: Runner, platform: PlatformInfo) -> None:
-    """Install starship inside the WSL guest; the deployed zshrc inits it there."""
     distro = _wsl_distro(platform)
     if _is_user_local_command_available(runner, "starship", wsl_distro=distro):
         return
     if _command_available(runner, "starship", wsl_distro=distro):
         return
     runner.reporter.info("Installing starship into the WSL guest.")
-    _run_shell_command(runner, _STARSHIP_INSTALL_SCRIPT, wsl_distro=distro)
+    _run_shell_command(
+        runner, _STARSHIP_INSTALL_SCRIPT, label="install starship", wsl_distro=distro
+    )
 
 
 def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
-    """Install the starship prompt if possible.
 
-    On Windows the portable release archive is always used: it needs no admin
-    rights, unlike winget's MSI packages. Existing winget installs are detected
-    and kept. The WSL guest gets its own user-local copy: the deployed zshrc
-    inits starship there, independently of the Windows-native binary.
-    """
     if platform.os == OperatingSystem.WINDOWS:
         if not runner.which("starship"):
             _ensure_windows_command_in_path(
@@ -1799,22 +1617,14 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
     if runner.which("starship"):
         return
     if platform.os == OperatingSystem.LINUX:
-        runner.run(["sh", "-c", _STARSHIP_INSTALL_SCRIPT])
+        runner.run(["sh", "-c", _STARSHIP_INSTALL_SCRIPT], label="install starship")
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         install_package(runner, PackageManager.HOMEBREW, "starship")
 
 
 def _add_to_user_path(runner: Runner, directory: Path) -> None:
-    """Add a directory to the user's PATH persistently on Windows.
 
-    Reads and writes the registry value unexpanded (``DoNotExpandEnvironmentNames``
-    + ``ExpandString``): the ``[Environment]`` API round-trip would permanently
-    flatten ``%USERPROFILE%``-style entries. The membership check compares path
-    segments case-insensitively with native backslashes, so re-runs stay
-    idempotent, and a manual WM_SETTINGCHANGE broadcast tells running shells
-    about the change (the raw registry write does not notify by itself).
-    """
     if runner.dry_run:
         return
     directory_str = str(directory).replace("/", "\\")
@@ -1841,19 +1651,20 @@ def _add_to_user_path(runner: Runner, directory: Path) -> None:
         "}; "
         "$key.Close()"
     )
-    runner.run(["powershell", "-Command", script], interactive=True)
+    runner.run(
+        ["powershell", "-Command", script],
+        interactive=True,
+        label=f"add {directory} to the user PATH",
+    )
     _add_to_process_path(directory)
 
 
 def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None:
-    """Download and extract WezTerm to the user's programs directory."""
     install_dir = platform.user_programs_dir / "WezTerm"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
     api_url = "https://api.github.com/repos/wez/wezterm/releases/latest"
     base_url = "https://github.com/wez/wezterm/releases/download"
-    # The release zip nests everything under a WezTerm-windows-<tag>/ folder;
-    # flatten it so wezterm.exe lands directly in the install directory.
     script = (
         f"$ErrorActionPreference = 'Stop'; "
         f"$release = (Invoke-RestMethod -Uri '{api_url}' -UseBasicParsing).tag_name; "
@@ -1876,16 +1687,12 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
         f"Remove-Item $zip; "
         f"Remove-Item $extract -Recurse -Force"
     )
-    runner.run(["powershell", "-Command", script], interactive=True)
+    runner.run(["powershell", "-Command", script], interactive=True, label="install WezTerm")
     _add_to_user_path(runner, install_dir)
 
 
 def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
-    """Install WezTerm on Windows from the portable release archive.
 
-    The portable install needs no admin rights, unlike winget's MSI packages.
-    Existing system or winget installs are detected and kept.
-    """
     _ensure_windows_command_in_path(
         runner,
         "wezterm",
@@ -1899,7 +1706,6 @@ def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
 
 
 def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
-    """Install WezTerm using the platform package manager."""
     if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.WINDOWS:
@@ -1925,13 +1731,7 @@ def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = Fa
 
 
 def _ensure_wezterm_apt(runner: Runner) -> None:
-    """Add the WezTerm apt repository and install.
 
-    Matches the official instructions at https://wezterm.org/install/linux.html.
-    Warn and continue if the WezTerm repository is unreachable or the package
-    is unavailable, so that a transient network issue does not block the rest
-    of the setup.
-    """
     keyring_dir = Path("/usr/share/keyrings")
     keyring_path = keyring_dir / "wezterm-fury.gpg"
     _require_interactive_stdin_for_sudo(runner)
@@ -1941,7 +1741,7 @@ def _ensure_wezterm_apt(runner: Runner) -> None:
             "curl -fsSL https://apt.fury.io/wez/gpg.key | "
             f"sudo gpg --yes --dearmor -o {keyring_path}"
         )
-        runner.run(["bash", "-c", gpg_script], interactive=True)
+        runner.run(["bash", "-c", gpg_script], interactive=True, label="add the WezTerm apt key")
         runner.run(["sudo", "chmod", "644", str(keyring_path)], interactive=True)
     sources_line = f"deb [signed-by={keyring_path}] https://apt.fury.io/wez/ * *"
     sources_path = Path("/etc/apt/sources.list.d/wezterm.list")
@@ -1962,7 +1762,6 @@ def _ensure_wezterm_apt(runner: Runner) -> None:
 
 
 def _ensure_wezterm_appimage(runner: Runner) -> None:
-    """Download the WezTerm AppImage to ~/.local/bin as a fallback."""
     appimage_url = (
         "https://github.com/wezterm/wezterm/releases/download/nightly/"
         "WezTerm-nightly-Ubuntu24.04.AppImage"

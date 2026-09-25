@@ -1,56 +1,44 @@
-"""Tests for the command runner."""
-
 from __future__ import annotations
 
 import platform as platform_module
 from pathlib import Path
 
+import pytest
+
 from terminal_setup.runner import ConsoleReporter, Runner
 
 
 class CapturingReporter:
-    """Reporter that records all messages for assertions."""
-
     def __init__(self) -> None:
-        """Initialize the message list."""
         self.messages: list[tuple[str, str]] = []
 
     def info(self, message: str) -> None:
-        """Record an informational message."""
         self.messages.append(("info", message))
 
     def warn(self, message: str) -> None:
-        """Record a warning message."""
         self.messages.append(("warn", message))
 
     def error(self, message: str) -> None:
-        """Record an error message."""
         self.messages.append(("error", message))
 
     def success(self, message: str) -> None:
-        """Record a success message."""
         self.messages.append(("success", message))
 
     def step(self, message: str) -> None:
-        """Record a step message."""
         self.messages.append(("step", message))
 
     def prompt(self, message: str) -> None:
-        """Record a prompt message."""
         self.messages.append(("prompt", message))
 
-    def command(self, command: list[str]) -> None:
-        """Record a command that would run."""
-        self.messages.append(("command", " ".join(command)))
+    def command(self, command: list[str], label: str | None = None) -> None:
+        self.messages.append(("command", label or " ".join(command)))
 
     def confirm(self, message: str) -> bool:
-        """Record a confirmation prompt and answer no by default."""
         self.messages.append(("confirm", message))
         return False
 
 
 def test_runner_dry_run_does_not_execute(tmp_path: Path) -> None:
-    """Dry-run mode must not create files or run real commands."""
     reporter = CapturingReporter()
     runner = Runner(dry_run=True, reporter=reporter)
 
@@ -62,7 +50,6 @@ def test_runner_dry_run_does_not_execute(tmp_path: Path) -> None:
 
 
 def test_runner_writes_file(tmp_path: Path) -> None:
-    """Non-dry-run write_text creates the file and parent directories."""
     reporter = CapturingReporter()
     runner = Runner(dry_run=False, reporter=reporter)
 
@@ -74,7 +61,6 @@ def test_runner_writes_file(tmp_path: Path) -> None:
 
 
 def test_runner_ensure_dir(tmp_path: Path) -> None:
-    """ensure_dir creates directories in non-dry-run mode."""
     runner = Runner(dry_run=False, reporter=ConsoleReporter())
     target = tmp_path / "a" / "b"
     runner.ensure_dir(target)
@@ -82,7 +68,6 @@ def test_runner_ensure_dir(tmp_path: Path) -> None:
 
 
 def test_runner_copy(tmp_path: Path) -> None:
-    """Copy duplicates a file to a new path."""
     source = tmp_path / "source.txt"
     source.write_text("copy me", encoding="utf-8")
     destination = tmp_path / "dest" / "file.txt"
@@ -94,7 +79,6 @@ def test_runner_copy(tmp_path: Path) -> None:
 
 
 def test_runner_symlink_replaces_existing(tmp_path: Path) -> None:
-    """Symlink replaces an existing file or symlink, falling back to copy on Windows."""
     source = tmp_path / "source.txt"
     source.write_text("target", encoding="utf-8")
     destination = tmp_path / "link.txt"
@@ -109,7 +93,6 @@ def test_runner_symlink_replaces_existing(tmp_path: Path) -> None:
 
 
 def test_runner_write_text_forces_lf_newlines(tmp_path: Path) -> None:
-    """Deployed files must keep LF endings on every host (shell scripts break on CRLF)."""
     destination = tmp_path / "script.sh"
 
     runner = Runner(dry_run=False, reporter=ConsoleReporter())
@@ -119,7 +102,6 @@ def test_runner_write_text_forces_lf_newlines(tmp_path: Path) -> None:
 
 
 def test_runner_copy_forces_lf_newlines(tmp_path: Path) -> None:
-    """Copied files must keep LF endings on every host (shell scripts break on CRLF)."""
     source = tmp_path / "source.sh"
     source.write_text("#!/bin/bash\necho ok\n", encoding="utf-8", newline="\n")
     destination = tmp_path / "dest.sh"
@@ -128,3 +110,33 @@ def test_runner_copy_forces_lf_newlines(tmp_path: Path) -> None:
     runner.copy(source, destination)
 
     assert b"\r" not in destination.read_bytes()
+
+
+def test_console_reporter_prints_the_label_in_place_of_the_script(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ConsoleReporter().command(
+        ["wsl", "-d", "Ubuntu", "--exec", "sh", "-c", "echo hidden"], "say hi"
+    )
+
+    out = capsys.readouterr().out
+    assert "wsl -d Ubuntu --exec sh: say hi" in out
+    assert "hidden" not in out
+
+
+def test_console_reporter_prints_an_unlabelled_command_in_full(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ConsoleReporter().command(["sh", "-c", "echo shown"])
+
+    assert "sh -c 'echo shown'" in capsys.readouterr().out
+
+
+def test_console_reporter_cuts_a_powershell_script_at_command(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ConsoleReporter().command(["pwsh", "-NoProfile", "-Command", "Write-Host hidden"], "greet")
+
+    out = capsys.readouterr().out
+    assert "pwsh -NoProfile: greet" in out
+    assert "hidden" not in out

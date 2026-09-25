@@ -142,7 +142,11 @@ def _configure_pwsh_starship(runner: Runner, platform: PlatformInfo) -> None:
         "if ((-not (Test-Path $p)) -or (-not (Select-String -Path $p -SimpleMatch $m -Quiet))) "
         f"{{ Add-Content -Path $p -Value {ps_array} }}"
     )
-    result = runner.run(["pwsh", "-NoProfile", "-Command", script], check=False)
+    result = runner.run(
+        ["pwsh", "-NoProfile", "-Command", script],
+        check=False,
+        label="add the starship prompt to the PowerShell profile",
+    )
     if result.returncode != 0:
         runner.reporter.warn(
             "Could not update the PowerShell 7 profile; add "
@@ -310,7 +314,9 @@ def deploy_wsl_configs(
             parent = target_name.rsplit("/", 1)[0] if "/" in target_name else ""
             mkdir = f'mkdir -p "$HOME/{parent}" && ' if parent else ""
             script = f'{mkdir}cp {shlex.quote(wsl_source)} "$HOME/{target_name}"'
-            runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+            runner.run(
+                wsl_exec_command(distro, ["sh", "-c", script]), label=f"write ~/{target_name}"
+            )
 
 
 def _claude_statusline_command(*, nerdfont: bool) -> str:
@@ -348,7 +354,10 @@ def deploy_claude_statusline(
         distro = _wsl_distro(platform)
         wsl_source = _to_wsl_path(runner, distro, source)
         script = _claude_wsl_install_script(wsl_source, nerdfont=nerdfont)
-        runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+        runner.run(
+            wsl_exec_command(distro, ["sh", "-c", script]),
+            label="install the Claude Code status line",
+        )
         if _find_git_bash(platform) is None:
             runner.reporter.info(
                 "Git Bash not found; skipping the Windows-native Claude status line "
@@ -440,7 +449,7 @@ def install_img_zoom_wsl(runner: Runner, platform: PlatformInfo, *, update: bool
     distro = _wsl_distro(platform)
     source = _to_wsl_path(runner, distro, IMG_ZOOM_SOURCE)
     script = _img_zoom_install_script(source, update=update)
-    runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+    runner.run(wsl_exec_command(distro, ["sh", "-c", script]), label="install img-zoom")
 
 
 def _windows_uv(runner: Runner, platform: PlatformInfo) -> str:
@@ -458,7 +467,7 @@ def install_img_zoom_native(
 ) -> None:
     if not _is_windows_host(platform):
         script = _img_zoom_install_script(IMG_ZOOM_SOURCE.as_posix(), update=update)
-        runner.run(["sh", "-c", script])
+        runner.run(["sh", "-c", script], label="install img-zoom")
         return
     uv = _windows_uv(runner, platform)
     stage = _windows_img_zoom_stage(platform)
@@ -508,7 +517,9 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
         distro = _wsl_distro(platform)
         wsl_source = _to_wsl_path(runner, distro, source)
         script = _claude_skill_wsl_install_script(wsl_source, _IMG_ZOOM_SKILL)
-        runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
+        runner.run(
+            wsl_exec_command(distro, ["sh", "-c", script]), label="install the img-zoom skill"
+        )
     _deploy_img_zoom_skill_native(runner, platform, source)
 
 
@@ -542,6 +553,7 @@ TOOL_SKILL_COMMANDS: dict[str, tuple[str, ...]] = {
     "tool-yq": ("yq",),
     "tool-zsh": ("zsh",),
 }
+_CLI_TOOLS_LABEL = "install the basicly cli-tools skills"
 _SKILLS_USER = ["tool", "run", "--from", BASICLY_SPEC, "basicly", "skills-user"]
 
 
@@ -592,9 +604,11 @@ def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> 
 def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:
     script = _cli_tools_skills_script()
     if not _is_windows_host(platform):
-        runner.run(["sh", "-c", script])
+        runner.run(["sh", "-c", script], label=_CLI_TOOLS_LABEL)
         return
-    runner.run(wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]))
+    runner.run(
+        wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]), label=_CLI_TOOLS_LABEL
+    )
     _deploy_cli_tools_skills_windows(runner, platform)
 
 
