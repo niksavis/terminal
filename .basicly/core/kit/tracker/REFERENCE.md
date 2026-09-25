@@ -73,7 +73,7 @@ python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Sh
 ### assign
 
 Reserve a record for a person without changing its status, so that others see it is taken.
-The holder is `--to`, or else `git config user.name`. A record that someone else holds is
+The holder is `--to`, or else the name you choose with `BASICLY_HOLDER` or `git config basicly.holder`, or else `git config user.name`. The ledger records that name, so choose a pseudonym when your git name must not be committed. A record that someone else holds is
 refused with the holder's name; `--take` takes it on purpose, and the ledger records that.
 
 ```sh

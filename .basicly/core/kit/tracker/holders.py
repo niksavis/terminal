@@ -31,12 +31,14 @@ fields = _load("fields.py", "basicly_tracker_kit_fields")
 
 HOLDER_FIELD = events.HOLDER_FIELD
 TAKE_KEY = events.TAKE_KEY
+HOLDER_VARIABLE = "BASICLY_HOLDER"
 NAME_VARIABLES = ("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME")
 USER_SECTION = "[user]"
+HOLDER_SECTION = "[basicly]"
 SECONDS_PER_DAY = 86400
 
 
-def _config_name(path: Path) -> str:
+def _config_name(path: Path, section: str = USER_SECTION, name: str = "name") -> str:
 
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -46,10 +48,10 @@ def _config_name(path: Path) -> str:
     for raw in lines:
         line = raw.strip()
         if line.startswith("["):
-            inside = line.lower() == USER_SECTION
+            inside = line.lower() == section
             continue
         key, sep, value = line.partition("=")
-        if inside and sep and key.strip().lower() == "name":
+        if inside and sep and key.strip().lower() == name:
             return value.strip().strip('"')
     return ""
 
@@ -73,10 +75,17 @@ def _config_files(start: Path, environ: Mapping[str, str]) -> list[Path]:
 def default_holder(start: Path | str, environ: Mapping[str, str] | None = None) -> str:
 
     values = os.environ if environ is None else environ
+    if values.get(HOLDER_VARIABLE, "").strip():
+        return values[HOLDER_VARIABLE].strip()
+    files = _config_files(Path(start).resolve(), values)
+    for path in files:
+        chosen = _config_name(path, HOLDER_SECTION, "holder")
+        if chosen:
+            return chosen
     for variable in NAME_VARIABLES:
         if values.get(variable, "").strip():
             return values[variable].strip()
-    for path in _config_files(Path(start).resolve(), values):
+    for path in files:
         name = _config_name(path)
         if name:
             return name

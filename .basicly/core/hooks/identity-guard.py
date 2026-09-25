@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import subprocess  # nosec B404
 import sys
@@ -60,6 +61,59 @@ def check_identity(name: str, email: str, allow_email: str = "") -> tuple[bool, 
     return True, f"git identity OK: {name} <{email}>"
 
 
+LEDGER_PREFIX = ".basicly/ledger/"
+HOLDER_FIELD = "assignee"
+MIN_NAME_CHARS = 3
+
+
+def added_lines(repo_root: Path) -> list[tuple[str, str]]:
+    result = subprocess.run(
+        ["git", "diff", "--cached", "-U0", "--no-color"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )  # nosec
+    found, path = [], ""
+    for line in result.stdout.splitlines():
+        if line.startswith("+++ "):
+            path = line[6:] if line.startswith("+++ b/") else ""
+        elif line.startswith("+") and path:
+            found.append((path, line[1:]))
+    return found
+
+
+def _forms(name: str) -> tuple[str, ...]:
+    return (name, json.dumps(name)[1:-1])
+
+
+def _only_the_holder(line: str, name: str, holder: str) -> bool:
+    try:
+        event = json.loads(line)
+    except ValueError:
+        return False
+    payload = event.get("payload") if isinstance(event, dict) else None
+    if not isinstance(payload, dict) or payload.get("name") != HOLDER_FIELD:
+        return False
+    if payload.get("value") != holder:
+        return False
+    rest = json.dumps({**event, "payload": {**payload, "value": ""}})
+    return not any(form in rest for form in _forms(name))
+
+
+def name_findings(lines: list[tuple[str, str]], name: str, holder: str) -> list[str]:
+    if len(name) < MIN_NAME_CHARS:
+        return []
+    findings = []
+    for path, line in lines:
+        if not any(form in line for form in _forms(name)):
+            continue
+        if path.startswith(LEDGER_PREFIX) and _only_the_holder(line, name, holder):
+            continue
+        findings.append(path)
+    return sorted(set(findings))
+
+
 def main() -> int:
     repo_root = Path.cwd()
     name = git_config("user.name", repo_root)
@@ -69,6 +123,15 @@ def main() -> int:
     ok, message = check_identity(name, email, allow_email)
     if not ok:
         print(f"ERROR: {message}", file=sys.stderr)
+        return 1
+    holder = git_config("basicly.holder", repo_root) or name
+    if found := name_findings(added_lines(repo_root), name, holder):
+        print(
+            f"ERROR: the commit adds your git user.name to {', '.join(found)}. Commit no user "
+            "name; the tracker holder field is the one exception, and "
+            "`git config basicly.holder <name>` chooses what it records",
+            file=sys.stderr,
+        )
         return 1
     print(message)
 
