@@ -1127,9 +1127,13 @@ def test_deploy_cli_tools_skills_windows_ignores_windows_builtins(
     runner = Runner(dry_run=False, reporter=RecordingReporter())
     fake = _FakeRun()
     monkeypatch.setattr(runner, "run", fake)
-    found = {"tree": "C:\\WINDOWS\\system32\\tree.COM", "rg": "C:\\tools\\rg.exe"}
+    found = {
+        "tree": "C:\\WINDOWS\\system32\\tree.COM",
+        "curl": "C:\\WINDOWS\\system32\\curl.exe",
+        "rg": "C:\\tools\\rg.exe",
+    }
     monkeypatch.setattr(runner, "which", found.get)
 
     deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
 
-    assert fake.commands[-1][-2:] == ["cli-tools", "tool-ripgrep"]
+    assert fake.commands[-1][-3:] == ["cli-tools", "tool-curl", "tool-ripgrep"]

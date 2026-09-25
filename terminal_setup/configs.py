@@ -579,14 +579,19 @@ def _cli_tools_skills_script() -> str:
     )
 
 
-def _is_windows_builtin(path: str) -> bool:
+WINDOWS_BUILTIN_IMPOSTORS = frozenset({"tree"})
+
+
+def _is_windows_impostor(command: str, path: str) -> bool:
     system_root = PureWindowsPath(os.environ.get("SYSTEMROOT") or "C:\\Windows")
-    return PureWindowsPath(path).is_relative_to(system_root)
+    return command in WINDOWS_BUILTIN_IMPOSTORS and PureWindowsPath(path).is_relative_to(
+        system_root
+    )
 
 
 def _native_tool_present(runner: Runner, platform: PlatformInfo, command: str) -> bool:
     found = runner.which(command)
-    if found and not _is_windows_builtin(found):
+    if found and not _is_windows_impostor(command, found):
         return True
     local_bin = platform.home / ".local" / "bin"
     return (local_bin / command).exists() or (local_bin / f"{command}.exe").exists()
