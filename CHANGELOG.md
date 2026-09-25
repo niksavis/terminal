@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.6 - 2026-09-25
+
+Delta: v0.9.5..v0.9.6
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.18.14**, the latest release. The skills are unchanged from v0.9.5 (term-jmj2d).
+- **Maintainers: a safer auto-mode trust suggestion.** The basicly harness moves from 0.18.13 to 0.18.14. `basicly permissions-check` now suggests keeping `"$defaults"` and naming each trusted repository, not trusting the whole account, which would mix private and public repositories. The repository's permission rules are unchanged (term-jmj2d).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.6 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-jmj2d) (99e675f)
+- chore(harness): upgrade basicly to v0-18-14 and repin setup skills (term-jmj2d) (366d985)
+
 ## v0.9.5 - 2026-09-25
 
 Delta: v0.9.4..v0.9.5
