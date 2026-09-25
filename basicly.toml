@@ -53,7 +53,6 @@ rank1_floor = 0.85
 # It has to be here before `.beads/` is deleted, or the only record of our own
 # id namespace goes with the directory.
 [tracker]
-prefix = "term"
 # One writer lands on main and this repo opens no pull requests, so the fold a
 # merge triggers cannot conflict a PR branch — the case v0.16.0 made opt-in.
 fold_on_merge = true

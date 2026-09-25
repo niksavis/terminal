@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import importlib.util
 import json
 import mimetypes
@@ -8,7 +9,7 @@ import os
 import sys
 from collections.abc import Callable, Sequence
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlsplit
@@ -41,6 +42,10 @@ DEFAULT_PORT = 8765
 SCHEMA = "basicly.tracker.api.v1"
 WEB_DIR = _HERE / "web"
 LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
+MAX_PORT = 65535
+WINSOCK_ADDRESS_IN_USE = 10048
+ADDRESS_IN_USE = frozenset({errno.EADDRINUSE, WINSOCK_ADDRESS_IN_USE})
+EXIT_PORT_IN_USE = 1
 JSON_TYPE = "application/json"
 MAX_BODY_BYTES = 1_000_000
 
@@ -216,6 +221,11 @@ class Handler(BaseHTTPRequestHandler):
         self._handle("PATCH")
 
 
+class LookupFreeServer(ThreadingHTTPServer):
+    def server_bind(self) -> None:
+        super(HTTPServer, self).server_bind()
+
+
 def make_server(
     ledger: Path, host: str, port: int, *, web: Path = WEB_DIR, redact: Any = None
 ) -> ThreadingHTTPServer:
@@ -225,7 +235,27 @@ def make_server(
         (Handler,),
         {"ledger": ledger, "web": web, "bound": host, "redact": staticmethod(redact)},
     )
-    return ThreadingHTTPServer((host, port), handler)
+    return LookupFreeServer((host, port), handler)
+
+
+def address_in_use(error: OSError) -> bool:
+    return error.errno in ADDRESS_IN_USE
+
+
+def busy_port_refusal(host: str, port: int, relaunch: str) -> str:
+
+    other = port + 1 if port < MAX_PORT else DEFAULT_PORT
+    return (
+        f"board: port {port} is in use on {host}, so nothing was served; start it on another "
+        f"port with `{relaunch} --port {other}`, or with `--port 0` to let the system choose "
+        "a free one"
+    )
+
+
+def relaunch(program: str, directory: str) -> str:
+
+    starts = f"python3 {program}" if program.endswith(".py") else Path(program).name
+    return f"{starts} serve {directory}"
 
 
 def parser() -> argparse.ArgumentParser:
@@ -254,7 +284,14 @@ def run(args: Any, redact: Callable[[str], str] | None = None) -> int:
     serve_as_a_person()
     ledger = tracker_cli().commands.resolve_ledger(args.directory)
     web = Path(args.web) if args.web else WEB_DIR
-    server = make_server(ledger, args.host, args.port, web=web, redact=redact)
+    try:
+        server = make_server(ledger, args.host, args.port, web=web, redact=redact)
+    except OSError as error:
+        if not address_in_use(error):
+            raise
+        bound = "" if args.host == DEFAULT_HOST else f" --host {args.host}"
+        sys.stderr.write(busy_port_refusal(args.host, args.port, args.relaunch + bound) + "\n")
+        return EXIT_PORT_IN_USE
     host, port = server.server_address[:2]
     if args.host not in LOOPBACK:
         sys.stderr.write(f"board: {args.host} is not loopback; the network can write\n")
@@ -269,7 +306,9 @@ def run(args: Any, redact: Callable[[str], str] | None = None) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    return run(parser().parse_args(argv))
+    args = parser().parse_args(argv)
+    args.relaunch = relaunch(sys.argv[0], args.directory)
+    return run(args)
 
 
 if __name__ == "__main__":
