@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.5 - 2026-09-25
+
+Delta: v0.9.4..v0.9.5
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.18.13**, the latest release. The skills are unchanged from v0.9.4 (term-k83wc).
+- **Maintainers: fewer permission prompts in this repository.** The basicly harness moves from 0.18.12 to 0.18.13, which adds 22 narrow allow rules to `.claude/settings.json` for read-only git and basicly check commands; these still apply in Claude Code's auto mode. None of the repository's own rules were removed. `basicly permissions-check` now also warns when your personal auto-mode settings trust only one repository (term-k83wc).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.5 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-k83wc) (d66f788)
+- chore(harness): upgrade basicly to v0-18-13 and repin setup skills (term-k83wc) (434f5a6)
+
 ## v0.9.4 - 2026-09-25
 
 Delta: v0.9.3..v0.9.4
