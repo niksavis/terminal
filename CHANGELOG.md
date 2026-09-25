@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.2 - 2026-09-25
+
+Delta: v0.9.1..v0.9.2
+
+### Highlights
+
+- **Fixed: installing WezTerm or starship on Windows could fail after a few runs.** Both looked up their latest release through the GitHub API, which allows 60 requests an hour without a token. They now read the release page's redirect, which has no such limit, and they follow WezTerm's move from `wez/wezterm` to `wezterm/wezterm` (term-l7fym).
+- **Maintainers: the local commit hook now runs pyright and bandit**, the same checks CI runs, so a commit that CI would refuse is refused before the push. The changelog generator now writes the `### Commit delta (auto-generated)` heading with the blank line markdownlint requires (term-l7fym).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-l7fym) (c301732)
+- fix(setup): gate pyright and bandit locally and read windows releases without the api (term-l7fym) (a9445b6)
+- chore(tracker): close the v0-9-0 and v0-9-1 release records (term-hfntv) (8b8739d)
+
 ## v0.9.1 - 2026-09-25
 
 Delta: v0.9.0..v0.9.1
