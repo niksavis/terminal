@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.1 - 2026-09-25
+
+Delta: v0.9.0..v0.9.1
+
+### Highlights
+
+- **Claude Code's tool skills now say when to use them.** Each `tool-*` skill that setup writes into `~/.claude/skills` carries a one-line description, taken from the skill's opening paragraph. For example, `tool-git` now reads "Read the working tree state and history, review diffs, and stage focused changes", where before it was just "git". Agents no longer report the tool skills as unusable. This comes from basicly v0.18.10 (term-gifrh).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.1 terminal-setup --only config`, then start a new Claude Code session; a running session keeps the old skill list.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-gifrh) (1a7b941)
+- chore(harness): upgrade basicly to v0-18-10 and repin setup skills (term-gifrh) (27edebd)
+
 ## v0.9.0 - 2026-09-25
 
 Delta: v0.8.1..v0.9.0
