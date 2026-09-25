@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.4 - 2026-09-25
+
+Delta: v0.9.3..v0.9.4
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.18.12**, the latest release. The skills themselves are unchanged from v0.9.3, with a description for every tool skill (term-ekes8).
+- **Maintainers: the basicly harness moves from 0.18.10 to 0.18.12.** v0.18.11 was skipped, because its own CI failed on macOS. The tracker's id prefix (`term`) moved from `basicly.toml` to `.basicly/ledger/template.json`, and new records still get `term-` ids (term-ekes8).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.4 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-ekes8) (0ad1f29)
+- chore(harness): upgrade basicly to v0-18-12 and repin setup skills (term-ekes8) (1724bec)
+
 ## v0.9.3 - 2026-09-25
 
 Delta: v0.9.2..v0.9.3
