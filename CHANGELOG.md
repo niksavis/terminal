@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.7 - 2026-09-25
+
+Delta: v0.9.6..v0.9.7
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.18.15**, the latest release. The skills it installs for you are unchanged from v0.9.6 (term-1sg0i).
+- **Maintainers: every tool skill in this repository now has a description.** The basicly harness moves from 0.18.14 to 0.18.15. Before, the tool skills projected into `.claude/skills` and `.agents/skills` had no `description` line, so Claude Code could not tell when to use them. Now each one has the same one-line description that setup writes for your personal skills. `basicly catalog lint` now warns that the skill listing is over its token budget; this does not block anything. The repository's permission rules are unchanged (term-1sg0i).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.7 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-1sg0i) (b6c2bdc)
+- chore(harness): upgrade basicly to v0-18-15 and repin setup skills (term-1sg0i) (dab2c69)
+- chore(tracker): record the session handover (term-99z) (e243b0b)
+- chore(tracker): close the v0-9-4 to v0-9-6 upgrade records (term-jmj2d) (3372dd7)
+
 ## v0.9.6 - 2026-09-25
 
 Delta: v0.9.5..v0.9.6
