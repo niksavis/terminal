@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.3 - 2026-09-25
+
+Delta: v0.9.2..v0.9.3
+
+### Highlights
+
+- **Fixed: on Windows, Claude Code lost its `tool-curl` skill in v0.9.0.** The fix that stopped counting the Windows built-in `tree.com` as `tree` also stopped counting the `curl.exe` that Windows ships, which is real curl. Setup now ignores only `tree` under the Windows system directory, so `tool-curl` is written again (term-2irs1).
+- **To pick it up** on Windows, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.3 terminal-setup --only config`, then start a new Claude Code session.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-2irs1) (08960cb)
+- fix(setup): keep the windows curl skill and skip only the tree impostor (term-2irs1) (63e51a0)
+
 ## v0.9.2 - 2026-09-25
 
 Delta: v0.9.1..v0.9.2
