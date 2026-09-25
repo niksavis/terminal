@@ -82,6 +82,7 @@ IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a 
 
 - Scope: cross-platform terminal tooling and automation.
 - Platforms: Windows, Linux, macOS.
+- Every setup feature covers a Windows host (the WSL guest and Windows-native), a run inside WSL, and both entry points: a clone and `uvx --from git+...`. Do not ask whether Windows-native is needed; it is. Probe the uvx entry from outside the repo, because a probe inside it imports the clone.
 - Python: managed with `uv`.
 - Script harness and CI helpers: `.scripts/` (prefer its entry points over inline command blocks).
 - Shared skills: `.claude/skills/`.
