@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.0 - 2026-09-25
+
+Delta: v0.8.1..v0.9.0
+
+### Highlights
+
+- **A fresh Ubuntu WSL now gets every tool in one run.** Nine tools used to be compiled with `cargo`, which fails on a fresh distro because it has no C compiler. Now fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs and direnv come from each project's latest release binary. Each binary is checked against the sha256 digest GitHub records for it. Installs take seconds instead of minutes, and rustup and cargo are no longer installed (term-hfntv).
+- **Re-runs tell you what is out of date.** A tool at the latest release is skipped with "is up to date". An older one is left alone with "rerun with --update", and `--update` installs the latest. Checking for a new release no longer uses the GitHub API, so repeated runs do not hit its rate limit; if a download does, set `GITHUB_TOKEN` (term-hfntv).
+- **New: one sudo step for the system packages a fresh WSL lacks.** When `zsh`, `tree`, `podman`, `bubblewrap` or `socat` are missing, setup asks once to run `sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y` for exactly those packages. If you decline, if the run cannot prompt, or with `--no-sudo`, it prints the command instead. `podman` lets you run container images; `bubblewrap` and `socat` are what the Claude Code sandbox (`/sandbox`) needs on WSL2. `podman-docker`, which adds a `docker` command backed by podman, is added only when no Docker is installed, because it would replace an existing `docker.io` (term-hfntv).
+- **Fixed: on Windows, setup wrote a `tool-tree` skill for the built-in `tree.com`**, which is not GNU tree. Programs under the Windows system directory no longer count as installed tools (term-hfntv).
+- **To pick it up**, run the full setup (not `--only config`): `uvx --from git+https://github.com/niksavis/terminal@v0.9.0 terminal-setup`. On a fresh WSL, answer yes to the apt prompt, or run the command it prints.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-hfntv) (fe71b70)
+- feat(setup): prepare a fresh wsl without a compiler and in one apt step (term-hfntv) (83630b1)
+
 ## v0.8.1 - 2026-09-25
 
 Delta: v0.8.0..v0.8.1
