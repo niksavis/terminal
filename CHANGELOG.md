@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.8.1 - 2026-09-25
+
+Delta: v0.8.0..v0.8.1
+
+### Highlights
+
+- **Fixed: setup output no longer prints shell scripts that look like warnings.** Each step that runs an inline script used to echo the whole script, so a run from Windows showed lines such as `Claude Code not detected ($HOME/.claude missing)` even when Claude Code was there and the step succeeded. Setup now prints one short line per step, for example `wsl -d Ubuntu-24.04 --exec sh: install the basicly cli-tools skills` or `pwsh -NoProfile: add the starship prompt to the PowerShell profile`. What the steps do, and any message or error they print, is unchanged (term-77zcv).
+- **To pick it up**, nothing is needed beyond running setup from this version: `uvx --from git+https://github.com/niksavis/terminal@v0.8.1 terminal-setup`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-77zcv) (083db4b)
+- fix(setup): print a label for scripted steps instead of the script (term-77zcv) (a5b6be1)
+- chore(tracker): record the first real v0-8-0 setup run (term-h88v7) (f7a6239)
+- chore(tracker): close the v0-8-0 release record (term-h88v7) (bfb68c6)
+
 ## v0.8.0 - 2026-09-25
 
 Delta: v0.7.0..v0.8.0
