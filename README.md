@@ -18,7 +18,37 @@ Already installed? Re-apply only the configs (fast, no package installs) — for
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only config
 ```
 
+Update every user-local tool that is older than its latest release:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update
+```
+
+Check what is installed and configured:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+```
+
+These commands run unchanged in PowerShell, Git Bash, a WSL shell, Linux and macOS. Run from Windows, they set up the Windows host and the default WSL distro together.
+
 For a reproducible install pinned to a version, use the command shown on the [latest release](https://github.com/niksavis/terminal/releases/latest) page.
+
+### New Windows machine
+
+Run these in PowerShell:
+
+1. Install WSL2 with Ubuntu, then open it once to create your Linux user:
+
+   ```powershell
+   wsl --install -d Ubuntu-24.04
+   ```
+
+2. Install [uv](https://docs.astral.sh/uv/) on Windows.
+3. Run the Quick install command above from PowerShell. Setup asks once for your Linux password, to install the system packages that only apt provides (see [CLI options](#cli-options)).
+4. Restart the terminal so the new PATH takes effect, then start `wezterm`.
+
+Setup always targets the **default** WSL distro. With more than one distro, check which one is the default with `wsl -l -v` and change it with `wsl --set-default <name>` before you run setup.
 
 No admin rights are needed on Windows, WSL, or macOS: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
@@ -30,7 +60,7 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - Better defaults for multitasking: WezTerm + tmux + zsh + starship.
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
 - Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v26). Windows-native Node is managed outside this setup, so the major is pinned here to keep both sides on one line — check `node --version` on each if you rely on them matching.
-- Safe re-runs: missing tools install, up-to-date tools skip, and updates prompt for `y/n`.
+- Safe re-runs: missing tools install and up-to-date tools skip. An out-of-date tool is reported, and `--update` installs the latest release; only lazygit and tools installed through a package manager (apt, Homebrew, pacman, dnf) ask `y/n` to update.
 - No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
 
 ## Contributor setup (required once after clone)
@@ -76,7 +106,7 @@ Install this repository's terminal setup from the current directory.
 1. Ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If missing, stop and tell me what to install.
 2. Run `uv run python setup-terminal.py` (user-local, no admin required).
 3. Only if a system-wide install is explicitly wanted, run `uv run python setup-terminal.py --system-install` (needs admin/sudo).
-4. If any sudo/password or y/n update prompt appears, pause and ask me.
+4. If a sudo password or y/n prompt appears, pause and ask me.
 5. When done, run `uv run python setup-terminal.py --only report` and summarize what was installed, skipped, and any manual next steps.
 ```
 
