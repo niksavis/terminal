@@ -8,6 +8,7 @@ import mimetypes
 import os
 import sys
 from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
@@ -46,6 +47,8 @@ MAX_PORT = 65535
 WINSOCK_ADDRESS_IN_USE = 10048
 ADDRESS_IN_USE = frozenset({errno.EADDRINUSE, WINSOCK_ADDRESS_IN_USE})
 EXIT_PORT_IN_USE = 1
+KIT_MODULES = ("basicly_tracker_kit_", "basicly_board_kit_")
+NAMED_CHANGES = 3
 JSON_TYPE = "application/json"
 MAX_BODY_BYTES = 1_000_000
 
@@ -114,6 +117,58 @@ def answer(argv: list, redact: Callable[[str], str] | None, *, read: bool = Fals
     return (HTTPStatus.OK if verdict else HTTPStatus.UNPROCESSABLE_ENTITY), report
 
 
+def loaded_kit_files() -> tuple[Path, ...]:
+
+    tracker_cli()
+    files = {Path(__file__).resolve()}
+    for name, module in list(sys.modules.items()):
+        where = getattr(module, "__file__", None)
+        if name.startswith(KIT_MODULES) and where:
+            files.add(Path(where).resolve())
+    return tuple(sorted(files))
+
+
+def kit_stamps(files: Sequence[Path]) -> tuple[tuple[int, int] | None, ...]:
+
+    stamps: list[tuple[int, int] | None] = []
+    for path in files:
+        try:
+            held = path.stat()
+        except OSError:
+            stamps.append(None)
+            continue
+        stamps.append((held.st_mtime_ns, held.st_size))
+    return tuple(stamps)
+
+
+class LoadedKit:
+    def __init__(self, restart: str) -> None:
+        self.files = loaded_kit_files()
+        self.stamps = kit_stamps(self.files)
+        self.started = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        self.restart = restart
+
+    def refuse_a_changed_kit(self) -> None:
+
+        now = kit_stamps(self.files)
+        changed = [
+            f"{path.parent.name}/{path.name}"
+            for path, then, held in zip(self.files, self.stamps, now, strict=True)
+            if then != held
+        ]
+        if not changed:
+            return
+        named = ", ".join(changed[:NAMED_CHANGES])
+        more = len(changed) - NAMED_CHANGES
+        named += f" and {more} more" if more > 0 else ""
+        raise routes.refuse(
+            f"the kit files changed on disk since this server started at {self.started} "
+            f"({named}), and this server still runs the old kit; stop it and start it again "
+            f"with `{self.restart}`",
+            HTTPStatus.SERVICE_UNAVAILABLE,
+        )
+
+
 def _host_of(header: str) -> str:
     if header.startswith("["):
         return header[1:].partition("]")[0]
@@ -125,6 +180,7 @@ class Handler(BaseHTTPRequestHandler):
     web: Path = WEB_DIR
     bound: str = "127.0.0.1"
     redact: Any = None
+    kit: LoadedKit
 
     def _send(self, status: HTTPStatus, body: bytes, kind: str) -> None:
         try:
@@ -182,6 +238,8 @@ class Handler(BaseHTTPRequestHandler):
         split = urlsplit(self.path)
         try:
             self._trusted()
+            if split.path.rstrip("/") == API or split.path.startswith(API + "/"):
+                self.kit.refuse_a_changed_kit()
             if method == "GET" and split.path.rstrip("/") == API:
                 self._json(HTTPStatus.OK, api_index(self.ledger))
             elif method == "GET" and split.path.rstrip("/") == API + "/version":
@@ -226,15 +284,19 @@ class LookupFreeServer(ThreadingHTTPServer):
         super(HTTPServer, self).server_bind()
 
 
-def make_server(
-    ledger: Path, host: str, port: int, *, web: Path = WEB_DIR, redact: Any = None
+def make_server(  # noqa: PLR0913 - one keyword per fact the handler binds; a settings object only moves the list
+    ledger: Path,
+    host: str,
+    port: int,
+    *,
+    web: Path = WEB_DIR,
+    redact: Any = None,
+    restart: str = "",
 ) -> ThreadingHTTPServer:
 
-    handler = type(
-        "BoundHandler",
-        (Handler,),
-        {"ledger": ledger, "web": web, "bound": host, "redact": staticmethod(redact)},
-    )
+    kit = LoadedKit(restart or relaunch(str(_HERE / "server.py"), str(ledger)))
+    bound = {"ledger": ledger, "web": web, "bound": host, "kit": kit}
+    handler = type("BoundHandler", (Handler,), {**bound, "redact": staticmethod(redact)})
     return LookupFreeServer((host, port), handler)
 
 
@@ -284,13 +346,14 @@ def run(args: Any, redact: Callable[[str], str] | None = None) -> int:
     serve_as_a_person()
     ledger = tracker_cli().commands.resolve_ledger(args.directory)
     web = Path(args.web) if args.web else WEB_DIR
+    hosted = args.relaunch + ("" if args.host == DEFAULT_HOST else f" --host {args.host}")
+    restart = hosted + ("" if args.port == DEFAULT_PORT else f" --port {args.port}")
     try:
-        server = make_server(ledger, args.host, args.port, web=web, redact=redact)
+        server = make_server(ledger, args.host, args.port, web=web, redact=redact, restart=restart)
     except OSError as error:
         if not address_in_use(error):
             raise
-        bound = "" if args.host == DEFAULT_HOST else f" --host {args.host}"
-        sys.stderr.write(busy_port_refusal(args.host, args.port, args.relaunch + bound) + "\n")
+        sys.stderr.write(busy_port_refusal(args.host, args.port, hosted) + "\n")
         return EXIT_PORT_IN_USE
     host, port = server.server_address[:2]
     if args.host not in LOOPBACK:

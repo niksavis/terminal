@@ -120,6 +120,7 @@
   form.grid select { min-width: 10rem; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--text); font-size: .9rem; }
   .inline { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
   #toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 34rem; padding: .6rem .9rem; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 24px #0004; display: none; }
+  #outage { margin: .6rem 1.2rem 0; }
   #toast.show { display: block; } #toast.bad { border-color: var(--bad); color: var(--bad); }
   .back { display: none; }
   @media (max-width: 900px) {
@@ -138,6 +139,7 @@
   <div id="counts" aria-live="polite"></div>
   <button class="btn" id="new" type="button">New story</button>
 </header>
+<div id="outage" class="notice bad" role="alert" hidden></div>
 <main>
   <div id="list-pane">
     <div class="toolbar" id="tabs" role="toolbar" aria-label="Views"></div>
@@ -260,12 +262,22 @@ function person(name) {
   return name === state.me ? "you" : name;
 }
 
+function outage(message) {
+  const node = document.getElementById("outage");
+  node.textContent = message ? "The board cannot read the tracker: " + message : "";
+  node.hidden = !message;
+}
+
 async function load() {
   const version = await call("GET", "/version").then((stamp) => stamp.version, () => "");
   const [index, ready, blocked, refine, ...lists] = await Promise.all([
     call("GET", ""), call("GET", "/ready?limit=5000"), call("GET", "/blocked"), call("GET", "/refine"),
     ...STATUSES.map((status) => call("GET", "/records?status=" + status)),
-  ]);
+  ]).catch((error) => {
+    outage(error.message);
+    throw error;
+  });
+  outage("");
   state.version = version;
   state.me = index.holder || "";
   state.edgeTypes = index.edge_types || state.edgeTypes;

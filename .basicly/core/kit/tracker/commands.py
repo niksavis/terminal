@@ -415,7 +415,7 @@ def claim(
         events.Draft(record, events.KIND_STATUS, {"status": "in_progress"}),
     ]
     with events.LedgerLock(ledger) as lock:
-        _require(ledger, record)
+        holders.refuse_a_claim_on_a_closed_record(_require(ledger, record), ledger, record)
         return _append(ledger, drafts, redact, lock)
 
 

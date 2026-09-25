@@ -124,6 +124,26 @@ def refuse(states: Mapping[str, Any], drafts: Sequence[Any]) -> None:
 IN_PROGRESS = "in_progress"
 
 
+def _kit_cli() -> str:
+
+    script = _HERE / "cli.py"
+    try:
+        return script.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return script.as_posix()
+
+
+def refuse_a_claim_on_a_closed_record(state: Any, ledger: Path, record: str) -> None:
+
+    if state.status != events.CLOSING_STATUS:
+        return
+    reopen = f"python3 {_kit_cli()} update {ledger.as_posix()} {record} --status open"
+    raise fields.RefusedFieldError(
+        f"{record} is closed, and a claim never reopens a closed record; reopen it on "
+        f"purpose with `{reopen}`, then claim it"
+    )
+
+
 def claimed_by(states: Mapping[str, Any], drafts: Sequence[Any], name: str) -> list:
 
     added = []
