@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
-from .prerequisites import _add_to_user_path
+from .prerequisites import _add_to_user_path, attempt
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -268,6 +268,11 @@ def deploy_all(  # noqa: PLR0913
     if include_claude:
         deploy_claude_statusline(runner, platform, nerdfont=claude_nerdfont)
         deploy_claude_img_zoom_skill(runner, platform)
+        attempt(
+            runner,
+            "install the basicly cli-tools skills",
+            lambda: deploy_claude_cli_tools_skills(runner, platform),
+        )
 
 
 def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
@@ -394,12 +399,16 @@ def _is_windows_host(platform: PlatformInfo) -> bool:
     return platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
 
 
+_UV_RESOLVE_POSIX = (
+    'uv="${UV:-}"; [ -x "$uv" ] || uv="$(command -v uv)" || uv="$HOME/.local/bin/uv"; '
+    f'[ -x "$uv" ] || {{ echo "{_UV_MISSING}" >&2; exit 1; }}; '
+)
+
+
 def _img_zoom_install_script(source: str, *, update: bool) -> str:
     upgrade = " --upgrade" if update else ""
     return (
-        'uv="${UV:-}"; [ -x "$uv" ] || uv="$(command -v uv)" || uv="$HOME/.local/bin/uv"; '
-        f'[ -x "$uv" ] || {{ echo "{_UV_MISSING}" >&2; exit 1; }}; '
-        f'dest="{_IMG_ZOOM_STAGE_POSIX}"; '
+        _UV_RESOLVE_POSIX + f'dest="{_IMG_ZOOM_STAGE_POSIX}"; '
         'rm -rf "$dest" && mkdir -p "$dest" && '
         f'cp -R {shlex.quote(source)}/. "$dest"/ && '
         'find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} + || exit 1; '
@@ -501,6 +510,92 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
         script = _claude_skill_wsl_install_script(wsl_source, _IMG_ZOOM_SKILL)
         runner.run(wsl_exec_command(distro, ["sh", "-c", script]))
     _deploy_img_zoom_skill_native(runner, platform, source)
+
+
+BASICLY_REF = "v0.18.8"
+BASICLY_SPEC = f"git+https://github.com/niksavis/basicly@{BASICLY_REF}"
+CLI_TOOLS_SKILL = "cli-tools"
+TOOL_SKILL_COMMANDS: dict[str, tuple[str, ...]] = {
+    "tool-ast-grep": ("ast-grep",),
+    "tool-bat": ("bat", "batcat"),
+    "tool-curl": ("curl",),
+    "tool-direnv": ("direnv",),
+    "tool-fd": ("fd", "fdfind"),
+    "tool-fzf": ("fzf",),
+    "tool-git": ("git",),
+    "tool-git-delta": ("delta",),
+    "tool-git-lfs": ("git-lfs",),
+    "tool-jq": ("jq",),
+    "tool-just": ("just",),
+    "tool-lazygit": ("lazygit",),
+    "tool-ripgrep": ("rg",),
+    "tool-sd": ("sd",),
+    "tool-shellcheck": ("shellcheck",),
+    "tool-starship": ("starship",),
+    "tool-tmux": ("tmux",),
+    "tool-tree": ("tree",),
+    "tool-typos": ("typos",),
+    "tool-uv": ("uv",),
+    "tool-wezterm": ("wezterm",),
+    "tool-wget": ("wget",),
+    "tool-xh": ("xh",),
+    "tool-yq": ("yq",),
+    "tool-zsh": ("zsh",),
+}
+_SKILLS_USER = ["tool", "run", "--from", BASICLY_SPEC, "basicly", "skills-user"]
+
+
+def _cli_tools_skills_script() -> str:
+    checks = "".join(
+        "if "
+        + " || ".join(
+            f'command -v {command} >/dev/null 2>&1 || [ -x "$HOME/.local/bin/{command}" ]'
+            for command in commands
+        )
+        + f'; then set -- "$@" {skill}; fi; '
+        for skill, commands in TOOL_SKILL_COMMANDS.items()
+    )
+    return (
+        '[ -d "$HOME/.claude" ] || { echo "Claude Code not detected ($HOME/.claude missing); '
+        'skipping the cli-tools skills."; exit 0; }; '
+        + _UV_RESOLVE_POSIX
+        + f"set -- {CLI_TOOLS_SKILL}; "
+        + checks
+        + '"$uv" '
+        + " ".join(shlex.quote(part) for part in _SKILLS_USER)
+        + ' "$@"'
+    )
+
+
+def _native_tool_present(runner: Runner, platform: PlatformInfo, command: str) -> bool:
+    if runner.which(command):
+        return True
+    local_bin = platform.home / ".local" / "bin"
+    return (local_bin / command).exists() or (local_bin / f"{command}.exe").exists()
+
+
+def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> None:
+    if not (platform.home / ".claude").is_dir():
+        runner.reporter.info(
+            "Claude Code not detected (~/.claude missing); skipping the cli-tools skills."
+        )
+        return
+    skills = [
+        skill
+        for skill, commands in TOOL_SKILL_COMMANDS.items()
+        if any(_native_tool_present(runner, platform, command) for command in commands)
+    ]
+    uv = _windows_uv(runner, platform)
+    runner.run([uv, *_SKILLS_USER, "--home", str(platform.home), CLI_TOOLS_SKILL, *skills])
+
+
+def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:
+    script = _cli_tools_skills_script()
+    if not _is_windows_host(platform):
+        runner.run(["sh", "-c", script])
+        return
+    runner.run(wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]))
+    _deploy_cli_tools_skills_windows(runner, platform)
 
 
 def _configure_vscode_terminal_windows(

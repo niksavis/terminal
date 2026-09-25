@@ -11,17 +11,23 @@ import pytest
 
 import terminal_setup.configs as configs_module
 from terminal_setup.configs import (
+    _SKILLS_USER,
     _STARSHIP_BLOCK_MARKER,
+    BASICLY_REF,
+    BASICLY_SPEC,
     CHEAT_SHEET_PATH,
     IMG_ZOOM_SOURCE,
     TEMPLATE_DIR,
+    TOOL_SKILL_COMMANDS,
     _append_guarded_block,
     _claude_skill_wsl_install_script,
+    _cli_tools_skills_script,
     _configure_git_bash_starship,
     _configure_pwsh_starship,
     _img_zoom_install_script,
     configure_vscode_terminal,
     deploy_all,
+    deploy_claude_cli_tools_skills,
     deploy_claude_img_zoom_skill,
     deploy_claude_statusline,
     deploy_micro_config,
@@ -989,3 +995,100 @@ def test_deploy_all_writes_the_skill_only_with_claude(
     )
 
     assert (claude / "skills" / "img-zoom" / "SKILL.md").exists() is include_claude
+
+
+_REPO = Path(__file__).resolve().parents[2]
+
+
+def test_basicly_pin_matches_the_installed_harness() -> None:
+    install = json.loads(
+        (_REPO / ".basicly" / "state" / "install.json").read_text(encoding="utf-8")
+    )
+
+    assert f"v{install['basicly_version']}" == BASICLY_REF
+    assert BASICLY_SPEC.endswith(f"@{BASICLY_REF}")
+
+
+def test_every_basicly_tool_skill_has_a_command_mapping() -> None:
+    catalog = sorted(
+        path.name
+        for path in (_REPO / ".basicly" / "core" / "skills").iterdir()
+        if path.name.startswith("tool-")
+    )
+
+    assert sorted(TOOL_SKILL_COMMANDS) == catalog
+
+
+def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> Path:
+    home = tmp_path / "home"
+    local_bin = home / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    if claude:
+        (home / ".claude").mkdir()
+    record = tmp_path / "argv.txt"
+    for name in ["uv", *tools]:
+        tool = local_bin / name
+        tool.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{record}"\n', encoding="utf-8")
+        tool.chmod(0o755)
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    subprocess.run(
+        ["/bin/sh", "-c", _cli_tools_skills_script()],
+        env={"HOME": str(home), "PATH": str(empty)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return record
+
+
+@_posix_only
+def test_cli_tools_script_passes_the_skill_of_each_present_tool(tmp_path: Path) -> None:
+    record = _run_cli_tools_script(tmp_path, ["fdfind", "rg"], claude=True)
+
+    assert record.read_text(encoding="utf-8").splitlines() == [
+        *_SKILLS_USER,
+        "cli-tools",
+        "tool-fd",
+        "tool-ripgrep",
+        "tool-uv",
+    ]
+
+
+@_posix_only
+def test_cli_tools_script_skips_without_claude_dir(tmp_path: Path) -> None:
+    assert not _run_cli_tools_script(tmp_path, ["rg"], claude=False).exists()
+
+
+def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setenv("UV", "uv.exe")
+    _make_claude_home(tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+    monkeypatch.setattr(runner, "which", lambda command: command if command == "rg" else None)
+
+    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    assert fake.commands == [
+        wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()]),
+        ["uv.exe", *_SKILLS_USER, "--home", str(tmp_path), "cli-tools", "tool-ripgrep"],
+    ]
+
+
+def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+
+    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    assert len(fake.commands) == 1
+    assert any("skipping the cli-tools skills" in message for message in reporter.messages)
