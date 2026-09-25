@@ -17,23 +17,25 @@ class SnapshotError(ValueError):
 
 _HERE = Path(__file__).resolve().parent
 _EVENTS_MODULE_NAME = "basicly_tracker_kit_events"
+_BEADS_MODULE_NAME = "basicly_tracker_kit_beads"
 
 
-def _load_events() -> ModuleType:
+def _load(file_name: str, module_name: str) -> ModuleType:
 
-    cached = sys.modules.get(_EVENTS_MODULE_NAME)
+    cached = sys.modules.get(module_name)
     if cached is not None:
         return cached
-    spec = importlib.util.spec_from_file_location(_EVENTS_MODULE_NAME, _HERE / "events.py")
+    spec = importlib.util.spec_from_file_location(module_name, _HERE / file_name)
     if spec is None or spec.loader is None:
-        raise SnapshotError("the tracker kit's events.py is missing from beside migrate.py")
+        raise SnapshotError(f"the tracker kit's {file_name} is missing from beside migrate.py")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[_EVENTS_MODULE_NAME] = module
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
 
-events = _load_events()
+events = _load("events.py", _EVENTS_MODULE_NAME)
+beads = _load("beads.py", _BEADS_MODULE_NAME)
 
 ids = events.ids
 
@@ -118,7 +120,11 @@ def parse_snapshot(text: str, *, name: str) -> Snapshot:
                 Rejection(f"line {number}", f"not a JSON object: {type(raw).__name__}")
             )
             continue
-        records.append(raw)
+        record, refused = beads.normalize(raw)
+        if record is None:
+            unreadable.append(Rejection(f"line {number}", refused))
+            continue
+        records.append(record)
     return Snapshot(
         name=name,
         digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
@@ -446,18 +452,15 @@ def import_snapshot(  # noqa: PLR0913 — every keyword past the snapshot is an 
 
 def import_report(
     directory: Path | str,
-    export: Path | str,
+    snapshot: Snapshot,
     *,
-    source: str = "",
     redact: Any = None,
     dry_run: bool = False,
 ) -> dict[str, object]:
 
-    named = source or Path(export).name
-    read = read_snapshot(export, name=named)
-    report = import_snapshot(directory, read, redact=redact, dry_run=dry_run)
+    report = import_snapshot(directory, snapshot, redact=redact, dry_run=dry_run)
     return {
-        "source": named,
+        "source": snapshot.name,
         "dry_run": dry_run,
         "imported": report.imported,
         "diverged": report.diverged,

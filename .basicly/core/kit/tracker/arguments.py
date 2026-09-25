@@ -7,6 +7,8 @@ DEFAULT_STATUS = "open"
 
 DIRECTORY_HELP = "the ledger directory"
 
+IMPORT_FORMATS = ("beads", "beans")
+
 
 def _add_shape_arguments(parser: Any) -> None:
     parser.add_argument(
@@ -37,7 +39,11 @@ def parser() -> argparse.ArgumentParser:
 
     create = sub.add_parser("create", help="mint a record id and append its first events")
     create.add_argument("directory", help=DIRECTORY_HELP)
-    create.add_argument("--prefix", required=True, help="the ledger's id prefix, e.g. acme")
+    create.add_argument(
+        "--prefix",
+        default="",
+        help="the id prefix, e.g. acme; default: the ledger's prefix setting",
+    )
     create.add_argument("--title", default="", help="the record's title")
     create.add_argument(
         "--field",
@@ -108,16 +114,25 @@ def parser() -> argparse.ArgumentParser:
     gate.add_argument("directory", help=DIRECTORY_HELP)
     gate.add_argument("record", help="the record id")
 
-    bring = sub.add_parser(
-        "import", help="import a foreign tracker's JSONL export into this ledger"
-    )
+    bring = sub.add_parser("import", help="import a foreign tracker's backlog into this ledger")
     bring.add_argument("directory", help=DIRECTORY_HELP)
-    bring.add_argument("export", help="the export file to read, one JSON record per line")
+    bring.add_argument(
+        "export",
+        help="the beads export file, one JSON record per line; with --from beans, "
+        "the repository root or its .beans folder",
+    )
+    bring.add_argument(
+        "--from",
+        dest="source_format",
+        choices=IMPORT_FORMATS,
+        default=IMPORT_FORMATS[0],
+        help="the tracker that wrote the export",
+    )
     bring.add_argument(
         "--source",
         default="",
         help="the name recorded as the provenance of every imported record; "
-        "defaults to the export's file name",
+        "defaults to the export's file or folder name",
     )
     bring.add_argument(
         "--dry-run",
@@ -131,6 +146,7 @@ def parser() -> argparse.ArgumentParser:
 
     _add_query_parsers(sub)
     _add_write_parsers(sub)
+    _add_config_parser(sub)
     return parser
 
 
@@ -217,3 +233,12 @@ def _add_write_parsers(sub: Any) -> None:
     removal = sub.add_parser("delete", help="tombstone a record; its id is never reused")
     removal.add_argument("directory", help=DIRECTORY_HELP)
     removal.add_argument("record", help="the record id")
+
+
+def _add_config_parser(sub: Any) -> None:
+    config = sub.add_parser("config", help="every tracker setting, its value and its source")
+    config.add_argument("directory", help=DIRECTORY_HELP)
+    actions = config.add_subparsers(dest="config_action")
+    setting = actions.add_parser("set", help="set one setting in its one home")
+    setting.add_argument("name", help="the setting, as config lists it")
+    setting.add_argument("value", help="the value; a list or a number is read as JSON")

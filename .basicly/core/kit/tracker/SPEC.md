@@ -404,6 +404,12 @@ three mechanisms that make the cutover incremental. The rules below are their co
   The report names a record whose fields differ as `diverged`, and a record from the same
   source that the export no longer holds as `absent`. It overwrites neither.
 - `--dry-run` reports the same plan and writes nothing.
+- **Each source maps onto the tracker vocabulary through one table.** `beads.py` holds one
+  table for bd, whose export line carries `_type`, and one for br. The import refuses a
+  status or a type outside the table by name, and does not import that record. It refuses a
+  br `tombstone` as a deletion.
+- **No machine path reaches the ledger.** The import drops `source_repo_path`. It redacts a
+  home, UNC or drive path in every other string with the rules of the engine redactor.
 - **The order is fixed.** Import while the other tracker is still authoritative, then
   declare the residual baseline, then start the dual write. An import after the dual write
   starts makes the owned side follow the other one instead of being compared with it.

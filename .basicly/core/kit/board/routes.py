@@ -111,6 +111,9 @@ def _labels(body: dict, key: str, flag: str) -> list:
 def default_prefix(ledger: Path) -> str:
 
     cli = tracker_cli()
+    configured = cli.settings.templates.load(ledger).prefix
+    if configured:
+        return configured
     ids = cli.ids
     roots = Counter(
         record.partition(ids.PREFIX_SEP)[0]

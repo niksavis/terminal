@@ -29,6 +29,7 @@ writers = _load("writers.py", "basicly_tracker_kit_writers")
 recurrence = _load("recurrence.py", "basicly_tracker_kit_recurrence")
 values = _load("values.py", "basicly_tracker_kit_values")
 holders = _load("holders.py", "basicly_tracker_kit_holders")
+pin = _load("pin.py", "basicly_tracker_kit_pin")
 forks = _load("forks.py", "basicly_tracker_kit_forks")
 edges = _load("edges.py", "basicly_tracker_kit_edges")
 review = _load("review.py", "basicly_tracker_kit_review")
@@ -73,7 +74,7 @@ def resolve_ledger(directory: Path | str, *, starts: bool = False) -> Path:
         return given
     if not given.is_dir():
         raise TrackerCommandError(f"{given} is not a ledger directory")
-    if _holds_ledger(given) or not any(given.iterdir()):
+    if _holds_ledger(given) or not any(one.name != pin.PIN_FILE for one in given.iterdir()):
         return given
     raise TrackerCommandError(
         f"{given} holds no ledger ({events.LOG_GLOB} or {events.PENDING_GLOB}); "

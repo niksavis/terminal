@@ -4,12 +4,41 @@ Every command takes the ledger directory, `.basicly/ledger`, as its first argume
 prints one JSON object with a `schema` field. `cli.py <command> --help` lists every flag.
 The examples use `acme` as the id prefix and `acme-a1b2` as a record id.
 
+## Configure
+
+### config
+
+Every tracker setting, with its value, its `source` and its `home`. The source is
+`default`, `ledger file`, `env <NAME>`, `git config <key>` or `git hook post-merge`.
+
+| Setting | Home |
+| --- | --- |
+| `prefix`, `stale_days`, `mode`, `sections`, `types` | `template.json` in the ledger, committed with it |
+| `holder` | `git config basicly.holder`; `BASICLY_HOLDER` overrides it for one shell |
+| `fold_on_merge` | the post-merge git hook that `init --fold-on-merge` writes |
+| `pin` | `.kit-version` in the ledger, which `init` and `update` write |
+
+```sh
+python3 .basicly/kit/tracker/cli.py config .basicly/ledger
+```
+
+`config <ledger> set NAME VALUE` writes one setting whose home is `template.json`. A list or a
+number is read as JSON. The same rules as a hand-written `template.json` refuse a wrong
+value, and nothing is written. An unknown name is refused with the list of known names. A
+setting with another home is refused with the command that sets it, for example
+`git config basicly.holder alex`.
+
+```sh
+python3 .basicly/kit/tracker/cli.py config .basicly/ledger set prefix acme
+```
+
 ## Write
 
 ### create
 
 Mint a record id and append its first events. `owed` in the output names what the record
-still needs before `dor` passes.
+still needs before `dor` passes. `--prefix` names the id prefix. Without it, `create` uses
+the ledger's `prefix` setting, and refuses when the ledger sets none.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix acme --title "Keep comments on export" --description "When an export holds a comment, I want it kept, so I can import it back." --acceptance "- The importer shall keep every comment line" --requirements "- Standard library only"
@@ -123,9 +152,35 @@ python3 .basicly/kit/tracker/cli.py delete .basicly/ledger acme-a1b2
 Bring a JSONL export from another tracker across, one record per line. `--dry-run`
 reports the same plan and writes nothing.
 
+`--from beans` reads a beans backlog instead. Name the repository root that holds
+`.beans`, or the `.beans` folder. Each bean becomes one record, and a bean in
+`.beans/archive` is closed. The parent becomes a `parent-child` edge, `blocking` and
+`blocked_by` become `blocks` edges, and the tags become labels. A frontmatter form or a
+status, type or priority that the reader does not know refuses the file by name, and
+no bean of the batch is imported.
+
 ```sh
 python3 .basicly/kit/tracker/cli.py import .basicly/ledger issues.jsonl --dry-run
 ```
+
+`basicly-tracker init` and `update` look for a backlog to import. They read files only
+and never run `bd`, `br` or `beans`:
+
+| Found | What init does |
+| --- | --- |
+| `.beads/issues.jsonl` | names it with its record count and offers the import |
+| `.beads/dolt` or `.beads/embeddeddolt`, and no `issues.jsonl` | says to run `bd export -o .beads/issues.jsonl` first |
+| a `.beans` folder of beans | names it with its bean count and offers the import |
+| `.beans.yml`, and no bean under `.beans` | says to import the folder that `.beans.yml` sets by name |
+
+At a terminal, init prints a dry-run summary and asks once. It imports only on `y` or
+`yes`. With no terminal, as when an agent runs it, init imports nothing and prints the
+command that does: `basicly-tracker init --import beads` or
+`basicly-tracker init --import beans`. `--import` refuses a source that the repository
+does not hold, and nothing is written. An imported record has no Trigger, Acceptance
+Criteria or Requirements, so it lands in `refine` and `ready` shows 0 until each record
+is shaped. `refine` lists them. `basicly install` makes the same offer with no prompt,
+and names `basicly tracker import` instead.
 
 ## Read
 

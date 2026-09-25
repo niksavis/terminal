@@ -8,7 +8,7 @@ TEMPLATE_FILE = "template.json"
 SCHEMA = "basicly.tracker.template.v1"
 EXTEND = "extend"
 OVERRIDE = "override"
-_KEYS = frozenset({"schema", "mode", "sections", "types", "stale_days"})
+_KEYS = frozenset({"schema", "mode", "sections", "types", "stale_days", "prefix"})
 DEFAULT_STALE_DAYS = 14
 
 
@@ -21,6 +21,7 @@ class Template(NamedTuple):
     sections: tuple = ()
     types: tuple = ()
     stale_days: int = DEFAULT_STALE_DAYS
+    prefix: str = ""
 
     @property
     def extends(self) -> bool:
@@ -42,17 +43,27 @@ def _headings(value: object, where: str) -> tuple:
     return tuple(one.strip() for one in value)
 
 
-def load(directory: Path | str) -> Template:
+def read(directory: Path | str) -> dict:
 
     path = Path(directory) / TEMPLATE_FILE
     if not path.is_file():
-        return DEFAULT
+        return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except ValueError as exc:
         raise TemplateError(f"{path} is not JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise TemplateError(f"{path} must hold one JSON object")
+    return data
+
+
+def load(directory: Path | str) -> Template:
+
+    return parse(read(directory), Path(directory) / TEMPLATE_FILE)
+
+
+def parse(data: dict, path: Path) -> Template:
+
     if unknown := sorted(set(data) - _KEYS):
         raise TemplateError(f"{path} names unknown key(s) {unknown}; allowed: {sorted(_KEYS)}")
     if data.get("schema", SCHEMA) != SCHEMA:
@@ -66,6 +77,9 @@ def load(directory: Path | str) -> Template:
     stale_days = data.get("stale_days", DEFAULT_STALE_DAYS)
     if isinstance(stale_days, bool) or not isinstance(stale_days, int) or stale_days < 1:
         raise TemplateError(f"{path} stale_days must be a whole number of days, 1 or more")
+    prefix = data.get("prefix", "")
+    if not isinstance(prefix, str):
+        raise TemplateError(f"{path} prefix must be a string, not {prefix!r}")
     return Template(
         mode,
         _headings(data.get("sections", []), f"{path} sections"),
@@ -73,4 +87,5 @@ def load(directory: Path | str) -> Template:
             sorted((name, _headings(one, f"{path} types.{name}")) for name, one in types.items())
         ),
         stale_days,
+        prefix,
     )

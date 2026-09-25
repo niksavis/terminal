@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import sys
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,20 @@ SHEBANG = "#!/bin/sh"
 CLI_FILE = "cli.py"
 
 _HERE = Path(__file__).resolve().parent
+
+
+def _load(file_name: str, module_name: str) -> Any:
+
+    cached = sys.modules.get(module_name)
+    if cached is not None:
+        return cached
+    spec = importlib.util.spec_from_file_location(module_name, _HERE / file_name)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"the tracker kit's {file_name} is missing from beside install_hook.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def _within(path: Path, root: Path) -> str:
@@ -251,6 +266,16 @@ def ensure_ledger(root: Path, ledger: Path, *, dry_run: bool, stream: Any) -> st
     return within
 
 
+def pin_ledger(ledger: Path, *, dry_run: bool, stream: Any) -> None:
+
+    pin = _load("pin.py", "basicly_tracker_kit_pin")
+    if dry_run:
+        stream.write(f"tracker: would pin the ledger to tracker {pin.KIT_VERSION}\n")
+        return
+    pin.write(ledger)
+    stream.write(f"tracker: pinned the ledger to tracker {pin.KIT_VERSION}\n")
+
+
 NO_FOLD = (
     "tracker: no post-merge fold is wired, so a pull request never edits the trunk log; "
     "run `compact` as its own pull request, or pass --fold-on-merge where one writer "
@@ -312,6 +337,7 @@ def uninstall_fold(root: Path, *, dry_run: bool, stream: Any) -> int:
 
 def main(argv: Any = None) -> int:
 
+    offer = _load("import_offer.py", "basicly_tracker_kit_import_offer")
     parser = argparse.ArgumentParser(
         description=(
             "Wire a post-merge hook that folds every pending writer shard into the "
@@ -346,9 +372,26 @@ def main(argv: Any = None) -> int:
         help="wire the fold; safe only where one writer pushes to the default branch",
     )
     parser.add_argument(
+        "--pin",
+        action="store_true",
+        help="pin the ledger to this kit's version; the standalone installer passes it",
+    )
+    parser.add_argument(
         "--interpreter",
         default=DEFAULT_INTERPRETER,
         help="the command that runs the kit; the default needs only uv",
+    )
+    parser.add_argument(
+        "--import",
+        dest="import_source",
+        default="",
+        choices=offer.SOURCES,
+        help="import the backlog of this tracker; without it only a terminal answer imports",
+    )
+    parser.add_argument(
+        "--import-command",
+        default=offer.KIT_IMPORT,
+        help="the command the offer names, with {source}, {path}, {cli} and {ledger} filled in",
     )
     args = parser.parse_args(None if argv is None else list(argv))
     root = Path(args.root).resolve()
@@ -357,21 +400,35 @@ def main(argv: Any = None) -> int:
     ledger = Path(args.ledger) if args.ledger else _HERE.parent.parent / "ledger"
     if not ledger.is_absolute():
         ledger = root / ledger
+    asked = offer.Install(root, ledger, args.import_source, args.import_command, args.dry_run)
+    try:
+        backlogs = offer.chosen_backlogs(asked)
+    except offer.ImportOfferError as exc:
+        raise SystemExit(f"tracker: {exc}") from exc
     ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
+    if args.pin:
+        pin_ledger(ledger, dry_run=args.dry_run, stream=sys.stdout)
     if not args.command:
         install_claim(root, ledger=ledger, dry_run=args.dry_run, stream=sys.stdout)
     if not args.fold_on_merge:
         sys.stdout.write(NO_FOLD)
-        return uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout)
-    return install(
-        root,
-        ledger=ledger,
-        dry_run=args.dry_run,
-        interpreter=args.interpreter,
-        stream=sys.stdout,
-        command=args.command,
-        advice=args.advice,
-    )
+        wired = uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout)
+    else:
+        wired = install(
+            root,
+            ledger=ledger,
+            dry_run=args.dry_run,
+            interpreter=args.interpreter,
+            stream=sys.stdout,
+            command=args.command,
+            advice=args.advice,
+        )
+    terminal = sys.stdin is not None and sys.stdin.isatty()
+    try:
+        offer.offer_import(asked, backlogs, ask=input if terminal else None, stream=sys.stdout)
+    except offer.ImportOfferError as exc:
+        raise SystemExit(f"tracker: {exc}") from exc
+    return wired
 
 
 if __name__ == "__main__":

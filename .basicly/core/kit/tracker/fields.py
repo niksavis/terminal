@@ -68,6 +68,7 @@ TABLE = (
     Field("original_size", IMPORTED, "none; import history only"),
     Field("source_repo", IMPORTED, "none; import history only"),
     Field("source_repo_path", IMPORTED, "none; import history only"),
+    Field("order", IMPORTED, "none; the sort key of a beans import"),
     Field("design", IMPORTED, "none; import history only", "put the design in the description"),
     Field("notes", IMPORTED, "none; import history only", "add a comment instead"),
     Field("owner", IMPORTED, "none; import history only", "set assignee instead"),

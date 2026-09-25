@@ -35,6 +35,7 @@ HOLDER_VARIABLE = "BASICLY_HOLDER"
 NAME_VARIABLES = ("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME")
 USER_SECTION = "[user]"
 HOLDER_SECTION = "[basicly]"
+HOLDER_GIT_CONFIG = "git config basicly.holder"
 SECONDS_PER_DAY = 86400
 
 
@@ -72,24 +73,31 @@ def _config_files(start: Path, environ: Mapping[str, str]) -> list[Path]:
     return found
 
 
-def default_holder(start: Path | str, environ: Mapping[str, str] | None = None) -> str:
+def holder_and_source(
+    start: Path | str, environ: Mapping[str, str] | None = None
+) -> tuple[str, str]:
 
     values = os.environ if environ is None else environ
     if values.get(HOLDER_VARIABLE, "").strip():
-        return values[HOLDER_VARIABLE].strip()
+        return values[HOLDER_VARIABLE].strip(), f"env {HOLDER_VARIABLE}"
     files = _config_files(Path(start).resolve(), values)
     for path in files:
         chosen = _config_name(path, HOLDER_SECTION, "holder")
         if chosen:
-            return chosen
+            return chosen, HOLDER_GIT_CONFIG
     for variable in NAME_VARIABLES:
         if values.get(variable, "").strip():
-            return values[variable].strip()
+            return values[variable].strip(), f"env {variable}"
     for path in files:
         name = _config_name(path)
         if name:
-            return name
-    return ""
+            return name, "git config user.name"
+    return "", "default"
+
+
+def default_holder(start: Path | str, environ: Mapping[str, str] | None = None) -> str:
+
+    return holder_and_source(start, environ)[0]
 
 
 def _held_by(states: Mapping[str, Any], record: str) -> str:

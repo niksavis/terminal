@@ -36,6 +36,9 @@ record_view = _load("record_view.py", "basicly_tracker_kit_record_view")
 board = _load("board.py", "basicly_tracker_kit_board")
 fields = _load("fields.py", "basicly_tracker_kit_fields")
 arguments = _load("arguments.py", "basicly_tracker_kit_arguments")
+pin = _load("pin.py", "basicly_tracker_kit_pin")
+settings = _load("settings.py", "basicly_tracker_kit_settings")
+beans = _load("beans.py", "basicly_tracker_kit_beans")
 events = snapshot.events
 ids = events.ids
 
@@ -174,7 +177,10 @@ _VIEWS: dict[
     "shards": lambda a, _r: fsck.shards_report(a.directory),
     "board": lambda a, _r: {"written": board.write(a.directory, a.out).as_posix()},
     "import": lambda a, r: migrate.import_report(
-        a.directory, a.export, source=a.source, redact=r, dry_run=a.dry_run
+        a.directory,
+        beans.READERS[a.source_format](a.export, name=a.source or None),
+        redact=r,
+        dry_run=a.dry_run,
     ),
     "scaffold": lambda a, _r: record_view.scaffold_of(a.directory, a.type),
     "fields": lambda a, _r: fields.table(record_view.templates.load(a.directory)),
@@ -182,6 +188,11 @@ _VIEWS: dict[
     "migrate-fields": lambda a, r: {
         "appended": [event.record for event in commands.migrate_fields(a.directory, redact=r)]
     },
+    "config": lambda a, _r: (
+        settings.write(a.directory, a.name, a.value)
+        if a.config_action == "set"
+        else settings.report(a.directory, start=Path.cwd())
+    ),
 }
 
 
@@ -245,11 +256,12 @@ def _run(
 ) -> tuple[int, dict[str, object]]:
     starts = args.command in _STARTS_A_LEDGER and not getattr(args, "dry_run", False)
     args.directory = commands.resolve_ledger(args.directory, starts=starts)
+    pin.require(args.directory)
     if args.command == "create":
         written = create_record(
             args.directory,
             _minting(_fields(args.title, args.field, args)),
-            prefix=args.prefix,
+            prefix=settings.create_prefix(args.directory, args.prefix),
             status=args.status,
             redact=redact,
         )
