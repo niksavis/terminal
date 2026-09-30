@@ -2,6 +2,31 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.9.8 - 2026-09-30
+
+Delta: v0.9.7..v0.9.8
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.19.1**, the latest release. The 26 skills it installs for you are byte-identical to v0.9.7 (term-vz6vw, term-hjft4).
+- **The release binary installer refuses a malformed repository name.** Before, a value such as `jq lang/jq` ended in a Python traceback. Now it names the value, prints the usage and exits with code 2, before any network call (term-cjepe).
+- **Maintainers: the basicly harness moves from 0.18.15 to 0.19.1.** The commit gates now name an unstaged ledger as the cause of an unknown record id. The agent rules gain three checks for a claim of absence and for a retired source. A new overlay fragment lists three traps of the agent shell and this machine (term-0x6hd).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.9.8 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-km8fg) (815cefd)
+- chore(harness): upgrade basicly to v0-19-1 and repin setup skills (term-hjft4) (503dd21)
+- chore(tracker): close the records that basicly v0-19-0 shipped (term-vz6vw) (7e39766)
+- chore(harness): upgrade basicly to v0-19-0 and repin setup skills (term-vz6vw) (0372894)
+- chore(tracker): link the open records to their basicly records (term-55w0h) (c138e6d)
+- chore(tracker): write the session handover (term-99z) (30d9be1)
+- fix(release-install): refuse a malformed repo argument by name (term-cjepe) (866f2e3)
+- docs(overlay): add the environment quirks fragment (term-0x6hd) (3fe2053)
+- chore(tracker): close the docs record file retro records and write the handover (term-jgkkd) (1532123)
+- docs(readme): show the uvx update and new windows machine commands (term-jgkkd) (1c55893)
+- chore(tracker): close the v0-9-7 upgrade record (term-1sg0i) (55cbf25)
+
 ## v0.9.7 - 2026-09-25
 
 Delta: v0.9.6..v0.9.7
