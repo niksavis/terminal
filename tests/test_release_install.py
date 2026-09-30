@@ -233,6 +233,25 @@ def test_main_refuses_bad_arguments_with_the_usage() -> None:
     assert release_install.main(["jqlang/jq", "jq", "yes", "jq-linux-{arch}"]) == 2
 
 
+@pytest.mark.parametrize("repo", ["jq lang/jq", "jqlang", "jqlang/jq/releases", "../jq", ""])
+def test_main_refuses_a_malformed_repo_by_name_without_a_network_call(
+    repo: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def no_network(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("a malformed repo reached the network")
+
+    monkeypatch.setattr(release_install.urllib.request, "urlopen", no_network)
+
+    assert release_install.main([repo, "jq", "0", "jq-linux-{arch}"]) == 2
+    assert f"REPO must be OWNER/NAME on GitHub, got {repo!r}" in capsys.readouterr().err
+
+
+def test_every_release_tool_repo_is_a_well_formed_repo() -> None:
+    assert [
+        repo for repo, _, _ in RELEASE_TOOLS.values() if not release_install.REPO.fullmatch(repo)
+    ] == []
+
+
 def test_a_binary_that_misreports_its_version_is_up_to_date_after_install(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

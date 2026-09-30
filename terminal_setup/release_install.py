@@ -18,6 +18,7 @@ from pathlib import Path
 
 ARCH_ALIASES = {"x86_64": ("x86_64", "amd64"), "aarch64": ("aarch64", "arm64")}
 VERSION = re.compile(r"\d+(?:\.\d+)+")
+REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
 STATE_DIR = Path.home() / ".local" / "share" / "terminal-setup" / "releases"
 
@@ -173,6 +174,10 @@ def run(repo: str, binary: str, update: bool, patterns: list[str]) -> str:
 
 def main(argv: list[str]) -> int:
     if len(argv) < 4 or argv[2] not in {"0", "1"}:
+        print("usage: release_install.py REPO BINARY 0|1 PATTERN [PATTERN ...]", file=sys.stderr)
+        return 2
+    if not REPO.fullmatch(argv[0]):
+        print(f"{argv[1]}: REPO must be OWNER/NAME on GitHub, got {argv[0]!r}", file=sys.stderr)
         print("usage: release_install.py REPO BINARY 0|1 PATTERN [PATTERN ...]", file=sys.stderr)
         return 2
     try:
