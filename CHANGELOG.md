@@ -2,6 +2,28 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.10.1 - 2026-09-30
+
+Delta: v0.10.0..v0.10.1
+
+### Highlights
+
+- **Setup now installs Claude Code skills from basicly v0.19.2**, the latest release. The 26 skills it installs for you are byte-identical to v0.10.0 (term-hfnm6).
+- **Maintainers: the agent deny-list closes a commit gate bypass.** The basicly harness moves from 0.19.1 to 0.19.2. It adds 6 deny rules, which refuse a skip of the commit hooks also when a config option comes before the git subcommand. The allow and ask lists are unchanged. The agent rules also gain four shell traps in the quirks fragment (term-hfnm6, term-peqwn).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.10.1 terminal-setup --only config`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-0h528) (fc2bc08)
+- chore(harness): upgrade basicly to v0-19-2 and repin setup skills (term-hfnm6) (6c8c17d)
+- chore(tracker): record the approval for the follow-up release (term-hfnm6) (c99213a)
+- chore(tracker): record the approval for the deny-list upgrade (term-hfnm6) (3705c2d)
+- chore(tracker): record the basicly fix for the deny-list gap (term-hfnm6) (0fb1506)
+- chore(tracker): link the deny-list record to its basicly record (term-hfnm6) (dbc7377)
+- docs(overlay): add four shell traps to the quirks fragment (term-peqwn) (c0f9b71)
+- chore(tracker): file the session retro records and write the handover (term-peqwn) (38a462f)
+- chore(tracker): close the v0-10-0 release record (term-oo1u3) (672cb39)
+
 ## v0.10.0 - 2026-09-30
 
 Delta: v0.9.8..v0.10.0
