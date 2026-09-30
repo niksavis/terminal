@@ -182,6 +182,24 @@ Criteria or Requirements, so it lands in `refine` and `ready` shows 0 until each
 is shaped. `refine` lists them. `basicly install` makes the same offer with no prompt,
 and names `basicly tracker import` instead.
 
+A beads import also reads `issue_prefix` (br) or `issue-prefix` (bd) from
+`.beads/config.yaml`. It sets the ledger prefix when the ledger has none, and it reports
+both prefixes and changes neither when they differ.
+
+### sync
+
+Re-import the tracker that this ledger mirrors. `basicly-tracker init --mirror beads`
+starts a mirror: it imports `.beads/issues.jsonl`, writes `mirror.json` in the ledger, and
+installs no claim gate, because br stays the source of truth. `sync` imports new records,
+comments, edges and every status change, so br wins for status. It reports the records
+whose status changed, the records whose fields diverged, and the records br no longer
+holds. It warns when `.beads/beads.db` is newer than the export, and names
+`br sync --flush-only`. `init --end-mirror` ends the mirror and installs the claim gate.
+
+```sh
+python3 .basicly/kit/tracker/cli.py sync .basicly/ledger --dry-run
+```
+
 ## Read
 
 ### ready

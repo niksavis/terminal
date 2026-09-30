@@ -37,6 +37,7 @@ board = _load("board.py", "basicly_tracker_kit_board")
 fields = _load("fields.py", "basicly_tracker_kit_fields")
 arguments = _load("arguments.py", "basicly_tracker_kit_arguments")
 pin = _load("pin.py", "basicly_tracker_kit_pin")
+mirror = _load("mirror.py", "basicly_tracker_kit_mirror")
 settings = _load("settings.py", "basicly_tracker_kit_settings")
 beans = _load("beans.py", "basicly_tracker_kit_beans")
 events = snapshot.events
@@ -176,12 +177,13 @@ _VIEWS: dict[
     "compact": lambda a, _r: _compacted(a),
     "shards": lambda a, _r: fsck.shards_report(a.directory),
     "board": lambda a, _r: {"written": board.write(a.directory, a.out).as_posix()},
-    "import": lambda a, r: migrate.import_report(
+    "import": lambda a, r: beans.import_backlog(
         a.directory,
-        beans.READERS[a.source_format](a.export, name=a.source or None),
+        beans.Source(a.source_format, Path(a.export), a.source or None),
         redact=r,
         dry_run=a.dry_run,
     ),
+    "sync": lambda a, _r: mirror.sync(a.directory, a.root, dry_run=a.dry_run),
     "scaffold": lambda a, _r: record_view.scaffold_of(a.directory, a.type),
     "fields": lambda a, _r: fields.table(record_view.templates.load(a.directory)),
     "refine": lambda a, _r: record_view.refine_queue(a.directory),
@@ -225,6 +227,13 @@ def _fsck(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
     return (EXIT_OK if report.clean else report.exit_code), {**report.as_dict(), **rebuilt}
 
 
+def _relative(path: Path) -> str:
+    try:
+        return path.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def _commit_check(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
     message = Path(args.message).read_text(encoding="utf-8")
     changed = [line.strip() for line in sys.stdin] if args.stdin else list(args.path)
@@ -232,12 +241,8 @@ def _commit_check(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
     committer = commands.holders.default_holder(Path.cwd())
     ledger = Path(args.directory).resolve()
     here = Path(__file__).resolve()
-    try:
-        shown = ledger.relative_to(Path.cwd().resolve()).as_posix()
-        script = here.relative_to(Path.cwd().resolve()).as_posix()
-    except ValueError:
-        shown, script = ledger.as_posix(), here.as_posix()
-    runner = f"python3 {script}"
+    runner = args.runner or f"python3 {_relative(here)}"
+    shown = _relative(ledger)
     context = commands.claims.CommitContext(committer, shown, runner, tuple(args.installed))
     commands.claims.refuse_commit(states, message, changed, context)
     return EXIT_OK, {"committer": committer, "ids": commands.claims.named_ids(message, states)}

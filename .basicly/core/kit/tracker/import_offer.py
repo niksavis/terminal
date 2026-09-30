@@ -25,7 +25,7 @@ SEARCHED = {
     BEANS: f"bean file under {BEANS_DIR} and no {BEANS_CONFIG}",
 }
 
-KIT_IMPORT = "python3 {cli} import {ledger} {path} --from {source}"
+KIT_IMPORT = "{runner} import {ledger} {path} --from {source}"
 YES = frozenset({"y", "yes"})
 
 
@@ -62,6 +62,7 @@ class Install:
     chosen: str = ""
     import_command: str = KIT_IMPORT
     dry_run: bool = False
+    runner: str = ""
 
 
 def _shown(path: Path, root: Path) -> str:
@@ -124,10 +125,16 @@ def chosen_backlogs(install: Install) -> tuple[Backlog, ...]:
     return found
 
 
+def _runner(install: Install) -> str:
+
+    return install.runner or f"python3 {_shown(_HERE / 'cli.py', install.root)}"
+
+
 def _how_to_import(install: Install, backlog: Backlog) -> str:
 
     template = KIT_IMPORT if backlog.path == BEANS_FOLDER else install.import_command
     return template.format(
+        runner=_runner(install),
         cli=_shown(_HERE / "cli.py", install.root),
         ledger=_shown(install.ledger, install.root),
         path=backlog.path,
@@ -137,12 +144,11 @@ def _how_to_import(install: Install, backlog: Backlog) -> str:
 
 def _refine_note(install: Install) -> str:
 
-    cli = _shown(_HERE / "cli.py", install.root)
     ledger = _shown(install.ledger, install.root)
     return (
         "tracker: an imported open record lands in refine, not in ready: it has no Trigger, "
         "Acceptance Criteria or Requirements, so `ready` shows 0 until each one is shaped; "
-        f"list them with `python3 {cli} refine {ledger}`\n"
+        f"list them with `{_runner(install)} refine {ledger}`\n"
     )
 
 
@@ -150,17 +156,25 @@ def _report(install: Install, backlog: Backlog, *, dry_run: bool) -> dict[str, A
 
     migrate = _load("migrate.py", "basicly_tracker_kit_migrate")
     beans = _load("beans.py", "basicly_tracker_kit_beans")
+    source = beans.Source(backlog.source, install.root / backlog.path)
     try:
-        snapshot = beans.READERS[backlog.source](install.root / backlog.path)
+        return beans.import_backlog(install.ledger, source, dry_run=dry_run)
     except migrate.SnapshotError as exc:
         raise ImportOfferError(f"the {backlog.source} backlog cannot be read: {exc}") from exc
-    return migrate.import_report(install.ledger, snapshot, dry_run=dry_run)
 
 
 def _refused(report: dict[str, Any], stream: Any) -> None:
 
     for one in report["rejected"]:
         stream.write(f"tracker:   refused {one['subject']}: {one['reason']}\n")
+
+
+PREFIX_LINES = {
+    "set": "tracker: set the ledger prefix to {source}, from {from}\n",
+    "would set": "tracker: would set the ledger prefix to {source}, from {from}\n",
+    "kept": "tracker: kept the ledger prefix {ledger}; {from} names {source}\n",
+    "refused": "tracker: {from} names the prefix {source}, which the ledger refuses: {reason}\n",
+}
 
 
 def _summary(install: Install, backlog: Backlog, report: dict[str, Any], stream: Any) -> None:
@@ -171,6 +185,9 @@ def _summary(install: Install, backlog: Backlog, report: dict[str, Any], stream:
         f"{_shown(install.ledger, install.root)}; {len(report['rejected'])} refused\n"
     )
     _refused(report, stream)
+    prefix = report.get("prefix")
+    if prefix:
+        stream.write(PREFIX_LINES[prefix["outcome"]].format_map(prefix))
 
 
 def _planned(install: Install, backlog: Backlog) -> dict[str, Any] | None:

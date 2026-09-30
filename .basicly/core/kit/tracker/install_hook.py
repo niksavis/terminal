@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -18,8 +19,11 @@ DEFAULT_INTERPRETER = "uv run --no-project --no-python-downloads python"
 BEGIN = "# >>> basicly-tracker compact >>>"
 END = "# <<< basicly-tracker compact <<<"
 CLAIM_HOOK = "commit-msg"
-CLAIM_BEGIN = "# >>> basicly-tracker claim >>>"
-CLAIM_END = "# <<< basicly-tracker claim <<<"
+
+
+def _claim() -> Any:
+    return _load("claim_block.py", "basicly_tracker_kit_claim_block")
+
 
 SHEBANG = "#!/bin/sh"
 
@@ -139,31 +143,6 @@ def body(interpreter: str, script: str, ledger: str, command: str = "", advice: 
     ))
 
 
-INSTALLED_SKILLS = ("tracker", "board")
-INSTALLED_FILES = (".gitignore", ".gitattributes")
-
-
-def claim_body(script: str, ledger: str) -> str:
-    kit_root = str(Path(script).parent.parent.as_posix())
-    installed = [f"{kit_root}/", *INSTALLED_FILES]
-    for agents in (".claude", ".agents"):
-        installed += [f"{agents}/skills/{name}/" for name in INSTALLED_SKILLS]
-    flags = " ".join(f'--installed "{one}"' for one in installed)
-    check = f'"$tracker_try" "{script}" commit-check "{ledger}" "$1" --stdin {flags}'
-    return "\n".join((
-        CLAIM_BEGIN,
-        f'if [ -f "{script}" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then',
-        "  for tracker_try in python3 python; do",
-        '    command -v "$tracker_try" >/dev/null 2>&1 || continue',
-        f"    tracker_out=$(git diff --cached --name-only | {check}) ||",
-        '      { echo "$tracker_out" >&2; exit 1; }',
-        "    break",
-        "  done",
-        "fi",
-        CLAIM_END,
-    ))
-
-
 def _stripped(text: str, begin: str = BEGIN, end: str = END) -> str:
 
     kept = []
@@ -207,9 +186,10 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     stream: Any,
     command: str = "",
     advice: str = "",
+    script: str = "",
 ) -> int:
 
-    script = "" if command else _within(_HERE / CLI_FILE, root)
+    script = "" if command else (script or _within(_HERE / CLI_FILE, root))
     within = ensure_ledger(root, ledger, dry_run=dry_run, stream=stream)
     directory = hooks_dir(root)
     if directory is None:
@@ -236,13 +216,11 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     return 0
 
 
-def _install_claim(
-    directory: Path, script: str, ledger: str, *, dry_run: bool, stream: Any
-) -> None:
+def _install_claim(directory: Path, body_text: str, *, dry_run: bool, stream: Any) -> None:
 
     hook = directory / CLAIM_HOOK
     current = hook.read_text(encoding="utf-8") if hook.is_file() else ""
-    wanted = merged(current, claim_body(script, ledger), CLAIM_BEGIN, CLAIM_END)
+    wanted = merged(current, body_text, _claim().CLAIM_BEGIN, _claim().CLAIM_END)
     if current == wanted:
         return
     if dry_run:
@@ -289,21 +267,33 @@ def _uninstall_claim(directory: Path | None, *, dry_run: bool) -> None:
     if hook is None or not hook.is_file() or dry_run:
         return
     current = hook.read_text(encoding="utf-8")
-    if CLAIM_BEGIN not in current:
+    claim = _claim()
+    if claim.CLAIM_BEGIN not in current:
         return
-    kept = _stripped(current, CLAIM_BEGIN, CLAIM_END).strip()
+    kept = _stripped(current, claim.CLAIM_BEGIN, claim.CLAIM_END).strip()
     if kept in ("", SHEBANG):
         hook.unlink()
     else:
         hook.write_text(f"{kept}\n", encoding="utf-8")
 
 
-def install_claim(root: Path, *, ledger: Path, dry_run: bool, stream: Any) -> None:
+def install_claim(
+    root: Path,
+    *,
+    ledger: Path,
+    dry_run: bool,
+    stream: Any,
+    layout: tuple[Sequence[str] | None, Sequence[str] | None] = (None, None),
+) -> None:
 
     directory = hooks_dir(root)
-    if directory is not None:
-        script = _within(_HERE / CLI_FILE, root)
-        _install_claim(directory, script, _within(ledger, root), dry_run=dry_run, stream=stream)
+    if directory is None:
+        return
+    places, managed = layout
+    at = _claim().default_places(root, _HERE) if places is None else places
+    held = _claim().default_managed(at) if managed is None else managed
+    text = _claim().claim_body(_within(ledger, root), at, held)
+    _install_claim(directory, text, dry_run=dry_run, stream=stream)
 
 
 def uninstall(root: Path, *, dry_run: bool, stream: Any) -> int:
@@ -333,6 +323,20 @@ def uninstall_fold(root: Path, *, dry_run: bool, stream: Any) -> int:
     hook.write_text(f"{kept}\n", encoding="utf-8")
     stream.write(f"tracker: removed the compact block from {HOOK_NAME}\n")
     return 0
+
+
+def _fold_script(root: Path, args: argparse.Namespace) -> str:
+
+    if args.command or not args.tracker_at:
+        return ""
+    found = next((one for one in args.tracker_at if (root / one).is_file()), "")
+    if not found:
+        raise SystemExit(
+            "tracker: --fold-on-merge runs the tracker from a file in the repository, and "
+            f"none of {', '.join(args.tracker_at)} exists; install with --sandbox, or run "
+            "`compact` yourself after a merge"
+        )
+    return found
 
 
 def main(argv: Any = None) -> int:
@@ -393,6 +397,23 @@ def main(argv: Any = None) -> int:
         default=offer.KIT_IMPORT,
         help="the command the offer names, with {source}, {path}, {cli} and {ledger} filled in",
     )
+    parser.add_argument(
+        "--tracker-at",
+        action="append",
+        default=None,
+        help="a repository path the claim hook runs the tracker from, in order; repeat it",
+    )
+    parser.add_argument(
+        "--managed",
+        action="append",
+        default=None,
+        help="a repository path an install manages, not code; a trailing / names a folder",
+    )
+    parser.add_argument(
+        "--runner", default="", help="the tracker command a person types in this install"
+    )
+    mirror = _load("mirror.py", "basicly_tracker_kit_mirror")
+    mirror.add_arguments(parser)
     args = parser.parse_args(None if argv is None else list(argv))
     root = Path(args.root).resolve()
     if args.uninstall:
@@ -400,7 +421,8 @@ def main(argv: Any = None) -> int:
     ledger = Path(args.ledger) if args.ledger else _HERE.parent.parent / "ledger"
     if not ledger.is_absolute():
         ledger = root / ledger
-    asked = offer.Install(root, ledger, args.import_source, args.import_command, args.dry_run)
+    chosen = args.import_source or args.mirror
+    asked = offer.Install(root, ledger, chosen, args.import_command, args.dry_run, args.runner)
     try:
         backlogs = offer.chosen_backlogs(asked)
     except offer.ImportOfferError as exc:
@@ -408,8 +430,17 @@ def main(argv: Any = None) -> int:
     ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
     if args.pin:
         pin_ledger(ledger, dry_run=args.dry_run, stream=sys.stdout)
-    if not args.command:
-        install_claim(root, ledger=ledger, dry_run=args.dry_run, stream=sys.stdout)
+    wanted = args.dry_run or mirror.claim_wanted(ledger, args.mirror, args.end_mirror, sys.stdout)
+    if not wanted:
+        _uninstall_claim(hooks_dir(root), dry_run=args.dry_run)
+    elif not args.command:
+        install_claim(
+            root,
+            ledger=ledger,
+            dry_run=args.dry_run,
+            stream=sys.stdout,
+            layout=(args.tracker_at, args.managed),
+        )
     if not args.fold_on_merge:
         sys.stdout.write(NO_FOLD)
         wired = uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout)
@@ -422,6 +453,7 @@ def main(argv: Any = None) -> int:
             stream=sys.stdout,
             command=args.command,
             advice=args.advice,
+            script=_fold_script(root, args),
         )
     terminal = sys.stdin is not None and sys.stdin.isatty()
     try:

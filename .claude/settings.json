@@ -154,5 +154,6 @@
       }
     ]
   },
-  "subagentPromptCacheTtl": "1h"
+  "subagentPromptCacheTtl": "1h",
+  "skillListingBudgetFraction": 0.02
 }

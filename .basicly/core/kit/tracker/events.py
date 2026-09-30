@@ -514,7 +514,9 @@ def _date(state: RecordState, event: Event) -> None:
     elif event.kind == KIND_STATUS:
         closing = payload.get("status") == CLOSING_STATUS
         held = state.fields.get(IMPORTED_TIME_KEYS[DATE_CLOSED])
-        moment = _asserted(event, held) if closing else event.ts
+        moment = _asserted(
+            event, held if closing else payload.get(IMPORTED_TIME_KEYS[DATE_UPDATED])
+        )
         dates[DATE_CLOSED] = moment if closing else None
     else:
         moment = _asserted(event, payload.get(ASSERTED_AT_KEY))

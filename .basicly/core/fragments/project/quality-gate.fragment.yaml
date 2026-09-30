@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 187
-  codex: 187
-  copilot: 187
+  claude: 228
+  codex: 229
+  copilot: 228
 id: quality-gate
 description: How to verify a change before you report it done.
 category: project
@@ -20,3 +20,4 @@ body: |
   - Report only what you ran, and say what you did not run. Do not turn "expected to work" into "works".
   - When you claim that a check covers every item, name the list that the code reads. A general mechanism does not prove which items it covers.
   - Check a claim against the code before it goes into a plan, a design document, a README or a release note. Mark a part that rests on code you did not read as an assumption.
+  - Before you retire a source system, list its files one by one and account for each. A check of what the import carried cannot see a file that the import never read.

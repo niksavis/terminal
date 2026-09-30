@@ -84,6 +84,7 @@ def api_index(ledger: Path) -> dict:
         "endpoints": list(ENDPOINTS),
         "holder": commands.holders.default_holder(ledger),
         "edge_types": sorted(commands.differential.DEFAULT_VOCABULARY.edge_types),
+        "mirror": tracker_cli().mirror.read(ledger),
     }
 
 

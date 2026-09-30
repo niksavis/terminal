@@ -44,6 +44,7 @@ EXTRACTED = "EXTRACTED"
 
 PROVENANCE_KEY = "provenance"
 SOURCE_KEY = "imported_from"
+UPDATED_AT = "updated_at"
 DIGEST_KEY = "import_digest"
 
 RESERVED_KEYS = frozenset({PROVENANCE_KEY, SOURCE_KEY, DIGEST_KEY})
@@ -307,6 +308,9 @@ def _plan_record(
     elif status != held.status:
         payload = dict(provenance)
         payload[STATUS_FIELD] = status
+        updated = raw.get(UPDATED_AT)
+        if isinstance(updated, str):
+            payload[UPDATED_AT] = updated
         generation = held.status_counts.get(status, 0) + 1
         plan.drafts.append(events.Draft(record, events.KIND_STATUS, payload, generation=generation))
 

@@ -22,10 +22,8 @@ Each kit is published as its own package under [`packages/`](../../../packages),
 the directory here so there is never a second copy to drift. A repository that will never
 run `basicly` installs one directly:
 
-```console
-$ uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-tracker basicly-tracker init
-tracker: added to .gitattributes: events-*.jsonl -text merge=union
-tracker: 31 file(s) written, 0 unchanged, in .basicly/kit/tracker
+```sh
+uvx --from git+https://github.com/niksavis/basicly#subdirectory=packages/basicly-comments basicly-comments init
 ```
 
 `init` vendors the kit into `.basicly/kit/<name>`, writes the kit's skill into every agent
@@ -33,6 +31,11 @@ skill root, and writes any git rule the kit's correctness depends on, refusing t
 all if it cannot. `--with-instructions` also places a short always-on block. `uninstall`
 removes exactly what it wrote. Copying the files by hand still works and is the documented
 fallback, not the route.
+
+The tracker and the board install differently. Their default mode runs the code from a user
+install (`uv tool install`) and writes only the ledger, the pin, the git rules and the hook
+into the repository. `init --sandbox` writes one `.basicly/<name>.pyz` file instead. See the
+[`basicly-tracker`](../../../packages/basicly-tracker/README.md) package README.
 
 **A kit ships its guidance, not only its code.** Every kit directory carries a `GUIDANCE.md`
 that becomes the consumer's `SKILL.md` and an `INSTRUCTION.md` that becomes the always-on

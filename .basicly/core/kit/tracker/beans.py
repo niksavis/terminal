@@ -6,7 +6,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 _HERE = Path(__file__).resolve().parent
 
@@ -26,6 +26,7 @@ def _load(file_name: str, module_name: str) -> Any:
 
 
 migrate = _load("migrate.py", "basicly_tracker_kit_migrate")
+beads = _load("beads.py", "basicly_tracker_kit_beads")
 
 BEANS_DIR = ".beans"
 ARCHIVE_DIR = "archive"
@@ -228,3 +229,22 @@ def read_snapshot(path: Path | str, *, name: str | None = None) -> Any:
 
 
 READERS = {"beads": migrate.read_snapshot, "beans": read_snapshot}
+
+
+class Source(NamedTuple):
+    format: str
+    export: Path
+    name: str | None = None
+
+
+def import_backlog(
+    directory: Path | str, source: Source, *, redact: Any = None, dry_run: bool = False
+) -> dict[str, object]:
+
+    snapshot = READERS[source.format](source.export, name=source.name)
+    report = migrate.import_report(directory, snapshot, redact=redact, dry_run=dry_run)
+    if source.format == "beads":
+        adopted = beads.adopt_prefix(Path(directory), Path(source.export), dry_run=dry_run)
+        if adopted:
+            report["prefix"] = adopted
+    return report

@@ -38,10 +38,14 @@ skill covers the message format this gate expects.
 
 UNKNOWN_ID_MESSAGE_TEMPLATE = """ERROR: Commit message references an unknown issue id: {ids}
 
-None of the referenced id(s) were found in {source}.
+None of the referenced id(s) were found in the staged {source}.
 
-That file is the id set this gate validates against. An id minted in another
-checkout reaches it only once that checkout's tracker state is committed.
+If you created the record in this checkout, its ledger change is not staged.
+pre-commit hides unstaged files from this hook, so stage the ledger and commit again:
+  git add .basicly/ledger
+
+If the record was created in another checkout, it reaches this gate only once that
+checkout's tracker state is committed and pulled.
 """
 
 REDIRECT_NAME = "redirect"

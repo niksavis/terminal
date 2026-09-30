@@ -153,3 +153,45 @@ def normalize(raw: Mapping[str, object]) -> tuple[dict[str, object] | None, str]
             return None, _value_refusal(raw.get("id"), source, name, value)
         record[name] = mapped
     return record, ""
+
+
+CONFIG_FILE = "config.yaml"
+PREFIX_KEYS = ("issue_prefix", "issue-prefix")
+
+
+def config_prefix(export: Path) -> str | None:
+
+    config = Path(export).parent / CONFIG_FILE
+    if not config.is_file():
+        return None
+    for line in config.read_text(encoding="utf-8").splitlines():
+        key, sep, value = line.partition(":")
+        if sep and not line.startswith((" ", "\t")) and key.strip() in PREFIX_KEYS:
+            text = value.split(" #", 1)[0].strip().strip("\"'")
+            return text or None
+    return None
+
+
+def adopt_prefix(ledger: Path, export: Path, *, dry_run: bool) -> dict[str, str]:
+
+    found = config_prefix(export)
+    if found is None:
+        return {}
+    settings = _load("settings.py", "basicly_tracker_kit_settings")
+    held = settings.templates.load(ledger).prefix if Path(ledger).is_dir() else None
+    config = (Path(export).parent / CONFIG_FILE).resolve()
+    try:
+        source = config.relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        source = config.as_posix()
+    if held == found:
+        return {}
+    if held:
+        return {"outcome": "kept", "ledger": held, "source": found, "from": source}
+    try:
+        settings.ids.validate_prefix(found)
+    except settings.ids.IdError as exc:
+        return {"outcome": "refused", "source": found, "from": source, "reason": str(exc)}
+    if not dry_run:
+        settings.write(ledger, "prefix", found)
+    return {"outcome": "would set" if dry_run else "set", "source": found, "from": source}
