@@ -907,6 +907,52 @@ def _warn_or_uninstall_system_version(
         )
 
 
+NODE_LATEST_QUERY = (
+    "curl -fsSL https://nodejs.org/dist/index.json "
+    f'| grep -o \'"version":"v{TARGET_NODE_MAJOR}[^"]*"\' | head -n 1 | cut -d\'"\' -f4'
+)
+NODE_INSTALLED_QUERY = (
+    'PATH="$HOME/.local/bin:$PATH"; '
+    "if ! command -v node >/dev/null 2>&1; then exit 0; fi; "
+    "node --version"
+)
+UV_LATEST_QUERY = (
+    "curl -fsSLI -o /dev/null -w '%{url_effective}' "
+    "https://github.com/astral-sh/uv/releases/latest "
+    "| sed -n 's|.*/releases/tag/||p'"
+)
+UV_INSTALLED_QUERY = (
+    'PATH="$HOME/.local/bin:$PATH"; '
+    "if ! command -v uv >/dev/null 2>&1; then exit 0; fi; "
+    "uv --version | grep -Eo '[0-9]+([.][0-9]+)+' | head -n 1"
+)
+
+
+def _read_version(runner: Runner, query: str, *, wsl_distro: str | None) -> str | None:
+    result = _run_shell_read(runner, query, wsl_distro=wsl_distro)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _tool_is_current(
+    runner: Runner, name: str, installed_query: str, latest_query: str, *, wsl_distro: str | None
+) -> bool:
+    installed = _read_version(runner, installed_query, wsl_distro=wsl_distro)
+    if installed is None:
+        return False
+    latest = _read_version(runner, latest_query, wsl_distro=wsl_distro)
+    if latest is None:
+        runner.reporter.warn(
+            f"Could not read the latest {name} release; keeping the installed {installed}."
+        )
+        return True
+    if _is_version_at_least(installed, latest):
+        runner.reporter.success(f"{name} {installed} is up to date")
+        return True
+    return False
+
+
 def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> None:
 
     script = (
@@ -915,8 +961,7 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
         "case $arch in x86_64) arch=x64;; aarch64|arm64) arch=arm64;; esac; "
         "os=$(uname -s | tr 'A-Z' 'a-z'); "
         "case $os in darwin) os=darwin;; *) os=linux;; esac; "
-        "ver=$(curl -fsSL https://nodejs.org/dist/index.json "
-        f'| grep -o \'"version":"v{TARGET_NODE_MAJOR}[^"]*"\' | head -n 1 | cut -d\'"\' -f4); '
+        f"ver=$({NODE_LATEST_QUERY}); "
         '[ -n "$ver" ] || { echo "Unable to resolve latest Node.js version" >&2; exit 1; }; '
         "tmp=$(mktemp -d); "
         'pkg="node-${ver}-${os}-${arch}"; '
@@ -926,7 +971,7 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
         '|| { echo "Node.js checksum verification failed" >&2; rm -rf "$tmp"; exit 1; }; '
         'tar -xJf "$tmp/${pkg}.tar.xz" -C "$tmp"; '
         "mkdir -p ~/.local; "
-        'cp -R "$tmp/${pkg}/." ~/.local/; '
+        'cp -Rf "$tmp/${pkg}/." ~/.local/; '
         'rm -rf "$tmp"'
     )
     _run_shell_command(runner, script, label="install Node.js", wsl_distro=wsl_distro)
@@ -936,14 +981,23 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
 
     if platform.os == OperatingSystem.WINDOWS:
         distro = _wsl_distro(platform)
-        if update or not _is_user_local_command_available(runner, "node", wsl_distro=distro):
+        if not _is_user_local_command_available(runner, "node", wsl_distro=distro) or (
+            update and not _node_is_current(runner, wsl_distro=distro)
+        ):
             _install_node_binary(runner, wsl_distro=distro)
         return
     if platform.os not in {OperatingSystem.LINUX, OperatingSystem.MACOS}:
         return
-    if not update and _is_user_local_command_available(runner, "node"):
-        return
-    _install_node_binary(runner)
+    if not _is_user_local_command_available(runner, "node") or (
+        update and not _node_is_current(runner, wsl_distro=None)
+    ):
+        _install_node_binary(runner)
+
+
+def _node_is_current(runner: Runner, *, wsl_distro: str | None) -> bool:
+    return _tool_is_current(
+        runner, "Node.js", NODE_INSTALLED_QUERY, NODE_LATEST_QUERY, wsl_distro=wsl_distro
+    )
 
 
 def _parse_version_tuple(version: str) -> tuple[int, ...]:
@@ -1097,6 +1151,10 @@ def _install_user_local_tool(
         return True
 
     if package == "uv":
+        if update and _tool_is_current(
+            runner, "uv", UV_INSTALLED_QUERY, UV_LATEST_QUERY, wsl_distro=distro
+        ):
+            return True
         _run_shell_command(
             runner,
             "curl -LsSf https://astral.sh/uv/install.sh | sh",

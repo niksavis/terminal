@@ -19,8 +19,12 @@ from terminal_setup.platform import (
 from terminal_setup.prerequisites import (
     _RECONCILE_BINARIES,
     LAZYGIT_LATEST_QUERY,
+    NODE_INSTALLED_QUERY,
+    NODE_LATEST_QUERY,
     RELEASE_TOOLS,
     TARGET_NODE_MAJOR,
+    UV_INSTALLED_QUERY,
+    UV_LATEST_QUERY,
     PrerequisiteStatus,
     SystemVersionPolicy,
     _add_to_user_path,
@@ -710,6 +714,106 @@ def test_ensure_node_skips_when_already_present() -> None:
         ensure_node(cast(Runner, runner), platform)
 
     assert not any("nodejs.org/dist" in c[-1] for c in runner.commands)
+
+
+def _wsl_read(query: str) -> tuple[str, ...]:
+    return ("wsl", "-d", "Ubuntu", "--exec", "sh", "-c", query)
+
+
+def _node_install_scripts(runner: FakeRunner) -> list[str]:
+    return [c[-1] for c in runner.commands if "tar -xJf" in c[-1]]
+
+
+def _run_ensure_node_update(runner: FakeRunner) -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=True,
+        ),
+    ):
+        ensure_node(cast(Runner, runner), platform, update=True)
+
+
+def test_ensure_node_update_skips_a_current_node() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(NODE_INSTALLED_QUERY): (0, "v26.10.0\n"),
+            _wsl_read(NODE_LATEST_QUERY): (0, "v26.10.0\n"),
+        }
+    )
+
+    _run_ensure_node_update(runner)
+
+    assert _node_install_scripts(runner) == []
+    assert ("success", "Node.js v26.10.0 is up to date") in runner.reporter.messages
+
+
+def test_ensure_node_update_replaces_an_older_node_even_while_it_runs() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(NODE_INSTALLED_QUERY): (0, "v26.9.0\n"),
+            _wsl_read(NODE_LATEST_QUERY): (0, "v26.10.0\n"),
+        }
+    )
+
+    _run_ensure_node_update(runner)
+
+    scripts = _node_install_scripts(runner)
+    assert len(scripts) == 1
+    assert "cp -Rf " in scripts[0]
+    assert "cp -R " not in scripts[0]
+
+
+def test_ensure_node_update_keeps_node_when_the_latest_release_is_unreadable() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(NODE_INSTALLED_QUERY): (0, "v26.9.0\n"),
+            _wsl_read(NODE_LATEST_QUERY): (6, ""),
+        }
+    )
+
+    _run_ensure_node_update(runner)
+
+    assert _node_install_scripts(runner) == []
+    assert any(
+        kind == "warn" and "keeping the installed v26.9.0" in text
+        for kind, text in runner.reporter.messages
+    )
+
+
+def _run_uv_update(runner: FakeRunner) -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        assert install_user_local_tool(cast(Runner, runner), "uv", platform, update=True)
+
+
+def test_uv_update_skips_a_current_uv() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(UV_INSTALLED_QUERY): (0, "0.12.21\n"),
+            _wsl_read(UV_LATEST_QUERY): (0, "0.12.21\n"),
+        }
+    )
+
+    _run_uv_update(runner)
+
+    assert not any("astral.sh/uv/install.sh" in c[-1] for c in runner.commands)
+    assert ("success", "uv 0.12.21 is up to date") in runner.reporter.messages
+
+
+def test_uv_update_runs_the_installer_for_an_older_uv() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(UV_INSTALLED_QUERY): (0, "0.12.20\n"),
+            _wsl_read(UV_LATEST_QUERY): (0, "0.12.21\n"),
+        }
+    )
+
+    _run_uv_update(runner)
+
+    assert any("astral.sh/uv/install.sh" in c[-1] for c in runner.commands)
 
 
 def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
