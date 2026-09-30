@@ -172,26 +172,10 @@ def config_prefix(export: Path) -> str | None:
     return None
 
 
-def adopt_prefix(ledger: Path, export: Path, *, dry_run: bool) -> dict[str, str]:
+def config_source(export: Path) -> str:
 
-    found = config_prefix(export)
-    if found is None:
-        return {}
-    settings = _load("settings.py", "basicly_tracker_kit_settings")
-    held = settings.templates.load(ledger).prefix if Path(ledger).is_dir() else None
     config = (Path(export).parent / CONFIG_FILE).resolve()
     try:
-        source = config.relative_to(Path.cwd().resolve()).as_posix()
+        return config.relative_to(Path.cwd().resolve()).as_posix()
     except ValueError:
-        source = config.as_posix()
-    if held == found:
-        return {}
-    if held:
-        return {"outcome": "kept", "ledger": held, "source": found, "from": source}
-    try:
-        settings.ids.validate_prefix(found)
-    except settings.ids.IdError as exc:
-        return {"outcome": "refused", "source": found, "from": source, "reason": str(exc)}
-    if not dry_run:
-        settings.write(ledger, "prefix", found)
-    return {"outcome": "would set" if dry_run else "set", "source": found, "from": source}
+        return config.as_posix()

@@ -164,3 +164,21 @@ def create_prefix(directory: Path | str, given: str) -> str:
             f"set it once for the ledger with `config {directory} set prefix NAME`"
         )
     return chosen
+
+
+def adopt_prefix(ledger: Path, found: str | None, source: str, *, dry_run: bool) -> dict[str, str]:
+
+    if found is None:
+        return {}
+    held = templates.load(ledger).prefix if Path(ledger).is_dir() else None
+    if held == found:
+        return {}
+    if held:
+        return {"outcome": "kept", "ledger": held, "source": found, "from": source}
+    try:
+        ids.validate_prefix(found)
+    except ids.IdError as exc:
+        return {"outcome": "refused", "source": found, "from": source, "reason": str(exc)}
+    if not dry_run:
+        write(ledger, "prefix", found)
+    return {"outcome": "would set" if dry_run else "set", "source": found, "from": source}

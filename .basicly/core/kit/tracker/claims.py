@@ -46,6 +46,15 @@ def named_ids(message: str, states: Mapping[str, Any]) -> list[str]:
     return sorted({token for token in _ID.findall(message) if token in states})
 
 
+def unknown_ids(message: str, states: Mapping[str, Any]) -> list[str]:
+    prefixes = {record.split("-", 1)[0] for record in states}
+    return sorted({
+        token
+        for token in _ID.findall(message)
+        if token not in states and token.split("-", 1)[0] in prefixes
+    })
+
+
 def _describe(states: Mapping[str, Any], record: str) -> str:
     state = states[record]
     holder = str(state.fields.get(HOLDER_FIELD) or "") or "nobody"
@@ -77,6 +86,13 @@ def refuse_commit(
         for record in ids
     ):
         return
+    unknown = unknown_ids(message, states)
+    if not ids and unknown:
+        raise UnclaimedError(
+            f"this commit names {', '.join(unknown)}, which the staged ledger {ledger} does not "
+            f"hold. If you created it in this checkout, stage the ledger with `git add {ledger}` "
+            f"and commit again"
+        )
     named = "; ".join(_describe(states, record) for record in ids) or "it names no record id"
     target = ids[0] if ids else "<id>"
     raise UnclaimedError(

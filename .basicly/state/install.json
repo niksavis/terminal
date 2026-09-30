@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.19.0",
+  "basicly_version": "0.19.1",
   "core": {
     "agents/architect/agent.yaml": "sha256:25b0335d5d2f254a9ae5596d6e2aaf90786f5cfdf02664e9a1b3e3c1fe934dfd",
     "agents/auditor/agent.yaml": "sha256:b68326d319210c5c25785033879e5ac3ab3ed1f7a46e506d94537921250608cc",
@@ -92,11 +92,11 @@
     "kit/tracker/SPEC.md": "sha256:7ddfa7f38940a0ae2790efaff8094133ac0e74e925d7b71cee3498daa9c9adbf",
     "kit/tracker/arguments.py": "sha256:8b4239f271f4e4a00bb35958b1ffe427060052c6af8c67e1e60fc527d7383a28",
     "kit/tracker/baseline.py": "sha256:187878fc34b97e07a0121b3924ca00be981aa7cb83b0e29750ade71b0fbc3b86",
-    "kit/tracker/beads.py": "sha256:957c7d0c281c26ecfc5128a398cd30405a75f08c7eefbcf2024e6a3d93bd80dd",
-    "kit/tracker/beans.py": "sha256:fa51a1a2e9de726d334dc0190f96635945d53cd2c72b8e6a40934037f8f1e36e",
+    "kit/tracker/beads.py": "sha256:eae2b55c798a47de950c0fd8642cbc1027f992cc36c65d6c388b43a9db2769c2",
+    "kit/tracker/beans.py": "sha256:2ef00655d49532274631eb6e792e53cfbc31245880e7a151d49b39daaa2b722d",
     "kit/tracker/board.py": "sha256:040a9afc9deb55a9d1513f9ec30d0c38622cd3a8626f45dfadb12e5bb9ebcb9b",
     "kit/tracker/claim_block.py": "sha256:f8fa04d4275acf7965489692e4677e5b7e725bea3544db1673eafe99999d5b66",
-    "kit/tracker/claims.py": "sha256:ad3b9e9d2e288ba11b930b474fd80b4d40829db9bcdebb0cf1bf218feef5d8b3",
+    "kit/tracker/claims.py": "sha256:43c7533c32f49e2c2033e6817a9e342f5306cb7da3dcb86f0894da76fba979a0",
     "kit/tracker/cli.py": "sha256:ac4dd3a62ea9aa2f3fd16bf86caa2230b88d87185509965ea0371735121fcad1",
     "kit/tracker/commands.py": "sha256:7a9e1d5f3911e6e068b34db8cd56d5f3acf5778b7012fc556e27f3ba4a771914",
     "kit/tracker/derivation.py": "sha256:b2ed6a27e368a7bb7b5e097c3fcc84545eed7cb5a3ecc9a29e2466ad6a668b8c",
@@ -116,14 +116,14 @@
     "kit/tracker/locate.py": "sha256:fe5773c733104b49c3d08f4eb2462116d4d69a975232121554ee9cc36b651f78",
     "kit/tracker/migrate.py": "sha256:b9b42d44be1754c06a649edc13d762b0b73033895bce0ebd95c3d146b7c86640",
     "kit/tracker/mirror.py": "sha256:b1907afcba7494b7fd5cb95230ab487304e0706cf1830b4616ffac989ba2ffd6",
-    "kit/tracker/pin.py": "sha256:3fb6b5976090b57779873e69d9a80829fd1028b2440839b38665a0531f77ccde",
+    "kit/tracker/pin.py": "sha256:4a643264bcc5884edc78636530aee4dbe5d8dedf9e51eadd259e1c8ed0a2d1b4",
     "kit/tracker/provenance.py": "sha256:5800d8eda460d3e7179e7e920738ef50e04fad0ee15ada48db49e3243e99fc59",
     "kit/tracker/queries.py": "sha256:ee6d60e97e1da26b97e6b7ad3ea1cd11f7787284ddfa5318185c92f397b2489e",
     "kit/tracker/record_view.py": "sha256:3f20169408ead3547500f54d98224259095845e2e77106572e07ceb17c653147",
     "kit/tracker/recurrence.py": "sha256:f616c1e81924c39486d2f95c764ab2b42ff8715d27e8bbbb69df92967c48a557",
     "kit/tracker/review.py": "sha256:3e136769e5d5c4f6a3404e16fb9b431327b3c530494b01e916cf71c9715f04f1",
     "kit/tracker/scheduler.py": "sha256:85c65d548ae4487696771a1b27f9f884bf78185022178d568d40de0ab70806ce",
-    "kit/tracker/settings.py": "sha256:e6bd6136004b22618b109f85acc3e5d97fcf29ddae6e36f476ccf0ac5f8f84b6",
+    "kit/tracker/settings.py": "sha256:76e36f548db7f3a33ee9e1d8c0be6c8167992ccfbc27f7c8a7a86e57c0a7af0b",
     "kit/tracker/shaping.py": "sha256:fe3225071423400b58e9b85a3c028a1839b994f175f34e39f0e570284489036f",
     "kit/tracker/snapshot.py": "sha256:9198379f656c1d55588f0a7ceceef7d7e39df9d4a6d014b9d9703c563878a237",
     "kit/tracker/templates.py": "sha256:c49fe2f7ea37afe2624b926cbbf465bbcab85e87dd482038a48d9ecbc7d73e56",
@@ -252,6 +252,6 @@
     "templates/codex/rule_md.j2": "sha256:0c236f2ac2ab05fafc6d5c199700ead5ec7c69ff21b8850f09a46f585ea94166",
     "templates/copilot/copilot_instructions_md.j2": "sha256:5d69050d4a037b769f918c84bfd1c92dae393b358df7451ae035b86ba98bdb9c"
   },
-  "installed_at": "2026-09-30T18:49:50.767117+00:00",
+  "installed_at": "2026-09-30T19:38:00.842497+00:00",
   "schema_version": 1
 }

@@ -244,7 +244,12 @@ def import_backlog(
     snapshot = READERS[source.format](source.export, name=source.name)
     report = migrate.import_report(directory, snapshot, redact=redact, dry_run=dry_run)
     if source.format == "beads":
-        adopted = beads.adopt_prefix(Path(directory), Path(source.export), dry_run=dry_run)
+        settings = _load("settings.py", "basicly_tracker_kit_settings")
+        export = Path(source.export)
+        found = beads.config_prefix(export)
+        adopted = settings.adopt_prefix(
+            Path(directory), found, beads.config_source(export), dry_run=dry_run
+        )
         if adopted:
             report["prefix"] = adopted
     return report
