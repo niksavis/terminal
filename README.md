@@ -281,6 +281,7 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 #### Windows (PowerShell / Git Bash)
 
 - Targets WSL2 Ubuntu as the primary shell environment
+- Accepts any Debian-family default distro: its `/etc/os-release` must name `ubuntu` or `debian` in `ID` or `ID_LIKE`, because setup installs system packages with apt. Setup refuses any other distro before it installs anything, and names the distro. Only Ubuntu is tested.
 - Windows host installs: WezTerm and Starship from portable release archives into `%LOCALAPPDATA%\Programs\` (no admin rights or MSI needed; existing winget installs are detected and kept), plus the VS Code Remote - WSL extension
 - WSL aliases: `fd` -> `fdfind`, `bat` -> `batcat`
 - Config destinations: Windows `wezterm.lua` under `%USERPROFILE%\.config\wezterm\`, WSL files under `~`

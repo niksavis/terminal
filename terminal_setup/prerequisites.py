@@ -90,13 +90,29 @@ def check_wsl_command(
     )
 
 
+def _wsl_distro_status(platform: PlatformInfo, where: str) -> PrerequisiteStatus:
+    distro = platform.wsl_distribution or "unknown"
+    os_id = platform.wsl_os_id or "unknown"
+    if not platform.is_wsl_default_debian_family:
+        return PrerequisiteStatus(
+            name="wsl-distro",
+            present=False,
+            message=(
+                f"{where} WSL distro '{distro}' (ID={os_id}) is not Debian-family, and setup "
+                "needs apt; install Ubuntu with 'wsl --install -d Ubuntu' and make it the "
+                "default with 'wsl --set-default Ubuntu'"
+            ),
+        )
+    return PrerequisiteStatus(
+        name="wsl-distro",
+        present=True,
+        message=f"{where} WSL distro '{distro}' (ID={os_id}) is Debian-family",
+    )
+
+
 def check_wsl(platform: PlatformInfo, _runner: Runner) -> PrerequisiteStatus:
     if is_running_in_wsl():
-        return PrerequisiteStatus(
-            name="wsl",
-            present=True,
-            message="Running inside WSL",
-        )
+        return _wsl_distro_status(platform, "Running inside WSL; the")
     if platform.os != OperatingSystem.WINDOWS:
         return PrerequisiteStatus(
             name="wsl",
@@ -109,17 +125,7 @@ def check_wsl(platform: PlatformInfo, _runner: Runner) -> PrerequisiteStatus:
             present=False,
             message="WSL is not installed or not responsive; enable it via 'wsl --install'",
         )
-    if not platform.is_wsl_default_ubuntu:
-        return PrerequisiteStatus(
-            name="wsl-ubuntu",
-            present=False,
-            message="WSL default distribution is not Ubuntu; run 'wsl --install -d Ubuntu'",
-        )
-    return PrerequisiteStatus(
-        name="wsl-ubuntu",
-        present=True,
-        message="WSL is available and defaults to Ubuntu",
-    )
+    return _wsl_distro_status(platform, "The default")
 
 
 def _is_wsl_target(platform: PlatformInfo) -> bool:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 from unittest import mock
@@ -74,7 +75,7 @@ def make_platform(os: OperatingSystem, package_manager: PackageManager) -> Platf
         os=os,
         package_manager=package_manager,
         is_wsl_available=False,
-        is_wsl_default_ubuntu=False,
+        is_wsl_default_debian_family=False,
         wsl_distribution="Ubuntu" if os == OperatingSystem.WINDOWS else None,
         shell="/bin/zsh",
         home=Path.home(),
@@ -231,13 +232,61 @@ def test_check_wsl_not_required_on_linux() -> None:
     assert status.present is True
 
 
-def test_check_wsl_present_when_running_inside_wsl() -> None:
-    platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
+def test_check_wsl_present_when_running_inside_a_debian_family_wsl() -> None:
+    platform = replace(
+        make_platform(OperatingSystem.LINUX, PackageManager.APT),
+        is_wsl_default_debian_family=True,
+        wsl_distribution="Debian",
+        wsl_os_id="debian",
+    )
     runner = Runner(dry_run=True)
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
         status = check_wsl(platform, runner)
     assert status.present is True
     assert "inside WSL" in status.message
+    assert "'Debian' (ID=debian) is Debian-family" in status.message
+
+
+def test_check_wsl_refuses_a_wsl_guest_that_is_not_debian_family() -> None:
+    platform = replace(
+        make_platform(OperatingSystem.LINUX, PackageManager.DNF),
+        wsl_distribution="FedoraLinux-42",
+        wsl_os_id="fedora",
+    )
+    runner = Runner(dry_run=True)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=True):
+        status = check_wsl(platform, runner)
+    assert status.present is False
+    assert "'FedoraLinux-42' (ID=fedora) is not Debian-family" in status.message
+    assert "wsl --install -d Ubuntu" in status.message
+
+
+def test_check_wsl_refuses_a_windows_default_distro_that_is_not_debian_family() -> None:
+    platform = replace(
+        make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+        is_wsl_available=True,
+        wsl_distribution="archlinux",
+        wsl_os_id="arch",
+    )
+    runner = Runner(dry_run=True)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        status = check_wsl(platform, runner)
+    assert status.present is False
+    assert "The default WSL distro 'archlinux' (ID=arch) is not Debian-family" in status.message
+
+
+def test_check_wsl_accepts_a_windows_default_debian_distro_by_its_id() -> None:
+    platform = replace(
+        make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+        is_wsl_available=True,
+        is_wsl_default_debian_family=True,
+        wsl_distribution="Debian",
+        wsl_os_id="debian",
+    )
+    runner = Runner(dry_run=True)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        status = check_wsl(platform, runner)
+    assert status.present is True
 
 
 def test_check_wsl_missing_on_windows() -> None:

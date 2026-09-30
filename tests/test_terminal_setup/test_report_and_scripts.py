@@ -23,7 +23,7 @@ def make_platform(os: OperatingSystem, home: Path) -> PlatformInfo:
         os=os,
         package_manager=PackageManager.UNKNOWN,
         is_wsl_available=False,
-        is_wsl_default_ubuntu=False,
+        is_wsl_default_debian_family=False,
         wsl_distribution="Ubuntu" if os == OperatingSystem.WINDOWS else None,
         shell="/bin/zsh",
         home=home,

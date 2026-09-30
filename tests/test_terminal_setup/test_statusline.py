@@ -23,7 +23,7 @@ def _statusline_bash() -> Path | None:
             os=OperatingSystem.WINDOWS,
             package_manager=PackageManager.UNKNOWN,
             is_wsl_available=False,
-            is_wsl_default_ubuntu=False,
+            is_wsl_default_debian_family=False,
             wsl_distribution=None,
             shell="powershell",
             home=home,
