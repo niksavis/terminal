@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 228
-  codex: 229
-  copilot: 228
+  claude: 305
+  codex: 304
+  copilot: 305
 id: quality-gate
 description: How to verify a change before you report it done.
 category: project
@@ -14,6 +14,8 @@ tags:
 status: active
 title: Quality Gate
 body: |
+  - The person pays for two things: time and tokens. Choose the cheapest check that proves the step. Run the tests of what you touched while you iterate, and the whole suite once, before the commit.
+  - In a long run, report the elapsed time, the tokens spent where the host shows them, and the items left.
   - Review the diff. Then run the change the way a consumer runs it, and read the output. Passing tests do not prove a working feature.
   - Run the repository checks on what you touched, after the last edit. A later edit can break what passed.
   - Read the pass or fail summary line. Truncated output hides failures.

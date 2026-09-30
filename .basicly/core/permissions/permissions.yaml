@@ -119,12 +119,14 @@ deny:
       - "shell(git push --force-with-lease)"
       - "shell(git push -f)"
   - id: bypass-gates
-    description: block skipping the commit/push gates (no-verify / no-gpg-sign)
+    description: block skipping the commit/push gates (no-verify / no-gpg-sign / core.hooksPath)
     claude:
-      - "Bash(git push*--no-verify*)"
-      - "Bash(git push*--no-gpg-sign*)"
-      - "Bash(git commit*--no-verify*)"
-      - "Bash(git commit*--no-gpg-sign*)"
+      - "Bash(git *push*--no-verify*)"
+      - "Bash(git *push*--no-gpg-sign*)"
+      - "Bash(git *commit*--no-verify*)"
+      - "Bash(git *commit*--no-gpg-sign*)"
+      - "Bash(git *-c core.hooksPath*)"
+      - "Bash(git *-c core.hookspath*)"
     copilot:
       - "shell(git commit --no-verify)"
       - "shell(git commit --no-gpg-sign)"

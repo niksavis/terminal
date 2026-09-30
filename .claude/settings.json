@@ -59,7 +59,13 @@
       "Edit(.env)",
       "Edit(.env.*)",
       "Edit(**/.env)",
-      "Edit(**/.env.*)"
+      "Edit(**/.env.*)",
+      "Bash(git *push*--no-verify*)",
+      "Bash(git *push*--no-gpg-sign*)",
+      "Bash(git *commit*--no-verify*)",
+      "Bash(git *commit*--no-gpg-sign*)",
+      "Bash(git *-c core.hooksPath*)",
+      "Bash(git *-c core.hookspath*)"
     ],
     "ask": [
       "Bash(git push *)"

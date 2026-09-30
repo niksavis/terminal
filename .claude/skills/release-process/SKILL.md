@@ -78,6 +78,13 @@ The dry run writes nothing and reports every refusal at once. It lists the fragm
 - an `--issue` id that the committed ledger does not hold;
 - a linked worktree, because tags are shared with the primary checkout.
 
+**When the repository has a recorded tutorial, keep this order.** The dry run refuses a page under `docs/tutorial/` that names the old version as the one it was recorded against:
+
+1. Run `basicly verify` in each mode first. Its tests require the page to name the released version.
+2. Walk the page against a build of this checkout, and fix every quoted output that differs.
+3. Edit the recorded version on the page, and leave that edit uncommitted. The commit gate refuses it, and the release lets a dirty `docs/tutorial/` path into the release commit.
+4. In the scratch clone below, run `verify` before you copy the edit in, and do not set a local `user.name`: a holder test fails when the checkout sets one.
+
 IMPORTANT: the dry run checks preconditions, not the commit gates. The release commit changes the tree, and only the commit gates see that tree. Before you give the command to anyone, prove the release in a scratch clone:
 
 1. Clone the repository and run `uv sync --group dev`. Copy any `node_modules` that the hooks need.
