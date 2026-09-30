@@ -109,6 +109,12 @@ IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a 
 - When you claim that a check covers every item, name the list that the code reads. A general mechanism does not prove which items it covers.
 - Check a claim against the code before it goes into a plan, a design document, a README or a release note. Mark a part that rests on code you did not read as an assumption.
 
+## Environment Quirks
+
+- The Claude Code Bash tool defines `grep` as a shell function that calls an embedded grep. Its exit status differs from GNU grep: `grep -q -v` returns 1 on input that holds a line that does not match, where `command grep` returns 0. Decide a status from structured output (`gh ... --json` with `jq -e`), or call `command grep`. Never gate a wait loop on the bare `grep` exit status.
+- A test that branches on `is_running_in_wsl()` passes on a WSL host and can crash on a runner that is not WSL. Before you trust the suite, run it once with `is_running_in_wsl` forced to `False` by an autouse monkeypatch in a temporary `conftest.py`.
+- `ls` can be an alias for `eza --icons`, so `ls | grep -c NAME` counts 0 for a file that is present. Count files with `find` or check one with `test -e`.
+
 ## Session Completion
 
 - Before you end a session, follow the `session-finish` skill. Leave the repository clean, with no partial edits and no stray files. Report what changed, what you verified and what is still open.
