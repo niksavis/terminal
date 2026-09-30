@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.10.2 - 2026-09-30
+
+Delta: v0.10.1..v0.10.2
+
+### Highlights
+
+- **`--update` no longer fails while a coding agent runs in WSL.** Before, the Node.js step overwrote `~/.local/bin/node` in place, and a running node, for example from a Claude Code session, made it fail with "Text file busy". It now replaces the files so that a running node keeps working (term-ybwi3).
+- **`--update` skips Node.js and uv when they are already current.** Before, it downloaded and reinstalled both on every run. When the latest release cannot be read, setup says so and keeps the installed tool (term-ybwi3).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.10.2 terminal-setup --update`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-0ti5t) (c3c1cb7)
+- fix(setup): skip a current node or uv and replace a running node (term-ybwi3) (9bf74d8)
+- chore(tracker): record the v0-10-1 post-release check (term-0h528) (baadf59)
+- chore(tracker): close the v0-10-1 release record and write the handover (term-0h528) (db3d0b1)
+
 ## v0.10.1 - 2026-09-30
 
 Delta: v0.10.0..v0.10.1
