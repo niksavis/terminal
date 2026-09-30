@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.10.0 - 2026-09-30
+
+Delta: v0.9.8..v0.10.0
+
+### Highlights
+
+- **Setup accepts any Debian-family WSL distro, not only Ubuntu.** It reads `/etc/os-release` of the default distro and accepts `ubuntu` or `debian` in `ID` or `ID_LIKE`, so Debian, Kali and Pengwin pass. Before, it accepted only a distro whose name contains "Ubuntu". Only Ubuntu is tested so far (term-k0jvf).
+- **Setup refuses any other distro before it installs anything.** The message names the distro and its ID, and gives the `wsl --install -d Ubuntu` and `wsl --set-default Ubuntu` commands. The same check now also runs when you start setup inside a WSL guest. Before, a run inside a guest that is not Debian-family could fail partway (term-k0jvf).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.10.0 terminal-setup`. On an Ubuntu machine nothing else changes, and `--only config` skips this check.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-oo1u3) (f383b1f)
+- feat(setup): accept any debian family wsl distro by os-release (term-k0jvf) (2e6d5c5)
+- chore(tracker): update the session handover (term-99z) (6691fde)
+- chore(tracker): close the v0-9-8 release record (term-km8fg) (b5af1a1)
+
 ## v0.9.8 - 2026-09-30
 
 Delta: v0.9.7..v0.9.8
