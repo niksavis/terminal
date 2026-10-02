@@ -2,6 +2,28 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.11.3 - 2026-10-02
+
+Delta: v0.11.2..v0.11.3
+
+### Highlights
+
+- **Every hint in the setup log now names a command that runs as copied.** Before, the last line said `terminal-setup --only report`, which is not on PATH after a `uvx` or bootstrap run. Now the verify, retry, preview and update hints print the full command for the way you started setup (term-4wygj).
+- **A missing WSL prerequisite names its fix**, for example `sudo apt-get install -y curl`. Before, the hint said that a re-run adds it, but setup stops first (term-4wygj).
+- **The documented commands need no git.** `uvx --from git+…` fails on a Windows host without git. The README, the cheat sheet, the img-zoom skill, every setup hint and the install line on each release page now use the GitHub archive, for example `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report` (term-elaei, term-8c589).
+- **The README CLI options work in any shell.** A table lists the options, with 4 forms that run as copied: PowerShell, sh, uvx and a clone (term-elaei).
+- **Windows hints say where to run them.** The apt hint adds a PowerShell form that needs no password (`wsl.exe -d <distro> -u root -- …`), and the shell-change hint names `chsh -s /usr/bin/zsh` (term-elaei).
+- **A bootstrap run no longer prints the uv self-update hint**, because `install.ps1` has already updated uv (term-8c589).
+- **To pick it up on Windows**, run `$env:TERMINAL_SETUP_ARGS = '--unattended --update'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-ty3m2) (fd8d547)
+- fix(release): show the archive install command and drop the bootstrap uv hint (term-8c589) (ad37ab1)
+- fix(docs): make every documented command run without git and in either shell (term-elaei) (344a851)
+- fix(setup): name a runnable command in every hint (term-4wygj) (f464ef0)
+- chore(tracker): close the v0-11-2 release record and write the handover (term-e0kuj) (bf1353b)
+
 ## v0.11.2 - 2026-10-02
 
 Delta: v0.11.1..v0.11.2
