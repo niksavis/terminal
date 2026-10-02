@@ -62,7 +62,7 @@ def _call_claude(prompt: str, model: str | None, timeout: int = 300) -> str:
 
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
 
-    result = subprocess.run(  # noqa: S603 # nosec B603 — argv list, prompt on stdin
+    result = subprocess.run(  # nosec B603 — argv list, prompt on stdin
         cmd,
         input=prompt,
         capture_output=True,

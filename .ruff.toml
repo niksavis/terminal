@@ -6,9 +6,7 @@ indent-width = 4
 # install`. Linting it reports defects we cannot fix and that the next install
 # would undo: 0.12.0's hooks carry `# noqa: BLE001` for a rule this config does
 # not select, so RUF100 failed the verify gate on files we do not own.
-# .claude/skills and .agents/skills are basicly projections of that catalog;
-# 0.20.0's skill-creator scripts carry `# noqa: S603` the same way.
-extend-exclude = [".basicly/core", ".claude/skills", ".agents/skills"]
+extend-exclude = [".basicly/core"]
 
 [lint]
 select = [

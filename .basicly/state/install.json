@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.20.0",
+  "basicly_version": "0.20.1",
   "core": {
     "agents/architect/agent.yaml": "sha256:25b0335d5d2f254a9ae5596d6e2aaf90786f5cfdf02664e9a1b3e3c1fe934dfd",
     "agents/auditor/agent.yaml": "sha256:b68326d319210c5c25785033879e5ac3ab3ed1f7a46e506d94537921250608cc",
@@ -63,7 +63,7 @@
     "hooks/tracker-commit-msg.py": "sha256:6f62027f6c4a9c730563ec5dfc86f3c26bdec1a442dcc3c9bad9968a97cf46a8",
     "hooks/tracker-path-scan.py": "sha256:d64a605532c12c8a3b1b09fe828cb790e91d7f338b2fe52fc2e3b766b584534d",
     "hooks/unsplit-loop-guard.py": "sha256:aaeba8b66ae0717aae67a71771de3872f0fbe8a2e3ee0587a2c8f07d78ddcdc4",
-    "kit/README.md": "sha256:5d05f2d2f15bcf447e0a681989d4c0c84c309b2b199091d2385d6fa04365eb94",
+    "kit/README.md": "sha256:87dba3661a096277fe0d5f9233989956dfc910b3047fed5be76883df72796f13",
     "kit/board/GUIDANCE.md": "sha256:d61a082084cd7a4866abf4c7b4e48a0a349451dec3325188f16241c7f25754da",
     "kit/board/INSTRUCTION.md": "sha256:975c00f17d1c3df20e621e36254fc15c932ee91bfefb28796e3d786a9a1ba5ef",
     "kit/board/README.md": "sha256:77989f33ab0cf71592b644a5a5d6e8ee3183c60f79138dcb4da7b401076ea4c3",
@@ -116,7 +116,7 @@
     "kit/tracker/locate.py": "sha256:fe5773c733104b49c3d08f4eb2462116d4d69a975232121554ee9cc36b651f78",
     "kit/tracker/migrate.py": "sha256:b9b42d44be1754c06a649edc13d762b0b73033895bce0ebd95c3d146b7c86640",
     "kit/tracker/mirror.py": "sha256:b1907afcba7494b7fd5cb95230ab487304e0706cf1830b4616ffac989ba2ffd6",
-    "kit/tracker/pin.py": "sha256:4fa470aaba5181b77407c30f24c5b068824382b7f909f068c8b31a812d5a52de",
+    "kit/tracker/pin.py": "sha256:efb43fd2569ae7c3b02f1edd6bcb79729588b4b07f026b8697e310e65946748c",
     "kit/tracker/provenance.py": "sha256:5800d8eda460d3e7179e7e920738ef50e04fad0ee15ada48db49e3243e99fc59",
     "kit/tracker/queries.py": "sha256:ee6d60e97e1da26b97e6b7ad3ea1cd11f7787284ddfa5318185c92f397b2489e",
     "kit/tracker/record_view.py": "sha256:3f20169408ead3547500f54d98224259095845e2e77106572e07ceb17c653147",
@@ -229,8 +229,8 @@
     "skills/skill-creator/scripts/aggregate_benchmark.py": "sha256:88028c4719b22cd3be9561b82f0be871a03efc54d9f251053bab32cf80f86db6",
     "skills/skill-creator/scripts/generate_report.py": "sha256:2630e75c8804158a7eab58640e89a5076e7b6b9ace2d0340425a3c9ad4f860f0",
     "skills/skill-creator/scripts/generate_review.py": "sha256:2cdb1c700f8de54ffaf9f99b3f4cb66dbb984e86a4e17a432c42de307bf1820e",
-    "skills/skill-creator/scripts/improve_description.py": "sha256:b67450b0b0017a2d05518b61eadac9f06b1449236d4222e721b164991029e878",
-    "skills/skill-creator/scripts/run_eval.py": "sha256:006b7bcf81447554dc92935b037b0ce7bd32a96c25ea86344d213ddc550946cb",
+    "skills/skill-creator/scripts/improve_description.py": "sha256:40e9ac87f4c8e6fb22886ca2333e8790740b0cc918e8203460444dfd951f2ab9",
+    "skills/skill-creator/scripts/run_eval.py": "sha256:9c7274957191cabb3ff9d440ce48cede1b7cd5cdc3c3c69e2fb4663ee139b4f8",
     "skills/skill-creator/scripts/run_loop.py": "sha256:fc2a5c6f0dabab0b6bb9ac5f554a2a6437a20f7daddc5f30237e9fb2178fdbf2",
     "skills/skill-creator/scripts/skill_md.py": "sha256:4698515946e0c988cbb9e6cbe1c6e54d7c2986df3558941d432a382b55a678fe",
     "skills/skill-creator/skill.yaml": "sha256:43f01556337a3b5f8f1d0307307e7cb72f3029a561de3cd876aad7f98efaf433",
@@ -274,6 +274,6 @@
     "templates/codex/rule_md.j2": "sha256:0c236f2ac2ab05fafc6d5c199700ead5ec7c69ff21b8850f09a46f585ea94166",
     "templates/copilot/copilot_instructions_md.j2": "sha256:5d69050d4a037b769f918c84bfd1c92dae393b358df7451ae035b86ba98bdb9c"
   },
-  "installed_at": "2026-10-02T10:56:05.054596+00:00",
+  "installed_at": "2026-10-02T12:42:11.937505+00:00",
   "schema_version": 1
 }

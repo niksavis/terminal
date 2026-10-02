@@ -60,7 +60,7 @@ These bind **every** kit, and each one is cited from the modules it governs.
 - **Parseable by an interpreter older than this repo's 3.14 floor**: no syntax newer than
   3.9, and **one exception class per handler**. This repo's `ruff format` targets 3.14 and
   will rewrite a parenthesized multi-exception `except` into syntax a consumer's Python may
-  not have — so the paren-free form the `python-guidelines` skill prescribes for `src/` is
+  not have — so the paren-free form the `python` skill prescribes for `src/` is
   the wrong form here.
 - **Fail closed on a question, open on a crash.** A kit that cannot answer must raise rather
   than return a plausible default; a kit that crashes in a path the consumer did not ask for

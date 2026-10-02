@@ -173,7 +173,7 @@ def run_single_query(
             probe_skill_text(probe_name, skill_description), encoding="utf-8"
         )
         env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
-        process = subprocess.Popen(  # noqa: S603 # nosec B603 — argv list, no shell
+        process = subprocess.Popen(  # nosec B603 — argv list, no shell
             claude_command(query, settings.model),
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
