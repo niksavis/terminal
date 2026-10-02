@@ -84,6 +84,10 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "--exec", *command]
 
 
+def wsl_root_exec_command(distro: str, command: list[str]) -> list[str]:
+    return ["wsl", "-d", distro, "-u", "root", "--exec", *command]
+
+
 def _wsl_command(args: list[str]) -> subprocess.CompletedProcess[str]:
 
     result = subprocess.run(  # nosec

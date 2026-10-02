@@ -16,6 +16,7 @@ from .platform import (
     PlatformInfo,
     is_running_in_wsl,
     wsl_exec_command,
+    wsl_root_exec_command,
 )
 from .runner import Runner
 
@@ -553,6 +554,12 @@ def install_wsl_ubuntu(runner: Runner) -> None:
         raise RuntimeError(
             "the 'wsl' command is not available on this system; install WSL "
             "(Windows feature 'Windows Subsystem for Linux') and re-run this setup."
+        )
+    if runner.unattended:
+        raise RuntimeError(
+            "WSL Ubuntu is missing, and unattended mode cannot install it: 'wsl --install' "
+            "needs administrator rights and asks for a new Linux user. Run "
+            "'wsl --install -d Ubuntu' once, create the user, then re-run this setup."
         )
     runner.reporter.warn(
         "Installing WSL requires administrator rights. Without them, ask an "
@@ -1178,7 +1185,18 @@ def _install_one_user_local_tool(
 
 
 def _stdin_is_interactive(runner: Runner) -> bool:
-    return runner.dry_run or sys.stdin.isatty()
+    return not runner.unattended and (runner.dry_run or sys.stdin.isatty())
+
+
+def root_shell_command(runner: Runner, script: str, *, wsl_distro: str | None) -> list[str] | None:
+    if wsl_distro and not is_running_in_wsl():
+        return wsl_root_exec_command(wsl_distro, ["sh", "-c", script])
+    if runner.which("sudo") is None:
+        return None
+    probe = runner.run(["sudo", "-n", "true"], check=False, dry_run_safe=True)
+    if probe.returncode != 0:
+        return None
+    return ["sudo", "-n", "sh", "-c", script]
 
 
 def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
@@ -1217,11 +1235,35 @@ def missing_wsl_system_packages(runner: Runner, *, wsl_distro: str | None) -> li
     return missing
 
 
+def _apt_system_package_steps(packages: list[str]) -> list[str]:
+    return ["apt-get update", "apt-get upgrade -y", f"apt-get install -y {' '.join(packages)}"]
+
+
 def wsl_system_packages_command(packages: list[str]) -> str:
-    return (
-        "sudo apt-get update && sudo apt-get upgrade -y && "
-        f"sudo apt-get install -y {' '.join(packages)}"
+    return " && ".join(f"sudo {step}" for step in _apt_system_package_steps(packages))
+
+
+def wsl_system_packages_root_script(packages: list[str]) -> str:
+    return "export DEBIAN_FRONTEND=noninteractive; " + " && ".join(
+        _apt_system_package_steps(packages)
     )
+
+
+def _install_wsl_system_packages_unattended(
+    runner: Runner, missing: list[str], *, distro: str
+) -> bool:
+    command = root_shell_command(
+        runner, wsl_system_packages_root_script(missing), wsl_distro=distro
+    )
+    if command is None:
+        runner.reporter.warn(
+            "Unattended mode cannot install the system packages: sudo needs a password."
+        )
+        return False
+    runner.run(
+        command, interactive=True, label=f"apt update, upgrade and install {' '.join(missing)}"
+    )
+    return True
 
 
 def ensure_wsl_system_packages(
@@ -1234,6 +1276,10 @@ def ensure_wsl_system_packages(
         return
     command = wsl_system_packages_command(missing)
     runner.reporter.warn(f"WSL is missing system packages: {', '.join(missing)}.")
+    if allow_sudo and runner.unattended:
+        if not _install_wsl_system_packages_unattended(runner, missing, distro=distro):
+            runner.reporter.step(f"To add them, run this in WSL: {command}")
+        return
     run_now = allow_sudo and (
         assume_yes
         or runner.dry_run

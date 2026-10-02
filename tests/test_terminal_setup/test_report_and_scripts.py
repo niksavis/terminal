@@ -37,6 +37,7 @@ class ScriptedRunner:
         self.responses = responses
         self.commands: list[list[str]] = []
         self.dry_run = False
+        self.unattended = False
         self.reporter = ConsoleReporter()
 
     def run(self, command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:

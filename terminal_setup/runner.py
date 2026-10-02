@@ -112,6 +112,7 @@ def _before_script(command: list[str]) -> list[str]:
 class Runner:
     dry_run: bool = False
     reporter: Reporter = field(default_factory=ConsoleReporter)
+    unattended: bool = False
     failures: list[str] = field(default_factory=list)
     """Steps that failed but were not allowed to abort the run. See ``attempt``."""
 
@@ -181,6 +182,9 @@ class Runner:
             )
 
     def confirm(self, prompt: str) -> bool:
+        if self.unattended:
+            self.reporter.prompt(f"{prompt} (answer 'no' in unattended mode)")
+            return False
         return self.reporter.confirm(prompt)
 
     def symlink(self, source: Path, destination: Path) -> None:

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path, PureWindowsPath
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
-from .prerequisites import _add_to_user_path, attempt
+from .prerequisites import _add_to_user_path, attempt, root_shell_command
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -183,7 +183,34 @@ def _wsl_distro(platform: PlatformInfo) -> str:
 
 
 def _can_prompt_for_password(runner: Runner) -> bool:
-    return runner.dry_run or sys.stdin.isatty()
+    return not runner.unattended and (runner.dry_run or sys.stdin.isatty())
+
+
+def _set_shell_unattended(runner: Runner, shell: str, *, wsl_distro: str | None) -> bool:
+    if not runner.unattended:
+        return False
+    whoami = ["id", "-un"]
+    if wsl_distro and not is_running_in_wsl():
+        whoami = wsl_exec_command(wsl_distro, whoami)
+    user = runner.run(whoami, check=False, dry_run_safe=True).stdout.strip()
+    if not user:
+        return False
+    command = root_shell_command(
+        runner, f"chsh -s {shlex.quote(shell)} {shlex.quote(user)}", wsl_distro=wsl_distro
+    )
+    if command is None:
+        return False
+    runner.run(command, label=f"set the default shell to {shell}")
+    return True
+
+
+def _skip_shell_change(runner: Runner, shell: str, *, wsl_distro: str | None) -> None:
+    if _set_shell_unattended(runner, shell, wsl_distro=wsl_distro):
+        return
+    runner.reporter.warn(
+        f"Skipping default shell change to {shell}: chsh needs a password "
+        "prompt but stdin is not an interactive terminal."
+    )
 
 
 def set_wsl_default_shell(
@@ -198,6 +225,9 @@ def set_wsl_default_shell(
         ).stdout.strip()
         if current_shell == shell:
             return
+        if not _can_prompt_for_password(runner):
+            _skip_shell_change(runner, shell, wsl_distro=None)
+            return
         runner.run(["chsh", "-s", shell], interactive=True)
         return
     current_shell = runner.run(
@@ -208,10 +238,7 @@ def set_wsl_default_shell(
     if current_shell == shell:
         return
     if not _can_prompt_for_password(runner):
-        runner.reporter.warn(
-            f"Skipping default shell change to {shell}: chsh needs a password "
-            "prompt but stdin is not an interactive terminal."
-        )
+        _skip_shell_change(runner, shell, wsl_distro=distro)
         return
     runner.run(wsl_exec_command(distro, ["chsh", "-s", shell]), interactive=True)
 
@@ -228,10 +255,7 @@ def set_host_default_shell(runner: Runner, platform: PlatformInfo, shell: str = 
     if current_shell == shell_path:
         return
     if not _can_prompt_for_password(runner):
-        runner.reporter.warn(
-            f"Skipping default shell change to {shell_path}: chsh needs a password "
-            "prompt but stdin is not an interactive terminal."
-        )
+        _skip_shell_change(runner, shell_path, wsl_distro=None)
         return
     runner.run(["chsh", "-s", shell_path], interactive=True)
 

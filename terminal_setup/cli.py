@@ -26,6 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  terminal-setup --only config   re-apply configuration only (no package installs)\n"
             "  terminal-setup --only report   print the verification report, then exit\n"
             "  terminal-setup --report        full run, then print the verification report\n"
+            "  terminal-setup --unattended    full run that never prompts (scripts, agents)\n"
             "  terminal-setup --skip-claude   install everything except the Claude status line\n"
             "  terminal-setup --no-nerd-font  use the universal (no Nerd Font) status line\n"
         ),
@@ -44,6 +45,15 @@ def build_parser() -> argparse.ArgumentParser:
             "Limit the run to one phase and exit: 'check' verifies prerequisites, "
             "'config' re-applies configuration without installing packages, "
             "'report' prints the verification report."
+        ),
+    )
+    run.add_argument(
+        "--unattended",
+        action="store_true",
+        help=(
+            "Never prompt: answer 'no' to every question, keep system versions, and install "
+            "missing WSL system packages as root through 'wsl -u root' or passwordless sudo, "
+            "or print the command when neither works."
         ),
     )
     run.add_argument(
@@ -547,7 +557,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()
-    runner = Runner(dry_run=args.dry_run, reporter=reporter)
+    runner = Runner(dry_run=args.dry_run, reporter=reporter, unattended=args.unattended)
     try:
         return _dispatch(args, runner)
     except KeyboardInterrupt:

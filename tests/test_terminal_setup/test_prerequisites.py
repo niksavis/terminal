@@ -92,6 +92,7 @@ class SpyRunner:
     def __init__(self) -> None:
         self.commands: list[list[str]] = []
         self.dry_run = False
+        self.unattended = False
         self.reporter = FakeReporter()
 
     def run(  # noqa: PLR0913
@@ -155,6 +156,7 @@ class FakeRunner:
         self.outputs = outputs or {}
         self.commands: list[list[str]] = []
         self.dry_run = False
+        self.unattended = False
         self.confirm_answer = False
         self.confirm_prompts: list[str] = []
         self.reporter = FakeReporter()
