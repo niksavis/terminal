@@ -501,7 +501,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
             prerequisites.attempt(
                 runner,
-                "update uv on Windows" if update else "check uv on Windows",
+                "check uv on Windows",
                 partial(prerequisites.ensure_uv_windows, runner, platform_info, update=update),
             )
 

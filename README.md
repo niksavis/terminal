@@ -28,7 +28,7 @@ To pass options, use the scriptblock form in PowerShell, or `sh -s --` in a POSI
 curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all
 ```
 
-The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. `TERMINAL_SETUP_REF` selects a branch or a release tag, for example `v0.11.0`; the default is `main`.
+The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options. `TERMINAL_SETUP_REF` selects a branch or a release tag, for example `v0.11.0`; the default is `main`.
 
 The setup installs each of these only when it is missing: uv, Python 3.14 (with `uv python install`), Node.js 26, and the coding agents that you name with `--agents` (Claude Code, GitHub Copilot CLI, OpenAI Codex). Run from Windows, it sets up the Windows host and the default WSL distro together.
 
@@ -43,7 +43,7 @@ Setup never runs as administrator. On Windows it changes only what is in your us
 | Tool is | Setup does |
 | --- | --- |
 | missing | installs it in your user profile |
-| in your user profile | `--update` updates it: `uv self update`, `uv python install --upgrade`, the Node.js zip, `claude update`, `copilot update`, `codex update` |
+| in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, `claude update`, `copilot update`, `codex update`. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
 | machine-wide, new enough | prints one info line and changes nothing |
 | machine-wide, too old | prints one warning with the version and the path: ask IT or use Software Center for a newer version |
 

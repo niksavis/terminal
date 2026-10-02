@@ -29,3 +29,16 @@ def test_readme_names_both_bootstrap_scripts() -> None:
 
     for script in ("install.sh", "install.ps1"):
         assert f"https://raw.githubusercontent.com/niksavis/terminal/main/{script}" in readme
+
+
+def test_powershell_bootstrap_updates_uv_before_uvx_runs() -> None:
+    text = (ROOT / "install.ps1").read_text(encoding="utf-8")
+
+    assert text.index("uv self update") < text.index("uvx --python")
+    assert "$setupArgs -contains '--update'" in text
+
+
+def test_powershell_bootstrap_clears_its_arguments_variable() -> None:
+    text = (ROOT / "install.ps1").read_text(encoding="utf-8")
+
+    assert "Remove-Item Env:TERMINAL_SETUP_ARGS" in text

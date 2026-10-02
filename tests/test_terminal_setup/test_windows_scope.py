@@ -44,10 +44,14 @@ def _run_uv(uv: str | None, *, update: bool) -> UvRunner:
     return runner
 
 
-def test_update_runs_uv_self_update_for_a_user_scope_uv() -> None:
+def test_update_never_runs_uv_self_update_under_its_own_uv() -> None:
     runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=True)
 
-    assert runner.commands == [["C:/Users/Dev/.local/bin/uv.exe", "self", "update"]]
+    assert runner.commands == []
+    assert any(
+        level == "info" and "install.ps1" in message and "uv self update" in message
+        for level, message in runner.reporter.messages  # type: ignore[attr-defined]
+    )
 
 
 def test_without_update_a_user_scope_uv_is_only_reported() -> None:

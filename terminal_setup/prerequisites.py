@@ -1191,10 +1191,12 @@ def ensure_uv_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -
     if not is_user_scope(uv, platform):
         report_machine_scope(runner, "uv", "", uv, minimum=None)
         return
-    if not update:
-        runner.reporter.success(f"uv is present on Windows ({uv})")
-        return
-    runner.run([uv, "self", "update"], interactive=True, label="update uv on Windows")
+    runner.reporter.success(f"uv is present on Windows ({uv})")
+    if update:
+        runner.reporter.info(
+            "uv cannot replace itself while it runs this setup. The install.ps1 bootstrap "
+            "with --update updates it first; or run 'uv self update' in a new PowerShell window."
+        )
 
 
 def ensure_python(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
