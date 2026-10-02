@@ -2,6 +2,27 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.11.1 - 2026-10-02
+
+Delta: v0.11.0..v0.11.1
+
+### Highlights
+
+- **Fixed: on a machine with no Python 3.14, setup now installs it.** In v0.11.0 the Python check found the Python of the setup's own `uvx` environment and reported "present", so a bare machine got no Python. Setup now removes its own environment from PATH before every check (term-eh23e).
+- **Fixed: `--update` now moves `python` and `python3` to the new patch.** Before, links from an older uv stayed on the old patch, and only `python3.14` moved (term-eh23e).
+- **Managed Windows machines: setup changes only what is in your user profile.** A tool in your user profile is updated with `--update`. This now includes uv on Windows, through `uv self update`. A machine-wide tool, for example from Software Center under `C:\Program Files`, is left as it is. Setup prints one info line, or a warning that tells you to ask IT when the tool is too old. Setup never runs as administrator (term-a18kn).
+- **A failed agent update on Windows names the command to run by hand**, for example `codex update` in Windows PowerShell (term-a18kn).
+- **The README and the cheat-sheet page work as copied.** The install and update commands need no clone. The README says that only `wsl --install` needs administrator rights. The cheat-sheet page now starts with the install and update commands (term-ifffm).
+- **To pick it up**, run `uvx --from git+https://github.com/niksavis/terminal@v0.11.1 terminal-setup --update`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-m2b80) (a8c8f62)
+- docs: make the readme and the cheat sheet idiot-proof for a bare machine (term-ifffm) (9473bdc)
+- chore(tracker): close the windows scope and python detection records (term-a18kn) (68fdf8d)
+- feat(setup): update user-scope windows tools and only advise on machine-wide ones (term-a18kn) (2c4f83e)
+- chore(tracker): close the v0-11-0 release record and write the handover (term-58xco) (b41f248)
+
 ## v0.11.0 - 2026-10-02
 
 Delta: v0.10.2..v0.11.0
