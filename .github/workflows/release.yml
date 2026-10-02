@@ -95,7 +95,7 @@ jobs:
             cat release-section.md
             echo
             echo "## Install"
-            echo "\`uvx --from git+https://github.com/${GITHUB_REPOSITORY}@${tag_name} terminal-setup\`"
+            echo "\`uvx --from https://github.com/${GITHUB_REPOSITORY}/archive/${tag_name}.zip terminal-setup\`"
           } > release-notes.md
 
       - name: Create or update GitHub release

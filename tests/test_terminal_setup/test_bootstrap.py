@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from terminal_setup.prerequisites import TARGET_PYTHON_MINOR
+from terminal_setup.prerequisites import BOOTSTRAP_MARKER, TARGET_PYTHON_MINOR
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,3 +42,10 @@ def test_powershell_bootstrap_clears_its_arguments_variable() -> None:
     text = (ROOT / "install.ps1").read_text(encoding="utf-8")
 
     assert "Remove-Item Env:TERMINAL_SETUP_ARGS" in text
+
+
+def test_powershell_bootstrap_marks_and_unmarks_its_run() -> None:
+    text = (ROOT / "install.ps1").read_text(encoding="utf-8")
+
+    assert f"$env:{BOOTSTRAP_MARKER} = '1'" in text
+    assert f"Remove-Item Env:{BOOTSTRAP_MARKER}" in text

@@ -77,7 +77,7 @@ uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archi
 
 These commands run unchanged in PowerShell, Git Bash, a WSL shell, Linux and macOS. Run from Windows, they set up the Windows host and the default WSL distro together.
 
-For a reproducible install pinned to a version, put the release tag in the archive URL, for example `uvx --from https://github.com/niksavis/terminal/archive/v0.11.3.zip terminal-setup`. Each [release](https://github.com/niksavis/terminal/releases/latest) page also shows a pinned `git+` command, which needs git.
+For a reproducible install pinned to a version, put the release tag in the archive URL, for example `uvx --from https://github.com/niksavis/terminal/archive/v0.11.3.zip terminal-setup`. Each [release](https://github.com/niksavis/terminal/releases/latest) page shows the same command for its tag.
 
 ### New Windows machine
 

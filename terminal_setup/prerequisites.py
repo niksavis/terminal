@@ -35,6 +35,7 @@ class PrerequisiteStatus:
 
 TARGET_NODE_MAJOR = "26"
 TARGET_PYTHON_MINOR = "3.14"
+BOOTSTRAP_MARKER = "TERMINAL_SETUP_BOOTSTRAP"
 
 
 def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:
@@ -1204,7 +1205,7 @@ def ensure_uv_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -
         report_machine_scope(runner, "uv", "", uv, minimum=None)
         return
     runner.reporter.success(f"uv is present on Windows ({uv})")
-    if update:
+    if update and os.environ.get(BOOTSTRAP_MARKER) != "1":
         runner.reporter.info(
             "uv cannot replace itself while it runs this setup. The install.ps1 bootstrap "
             "with --update updates it first; or run 'uv self update' in a new PowerShell window."

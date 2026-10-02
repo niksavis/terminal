@@ -24,7 +24,12 @@
         }
     }
 
-    uvx --python 3.14 --refresh-package terminal --from $sourceUrl terminal-setup @setupArgs
+    $env:TERMINAL_SETUP_BOOTSTRAP = '1'
+    try {
+        uvx --python 3.14 --refresh-package terminal --from $sourceUrl terminal-setup @setupArgs
+    } finally {
+        Remove-Item Env:TERMINAL_SETUP_BOOTSTRAP
+    }
     if ($LASTEXITCODE -ne 0) {
         throw "terminal-setup failed with exit code $LASTEXITCODE."
     }

@@ -44,7 +44,10 @@ def _run_uv(uv: str | None, *, update: bool) -> UvRunner:
     return runner
 
 
-def test_update_never_runs_uv_self_update_under_its_own_uv() -> None:
+def test_update_never_runs_uv_self_update_under_its_own_uv(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv(prerequisites.BOOTSTRAP_MARKER, raising=False)
     runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=True)
 
     assert runner.commands == []
@@ -89,3 +92,11 @@ def test_machine_scope_warning_names_software_center() -> None:
             "override it, because Windows puts the machine PATH first.",
         )
     ]
+
+
+def test_bootstrap_run_does_not_repeat_the_uv_hint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(prerequisites.BOOTSTRAP_MARKER, "1")
+
+    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=True)
+
+    assert not [message for level, message in runner.reporter.messages if level == "info"]  # type: ignore[attr-defined]
