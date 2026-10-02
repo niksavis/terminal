@@ -392,7 +392,7 @@ footer svg {
           placeholder="Search... ( / )"
           autocomplete="off"
         >
-        <select id="section-jump" aria-label="Jump to section"><option value="">Jump to section...</option><option value="wezterm-shortcuts-project-custom">WezTerm Shortcuts (project custom)</option><option value="tmux-shortcuts-project-custom">tmux Shortcuts (project custom)</option><option value="modern-cli-tools-installed-by-this-setup">Modern CLI Tools (installed by this setup)</option><option value="navigation">Navigation</option><option value="file-operations">File Operations</option><option value="file-viewing">File Viewing</option><option value="text-output">Text &amp; Output</option><option value="permissions-execution">Permissions &amp; Execution</option><option value="users-system">Users &amp; System</option><option value="package-management-debian-ubuntu">Package Management (Debian/Ubuntu)</option><option value="archives-search">Archives &amp; Search</option><option value="network-remote">Network &amp; Remote</option><option value="background-jobs">Background Jobs</option><option value="history-shortcuts">History &amp; Shortcuts</option><option value="command-line-editing">Command-line Editing</option><option value="starship-prompt-project-config">Starship Prompt (project config)</option><option value="pipes-redirection">Pipes &amp; Redirection</option><option value="hardware-disk-info">Hardware &amp; Disk Info</option><option value="file-compression">File Compression</option><option value="shell-variables">Shell Variables</option><option value="shell-command-management">Shell Command Management</option><option value="more-keyboard-shortcuts">More Keyboard Shortcuts</option><option value="safety-notes">Safety Notes</option></select>
+        <select id="section-jump" aria-label="Jump to section"><option value="">Jump to section...</option><option value="install-and-update-project-custom">Install and Update (project custom)</option><option value="wezterm-shortcuts-project-custom">WezTerm Shortcuts (project custom)</option><option value="tmux-shortcuts-project-custom">tmux Shortcuts (project custom)</option><option value="modern-cli-tools-installed-by-this-setup">Modern CLI Tools (installed by this setup)</option><option value="navigation">Navigation</option><option value="file-operations">File Operations</option><option value="file-viewing">File Viewing</option><option value="text-output">Text &amp; Output</option><option value="permissions-execution">Permissions &amp; Execution</option><option value="users-system">Users &amp; System</option><option value="package-management-debian-ubuntu">Package Management (Debian/Ubuntu)</option><option value="archives-search">Archives &amp; Search</option><option value="network-remote">Network &amp; Remote</option><option value="background-jobs">Background Jobs</option><option value="history-shortcuts">History &amp; Shortcuts</option><option value="command-line-editing">Command-line Editing</option><option value="starship-prompt-project-config">Starship Prompt (project config)</option><option value="pipes-redirection">Pipes &amp; Redirection</option><option value="hardware-disk-info">Hardware &amp; Disk Info</option><option value="file-compression">File Compression</option><option value="shell-variables">Shell Variables</option><option value="shell-command-management">Shell Command Management</option><option value="more-keyboard-shortcuts">More Keyboard Shortcuts</option><option value="safety-notes">Safety Notes</option></select>
         <div class="controls">
           <button id="expand-all" type="button" title="Expand all sections">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-lg" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5 a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2"/></svg>
@@ -405,7 +405,36 @@ footer svg {
     </div>
   </header>
   <main>
-    <section class="collapsed" id="wezterm-shortcuts-project-custom">
+    <section class="collapsed" id="install-and-update-project-custom">
+<div class="section-header" title="Click to expand/collapse">
+      <h2>Install and Update (project custom)</h2>
+      <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
+    </div>
+<div class="section-body">
+<p>No admin rights are needed. Run the same command again at any time: it installs only what is missing.</p>
+<p>Install on Windows (PowerShell):</p>
+<p><code> </code>`powershell</p>
+<p>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</p>
+<p><code> </code><code> </code></p>
+<p>Install in WSL, Linux or macOS:</p>
+<p><code> </code>`bash</p>
+<p>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh</p>
+<p><code> </code><code> </code></p>
+<p>Install with no questions, and also the coding agents (Claude Code, Copilot CLI, Codex):</p>
+<p><code> </code>`powershell</p>
+<p>$env:TERMINAL_SETUP_ARGS = '--unattended --agents all'</p>
+<p>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</p>
+<p><code> </code><code> </code></p>
+<p><code> </code>`bash</p>
+<p>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all</p>
+<p><code> </code><code> </code></p>
+<p>Update everything, then check what is installed:</p>
+<p><code> </code>`bash</p>
+<p>uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update</p>
+<p>uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report</p>
+<p><code> </code><code> </code></p>
+</div></section>
+<section class="collapsed" id="wezterm-shortcuts-project-custom">
 <div class="section-header" title="Click to expand/collapse">
       <h2>WezTerm Shortcuts (project custom)</h2>
       <span class="toggle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16" aria-hidden="true"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6 a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708"/></svg></span>
@@ -709,7 +738,7 @@ footer svg {
 <td><code>img-zoom shot.png 0 0 400 300 -o z.png</code> - zoom a box</td>
 </tr>
 </tbody></table>
-<p>Python in WSL is uv-managed: <code>python</code> and <code>python3</code> in <code>~/.local/bin</code> point to the latest uv-installed CPython (the system <code>/usr/bin/python3</code> stays untouched for OS scripts). Node.js is installed user-locally in <code>~/.local</code> at the same major version as Windows.</p>
+<p>Python in WSL is uv-managed: <code>python</code> and <code>python3</code> in <code>~/.local/bin</code> point to the uv-installed CPython 3.14 (the system <code>/usr/bin/python3</code> stays untouched for OS scripts). Node.js 26 is installed user-locally in <code>~/.local</code>. On Windows, setup installs Python 3.14 and Node.js 26 in your user profile only when they are missing, and leaves a machine-wide copy from your IT department as it is.</p>
 </div></section>
 <section class="collapsed" id="navigation">
 <div class="section-header" title="Click to expand/collapse">

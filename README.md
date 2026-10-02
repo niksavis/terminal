@@ -89,12 +89,14 @@ Run these in PowerShell:
    wsl --install -d Ubuntu-24.04
    ```
 
+   This is the only step that needs administrator rights, once per machine. On a managed machine, ask IT, or install Ubuntu from Software Center or the Microsoft Store if your organisation offers it. Setup itself never needs administrator rights.
+
 2. Run the PowerShell bootstrap command from [Quick install](#quick-install). It installs uv when it is missing. Setup asks once for your Linux password, to install the system packages that only apt provides (see [CLI options](#cli-options)); with `--unattended` it installs them through `wsl -u root` and asks nothing.
 3. Restart the terminal so the new PATH takes effect, then start `wezterm`.
 
 Setup always targets the **default** WSL distro. With more than one distro, check which one is the default with `wsl -l -v` and change it with `wsl --set-default <name>` before you run setup.
 
-No admin rights are needed on Windows, WSL, or macOS: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
+No admin rights are needed on Windows, WSL, or macOS, apart from installing WSL itself: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
 ## Overview
 
@@ -105,34 +107,8 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
 - Managed runtimes on every side: Python 3.14 via uv and Node.js (latest v26). Run from Windows, setup installs both in WSL and natively on Windows. It skips a Python 3.14 or newer and a Node.js 26 or newer that is already on PATH.
 - Optional coding agents: `--agents claude,copilot,codex` (or `all`) installs Claude Code, GitHub Copilot CLI and OpenAI Codex when they are missing.
-- Safe re-runs: missing tools install and up-to-date tools skip. An out-of-date tool is reported, and `--update` installs the latest release; only lazygit and tools installed through a package manager (apt, Homebrew, pacman, dnf) ask `y/n` to update.
+- Safe re-runs: missing tools install and up-to-date tools skip. An out-of-date tool is reported, and `--update` installs the latest release; only lazygit and tools installed through a package manager (apt, Homebrew, pacman, dnf) ask `y/n` to update, and `--unattended` answers `no` without asking.
 - No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
-
-## Contributor setup (required once after clone)
-
-```bash
-git clone https://github.com/niksavis/terminal.git
-cd terminal
-uv sync
-npm install
-uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-uv run pre-commit run --all-files
-uv run pytest tests/
-```
-
-Run the setup flow after your contributor environment is ready:
-
-```bash
-uv run python setup-terminal.py
-```
-
-Optional validation:
-
-```bash
-uv run python setup-terminal.py --only check
-uv run python setup-terminal.py --dry-run
-uv run python setup-terminal.py --only report
-```
 
 ## What's here
 
@@ -143,16 +119,20 @@ uv run python setup-terminal.py --only report
 
 ### Install with an AI coding agent
 
-Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude Code, etc.) after cloning this repo. The agent will run the setup for you and report what it changed.
+Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude Code, etc.). No clone is needed. The agent runs the setup for you and reports what it changed.
 
 ```text
-Install this repository's terminal setup from the current directory.
+Install the terminal setup from https://github.com/niksavis/terminal without admin rights.
 
-1. If uv (https://docs.astral.sh/uv/) is missing, run `sh install.sh --unattended` (WSL, Linux, macOS) or `.\install.ps1 --unattended` (PowerShell). The script installs uv user-locally and runs the setup. Then skip step 2.
-2. Run `uv run python setup-terminal.py --unattended` (user-local, no admin required, never prompts).
-3. Only if a system-wide install is explicitly wanted, run `uv run python setup-terminal.py --system-install` (needs admin/sudo).
-4. If the output prints an apt command to run, show it to me: it needs my sudo password.
-5. When done, run `uv run python setup-terminal.py --only report` and summarize what was installed, skipped, and any manual next steps.
+1. On Windows, run in PowerShell:
+   $env:TERMINAL_SETUP_ARGS = '--unattended'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+   In WSL, Linux or macOS, run:
+   curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended
+2. Add --agents all (or a list such as claude,codex) only if I asked for coding agents.
+3. If the output prints an apt command, show it to me: it needs my sudo password.
+4. If the output names a machine-wide tool to update through IT or Software Center, tell me; do not try to change it.
+5. When done, run: uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+   and summarize what was installed, skipped and failed, and any manual next steps.
 ```
 
 ## Quick start
@@ -178,7 +158,7 @@ Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new t
 If you prefer to work inside an existing WSL terminal, run the setup there too:
 
 ```bash
-uv run python setup-terminal.py
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
 ```
 
 This installs the same tools and configs directly on the WSL host. Then start a new zsh shell:
@@ -192,7 +172,7 @@ zsh
 Run the setup directly on the host:
 
 ```bash
-uv run python setup-terminal.py
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
 ```
 
 Then start WezTerm from your application launcher or run:
@@ -341,6 +321,8 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 ## CLI options
 
+The examples below run from a clone. Without a clone, replace `uv run python setup-terminal.py` with `uvx --from git+https://github.com/niksavis/terminal@main terminal-setup`, or pass the options to a bootstrap script as shown in [Quick install](#quick-install).
+
 ```bash
 uv run python setup-terminal.py --only check # verify prerequisites, then exit
 uv run python setup-terminal.py --dry-run    # preview changes
@@ -408,7 +390,35 @@ This is **harmless and expected**. The setup is intentionally lightweight: it ta
 
 ## Development
 
-Contributor environment setup (dependencies and git hooks) is covered under [Contributor setup](#contributor-setup-required-once-after-clone). Once that is done, run the test suite and checks manually with:
+### Contributor setup
+
+Only needed to change this repository. To install the terminal setup, use [Quick install](#quick-install).
+
+```bash
+git clone https://github.com/niksavis/terminal.git
+cd terminal
+uv sync
+npm install
+uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
+uv run pre-commit run --all-files
+uv run pytest tests/
+```
+
+Run the setup flow after your contributor environment is ready:
+
+```bash
+uv run python setup-terminal.py
+```
+
+Optional validation:
+
+```bash
+uv run python setup-terminal.py --only check
+uv run python setup-terminal.py --dry-run
+uv run python setup-terminal.py --only report
+```
+
+Once that is done, run the test suite and checks manually with:
 
 ```bash
 uv run pytest tests/

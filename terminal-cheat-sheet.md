@@ -4,6 +4,40 @@ Practical Linux/Unix commands and shortcuts organized by use case. These work in
 
 Project-specific mappings are labeled as **(project custom)**. Generic shell shortcuts and commands are distro/tool defaults unless noted.
 
+## Install and Update (project custom)
+
+No admin rights are needed. Run the same command again at any time: it installs only what is missing.
+
+Install on Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+```
+
+Install in WSL, Linux or macOS:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+```
+
+Install with no questions, and also the coding agents (Claude Code, Copilot CLI, Codex):
+
+```powershell
+$env:TERMINAL_SETUP_ARGS = '--unattended --agents all'
+irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+```
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all
+```
+
+Update everything, then check what is installed:
+
+```bash
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update
+uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+```
+
 ## WezTerm Shortcuts (project custom)
 
 `Ctrl + Shift + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. Plain `Ctrl + Space` is deliberately left free — it is the tmux prefix — and `Ctrl + A`/`Ctrl + E` keep their shell meanings (beginning/end of line).
@@ -99,7 +133,7 @@ Faster, friendlier replacements for classic commands. All are installed by `term
 | `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs            |
 | `img-zoom`   | image zoom         | `img-zoom shot.png 0 0 400 300 -o z.png` - zoom a box |
 
-Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the latest uv-installed CPython (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js is installed user-locally in `~/.local` at the same major version as Windows.
+Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the uv-installed CPython 3.14 (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js 26 is installed user-locally in `~/.local`. On Windows, setup installs Python 3.14 and Node.js 26 in your user profile only when they are missing, and leaves a machine-wide copy from your IT department as it is.
 
 ## Navigation
 
