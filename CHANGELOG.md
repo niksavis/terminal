@@ -2,6 +2,31 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.11.0 - 2026-10-02
+
+Delta: v0.10.2..v0.11.0
+
+### Highlights
+
+- **A bare machine now needs one command.** `install.ps1` (PowerShell) and `install.sh` (WSL, Linux, macOS) install uv user-locally when it is missing, then run the setup with Python 3.14. They build from the GitHub archive, so git is not needed. Windows: `irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`. WSL: `curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh` (term-om0ot).
+- **`--unattended` runs the setup with no questions**, for scripts and coding agents. It answers `no` to every question and keeps the system versions of tools. Commands that it runs get an empty stdin, so they cannot wait for an answer. Run from Windows, the WSL system packages install through `wsl -u root` with no password. Inside WSL, setup uses passwordless sudo or prints the apt command (term-rueup).
+- **Python 3.14 is installed when it is missing**, with `uv python install 3.14 --default`, in WSL, natively on Windows and on Linux or macOS. A Python 3.14 or newer that is already there is skipped. `--update` upgrades a uv-managed 3.14 to the latest patch (term-vces1).
+- **Node.js 26 is now installed natively on Windows too**, from the official zip into `%LOCALAPPDATA%\Programs\nodejs`, checked against its sha256 and with no admin rights. A Node.js 26 or newer that is already there is skipped, and global npm packages stay when Node.js is updated (term-0obrx).
+- **Coding agents on request.** `--agents claude,copilot,codex` (or `all`) installs Claude Code, GitHub Copilot CLI and OpenAI Codex where they are missing, in WSL and on Windows. `--update` runs each present agent's own `update` command (term-c57uk).
+- **To pick it up**, run the bootstrap command above, or `uvx --from git+https://github.com/niksavis/terminal@v0.11.0 terminal-setup --update`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-58xco) (05a284b)
+- fix(setup): warn when an older windows python stays first on path (term-p4b5z) (bb8585a)
+- feat(setup): add bootstrap scripts that install uv and run setup (term-om0ot) (66c62fc)
+- feat(setup): add opt-in install and update of the coding agents (term-c57uk) (a167d67)
+- feat(setup): install node 26 natively on windows without admin (term-0obrx) (c36b663)
+- feat(setup): install python 3-14 with uv when it is absent (term-vces1) (d4e70b7)
+- feat(setup): add an unattended mode that never prompts (term-rueup) (bf9d1db)
+- chore(tracker): write the session handover (term-99z) (8303bb4)
+- chore(tracker): close the v0-10-2 release record and write the handover (term-0ti5t) (1548465)
+
 ## v0.10.2 - 2026-09-30
 
 Delta: v0.10.1..v0.10.2
