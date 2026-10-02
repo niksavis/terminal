@@ -250,6 +250,19 @@ code {
   cursor: copy;
 }
 
+pre.code-block {
+  margin: 0.5rem 0 1rem;
+  overflow-x: auto;
+}
+
+pre.code-block code {
+  display: block;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
 code:hover {
   outline: 1px solid var(--accent);
 }
@@ -413,26 +426,16 @@ footer svg {
 <div class="section-body">
 <p>No admin rights are needed. Run the same command again at any time: it installs only what is missing.</p>
 <p>Install on Windows (PowerShell):</p>
-<p><code> </code>`powershell</p>
-<p>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</p>
-<p><code> </code><code> </code></p>
+<pre class="code-block" data-language="powershell"><code>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</code></pre>
 <p>Install in WSL, Linux or macOS:</p>
-<p><code> </code>`bash</p>
-<p>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh</p>
-<p><code> </code><code> </code></p>
+<pre class="code-block" data-language="bash"><code>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh</code></pre>
 <p>Install with no questions, and also the coding agents (Claude Code, Copilot CLI, Codex):</p>
-<p><code> </code>`powershell</p>
-<p>$env:TERMINAL_SETUP_ARGS = '--unattended --agents all'</p>
-<p>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</p>
-<p><code> </code><code> </code></p>
-<p><code> </code>`bash</p>
-<p>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all</p>
-<p><code> </code><code> </code></p>
+<pre class="code-block" data-language="powershell"><code>$env:TERMINAL_SETUP_ARGS = &#x27;--unattended --agents all&#x27;
+irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</code></pre>
+<pre class="code-block" data-language="bash"><code>curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all</code></pre>
 <p>Update everything, then check what is installed:</p>
-<p><code> </code>`bash</p>
-<p>uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update</p>
-<p>uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report</p>
-<p><code> </code><code> </code></p>
+<pre class="code-block" data-language="bash"><code>uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report</code></pre>
 </div></section>
 <section class="collapsed" id="wezterm-shortcuts-project-custom">
 <div class="section-header" title="Click to expand/collapse">

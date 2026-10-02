@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Render terminal-cheat-sheet.md to a self-contained HTML page."""
 
 from __future__ import annotations
 
@@ -17,7 +16,6 @@ DEFAULT_HTML = REPO_ROOT / "terminal-cheat-sheet.html"
 
 
 def _bi(name: str, path: str) -> str:
-    """Return a Bootstrap Icons inline SVG."""
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" '
         f'fill="currentColor" class="bi bi-{name}" viewBox="0 0 16 16" '
@@ -51,7 +49,6 @@ ICONS = {
     ),
 }
 
-# Bootstrap Icons chevron-down, tinted for the select dropdown indicator.
 SELECT_CHEVRON_SVG = (
     "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='#a6adc8' "
     "viewBox='0 0 16 16'><path fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 "
@@ -61,7 +58,6 @@ SELECT_CHEVRON_SVG = (
 
 
 def _select_chevron_data() -> str:
-    """URL-encode the select chevron SVG for use in a CSS data URI."""
     svg = SELECT_CHEVRON_SVG
     for old, new in ((" ", "%20"), ("<", "%3C"), (">", "%3E"), ("#", "%23")):
         svg = svg.replace(old, new)
@@ -317,6 +313,19 @@ code {
   font-size: 0.9em;
   position: relative;
   cursor: copy;
+}
+
+pre.code-block {
+  margin: 0.5rem 0 1rem;
+  overflow-x: auto;
+}
+
+pre.code-block code {
+  display: block;
+  padding: 0.75rem 1rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 code:hover {
@@ -595,11 +604,9 @@ JS = """
 
 
 def _parse_table_block(lines: list[str], start: int) -> tuple[dict | None, int]:
-    """Parse a markdown table block and return parsed block + next index."""
     rows: list[list[str]] = []
     i = start
     while i < len(lines) and lines[i].startswith("|"):
-        # Split on pipes, treating `|` inside backticks as cell content.
         row_text = lines[i][1:-1]
         cells: list[str] = []
         current_cell = ""
@@ -623,7 +630,6 @@ def _parse_table_block(lines: list[str], start: int) -> tuple[dict | None, int]:
 
 
 def _parse_list_block(lines: list[str], start: int) -> tuple[dict, int]:
-    """Parse a markdown bullet-list block and return parsed block + next index."""
     items: list[str] = []
     i = start
     while i < len(lines) and lines[i].startswith("- "):
@@ -632,8 +638,25 @@ def _parse_list_block(lines: list[str], start: int) -> tuple[dict, int]:
     return {"type": "list", "items": items}, i
 
 
+FENCE = "```"
+
+
+def _parse_code_block(lines: list[str], start: int) -> tuple[dict, int]:
+    language = lines[start].strip()[len(FENCE) :].strip()
+    body: list[str] = []
+    i = start + 1
+    while i < len(lines):
+        if lines[i].strip() == FENCE:
+            return {"type": "code", "language": language, "lines": body}, i + 1
+        body.append(lines[i])
+        i += 1
+    raise ValueError(
+        f"line {start + 1}: the code block opened with {FENCE}{language} has no closing "
+        f"{FENCE}; add a line with only {FENCE} after its last command"
+    )
+
+
 def parse_markdown(md: str) -> list[dict]:
-    """Parse markdown into sections with headings, paragraphs, lists, and tables."""
     sections: list[dict] = []
     current: dict | None = None
     lines = md.splitlines()
@@ -656,6 +679,10 @@ def parse_markdown(md: str) -> list[dict]:
         if current is None:
             i += 1
             continue
+        if line.strip().startswith(FENCE):
+            block, i = _parse_code_block(lines, i)
+            current["body"].append(block)
+            continue
         if line.startswith("|"):
             block, i = _parse_table_block(lines, i)
             if block is not None:
@@ -672,11 +699,9 @@ def parse_markdown(md: str) -> list[dict]:
 
 
 def render_cell(text: str) -> str:
-    """Render a table cell, escaping HTML and marking danger text."""
     escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     if escaped.startswith("(!)"):
         escaped = f'<span class="danger">{escaped}</span>'
-    # Wrap backtick content in <code>, preserving empty backtick pairs.
     parts = []
     for segment in re.split(r"(`[^`]*`)", escaped):
         if segment.startswith("`") and segment.endswith("`"):
@@ -688,12 +713,10 @@ def render_cell(text: str) -> str:
 
 
 def _slugify(heading: str) -> str:
-    """Turn a section heading into an HTML id."""
     return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-")
 
 
 def render_sections(sections: list[dict]) -> str:
-    """Render parsed sections as HTML."""
     parts: list[str] = []
     for section in sections:
         parts.append(f'<section class="collapsed" id="{_slugify(section["heading"])}">')
@@ -710,6 +733,12 @@ def render_sections(sections: list[dict]) -> str:
                 parts.append(f"<h3>{render_cell(block['text'])}</h3>")
             elif block["type"] == "paragraph":
                 parts.append(f"<p>{render_cell(block['text'])}</p>")
+            elif block["type"] == "code":
+                language = html.escape(block["language"] or "text")
+                text = html.escape("\n".join(block["lines"]))
+                parts.append(
+                    f'<pre class="code-block" data-language="{language}"><code>{text}</code></pre>'
+                )
             elif block["type"] == "list":
                 parts.append("<ul>")
                 for item in block["items"]:
@@ -734,7 +763,6 @@ def render_sections(sections: list[dict]) -> str:
 
 
 def render_nav(sections: list[dict]) -> str:
-    """Render the section jump dropdown for the page header."""
     options = "".join(
         f'<option value="{_slugify(section["heading"])}">{html.escape(section["heading"])}</option>'
         for section in sections
@@ -746,7 +774,6 @@ def render_nav(sections: list[dict]) -> str:
 
 
 def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
-    """Render markdown to a complete self-contained HTML page."""
     sections = parse_markdown(md)
     nav = render_nav(sections)
     body = render_sections(sections)
@@ -819,7 +846,6 @@ def render_html(md: str, title: str = "Terminal Cheat Sheet") -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for the renderer."""
     parser = argparse.ArgumentParser(description="Render terminal cheat sheet to HTML.")
     parser.add_argument("--input", type=Path, default=DEFAULT_MD, help="Input markdown file.")
     parser.add_argument("--output", type=Path, default=DEFAULT_HTML, help="Output HTML file.")
