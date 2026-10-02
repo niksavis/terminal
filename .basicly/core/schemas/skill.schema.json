@@ -68,6 +68,19 @@
       },
       "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal. basicly-internal; NOT emitted into SKILL.md frontmatter."
     },
+    "resource_technologies": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "Technology scoping per resource file: the key is a path beside skill.yaml, the value its technologies. A build whose selection misses them projects neither the file nor any table row or list item of the instructions that names it; the loader refuses a mention on any other line. An unlisted resource ships everywhere. basicly-internal; NOT emitted into SKILL.md frontmatter."
+    },
     "license": {
       "type": "string",
       "minLength": 1,

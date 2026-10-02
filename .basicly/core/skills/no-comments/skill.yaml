@@ -1,13 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 76
+  listing: 41
 name: no-comments
 invocation: model
-description: >-
-  Write and edit code files in a repository that bans prose comments: where a fact goes
-  instead, which directive comments stay, and the commands that report and remove prose.
-  Use when you create or edit any code file, or when the no-comments gate refuses a change.
+description: "Edits code in a repo that bans prose comments: where a fact goes, which directives stay. Use when editing code or when the no-comments gate refuses."
 instructions: |
   # No comments in code
 

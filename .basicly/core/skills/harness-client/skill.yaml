@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 80
+  listing: 41
 name: harness-client
 invocation: model
-description: Attach to a running basicly supervisor as a second session, observe its live status, present its pending decisions to a human and record the answers. Use when a supervisor is already running or may be, to check what the factory is doing, unblock a lane that waits on a judgment, or answer a queued decision.
+description: "Attaches to a running supervisor: shows what the factory is doing and records answers to its decisions. Use while a supervisor runs or waits."
 instructions: |
   # Harness Client
 

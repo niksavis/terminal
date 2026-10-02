@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 83
+  listing: 44
 name: harness-loop
 invocation: model
-description: Drive tracked work through the basicly harness loop (intake, classify, decompose, build, verify, validate, ship) with `basicly loop`, for one issue or many lanes under a supervisor. Use when you start or resume non-trivial development, decide which phase an issue is in, or advance it past a checkpoint, gate or rework.
+description: "Drives tracked work through the basicly loop, intake to ship. Use to start or resume work, or to move an issue past a checkpoint or gate."
 instructions: |
   # Harness Loop
 

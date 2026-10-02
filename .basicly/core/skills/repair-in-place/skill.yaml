@@ -1,13 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 71
+  listing: 37
 name: repair-in-place
 invocation: model
-description: >-
-  Fix a named defect in the lane's own worktree from the actual findings, without a new
-  plan or a wider scope. Use at REPAIR after verify or validate failed, when a landing
-  bounced, or when you want to re-read the requirement and start again.
+description: "Fixes a named defect in the lane's own worktree from its findings, with no new plan. Use at REPAIR after verify or validate failed."
 covers:
   phases: [repair]
 instructions: |

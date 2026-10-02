@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 80
+  listing: 47
 name: worktree-isolation
 invocation: model
-description: Isolate non-trivial work in a sibling git worktree on a harness branch with `basicly worktree`, with dependency and git-hook provisioning, merge and safe cleanup. Use when work must stay out of the main checkout, when parallel tracks would collide, or when you decide if a change needs its own worktree.
+description: "Isolates work in a sibling git worktree, then merges and cleans up. Use to keep a change out of the main checkout or when parallel tracks collide."
 covers:
   phases: [build, repair]
 instructions: |
@@ -12,7 +12,7 @@ instructions: |
 
   This skill runs a unit of work in a sibling git worktree with `basicly worktree`.
   It covers placement, provisioning, merge and cleanup.
-  For tracker records see `work-tracker`. For commits see `tool-git` and `conventional-commits`.
+  For tracker records see `work-tracker`. For commits see the git reference of `cli-tools` and `conventional-commits`.
 
   ## Rules
 

@@ -11,7 +11,7 @@ claude:
   effort: high
   skills:
     [
-      python-guidelines,
+      python,
       no-comments,
       repair-in-place,
       test-discipline,

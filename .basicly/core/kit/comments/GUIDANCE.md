@@ -1,6 +1,6 @@
 ---
 name: no-comments
-description: Write and edit code files in a repository that bans prose comments: where a fact goes instead, which directive comments stay, and the commands that report and remove prose. Use when you create or edit any code file, or when the no-comments gate refuses a change.
+description: Edits code in a repo that bans prose comments: where a fact goes, which directives stay. Use when editing code or when the no-comments gate refuses.
 ---
 
 # No comments in code

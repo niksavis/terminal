@@ -7,6 +7,9 @@ trigger:
     - prompt: "a subprocess call raises winerror 2 on the windows runner"
     - prompt: "add type hints and pathlib to this module"
     - prompt: "this except clause looks wrong for an older interpreter"
+    - prompt: "the size gate says this file is too big but not where to cut it"
+    - prompt: "am i allowed to silence this warning or is that just hiding it"
+    - prompt: "does pulling these lines into a new wrapper actually earn its keep"
   negative:
     - prompt: "npx resolves the wrong binary inside my git hook"
       owner: node

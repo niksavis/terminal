@@ -1,14 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 88
+  listing: 41
 name: validate-as-consumer
 invocation: model
-description: >-
-  Exercise a verified change the way a consumer does, in the operational environment and
-  against the requirement that asked for it, instead of re-running the gate suite. Use at
-  VALIDATE, before you claim a capability in a README or release note, or when "the tests
-  pass" stands in for "the feature works".
+description: "Runs a verified change the way a consumer does, against its requirement. Use at VALIDATE or before a README claims a capability."
 covers:
   phases: [validate]
 instructions: |

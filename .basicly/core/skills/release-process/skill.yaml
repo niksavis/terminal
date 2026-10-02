@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 83
+  listing: 38
 name: release-process
 invocation: model
-description: Cut a release of this repository with `basicly release`, then do the steps that command leaves to a person - choose the version, write the summary, push, and confirm the release published. Use when asked to cut a release, tag a version, prepare release notes, or check whether a release published.
+description: "Cuts a release with basicly release, pushes it and confirms it published. Use when cutting, tagging or checking a release."
 instructions: |
   # Release Process
 

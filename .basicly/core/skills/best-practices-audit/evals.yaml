@@ -1,0 +1,11 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "check our skills and hooks against the latest anthropic guidance"
+    - prompt: "a new claude code version shipped, find anything in the harness that is now outdated"
+    - prompt: "is our CLAUDE.md still following the vendor recommendations for context and caching"
+  negative:
+    - prompt: "write a commit message for the staged change"
+      owner: conventional-commits
+    - prompt: "add a fragment yaml source for the new testing rule"
+      owner: catalog-authoring

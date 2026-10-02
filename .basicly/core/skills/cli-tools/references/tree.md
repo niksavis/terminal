@@ -1,0 +1,28 @@
+# tree
+
+Show a directory hierarchy. Use it to see the shape of a project or to check where generated files are.
+
+## Rules
+
+- **Limit the depth with `-L`.** A deep tree fills the context and hides the important paths.
+- **Exclude generated directories with `-I`.** Caches and build output add noise.
+- **Add `-a` for hidden files.** tree skips them by default.
+- **Use `--charset ascii` in CI logs.** Line-drawing characters can break in plain text.
+
+## Commands
+
+```bash
+tree
+tree -L 2
+tree -d
+tree -a -L 2
+tree -I 'node_modules|dist|__pycache__'
+tree -sh
+tree -J .
+```
+
+## Output
+
+- Text output shows the hierarchy and the totals.
+- `-J` prints JSON with `type`, `name` and `contents` fields.
+- tree does not show git status.

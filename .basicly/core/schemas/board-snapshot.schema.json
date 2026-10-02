@@ -448,6 +448,22 @@
         "cache_write_tokens": {
           "type": "integer",
           "minimum": 0
+        },
+        "cache_write_5m_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cache writes billed at the 5-minute TTL rate. Absent when no dispatch in scope reported the split."
+        },
+        "cache_write_1h_tokens": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Cache writes billed at the 1-hour TTL rate, which costs more per token than the 5-minute rate. Absent when no dispatch in scope reported the split."
+        },
+        "cache_read_share": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "cache_read_tokens divided by input_tokens. Absent when input_tokens does not include the cache reads, because the ratio is then not a share."
         }
       }
     },

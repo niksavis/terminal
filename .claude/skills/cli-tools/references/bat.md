@@ -1,0 +1,26 @@
+# bat
+
+Show a file with line numbers and syntax colour. Use it to read code, not to search it.
+
+## Rules
+
+- **Use `--paging=never` in scripts.** The pager waits for a key and stops a non-interactive run.
+- **Use `--plain` when a tool reads the output.** Line numbers and decorations break parsing.
+- **Try `batcat` when `bat` is missing.** Debian and Ubuntu install the binary as `batcat`.
+
+## Commands
+
+```bash
+bat file.py
+bat --plain file.py
+bat -r 10:40 file.py
+bat -l json file.txt
+command | bat -l json
+bat --paging=never file.py
+```
+
+## Output
+
+- Default output has line numbers and style marks.
+- `--plain` removes most of the formatting.
+- `-l` sets the language for piped input that has no file name.

@@ -16,9 +16,9 @@ from terminal_setup.configs import (
     BASICLY_REF,
     BASICLY_SPEC,
     CHEAT_SHEET_PATH,
+    CLI_TOOLS_SKILL,
     IMG_ZOOM_SOURCE,
     TEMPLATE_DIR,
-    TOOL_SKILL_COMMANDS,
     _append_guarded_block,
     _claude_skill_wsl_install_script,
     _cli_tools_skills_script,
@@ -1010,14 +1010,15 @@ def test_basicly_pin_matches_the_installed_harness() -> None:
     assert BASICLY_SPEC.endswith(f"@{BASICLY_REF}")
 
 
-def test_every_basicly_tool_skill_has_a_command_mapping() -> None:
-    catalog = sorted(
+def test_the_pinned_harness_carries_no_tool_skills() -> None:
+    catalog = [
         path.name
         for path in (_REPO / ".basicly" / "core" / "skills").iterdir()
         if path.name.startswith("tool-")
-    )
+    ]
 
-    assert sorted(TOOL_SKILL_COMMANDS) == catalog
+    assert catalog == []
+    assert (_REPO / ".basicly" / "core" / "skills" / CLI_TOOLS_SKILL).is_dir()
 
 
 def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> Path:
@@ -1044,16 +1045,10 @@ def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> 
 
 
 @_posix_only
-def test_cli_tools_script_passes_the_skill_of_each_present_tool(tmp_path: Path) -> None:
+def test_cli_tools_script_passes_only_the_cli_tools_skill(tmp_path: Path) -> None:
     record = _run_cli_tools_script(tmp_path, ["fdfind", "rg"], claude=True)
 
-    assert record.read_text(encoding="utf-8").splitlines() == [
-        *_SKILLS_USER,
-        "cli-tools",
-        "tool-fd",
-        "tool-ripgrep",
-        "tool-uv",
-    ]
+    assert record.read_text(encoding="utf-8").splitlines() == [*_SKILLS_USER, "cli-tools"]
 
 
 @_posix_only
@@ -1076,7 +1071,7 @@ def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
 
     assert fake.commands == [
         wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()]),
-        ["uv.exe", *_SKILLS_USER, "--home", str(tmp_path), "cli-tools", "tool-ripgrep"],
+        ["uv.exe", *_SKILLS_USER, "--home", str(tmp_path), "cli-tools"],
     ]
 
 
@@ -1115,25 +1110,3 @@ def test_scripted_claude_steps_print_labels_not_scripts(
     assert "wsl -d Ubuntu --exec sh: install the Claude Code status line" in out
     assert "wsl -d Ubuntu --exec sh: install the img-zoom skill" in out
     assert "wsl -d Ubuntu --exec sh: install the basicly cli-tools skills" in out
-
-
-def test_deploy_cli_tools_skills_windows_ignores_windows_builtins(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
-    monkeypatch.setenv("UV", "uv.exe")
-    monkeypatch.setenv("SYSTEMROOT", "C:\\Windows")
-    _make_claude_home(tmp_path)
-    runner = Runner(dry_run=False, reporter=RecordingReporter())
-    fake = _FakeRun()
-    monkeypatch.setattr(runner, "run", fake)
-    found = {
-        "tree": "C:\\WINDOWS\\system32\\tree.COM",
-        "curl": "C:\\WINDOWS\\system32\\curl.exe",
-        "rg": "C:\\tools\\rg.exe",
-    }
-    monkeypatch.setattr(runner, "which", found.get)
-
-    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
-
-    assert fake.commands[-1][-3:] == ["cli-tools", "tool-curl", "tool-ripgrep"]

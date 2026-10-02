@@ -1,6 +1,6 @@
 ---
 name: tracker-board
-description: Serve the tracker as a web page and an HTTP API on localhost. Use when a person wants to read or edit the backlog in a browser, or when you build a page, a chart or a tool on the tracker API.
+description: Serve the tracker as a web page and an HTTP API on localhost. Use when a person wants to read or edit the backlog in a browser, or to build a page, a chart or a tool on the tracker API.
 ---
 
 # The tracker board

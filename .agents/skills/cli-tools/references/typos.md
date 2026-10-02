@@ -1,0 +1,26 @@
+# typos
+
+Find spelling errors in source code, documents and identifiers. Use it before a commit or a release.
+
+## Rules
+
+- **Run `--diff` before `--write-changes`.** An automatic fix can change an intended domain term.
+- **Fix the source term before you add an exception.** A wide ignore list hides real errors.
+- **Keep exceptions narrow in `.typos.toml`.** Exclude generated files there.
+- **Run it again after a fix.** The second run must be clean.
+
+## Commands
+
+```bash
+typos
+typos src/
+typos --diff
+typos --write-changes
+typos --format json
+```
+
+## Output
+
+- Default output shows `file:line:column` and the suggested correction.
+- `--format json` prints findings that `jq` can read.
+- Exit code 2 means that typos found errors.

@@ -5,7 +5,7 @@ tools: Read, Grep, Glob, Bash, Edit, Write
 tier: high
 effort: high
 skills:
-- python-guidelines
+- python
 - no-comments
 - repair-in-place
 - test-discipline

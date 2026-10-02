@@ -1,15 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 80
+  listing: 40
 name: catalog-authoring
 invocation: model
-description: >-
-  Author and improve basicly catalog sources — skills, fragments and output
-  styles — in their YAML source format (never a discoverable .md), then project
-  and verify them. Use when you add or edit a skill or fragment, build a
-  catalog, or decide where guidance should live (always-on fragment or
-  on-demand skill).
+description: "Authors catalog sources (skills, fragments, styles) in YAML and projects them. Use when adding a new skill or fragment to the catalog."
 instructions: |
   # Catalog Authoring
 

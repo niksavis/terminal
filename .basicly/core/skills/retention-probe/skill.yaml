@@ -1,14 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 75
+  listing: 41
 name: retention-probe
 invocation: model
-description: >-
-  Test whether this session still holds the repository's always-on instruction
-  file in its context window. Use when a repo convention seems to have gone
-  missing, at the start of work in a subagent or a fresh worktree, or after a
-  compaction, before you trust that project rules are loaded.
+description: "Tests if this session still holds the always-on instruction file. Use when a repo rule seems missing, in a new subagent or after compaction."
 instructions: |
   # Retention Probe
 

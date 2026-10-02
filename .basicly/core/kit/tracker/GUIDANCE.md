@@ -1,6 +1,6 @@
 ---
 name: work-tracker
-description: Use the append-only work tracker as this repository's issue tracker. Use when you plan work, choose what to do next, file, refine or close a record, or write a commit that must name a record id.
+description: Use the append-only work tracker as this repository's issue tracker. Use when a task plans work, chooses what to do next, files, refines or closes a record, or writes a commit that must name a record id.
 ---
 
 # The work tracker

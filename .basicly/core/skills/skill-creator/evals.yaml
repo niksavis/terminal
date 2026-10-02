@@ -1,0 +1,15 @@
+# Tier-2 routing evidence for `skill-creator`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "turn the workflow we just did into a reusable skill and check it works"
+    - prompt: "does my skill actually help, compare runs with it and without it"
+    - prompt: "the skill never gets picked up when people ask for it, fix its trigger"
+    - prompt: "grade the outputs of the new skill version against the old one"
+  negative:
+    - prompt: "add an always-on fragment to the instruction files"
+      owner: catalog-authoring
+    - prompt: "is there a community skill on skills.sh for terraform"
+      owner: find-skills

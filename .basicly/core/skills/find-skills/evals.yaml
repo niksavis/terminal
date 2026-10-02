@@ -1,0 +1,14 @@
+# Tier-2 routing evidence for `find-skills`.
+# Prompts paraphrase how a user actually asks; copying the description in would
+# game the eval. A failure here means fix the description, not the prompt.
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "is there a skill out there for writing playwright tests"
+    - prompt: "search skills.sh for something that helps with terraform"
+    - prompt: "install a community skill that generates changelogs"
+  negative:
+    - prompt: "write a new skill for our deploy steps and benchmark it"
+      owner: skill-creator
+    - prompt: "which installed command line tool finds files by name"
+      owner: cli-tools

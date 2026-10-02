@@ -1,14 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 76
+  listing: 42
 name: test-discipline
 invocation: model
-description: >-
-  Write isolated, order-independent tests that assert on observable behavior, not private
-  internals. Use when you write, review or debug a test in any language, especially when
-  tests share fixtures, touch global or filesystem state, fail by run order, or reach into
-  implementation details.
+description: "Writes isolated, order-independent tests that assert what the caller sees, not private helpers. Use for tests with shared fixtures, leaked state or run order."
 instructions: |
   # Test Discipline
 

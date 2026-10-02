@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 70
+  listing: 41
 name: work-tracker
 invocation: model
-description: Read, file, claim, refine and close records in the owned work tracker, the append-only event ledger in .basicly/ledger/. Use when you plan work, check what is ready to pick up, file a bug or issue, query the tracker in bulk, or write a commit that names a record id.
+description: "Reads, files, claims and closes records in the ledger tracker. Use to plan work, check what is ready, file a bug or claim an issue."
 instructions: |
   # Work Tracker
 

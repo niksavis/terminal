@@ -1,0 +1,31 @@
+# uv
+
+Manage Python environments and dependencies, and run project commands in the managed environment. Use it instead of pip in a uv project.
+
+## Rules
+
+- **Run project tools with `uv run`.** A tool outside uv can use the wrong interpreter.
+- **Do not assume the system Python version.** The project sets its own version limits.
+- **Do not mix plain `pip` with a uv project.** The lock file then no longer matches the environment.
+- **Review each change to dependencies and the lock file.** See the confirmation list before you add one.
+
+## Commands
+
+```bash
+uv init my-project
+uv add requests
+uv sync
+uv run pytest tests/
+uv run pyright .
+uv run --with requests script.py
+uv venv
+uv pip install requests
+uv pip install -r requirements.txt
+uv pip compile requirements.in -o requirements.txt
+```
+
+## Output
+
+- `uv sync` reports the resolution and the packages that it installed.
+- A `uv run` failure usually comes from the tool or the code, not from uv.
+- `uv pip` commands accept most `pip` arguments.

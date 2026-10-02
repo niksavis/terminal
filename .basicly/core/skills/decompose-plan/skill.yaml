@@ -1,14 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 89
+  listing: 42
 name: decompose-plan
 invocation: model
-description: >-
-  Cut a unit of work into children that the plan gate accepts, each with EARS acceptance
-  criteria, disjoint or declared scope globs, acyclic dependencies, a token budget, an
-  integrity level and an end-to-end demonstration command. Use at DECOMPOSE, when a plan
-  gate refused a child, or when a child has no consumer-visible behaviour to check.
+description: "Cuts work into children the plan gate accepts: EARS criteria, scope globs, budgets, a demo command. Use at DECOMPOSE or when a plan gate refuses a child."
 covers:
   phases: [decompose]
 instructions: |

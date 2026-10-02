@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 75
+  listing: 38
 name: root-cause
 invocation: model
-description: Establish why something happened by asking why until the answer stops changing, with an observation for each link, and name the control that would have refused it. Use before you file a record or propose a gate after a failure, when a fix treats a symptom, or when a retro asks for a cause.
+description: "Finds why a failure happened, with evidence for each why, and names the control that refuses it. Use after a failure, before a fix or a gate."
 covers:
   work_types: [bug]
   phases: [build, repair]

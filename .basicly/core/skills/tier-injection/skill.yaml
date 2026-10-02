@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 84
+  listing: 42
 name: tier-injection
 invocation: model
-description: Install the portable tier injection kit so a subagent spawns on the model its declared tier resolves to, not on the host default. Use when you set up tier injection in this or another repository, when a subagent ignores the tier its definition declares, or when you decide whether a host can pin the model of a spawn.
+description: "Installs the tier kit so a subagent runs on the model its tier names. Use when a host must pin the model of a spawn or a subagent ignores its tier."
 instructions: |
   # Tier Injection
 

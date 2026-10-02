@@ -1,0 +1,30 @@
+# ripgrep
+
+Search file contents across a repository with `rg`. Use it first, before a file read or a syntax-aware tool.
+
+## Rules
+
+- **Use `-F` for a literal string.** A regular expression can match more than you intend.
+- **Use `-t` or `-g` to limit the files.** The results stay relevant and the search stays fast.
+- **Expect hidden and ignored files to be skipped.** Add `--hidden` or `--no-ignore` only when the task needs them.
+- **Use `-n` when you need line numbers.** Piped output has no line numbers by default.
+
+## Commands
+
+```bash
+rg "pattern" path/
+rg -F "exact string"
+rg -n "pattern"
+rg "pattern" -t py
+rg "pattern" -g '*.py'
+rg "pattern" -C 3
+rg -l "pattern"
+rg -c "pattern"
+rg -i "pattern"
+rg "pattern" --json
+```
+
+## Output
+
+- Exit code 1 means no match. This can be a correct result.
+- `--json` prints a stream of `begin`, `match`, `end` and `summary` events, not one object.

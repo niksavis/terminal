@@ -11,6 +11,9 @@ CLI_TIMEOUT_S = 10.0
 
 NO_TRACKER_PREFIX = "ledger: none"
 
+HOOK_OUTPUT_CAP = 10_000
+CUT_NOTICE = "\n[cut at the {cap}-character hook cap: run `basicly session start` for the rest]"
+
 
 def cli_command() -> list[str] | None:
 
@@ -44,7 +47,15 @@ def orientation() -> str | None:
     report = proc.stdout.strip()
     if not report or report.startswith(NO_TRACKER_PREFIX):
         return None
-    return report
+    return within_cap(report)
+
+
+def within_cap(report: str) -> str:
+
+    if len(report) <= HOOK_OUTPUT_CAP:
+        return report
+    notice = CUT_NOTICE.format(cap=HOOK_OUTPUT_CAP)
+    return report[: HOOK_OUTPUT_CAP - len(notice)] + notice
 
 
 def _skipped(reason: str) -> None:
