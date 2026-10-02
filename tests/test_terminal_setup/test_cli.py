@@ -1,13 +1,52 @@
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
 from terminal_setup.cli import build_parser, main, run_setup
-from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
+from terminal_setup.platform import (
+    OperatingSystem,
+    PackageManager,
+    PlatformInfo,
+    path_without_own_environment,
+)
+
+
+@pytest.fixture(autouse=True)
+def _main_path_change_stays_in_the_test(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("PATH", os.environ.get("PATH", ""))
+
+
+def test_own_environment_is_dropped_from_path() -> None:
+    sep = os.pathsep
+    path = sep.join(["/env/bin", "/home/dev/.local/bin", "/env/bin/", "/usr/bin"])
+
+    kept = path_without_own_environment(path, "/env/bin/python", in_virtualenv=True)
+
+    assert kept == sep.join(["/home/dev/.local/bin", "/usr/bin"])
+
+
+def test_path_is_kept_outside_a_virtualenv() -> None:
+    assert path_without_own_environment("/usr/bin", "/usr/bin/python3", in_virtualenv=False) == (
+        "/usr/bin"
+    )
+
+
+def test_main_drops_its_own_environment_from_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    own = str(Path(sys.executable).parent)
+    monkeypatch.setenv("PATH", os.pathsep.join([own, "/usr/bin"]))
+    monkeypatch.setattr(sys, "prefix", "/env")
+    monkeypatch.setattr(sys, "base_prefix", "/base")
+
+    with mock.patch("terminal_setup.cli._dispatch", return_value=0):
+        main([])
+
+    assert own not in os.environ["PATH"].split(os.pathsep)
 
 
 def test_parser_dry_run_flag() -> None:
@@ -87,6 +126,7 @@ def test_main_runs_wsl_setup_when_inside_wsl() -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
         mock.patch("terminal_setup.cli.agents.ensure_agents"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
@@ -152,6 +192,7 @@ def test_run_setup_config_only_skips_package_installs() -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras") as mock_extras,
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
         mock.patch("terminal_setup.cli.agents.ensure_agents"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_node") as mock_node,
         mock.patch("terminal_setup.cli.prerequisites.ensure_starship") as mock_starship,
@@ -203,6 +244,7 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
         mock.patch("terminal_setup.cli.agents.ensure_agents"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.configs.deploy_all"),
@@ -258,6 +300,7 @@ def _run_setup_install_mode(
         mock.patch("terminal_setup.cli.prerequisites.ensure_host_cli_extras") as mock_extras,
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
         mock.patch("terminal_setup.cli.agents.ensure_agents"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl") as mock_zoom_wsl,
         mock.patch("terminal_setup.cli.configs.install_img_zoom_native") as mock_zoom_native,

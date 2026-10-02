@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess  # nosec B404
 from functools import partial
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl
@@ -10,6 +11,8 @@ from .prerequisites import (
     _run_shell_read,
     _wsl_distro,
     attempt,
+    is_user_scope,
+    report_machine_scope,
 )
 from .runner import Runner
 
@@ -114,7 +117,16 @@ def _ensure_windows_agent(
     if not update:
         runner.reporter.success(f"{agent} is present on Windows ({found})")
         return
-    runner.run([found, "update"], interactive=True, label=f"update {agent} on Windows")
+    if not is_user_scope(found, platform):
+        report_machine_scope(runner, agent, "", found, minimum=None)
+        return
+    try:
+        runner.run([found, "update"], interactive=True, label=f"update {agent} on Windows")
+    except subprocess.CalledProcessError:
+        runner.reporter.step(
+            f"To retry, run '{agent} update' in Windows PowerShell (powershell.exe)."
+        )
+        raise
 
 
 def ensure_agents(
@@ -124,9 +136,10 @@ def ensure_agents(
     wsl_distro = _wsl_distro(platform) if windows_host else None
     for agent in AGENTS:
         install = agent in selected
+        verb = "update" if update else "install"
         attempt(
             runner,
-            f"install {agent}",
+            f"{verb} {agent}",
             partial(
                 _ensure_shell_agent,
                 runner,
@@ -139,7 +152,7 @@ def ensure_agents(
         if windows_host:
             attempt(
                 runner,
-                f"install {agent} on Windows",
+                f"{verb} {agent} on Windows",
                 partial(
                     _ensure_windows_agent, runner, platform, agent, install=install, update=update
                 ),

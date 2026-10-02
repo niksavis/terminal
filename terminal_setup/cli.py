@@ -498,6 +498,13 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             partial(prerequisites.ensure_wezterm, runner, platform_info, no_sudo=effective_no_sudo),
         )
 
+        if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
+            prerequisites.attempt(
+                runner,
+                "update uv on Windows" if update else "check uv on Windows",
+                partial(prerequisites.ensure_uv_windows, runner, platform_info, update=update),
+            )
+
         prerequisites.attempt(
             runner,
             "install Python",
@@ -576,6 +583,9 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
 def main(argv: list[str] | None = None) -> int:
 
+    os.environ["PATH"] = platform.path_without_own_environment(
+        os.environ.get("PATH", ""), sys.executable, in_virtualenv=sys.prefix != sys.base_prefix
+    )
     parser = build_parser()
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import cast
@@ -1128,7 +1129,7 @@ def test_install_user_local_tool_downloads_every_release_tool_through_the_instal
 
         assert handled is True
         assert runner.commands == [
-            ["python3", "-I", "-c", RELEASE_INSTALL_SOURCE, repo, binary, "1", *patterns]
+            [sys.executable, "-I", "-c", RELEASE_INSTALL_SOURCE, repo, binary, "1", *patterns]
         ]
 
 

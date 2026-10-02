@@ -174,10 +174,31 @@ def _managed(tmp_path: Path) -> str:
     return str(replace(_windows_platform(), home=tmp_path).user_programs_dir / "nodejs" / "node")
 
 
-def test_windows_node_skips_a_present_node_of_the_target_major(tmp_path: Path) -> None:
-    runner = _node_runner("C:/Program Files/nodejs/node.exe", "v26.1.0\n")
+@pytest.mark.parametrize(
+    ("version", "level", "text"),
+    [
+        ("v26.1.0\n", "info", "managed by your organisation"),
+        ("v22.3.0\n", "warn", "Software Center"),
+    ],
+)
+def test_windows_node_only_advises_on_a_machine_wide_node(
+    tmp_path: Path, version: str, level: str, text: str
+) -> None:
+    runner = _node_runner("C:/Program Files/nodejs/node.exe", version)
 
     install = _ensure(runner, tmp_path, update=True)
+
+    install.assert_not_called()
+    assert any(
+        found_level == level and text in message
+        for found_level, message in runner.reporter.messages  # type: ignore[attr-defined]
+    )
+
+
+def test_windows_node_skips_a_present_user_node_of_the_target_major(tmp_path: Path) -> None:
+    runner = _node_runner(str(tmp_path / "AppData" / "Roaming" / "nvm" / "node.exe"), "v26.1.0\n")
+
+    install = _ensure(runner, tmp_path)
 
     install.assert_not_called()
 
@@ -192,14 +213,15 @@ def test_windows_node_installs_when_missing_and_adds_the_path(tmp_path: Path) ->
     assert any(command[0] == "powershell" for command in runner.commands)
 
 
-def test_windows_node_replaces_an_older_node_and_names_it(tmp_path: Path) -> None:
-    runner = _node_runner("C:/Program Files/nodejs/node.exe", "v22.3.0\n")
+def test_windows_node_installs_beside_an_older_user_node_and_names_it(tmp_path: Path) -> None:
+    older = str(tmp_path / "AppData" / "Roaming" / "nvm" / "node.exe")
+    runner = _node_runner(older, "v22.3.0\n")
 
     install = _ensure(runner, tmp_path)
 
     install.assert_called_once()
     assert any(
-        level == "warn" and "C:/Program Files/nodejs/node.exe" in message
+        level == "warn" and older in message
         for level, message in runner.reporter.messages  # type: ignore[attr-defined]
     )
 

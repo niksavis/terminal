@@ -9,7 +9,7 @@ import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from . import release_install, windows_node
 from .platform import (
@@ -469,7 +469,8 @@ def _install_release_tool(
 ) -> None:
     repo, binary, patterns = RELEASE_TOOLS[package]
     source = Path(release_install.__file__).read_text(encoding="utf-8")
-    command = ["python3", "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
+    interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
+    command = [interpreter, "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
     result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=f"install {package}")
     message = (result.stdout or "").strip()
     if message:
@@ -1004,6 +1005,10 @@ def _node_meets_target(version: str | None) -> bool:
 def _ensure_node_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -> None:
     target = platform.user_programs_dir / "nodejs"
     installed, path = _windows_node_version(runner)
+    if path is not None and not is_user_scope(path, platform):
+        minimum = None if _node_meets_target(installed) else f"v{TARGET_NODE_MAJOR}"
+        report_machine_scope(runner, "Node.js", installed, path, minimum=minimum)
+        return
     managed = path is not None and Path(path).parent == target
     if _node_meets_target(installed) and not (update and managed):
         runner.reporter.success(f"Node.js {installed} is present on Windows ({path})")
@@ -1075,7 +1080,7 @@ UV_PYTHON_INSTALL_ARGS = (
     "python-install-default",
 )
 UV_PYTHON_MANAGED_ARGS = ("python", "find", "--managed-python", TARGET_PYTHON_MINOR)
-UV_PYTHON_UPGRADE_ARGS = ("python", "upgrade", TARGET_PYTHON_MINOR)
+UV_PYTHON_UPGRADE_ARGS = (*UV_PYTHON_INSTALL_ARGS, "--upgrade")
 _UV_ON_PATH = 'PATH="$HOME/.local/bin:$PATH"; uv '
 
 
@@ -1112,13 +1117,35 @@ def _ensure_python_shell(runner: Runner, *, update: bool, wsl_distro: str | None
     )
 
 
-def _windows_python_version(runner: Runner) -> str | None:
-    if runner.which("python") is None:
-        return None
-    result = runner.run(["python", "-c", PYTHON_VERSION_CODE], check=False, dry_run_safe=True)
+def is_user_scope(path: str, platform: PlatformInfo) -> bool:
+    return PureWindowsPath(path).is_relative_to(PureWindowsPath(str(platform.home)))
+
+
+def report_machine_scope(
+    runner: Runner, name: str, installed: str | None, path: str, *, minimum: str | None
+) -> None:
+    if minimum is None:
+        tool = f"{name} {installed}" if installed else name
+        runner.reporter.info(
+            f"{tool} at {path} is installed machine-wide and managed by your "
+            "organisation; setup leaves it as it is."
+        )
+        return
+    runner.reporter.warn(
+        f"{name} {installed or '(version unreadable)'} at {path} is older than {minimum} and is "
+        f"installed machine-wide. Ask IT or use Software Center for {name} {minimum} or newer; "
+        "a user copy cannot override it, because Windows puts the machine PATH first."
+    )
+
+
+def _windows_python_version(runner: Runner) -> tuple[str | None, str | None]:
+    path = runner.which("python")
+    if path is None:
+        return None, None
+    result = runner.run([path, "-c", PYTHON_VERSION_CODE], check=False, dry_run_safe=True)
     if result.returncode != 0:
-        return None
-    return result.stdout.strip() or None
+        return None, path
+    return result.stdout.strip() or None, path
 
 
 def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -> None:
@@ -1128,7 +1155,11 @@ def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bo
             "uv is not on PATH; install it with the install.ps1 bootstrap from the README, "
             "then re-run this setup."
         )
-    installed = _windows_python_version(runner)
+    installed, path = _windows_python_version(runner)
+    if path is not None and not is_user_scope(path, platform):
+        minimum = None if python_meets_target(installed) else TARGET_PYTHON_MINOR
+        report_machine_scope(runner, "Python", installed, path, minimum=minimum)
+        return
     if python_meets_target(installed):
         runner.reporter.success(f"Python {installed} is present")
         managed = runner.run([uv, *UV_PYTHON_MANAGED_ARGS], check=False, dry_run_safe=True)
@@ -1148,6 +1179,22 @@ def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bo
             "If 'python' opens the Microsoft Store, turn off the python.exe and python3.exe "
             "App execution aliases in Settings > Apps > Advanced app settings."
         )
+
+
+def ensure_uv_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -> None:
+    uv = runner.which("uv")
+    if uv is None:
+        raise RuntimeError(
+            "uv is not on PATH; install it with the install.ps1 bootstrap from the README, "
+            "then re-run this setup."
+        )
+    if not is_user_scope(uv, platform):
+        report_machine_scope(runner, "uv", "", uv, minimum=None)
+        return
+    if not update:
+        runner.reporter.success(f"uv is present on Windows ({uv})")
+        return
+    runner.run([uv, "self", "update"], interactive=True, label="update uv on Windows")
 
 
 def ensure_python(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:

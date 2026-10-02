@@ -36,6 +36,19 @@ The setup installs each of these only when it is missing: uv, Python 3.14 (with 
 
 `--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tree, podman, bubblewrap, socat) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command.
 
+### Managed Windows machines
+
+Setup never runs as administrator. On Windows it changes only what is in your user profile (`%USERPROFILE%`). A tool that is installed machine-wide, for example from Software Center or Intune under `C:\Program Files`, is managed by your organisation, and setup leaves it as it is:
+
+| Tool is | Setup does |
+| --- | --- |
+| missing | installs it in your user profile |
+| in your user profile | `--update` updates it: `uv self update`, `uv python install --upgrade`, the Node.js zip, `claude update`, `copilot update`, `codex update` |
+| machine-wide, new enough | prints one info line and changes nothing |
+| machine-wide, too old | prints one warning with the version and the path: ask IT or use Software Center for a newer version |
+
+Setup does not install a second copy beside a machine-wide one, because Windows puts the machine PATH before the user PATH, so the machine-wide copy always wins. If an agent update fails on Windows, setup names the command to run by hand, for example `codex update` in Windows PowerShell (`powershell.exe`).
+
 ### Install and update with uv
 
 With uv already installed, run the setup directly from `main` — no clone required:
@@ -50,7 +63,7 @@ Already installed? Re-apply only the configs (fast, no package installs) — for
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only config
 ```
 
-Update every user-local tool, Python, Node.js and every present coding agent that is older than its latest release:
+Update every user-local tool, uv, Python, Node.js and every present coding agent that is older than its latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
 
 ```bash
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update

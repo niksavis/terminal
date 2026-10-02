@@ -39,9 +39,30 @@ def test_python_meets_target(version: str | None, *, expected: bool) -> None:
     assert python_meets_target(version) is expected
 
 
+MACHINE_PYTHON = "C:/Program Files/Python314/python.exe"
+
+
 class WindowsRunner(RecordingRunner):
+    python_path: str = MACHINE_PYTHON
+
     def which(self, command: str) -> str | None:
-        return {"uv": WINDOWS_UV, "python": "C:/py/python.exe"}.get(command)
+        return {"uv": WINDOWS_UV, "python": self.python_path}.get(command)
+
+
+def _windows_runner(python: str, version: tuple[int, str]) -> WindowsRunner:
+    runner = WindowsRunner(
+        reporter=CapturingReporter(),
+        outputs={
+            WSL_QUERY: (0, "3.14.6\n"),
+            (python, "-c", prerequisites.PYTHON_VERSION_CODE): version,
+        },
+    )
+    runner.python_path = python
+    return runner
+
+
+def _user_python(home: Path) -> str:
+    return str(home / "AppData" / "Local" / "Programs" / "Python" / "Python312" / "python.exe")
 
 
 def _run(runner: RecordingRunner, *, update: bool = False, tmp_home: Path | None = None) -> None:
@@ -92,29 +113,40 @@ def test_windows_without_uv_records_a_failed_step() -> None:
     assert runner.failures == ["install Python on Windows"]
 
 
-def test_windows_skips_a_present_python() -> None:
-    runner = WindowsRunner(
-        reporter=CapturingReporter(),
-        outputs={
-            WSL_QUERY: (0, "3.14.6\n"),
-            ("python", "-c", prerequisites.PYTHON_VERSION_CODE): (0, "3.14.7\n"),
-        },
+@pytest.mark.parametrize(
+    ("version", "level", "text"),
+    [
+        ((0, "3.14.7\n"), "info", "managed by your organisation"),
+        ((0, "3.12.3\n"), "warn", "Software Center"),
+    ],
+)
+def test_windows_only_advises_on_a_machine_wide_python(
+    tmp_path: Path, version: tuple[int, str], level: str, text: str
+) -> None:
+    runner = _windows_runner(MACHINE_PYTHON, version)
+
+    _run(runner, update=True, tmp_home=tmp_path)
+
+    assert not [command for command in runner.commands if command[:2] == [WINDOWS_UV, "python"]]
+    assert runner.failures == []
+    assert any(
+        found_level == level and text in message and MACHINE_PYTHON in message
+        for found_level, message in runner.reporter.messages  # type: ignore[attr-defined]
     )
 
-    _run(runner)
+
+def test_windows_skips_a_present_user_python(tmp_path: Path) -> None:
+    runner = _windows_runner(_user_python(tmp_path), (0, "3.14.7\n"))
+
+    _run(runner, tmp_home=tmp_path)
 
     assert [WINDOWS_UV, *UV_PYTHON_INSTALL_ARGS] not in runner.commands
     assert runner.failures == []
 
 
 def test_windows_installs_python_and_adds_the_bin_dir(tmp_path: Path) -> None:
-    runner = WindowsRunner(
-        reporter=CapturingReporter(),
-        outputs={
-            WSL_QUERY: (0, "3.14.6\n"),
-            ("python", "-c", prerequisites.PYTHON_VERSION_CODE): (9009, ""),
-        },
-    )
+    alias = str(tmp_path / "AppData" / "Local" / "Microsoft" / "WindowsApps" / "python.exe")
+    runner = _windows_runner(alias, (9009, ""))
 
     with mock.patch.object(prerequisites, "_add_to_process_path"):
         _run(runner, tmp_home=tmp_path)
@@ -152,14 +184,8 @@ def test_platforms_other_than_windows_install_on_the_host() -> None:
     assert runner.commands[-1] == ["sh", "-c", UV + shlex.join(UV_PYTHON_INSTALL_ARGS)]
 
 
-def test_windows_names_an_older_python_that_stays_on_path(tmp_path: Path) -> None:
-    runner = WindowsRunner(
-        reporter=CapturingReporter(),
-        outputs={
-            WSL_QUERY: (0, "3.14.6\n"),
-            ("python", "-c", prerequisites.PYTHON_VERSION_CODE): (0, "3.12.3\n"),
-        },
-    )
+def test_windows_names_an_older_user_python_that_stays_on_path(tmp_path: Path) -> None:
+    runner = _windows_runner(_user_python(tmp_path), (0, "3.12.3\n"))
 
     with mock.patch.object(prerequisites, "_add_to_process_path"):
         _run(runner, tmp_home=tmp_path)
@@ -169,3 +195,9 @@ def test_windows_names_an_older_python_that_stays_on_path(tmp_path: Path) -> Non
         level == "warn" and "Python 3.12.3" in message
         for level, message in runner.reporter.messages  # type: ignore[attr-defined]
     )
+
+
+def test_update_relinks_python_and_python3_to_the_new_patch() -> None:
+    assert UV_PYTHON_UPGRADE_ARGS[: len(UV_PYTHON_INSTALL_ARGS)] == UV_PYTHON_INSTALL_ARGS
+    assert UV_PYTHON_UPGRADE_ARGS[-1] == "--upgrade"
+    assert "--default" in UV_PYTHON_UPGRADE_ARGS

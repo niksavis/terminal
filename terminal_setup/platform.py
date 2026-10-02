@@ -84,6 +84,18 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "--exec", *command]
 
 
+def path_without_own_environment(path: str, executable: str, *, in_virtualenv: bool) -> str:
+    if not in_virtualenv:
+        return path
+    own = os.path.normcase(str(Path(executable).parent))
+    kept = [
+        entry
+        for entry in path.split(os.pathsep)
+        if entry and os.path.normcase(entry.rstrip("\\/")) != own
+    ]
+    return os.pathsep.join(kept)
+
+
 def wsl_root_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "-u", "root", "--exec", *command]
 

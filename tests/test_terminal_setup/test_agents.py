@@ -181,15 +181,36 @@ def test_windows_finds_claude_in_the_local_bin_before_path_refresh(tmp_path: Pat
     assert runner.commands == []
 
 
-def test_windows_update_runs_the_self_update_of_each_present_agent(tmp_path: Path) -> None:
-    found = {
-        "codex": "C:/Users/dev/AppData/Roaming/npm/codex.cmd",
-        "claude": "C:/Users/dev/.local/bin/claude.exe",
-    }
+def test_windows_update_runs_the_self_update_of_each_user_scope_agent(tmp_path: Path) -> None:
+    claude = str(tmp_path / ".local" / "bin" / "claude.exe")
+    codex = str(tmp_path / "AppData" / "Roaming" / "npm" / "codex.cmd")
+    copilot = "C:/Program Files/GitHub Copilot/copilot.exe"
 
-    runner = _run_windows(tmp_path, (), found, update=True)
+    runner = _run_windows(
+        tmp_path, (), {"claude": claude, "codex": codex, "copilot": copilot}, update=True
+    )
 
-    assert runner.commands == [
-        ["C:/Users/dev/.local/bin/claude.exe", "update"],
-        ["C:/Users/dev/AppData/Roaming/npm/codex.cmd", "update"],
-    ]
+    assert runner.commands == [[claude, "update"], [codex, "update"]]
+    assert any(
+        level == "info" and copilot in message and "managed by your organisation" in message
+        for level, message in runner.reporter.messages  # type: ignore[attr-defined]
+    )
+
+
+def test_windows_failed_agent_update_names_the_manual_retry(tmp_path: Path) -> None:
+    codex = str(tmp_path / "AppData" / "Local" / "Programs" / "OpenAI" / "Codex" / "codex.exe")
+    runner = WindowsAgentRunner(reporter=CapturingReporter())
+    runner.found = {"codex": codex}
+    failing = subprocess.CalledProcessError(1, [codex, "update"])
+
+    with (
+        mock.patch.object(runner, "run", side_effect=failing),
+        pytest.raises(subprocess.CalledProcessError),
+    ):
+        agents._ensure_windows_agent(
+            runner, replace(_windows_platform(), home=tmp_path), "codex", install=False, update=True
+        )
+
+    assert ("step", "To retry, run 'codex update' in Windows PowerShell (powershell.exe).") in (
+        runner.reporter.messages  # type: ignore[attr-defined]
+    )
