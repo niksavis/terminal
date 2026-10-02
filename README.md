@@ -4,9 +4,41 @@ Cross-platform terminal environment setup for developers using coding agents. In
 
 ## Quick install
 
-Prerequisites: [uv](https://docs.astral.sh/uv/) and Python 3.14+. On Windows, install WSL2 Ubuntu.
+On a bare machine, run the bootstrap script. It installs [uv](https://docs.astral.sh/uv/) user-locally when uv is missing, then runs the setup with Python 3.14. It needs no admin rights and no git.
 
-Install everything (tools + configs) directly from `main` — no clone required:
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+```
+
+WSL, Linux or macOS:
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+```
+
+To pass options, use the scriptblock form in PowerShell, or `sh -s --` in a POSIX shell:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --unattended --agents all
+```
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all
+```
+
+The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. `TERMINAL_SETUP_REF` selects a branch or a release tag, for example `v0.11.0`; the default is `main`.
+
+The setup installs each of these only when it is missing: uv, Python 3.14 (with `uv python install`), Node.js 26, and the coding agents that you name with `--agents` (Claude Code, GitHub Copilot CLI, OpenAI Codex). Run from Windows, it sets up the Windows host and the default WSL distro together.
+
+### Unattended install for scripts and agents
+
+`--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tree, podman, bubblewrap, socat) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command.
+
+### Install and update with uv
+
+With uv already installed, run the setup directly from `main` — no clone required:
 
 ```bash
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
@@ -18,7 +50,7 @@ Already installed? Re-apply only the configs (fast, no package installs) — for
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only config
 ```
 
-Update every user-local tool that is older than its latest release:
+Update every user-local tool, Python, Node.js and every present coding agent that is older than its latest release:
 
 ```bash
 uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update
@@ -44,9 +76,8 @@ Run these in PowerShell:
    wsl --install -d Ubuntu-24.04
    ```
 
-2. Install [uv](https://docs.astral.sh/uv/) on Windows.
-3. Run the Quick install command above from PowerShell. Setup asks once for your Linux password, to install the system packages that only apt provides (see [CLI options](#cli-options)).
-4. Restart the terminal so the new PATH takes effect, then start `wezterm`.
+2. Run the PowerShell bootstrap command from [Quick install](#quick-install). It installs uv when it is missing. Setup asks once for your Linux password, to install the system packages that only apt provides (see [CLI options](#cli-options)); with `--unattended` it installs them through `wsl -u root` and asks nothing.
+3. Restart the terminal so the new PATH takes effect, then start `wezterm`.
 
 Setup always targets the **default** WSL distro. With more than one distro, check which one is the default with `wsl -l -v` and change it with `wsl --set-default <name>` before you run setup.
 
@@ -59,7 +90,8 @@ If you use Claude Code, Copilot CLI, or similar agents, this repo gives you:
 - A consistent terminal stack across Windows+WSL, Linux, and macOS.
 - Better defaults for multitasking: WezTerm + tmux + zsh + starship.
 - Fast CLI tools agents rely on: ripgrep, fd, bat, jq/yq, lazygit, uv, and more.
-- Managed runtimes in WSL/Linux: Python via uv and Node.js (latest v26). Windows-native Node is managed outside this setup, so the major is pinned here to keep both sides on one line — check `node --version` on each if you rely on them matching.
+- Managed runtimes on every side: Python 3.14 via uv and Node.js (latest v26). Run from Windows, setup installs both in WSL and natively on Windows. It skips a Python 3.14 or newer and a Node.js 26 or newer that is already on PATH.
+- Optional coding agents: `--agents claude,copilot,codex` (or `all`) installs Claude Code, GitHub Copilot CLI and OpenAI Codex when they are missing.
 - Safe re-runs: missing tools install and up-to-date tools skip. An out-of-date tool is reported, and `--update` installs the latest release; only lazygit and tools installed through a package manager (apt, Homebrew, pacman, dnf) ask `y/n` to update.
 - No admin needed by default: tools install user-locally into `~/.local`; the setup reports conflicts with any system copies (with versions) and can remove the duplicates. Use `--system-install` for a system-wide install.
 
@@ -103,10 +135,10 @@ Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude C
 ```text
 Install this repository's terminal setup from the current directory.
 
-1. Ensure uv (https://docs.astral.sh/uv/) and Python 3.14+ are available. If missing, stop and tell me what to install.
-2. Run `uv run python setup-terminal.py` (user-local, no admin required).
+1. If uv (https://docs.astral.sh/uv/) is missing, run `sh install.sh --unattended` (WSL, Linux, macOS) or `.\install.ps1 --unattended` (PowerShell). The script installs uv user-locally and runs the setup. Then skip step 2.
+2. Run `uv run python setup-terminal.py --unattended` (user-local, no admin required, never prompts).
 3. Only if a system-wide install is explicitly wanted, run `uv run python setup-terminal.py --system-install` (needs admin/sudo).
-4. If a sudo password or y/n prompt appears, pause and ask me.
+4. If the output prints an apt command to run, show it to me: it needs my sudo password.
 5. When done, run `uv run python setup-terminal.py --only report` and summarize what was installed, skipped, and any manual next steps.
 ```
 
@@ -270,7 +302,8 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Agent image tool: `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Run from Windows, setup installs it both in WSL and natively on Windows (its folder goes on the user PATH); run inside WSL or on Linux/macOS, it installs it there. uv installs it from a copy setup keeps in `~/.local/share/terminal-setup/img_zoom_tool` (Windows: `%LOCALAPPDATA%\terminal-setup\img_zoom_tool`), so `uv tool upgrade` keeps working after `uv cache clean`. `img-zoom --python` prints its Python, which has Pillow and OpenCV for measuring scripts (Pillow only on Windows on ARM, where OpenCV publishes no build)
-- Runtimes (WSL/Linux/macOS): `node` (latest v26, user-local in `~/.local`)
+- Runtimes: Python 3.14 from `uv python install 3.14 --default`, which puts `python` and `python3` in `~/.local/bin`; `--update` upgrades a uv-managed 3.14 to the latest patch. `node` (latest v26): user-local in `~/.local` on WSL, Linux and macOS, and on Windows from the official zip into `%LOCALAPPDATA%\Programs\nodejs`, checked against `SHASUMS256.txt` and added to the user PATH. npm installs global packages into that folder, so they stay when Node.js is updated. Setup warns when an older Node.js elsewhere may come first on PATH
+- Coding agents (only with `--agents`): Claude Code from its native installer (`claude.ai/install.sh`, `claude.ai/install.ps1`), and GitHub Copilot CLI (`@github/copilot`) and OpenAI Codex (`@openai/codex`) with `npm install -g` on the managed Node.js. Run from Windows, setup installs them in WSL and natively on Windows. An agent that is already on PATH is skipped; `--update` runs its own `update` command
 - Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when Claude Code is installed and not skipped with `--skip-claude`. The skill goes to each side where `img-zoom` is installed: the WSL home and, when setup runs from Windows, `%USERPROFILE%\.claude`
 - Claude Code skills from [basicly](https://github.com/niksavis/basicly): `~/.claude/skills/cli-tools` and one `tool-<name>` skill per tool found on `PATH` or in `~/.local/bin`, written by `basicly skills-user` at the basicly version this repository pins. Run from Windows, setup writes them in the WSL home and in `%USERPROFILE%\.claude`, each with the tools found on that side. A rerun removes a tool skill whose tool is gone and leaves every other skill alone. It needs network access to fetch basicly with `uv`, is skipped when `~/.claude` is missing, and `--skip-claude` skips it
 
@@ -301,6 +334,8 @@ uv run python setup-terminal.py --dry-run    # preview changes
 uv run python setup-terminal.py --only config # re-apply all configs (incl. Claude status line); no package installs
 uv run python setup-terminal.py --only report # print verification summary, then exit
 uv run python setup-terminal.py --report     # run setup, then print verification summary
+uv run python setup-terminal.py --unattended # never prompt; safe answers only (for scripts and agents)
+uv run python setup-terminal.py --agents claude,codex # also install these coding agents when missing (or: all)
 uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
 uv run python setup-terminal.py --skip-starship # skip starship prompt
 uv run python setup-terminal.py --skip-claude # skip the Claude Code status line
