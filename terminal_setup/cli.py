@@ -7,7 +7,7 @@ import sys
 from functools import partial
 from pathlib import Path
 
-from . import configs, platform, prerequisites
+from . import agents, configs, platform, prerequisites
 from .platform import is_running_in_wsl, wsl_exec_command
 from .runner import ConsoleReporter, Runner
 
@@ -27,6 +27,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  terminal-setup --only report   print the verification report, then exit\n"
             "  terminal-setup --report        full run, then print the verification report\n"
             "  terminal-setup --unattended    full run that never prompts (scripts, agents)\n"
+            "  terminal-setup --agents all    also install Claude Code, Copilot CLI and Codex\n"
             "  terminal-setup --skip-claude   install everything except the Claude status line\n"
             "  terminal-setup --no-nerd-font  use the universal (no Nerd Font) status line\n"
         ),
@@ -121,6 +122,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Install the latest release of each user-local tool, Python and Node that is out of "
             "date; without it, setup only reports which ones are."
+        ),
+    )
+    install.add_argument(
+        "--agents",
+        type=agents.parse_agents,
+        default=(),
+        metavar="NAMES",
+        help=(
+            "Install these coding agents when they are absent: a comma list of claude, "
+            "copilot and codex, or all. --update also updates every present agent."
         ),
     )
     install.add_argument(
@@ -396,6 +407,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     user_install: bool,
     update: bool = False,
     no_sudo: bool = False,
+    selected_agents: tuple[str, ...] = (),
     uninstall_system_versions: bool,
     keep_system_versions: bool,
     report: bool,
@@ -497,6 +509,8 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             "install Node.js",
             partial(prerequisites.ensure_node, runner, platform_info, update=update),
         )
+
+        agents.ensure_agents(runner, platform_info, selected_agents, update=update)
 
         if not skip_starship:
             prerequisites.attempt(
@@ -623,6 +637,7 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         user_install=args.user_install,
         update=args.update,
         no_sudo=args.no_sudo,
+        selected_agents=args.agents,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",
         report=args.report,

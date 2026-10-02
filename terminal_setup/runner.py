@@ -143,7 +143,7 @@ class Runner:
                 check=check,
                 cwd=cwd,
                 env=env,
-                stdin=None,
+                stdin=subprocess.DEVNULL if self.unattended else None,
                 stdout=None,
                 stderr=None,
                 text=True,
@@ -153,6 +153,7 @@ class Runner:
             check=check,
             cwd=cwd,
             env=env,
+            stdin=subprocess.DEVNULL if self.unattended else None,
             capture_output=True,
             text=True,
         )

@@ -170,3 +170,13 @@ def test_unattended_inside_wsl_skips_the_shell_change_when_sudo_needs_a_password
         level == "warn" and "Skipping default shell change" in message
         for level, message in runner.reporter.messages  # type: ignore[attr-defined]
     )
+
+
+@pytest.mark.parametrize("interactive", [True, False])
+def test_unattended_runs_children_with_an_empty_stdin(*, interactive: bool) -> None:
+    runner = Runner(reporter=CapturingReporter(), unattended=True)
+
+    with mock.patch.object(subprocess, "run") as run:
+        runner.run(["claude", "update"], interactive=interactive)
+
+    assert run.call_args.kwargs["stdin"] is subprocess.DEVNULL
