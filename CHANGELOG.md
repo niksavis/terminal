@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.11.4 - 2026-10-02
+
+Delta: v0.11.3..v0.11.4
+
+### Highlights
+
+- **The verification report now shows every tool that setup manages.** On Windows it lists uv, Python and Node.js, and the coding agents Claude Code, Copilot CLI and Codex. Each line has the path, the version and whether the tool is in your user profile or machine-wide. The WSL part lists the three agents too (term-8xjxk).
+- **A missing uv, Python or Node.js is a warning. A missing agent is an info line** that names the command to install it, because the agents are optional (term-8xjxk).
+- **To check your machine**, run `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-nol6i) (ee5ddfe)
+- feat(setup): list runtimes and agents with version and scope in the report (term-8xjxk) (68461be)
+- chore(tracker): record the cli-tools reference answer from basicly (term-8lass) (bdd8ba7)
+- chore(tracker): close the v0-11-3 release record and write the handover (term-ty3m2) (9c0a93d)
+
 ## v0.11.3 - 2026-10-02
 
 Delta: v0.11.2..v0.11.3
