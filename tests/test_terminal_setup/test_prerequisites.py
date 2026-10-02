@@ -74,6 +74,12 @@ from terminal_setup.runner import Runner
 RELEASE_INSTALL_SOURCE = Path(release_install.__file__).read_text(encoding="utf-8")
 
 
+@pytest.fixture(autouse=True)
+def _windows_native_node_is_tested_in_its_own_module() -> object:
+    with mock.patch("terminal_setup.prerequisites._ensure_node_windows") as ensure:
+        yield ensure
+
+
 def make_platform(os: OperatingSystem, package_manager: PackageManager) -> PlatformInfo:
     return PlatformInfo(
         os=os,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import platform as host_platform
 import shlex
 import subprocess  # nosec B404
 import sys
@@ -10,7 +11,7 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-from . import release_install
+from . import release_install, windows_node
 from .platform import (
     OperatingSystem,
     PackageManager,
@@ -986,6 +987,49 @@ def _install_node_binary(runner: Runner, *, wsl_distro: str | None = None) -> No
     _run_shell_command(runner, script, label="install Node.js", wsl_distro=wsl_distro)
 
 
+def _windows_node_version(runner: Runner) -> tuple[str | None, str | None]:
+    path = runner.which("node")
+    if path is None:
+        return None, None
+    result = runner.run([path, "--version"], check=False, dry_run_safe=True)
+    if result.returncode != 0:
+        return None, path
+    return result.stdout.strip() or None, path
+
+
+def _node_meets_target(version: str | None) -> bool:
+    return version is not None and _parse_version_tuple(version)[:1] >= (int(TARGET_NODE_MAJOR),)
+
+
+def _ensure_node_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -> None:
+    target = platform.user_programs_dir / "nodejs"
+    installed, path = _windows_node_version(runner)
+    managed = path is not None and Path(path).parent == target
+    if _node_meets_target(installed) and not (update and managed):
+        runner.reporter.success(f"Node.js {installed} is present on Windows ({path})")
+        return
+    try:
+        latest = windows_node.latest_version(TARGET_NODE_MAJOR)
+    except (release_install.InstallError, OSError) as error:
+        raise RuntimeError(f"could not read the latest Node.js release: {error}") from error
+    if installed is not None and managed and _is_version_at_least(installed, latest):
+        runner.reporter.success(f"Node.js {installed} is up to date on Windows")
+        return
+    runner.reporter.command(["nodejs.org", latest], f"install Node.js {latest} into {target}")
+    if runner.dry_run:
+        return
+    try:
+        windows_node.install(latest, host_platform.machine(), target)
+    except release_install.InstallError as error:
+        raise RuntimeError(str(error)) from error
+    _add_to_user_path(runner, target)
+    if path is not None and not managed:
+        runner.reporter.warn(
+            f"An older Node.js {installed or ''} at {path} may come first on PATH; "
+            f"uninstall it so {target} is used."
+        )
+
+
 def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
 
     if platform.os == OperatingSystem.WINDOWS:
@@ -994,6 +1038,11 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
             update and not _node_is_current(runner, wsl_distro=distro)
         ):
             _install_node_binary(runner, wsl_distro=distro)
+        attempt(
+            runner,
+            "install Node.js on Windows",
+            partial(_ensure_node_windows, runner, platform, update=update),
+        )
         return
     if platform.os not in {OperatingSystem.LINUX, OperatingSystem.MACOS}:
         return
