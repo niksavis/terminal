@@ -8,6 +8,8 @@ Project-specific mappings are labeled as **(project custom)**. Generic shell sho
 
 No admin rights are needed. Run the same command again at any time: it installs only what is missing.
 
+Click a command to select it, then press Ctrl+C (Cmd+C on a Mac) to copy it. The page never writes to your clipboard itself, so security tools such as uBlock Origin do not block the copy.
+
 Install on Windows (PowerShell):
 
 ```powershell

@@ -268,7 +268,7 @@ code:hover {
 }
 
 code.copied::after {
-  content: "Copied";
+  content: attr(data-hint);
   position: absolute;
   top: -1.75rem;
   left: 50%;
@@ -425,6 +425,7 @@ footer svg {
     </div>
 <div class="section-body">
 <p>No admin rights are needed. Run the same command again at any time: it installs only what is missing.</p>
+<p>Click a command to select it, then press Ctrl+C (Cmd+C on a Mac) to copy it. The page never writes to your clipboard itself, so security tools such as uBlock Origin do not block the copy.</p>
 <p>Install on Windows (PowerShell):</p>
 <pre class="code-block" data-language="powershell"><code>irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex</code></pre>
 <p>Install in WSL, Linux or macOS:</p>
@@ -1952,39 +1953,23 @@ uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archi
     }
   });
 
-  // Click any command to copy it to the clipboard.
-  function copyViaTextarea(text) {
-    return new Promise(resolve => {
-      const helper = document.createElement('textarea');
-      helper.value = text;
-      helper.style.position = 'fixed';
-      helper.style.opacity = '0';
-      document.body.appendChild(helper);
-      helper.select();
-      document.execCommand('copy');
-      helper.remove();
-      resolve();
-    });
-  }
-
-  function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(() => copyViaTextarea(text));
-    }
-    return copyViaTextarea(text);
-  }
+  const copyKey = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Cmd+C' : 'Ctrl+C';
 
   document.querySelectorAll('main code').forEach(code => {
-    code.title = 'Click to copy';
+    code.title = `Click to select, then press ${copyKey}`;
   });
 
   document.querySelector('main').addEventListener('click', event => {
     const code = event.target.closest('code');
     if (!code) return;
-    copyText(code.innerText.trim()).then(() => {
-      code.classList.add('copied');
-      setTimeout(() => code.classList.remove('copied'), 1200);
-    });
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    code.dataset.hint = `Press ${copyKey}`;
+    code.classList.add('copied');
+    setTimeout(() => code.classList.remove('copied'), 2500);
   });
 })();
 </script>

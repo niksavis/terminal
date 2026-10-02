@@ -333,7 +333,7 @@ code:hover {
 }
 
 code.copied::after {
-  content: "Copied";
+  content: attr(data-hint);
   position: absolute;
   top: -1.75rem;
   left: 50%;
@@ -565,39 +565,23 @@ JS = """
     }
   });
 
-  // Click any command to copy it to the clipboard.
-  function copyViaTextarea(text) {
-    return new Promise(resolve => {
-      const helper = document.createElement('textarea');
-      helper.value = text;
-      helper.style.position = 'fixed';
-      helper.style.opacity = '0';
-      document.body.appendChild(helper);
-      helper.select();
-      document.execCommand('copy');
-      helper.remove();
-      resolve();
-    });
-  }
-
-  function copyText(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      return navigator.clipboard.writeText(text).catch(() => copyViaTextarea(text));
-    }
-    return copyViaTextarea(text);
-  }
+  const copyKey = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Cmd+C' : 'Ctrl+C';
 
   document.querySelectorAll('main code').forEach(code => {
-    code.title = 'Click to copy';
+    code.title = `Click to select, then press ${copyKey}`;
   });
 
   document.querySelector('main').addEventListener('click', event => {
     const code = event.target.closest('code');
     if (!code) return;
-    copyText(code.innerText.trim()).then(() => {
-      code.classList.add('copied');
-      setTimeout(() => code.classList.remove('copied'), 1200);
-    });
+    const range = document.createRange();
+    range.selectNodeContents(code);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    code.dataset.hint = `Press ${copyKey}`;
+    code.classList.add('copied');
+    setTimeout(() => code.classList.remove('copied'), 2500);
   });
 })();
 """

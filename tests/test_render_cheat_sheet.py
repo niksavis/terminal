@@ -87,3 +87,11 @@ def test_the_cheat_sheet_leaves_no_fence_as_text() -> None:
 
     texts = [block["text"] for section in sections for block in section["body"] if "text" in block]
     assert not [text for text in texts if "```" in text]
+
+
+def test_the_page_never_writes_to_the_clipboard_from_a_script() -> None:
+    page = HTML_PATH.read_text(encoding="utf-8")
+
+    assert "navigator.clipboard" not in page
+    assert "execCommand" not in page
+    assert "selection.addRange(range)" in page
