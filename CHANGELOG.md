@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.0 - 2026-10-02
+
+Delta: v0.11.4..v0.12.0
+
+### Highlights
+
+- **One Claude Code skill for the command-line tools.** Setup now installs the basicly `cli-tools` skill from basicly v0.20.0, with one reference file for each of 25 tools. Before, it installed one `tool-<name>` skill for each tool, 28 in WSL and 12 on Windows on the test machine. Now both sides get the same single skill. The skill list stays short, and the agent reads a tool's reference only when it needs it (term-8lass).
+- **The next setup run removes the old `tool-<name>` skills** that setup wrote before. A skill that you wrote yourself stays (term-8lass).
+- **The cheat-sheet page shows the install commands as copyable blocks.** Before, each code fence showed as broken, empty boxes (term-wq42p).
+- **Maintainers: the harness moves to basicly v0.20.0.** The deny-list is unchanged. `python-guidelines` is now part of the `python` skill (term-8lass).
+- **To pick it up on Windows**, run `$env:TERMINAL_SETUP_ARGS = '--unattended --update'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-e7yt8) (6f00e62)
+- chore(harness): upgrade basicly to v0-20-0 and install only the cli-tools skill (term-8lass) (a5d9bcf)
+- fix(docs): render fenced code blocks on the cheat-sheet page (term-wq42p) (c753002)
+- chore(tracker): close the v0-11-4 release record and write the handover (term-nol6i) (e074d79)
+
 ## v0.11.4 - 2026-10-02
 
 Delta: v0.11.3..v0.11.4
