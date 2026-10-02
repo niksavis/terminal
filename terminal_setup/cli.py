@@ -119,7 +119,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--update",
         action="store_true",
         help=(
-            "Install the latest release of each user-local tool (and Node) that is out of "
+            "Install the latest release of each user-local tool, Python and Node that is out of "
             "date; without it, setup only reports which ones are."
         ),
     )
@@ -265,6 +265,7 @@ def _print_wsl_report(
         "typos",
         "uv",
         "img-zoom",
+        "python3",
         "node",
     ]:
         ok, detail = _wsl_command_present(runner, platform_info, command)
@@ -323,6 +324,7 @@ def _print_host_report(
         "typos",
         "uv",
         "img-zoom",
+        "python3",
         "node",
     ]:
         path = _host_command_path(runner, command)
@@ -482,6 +484,12 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             runner,
             "install WezTerm",
             partial(prerequisites.ensure_wezterm, runner, platform_info, no_sudo=effective_no_sudo),
+        )
+
+        prerequisites.attempt(
+            runner,
+            "install Python",
+            partial(prerequisites.ensure_python, runner, platform_info, update=update),
         )
 
         prerequisites.attempt(

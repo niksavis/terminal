@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess  # nosec B404
 import sys
 from collections.abc import Callable
@@ -30,6 +31,7 @@ class PrerequisiteStatus:
 
 
 TARGET_NODE_MAJOR = "26"
+TARGET_PYTHON_MINOR = "3.14"
 
 
 def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Path]:
@@ -1005,6 +1007,105 @@ def _node_is_current(runner: Runner, *, wsl_distro: str | None) -> bool:
     return _tool_is_current(
         runner, "Node.js", NODE_INSTALLED_QUERY, NODE_LATEST_QUERY, wsl_distro=wsl_distro
     )
+
+
+PYTHON_VERSION_CODE = "import platform; print(platform.python_version())"
+PYTHON_INSTALLED_QUERY = (
+    'PATH="$HOME/.local/bin:$PATH"; '
+    "for py in python3 python; do "
+    'if command -v "$py" >/dev/null 2>&1; then '
+    f'"$py" -c {shlex.quote(PYTHON_VERSION_CODE)} && exit 0; '
+    "fi; done"
+)
+UV_PYTHON_INSTALL_ARGS = (
+    "python",
+    "install",
+    TARGET_PYTHON_MINOR,
+    "--default",
+    "--preview-features",
+    "python-install-default",
+)
+UV_PYTHON_MANAGED_ARGS = ("python", "find", "--managed-python", TARGET_PYTHON_MINOR)
+UV_PYTHON_UPGRADE_ARGS = ("python", "upgrade", TARGET_PYTHON_MINOR)
+_UV_ON_PATH = 'PATH="$HOME/.local/bin:$PATH"; uv '
+
+
+def python_meets_target(version: str | None) -> bool:
+    if version is None:
+        return False
+    return _parse_version_tuple(version)[:2] >= _parse_version_tuple(TARGET_PYTHON_MINOR)
+
+
+def _ensure_python_shell(runner: Runner, *, update: bool, wsl_distro: str | None) -> None:
+    installed = _read_version(runner, PYTHON_INSTALLED_QUERY, wsl_distro=wsl_distro)
+    if not python_meets_target(installed):
+        _run_shell_command(
+            runner,
+            _UV_ON_PATH + shlex.join(UV_PYTHON_INSTALL_ARGS),
+            label=f"install Python {TARGET_PYTHON_MINOR}",
+            wsl_distro=wsl_distro,
+        )
+        return
+    runner.reporter.success(f"Python {installed} is present")
+    if not update:
+        return
+    managed = _run_shell_read(
+        runner, _UV_ON_PATH + shlex.join(UV_PYTHON_MANAGED_ARGS), wsl_distro=wsl_distro
+    )
+    if managed.returncode != 0:
+        runner.reporter.info(f"Python {installed} is not managed by uv; leaving it as it is.")
+        return
+    _run_shell_command(
+        runner,
+        _UV_ON_PATH + shlex.join(UV_PYTHON_UPGRADE_ARGS),
+        label=f"upgrade Python {TARGET_PYTHON_MINOR}",
+        wsl_distro=wsl_distro,
+    )
+
+
+def _windows_python_version(runner: Runner) -> str | None:
+    if runner.which("python") is None:
+        return None
+    result = runner.run(["python", "-c", PYTHON_VERSION_CODE], check=False, dry_run_safe=True)
+    if result.returncode != 0:
+        return None
+    return result.stdout.strip() or None
+
+
+def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -> None:
+    uv = runner.which("uv")
+    if uv is None:
+        raise RuntimeError(
+            "uv is not on PATH; install it with the install.ps1 bootstrap from the README, "
+            "then re-run this setup."
+        )
+    installed = _windows_python_version(runner)
+    if python_meets_target(installed):
+        runner.reporter.success(f"Python {installed} is present")
+        managed = runner.run([uv, *UV_PYTHON_MANAGED_ARGS], check=False, dry_run_safe=True)
+        if update and managed.returncode == 0:
+            runner.run([uv, *UV_PYTHON_UPGRADE_ARGS], label=f"upgrade Python {TARGET_PYTHON_MINOR}")
+        return
+    runner.run([uv, *UV_PYTHON_INSTALL_ARGS], label=f"install Python {TARGET_PYTHON_MINOR}")
+    _add_to_user_path(runner, platform.home / ".local" / "bin")
+    store_alias = platform.home / "AppData" / "Local" / "Microsoft" / "WindowsApps" / "python.exe"
+    if store_alias.exists():
+        runner.reporter.step(
+            "If 'python' opens the Microsoft Store, turn off the python.exe and python3.exe "
+            "App execution aliases in Settings > Apps > Advanced app settings."
+        )
+
+
+def ensure_python(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        _ensure_python_shell(runner, update=update, wsl_distro=_wsl_distro(platform))
+        attempt(
+            runner,
+            "install Python on Windows",
+            partial(_ensure_python_windows, runner, platform, update=update),
+        )
+        return
+    _ensure_python_shell(runner, update=update, wsl_distro=None)
 
 
 def _parse_version_tuple(version: str) -> tuple[int, ...]:
