@@ -423,7 +423,10 @@ def _deploy_claude_statusline_host(
     runner.write_text(settings_path, json.dumps(settings, indent=2) + "\n")
 
 
-_UV_MISSING = "uv not found in PATH or ~/.local/bin; install uv, then re-run terminal-setup"
+_UV_MISSING = (
+    "uv not found in PATH or ~/.local/bin; install it with the install.ps1 or install.sh "
+    "bootstrap from the README, which then runs this setup"
+)
 _IMG_ZOOM_SKILL = "img-zoom"
 _IMG_ZOOM_STAGE_POSIX = "$HOME/.local/share/terminal-setup/img_zoom_tool"
 

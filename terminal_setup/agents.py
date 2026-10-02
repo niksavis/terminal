@@ -4,7 +4,7 @@ import argparse
 import subprocess  # nosec B404
 from functools import partial
 
-from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl
+from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, rerun_command
 from .prerequisites import (
     _add_to_user_path,
     _run_shell_command,
@@ -88,7 +88,7 @@ def _windows_npm(runner: Runner) -> str:
     if npm is None:
         raise RuntimeError(
             "npm is not on the Windows PATH; the Node.js step must succeed first. "
-            "Re-run this setup."
+            f"Then run: {rerun_command()}"
         )
     return npm
 

@@ -160,7 +160,7 @@ def run(repo: str, binary: str, update: bool, patterns: list[str]) -> str:
     if current == latest:
         return f"{binary} {current} is up to date"
     if current and not update:
-        return f"{binary} {current} is installed; {latest} is available: rerun with --update"
+        return f"{binary} {current} is installed; {latest} is available"
     release = release_of(repo, tag)
     asset = select_asset(release.get("assets", []), patterns, platform.machine())
     url = asset.get("browser_download_url", "")

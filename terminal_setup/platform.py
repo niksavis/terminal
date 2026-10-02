@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import platform
+import shlex
 import shutil
 import subprocess  # nosec B404
+import sys
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
@@ -82,6 +84,22 @@ def detect_package_manager(os: OperatingSystem) -> PackageManager:
 def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
 
     return ["wsl", "-d", distro, "--exec", *command]
+
+
+SETUP_SOURCE = "git+https://github.com/niksavis/terminal@main"
+
+
+def setup_command(options: str = "", *, argv0: str | None = None) -> str:
+    script = Path(sys.argv[0] if argv0 is None else argv0).name
+    if script == "setup-terminal.py":
+        base = "uv run python setup-terminal.py"
+    else:
+        base = f"uvx --from {SETUP_SOURCE} terminal-setup"
+    return f"{base} {options}".rstrip()
+
+
+def rerun_command() -> str:
+    return setup_command(shlex.join(sys.argv[1:]))
 
 
 def path_without_own_environment(path: str, executable: str, *, in_virtualenv: bool) -> str:

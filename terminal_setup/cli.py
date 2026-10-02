@@ -8,7 +8,7 @@ from functools import partial
 from pathlib import Path
 
 from . import agents, configs, platform, prerequisites
-from .platform import is_running_in_wsl, wsl_exec_command
+from .platform import is_running_in_wsl, rerun_command, setup_command, wsl_exec_command
 from .runner import ConsoleReporter, Runner
 
 
@@ -385,10 +385,7 @@ def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
             runner.reporter.warn(f"{status.name}: {status.message}")
     if not all_present:
         runner.reporter.error("Some prerequisites are missing.")
-        runner.reporter.step(
-            "Re-run terminal-setup to add them user-locally without admin rights (the "
-            "default), or use --dry-run to preview first."
-        )
+        runner.reporter.step(f"Install the missing items named above, then run: {rerun_command()}")
         return 1
     runner.reporter.success("All prerequisites are satisfied.")
     return 0
@@ -562,7 +559,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
         for failure in runner.failures:
             runner.reporter.error(f"  - {failure}")
-        runner.reporter.step("Re-run to retry them; everything else was applied.")
+        runner.reporter.step(f"Everything else was applied. To retry them, run: {rerun_command()}")
         return 1
 
     runner.reporter.success("Setup complete.")
@@ -577,7 +574,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 "Agents started from PowerShell or Git Bash get img-zoom only when setup "
                 "also runs from Windows."
             )
-    runner.reporter.step("Verify anytime with: terminal-setup --only report")
+    runner.reporter.step(f"Verify anytime with: {setup_command('--only report')}")
     return 0
 
 
@@ -603,7 +600,7 @@ def main(argv: list[str] | None = None) -> int:
             reporter.error(stderr)
         elif stdout:
             reporter.error(stdout)
-        reporter.step("Re-run with --dry-run to preview the failing step.")
+        reporter.step(f"Preview the failing step with: {setup_command('--dry-run')}")
         return 1
     except (RuntimeError, ValueError, OSError) as error:
         reporter.error(str(error))

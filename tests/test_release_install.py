@@ -213,7 +213,7 @@ def test_run_names_the_update_flag_for_an_older_tool(
 
     message = release_install.run("jqlang/jq", "jq", False, ["jq-linux-{arch}"])
 
-    assert message == "jq 1.0.0 is installed; 2.0.0 is available: rerun with --update"
+    assert message == "jq 1.0.0 is installed; 2.0.0 is available"
     assert not (tmp_path / "jq").exists()
 
 
@@ -272,7 +272,7 @@ def test_the_record_is_ignored_once_the_binary_changes(
 
     message = release_install.run("jqlang/jq", "jq", False, ["jq-linux-{arch}"])
 
-    assert message == "jq 1.5.0 is installed; 2.0.0 is available: rerun with --update"
+    assert message == "jq 1.5.0 is installed; 2.0.0 is available"
 
 
 def test_a_rate_limited_api_names_github_token(monkeypatch: pytest.MonkeyPatch) -> None:

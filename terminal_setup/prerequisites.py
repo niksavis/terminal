@@ -17,6 +17,8 @@ from .platform import (
     PackageManager,
     PlatformInfo,
     is_running_in_wsl,
+    rerun_command,
+    setup_command,
     wsl_exec_command,
     wsl_root_exec_command,
 )
@@ -62,7 +64,11 @@ def check_command(runner: Runner, name: str, command: str) -> PrerequisiteStatus
     path = runner.which(command)
     if path:
         return PrerequisiteStatus(name=name, present=True, message=f"found at {path}")
-    return PrerequisiteStatus(name=name, present=False, message=f"{command} not found on PATH")
+    return PrerequisiteStatus(
+        name=name,
+        present=False,
+        message=f"{command} not found on PATH; install it with your package manager",
+    )
 
 
 def _wsl_distro(platform: PlatformInfo) -> str:
@@ -90,7 +96,10 @@ def check_wsl_command(
     return PrerequisiteStatus(
         name=name,
         present=False,
-        message=f"{command} not found in WSL {distro}",
+        message=(
+            f"{command} not found in WSL {distro}; install it in WSL with: "
+            f"sudo apt-get install -y {command}"
+        ),
     )
 
 
@@ -473,6 +482,8 @@ def _install_release_tool(
     command = [interpreter, "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
     result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=f"install {package}")
     message = (result.stdout or "").strip()
+    if message.endswith(" is available"):
+        message += f"; to update, run: {setup_command('--update')}"
     if message:
         runner.reporter.info(message)
 
@@ -557,24 +568,24 @@ def install_wsl_ubuntu(runner: Runner) -> None:
     if runner.which("wsl") is None:
         raise RuntimeError(
             "the 'wsl' command is not available on this system; install WSL "
-            "(Windows feature 'Windows Subsystem for Linux') and re-run this setup."
+            "(Windows feature 'Windows Subsystem for Linux'), then run: " + rerun_command()
         )
     if runner.unattended:
         raise RuntimeError(
             "WSL Ubuntu is missing, and unattended mode cannot install it: 'wsl --install' "
             "needs administrator rights and asks for a new Linux user. Run "
-            "'wsl --install -d Ubuntu' once, create the user, then re-run this setup."
+            "'wsl --install -d Ubuntu' once, create the user, then run: " + rerun_command()
         )
     runner.reporter.warn(
         "Installing WSL requires administrator rights. Without them, ask an "
         "administrator to run 'wsl --install -d Ubuntu' or install Ubuntu "
-        "from the Microsoft Store, then re-run this setup."
+        "from the Microsoft Store, then run: " + rerun_command()
     )
     result = runner.run(["wsl", "--install", "-d", "Ubuntu"], check=False, interactive=True)
     if result.returncode != 0:
         raise RuntimeError(
             "wsl --install failed (administrator rights are likely required). "
-            "Install WSL Ubuntu manually and re-run this setup."
+            "Install WSL Ubuntu manually, then run: " + rerun_command()
         )
 
 
@@ -842,15 +853,15 @@ def _reconcile_system_versions(
 
     if policy.keep:
         runner.reporter.info(
-            "Keeping system copies (--system-versions keep). Re-run with "
-            "--system-versions uninstall to remove them once the user-local tools work."
+            "Keeping system copies (--system-versions keep). To remove them once the "
+            f"user-local tools work, run: {setup_command('--system-versions uninstall')}"
         )
         return
 
     if not policy.uninstall and not _stdin_is_interactive(runner):
         runner.reporter.warn(
             "Not removing system copies: re-run from an interactive terminal to choose "
-            "per tool, or pass --system-versions uninstall to remove them automatically."
+            "per tool, or remove them all with: " + setup_command("--system-versions uninstall")
         )
         return
 
@@ -1153,7 +1164,7 @@ def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bo
     if uv is None:
         raise RuntimeError(
             "uv is not on PATH; install it with the install.ps1 bootstrap from the README, "
-            "then re-run this setup."
+            "then run: " + rerun_command()
         )
     installed, path = _windows_python_version(runner)
     if path is not None and not is_user_scope(path, platform):
@@ -1186,7 +1197,7 @@ def ensure_uv_windows(runner: Runner, platform: PlatformInfo, *, update: bool) -
     if uv is None:
         raise RuntimeError(
             "uv is not on PATH; install it with the install.ps1 bootstrap from the README, "
-            "then re-run this setup."
+            "then run: " + rerun_command()
         )
     if not is_user_scope(uv, platform):
         report_machine_scope(runner, "uv", "", uv, minimum=None)
@@ -1409,8 +1420,8 @@ def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
         return
     raise RuntimeError(
         "This step may require a sudo password but stdin is not an interactive "
-        "terminal. Re-run from an interactive shell, or use --user-install / "
-        "--no-sudo to install into user-writable locations without sudo."
+        "terminal. Re-run from an interactive shell, or install into user-writable "
+        f"locations without sudo with: {setup_command('--no-sudo')}"
     )
 
 
