@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.11.2 - 2026-10-02
+
+Delta: v0.11.1..v0.11.2
+
+### Highlights
+
+- **Fixed: `--update` on Windows no longer fails on the uv step.** Setup runs under `uvx.exe`, and Windows does not let a program replace its own running file, so `uv self update` failed with "being used by another process". Now `install.ps1` runs `uv self update` before it starts setup, when its options hold `--update` and uv is in your user profile (term-immwo).
+- **`TERMINAL_SETUP_ARGS` no longer stays set.** `install.ps1` clears the variable after it reads it, so a later `irm | iex` in the same window starts without options (term-immwo).
+- **To pick it up on Windows**, run `$env:TERMINAL_SETUP_ARGS = '--unattended --update'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-e0kuj) (c8fb1ec)
+- fix(setup): update windows uv from the bootstrap before uvx runs (term-immwo) (7908dd9)
+- chore(tracker): close the v0-11-1 release record and write the handover (term-m2b80) (59ff24a)
+
 ## v0.11.1 - 2026-10-02
 
 Delta: v0.11.0..v0.11.1
