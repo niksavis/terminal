@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.1 - 2026-10-02
+
+Delta: v0.12.0..v0.12.1
+
+### Highlights
+
+- **Setup now installs the `cli-tools` skill from basicly v0.20.1**, the latest release. The skill is the same for you as in v0.12.0: one skill with 25 tool references (term-jxyts).
+- **Maintainers: the harness moves to basicly v0.20.1.** It removes a `# noqa` from the projected `skill-creator` scripts that failed this repository's ruff gate, so ruff now checks the projected skills again. The deny-list is unchanged (term-jxyts).
+- **To pick it up on Windows**, run `$env:TERMINAL_SETUP_ARGS = '--unattended --update'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-sw46w) (e45c3f6)
+- chore(harness): upgrade basicly to v0-20-1 and lint the projected skills again (term-jxyts) (d01eac0)
+- chore(tracker): close the v0-12-0 release record (term-e7yt8) (efd0820)
+
 ## v0.12.0 - 2026-10-02
 
 Delta: v0.11.4..v0.12.0
