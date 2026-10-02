@@ -150,3 +150,22 @@ def test_platforms_other_than_windows_install_on_the_host() -> None:
         ensure_python(runner, platform)
 
     assert runner.commands[-1] == ["sh", "-c", UV + shlex.join(UV_PYTHON_INSTALL_ARGS)]
+
+
+def test_windows_names_an_older_python_that_stays_on_path(tmp_path: Path) -> None:
+    runner = WindowsRunner(
+        reporter=CapturingReporter(),
+        outputs={
+            WSL_QUERY: (0, "3.14.6\n"),
+            ("python", "-c", prerequisites.PYTHON_VERSION_CODE): (0, "3.12.3\n"),
+        },
+    )
+
+    with mock.patch.object(prerequisites, "_add_to_process_path"):
+        _run(runner, tmp_home=tmp_path)
+
+    assert [WINDOWS_UV, *UV_PYTHON_INSTALL_ARGS] in runner.commands
+    assert any(
+        level == "warn" and "Python 3.12.3" in message
+        for level, message in runner.reporter.messages  # type: ignore[attr-defined]
+    )

@@ -1137,6 +1137,11 @@ def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bo
         return
     runner.run([uv, *UV_PYTHON_INSTALL_ARGS], label=f"install Python {TARGET_PYTHON_MINOR}")
     _add_to_user_path(runner, platform.home / ".local" / "bin")
+    if installed is not None:
+        runner.reporter.warn(
+            f"An older Python {installed} may come first on PATH; uninstall it so "
+            f"Python {TARGET_PYTHON_MINOR} in {platform.home / '.local' / 'bin'} is used."
+        )
     store_alias = platform.home / "AppData" / "Local" / "Microsoft" / "WindowsApps" / "python.exe"
     if store_alias.exists():
         runner.reporter.step(
