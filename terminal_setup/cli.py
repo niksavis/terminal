@@ -167,6 +167,52 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
     runner.reporter.warn(f"{label}{suffix}")
 
 
+WINDOWS_RUNTIMES = ("uv", "python", "node")
+
+
+def _first_line(text: str) -> str:
+    lines = text.strip().splitlines()
+    return lines[0].strip() if lines else ""
+
+
+def _windows_tool_detail(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> str | None:
+    path = runner.which(command)
+    note = ""
+    if path is None:
+        local = platform_info.home / ".local" / "bin" / f"{command}.exe"
+        if not local.exists():
+            return None
+        path = str(local)
+        note = ", restart terminal for PATH"
+    result = runner.run([path, "--version"], check=False, dry_run_safe=True)
+    version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
+    scope = "user profile" if prerequisites.is_user_scope(path, platform_info) else "machine-wide"
+    return f"{path}, {version}, {scope}{note}"
+
+
+def _report_optional_agent(runner: Runner, label: str, detail: str | None) -> None:
+    if detail:
+        runner.reporter.success(f"{label} ({detail})")
+        return
+    agent = label.rsplit(":", 1)[-1]
+    runner.reporter.info(
+        f"{label}: not installed (optional; to install it, run: "
+        f"{setup_command('--agents ' + agent)})"
+    )
+
+
+def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> str | None:
+    script = agents.present_query(agent) + '; echo "$found"'
+    command = ["sh", "-c", script]
+    if wsl_distro and not is_running_in_wsl():
+        command = wsl_exec_command(wsl_distro, command)
+    result = runner.run(command, check=False, dry_run_safe=True)
+    found = result.stdout.strip()
+    return found if result.returncode == 0 and found else None
+
+
 def _wsl_command_present(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
 ) -> tuple[bool, str]:
@@ -228,6 +274,14 @@ def _print_windows_report(
                     path = f"{executable} (restart terminal for PATH)"
                     break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
+
+    for command in WINDOWS_RUNTIMES:
+        detail = _windows_tool_detail(runner, platform_info, command)
+        _report_status(runner, f"windows:{command}", detail is not None, detail or "not found")
+    for agent in agents.AGENTS:
+        _report_optional_agent(
+            runner, f"windows:{agent}", _windows_tool_detail(runner, platform_info, agent)
+        )
 
     img_zoom = runner.which("img-zoom")
     local_img_zoom = platform_info.home / ".local" / "bin" / "img-zoom.exe"
@@ -296,6 +350,11 @@ def _print_wsl_report(
     ]:
         ok, detail = _wsl_file_exists(runner, platform_info, path)
         _report_status(runner, f"wsl:{path}", ok, detail)
+    distro = None if is_running_in_wsl() else (platform_info.wsl_distribution or "Ubuntu")
+    for agent in agents.AGENTS:
+        _report_optional_agent(
+            runner, f"wsl:{agent}", _shell_agent_path(runner, agent, wsl_distro=distro)
+        )
 
 
 def _host_command_path(runner: Runner, command: str) -> str | None:
@@ -343,6 +402,10 @@ def _print_host_report(
     if include_starship:
         path = _host_command_path(runner, "starship")
         _report_status(runner, "host:starship", path is not None, path or "")
+    for agent in agents.AGENTS:
+        _report_optional_agent(
+            runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)
+        )
 
 
 def print_setup_report(
