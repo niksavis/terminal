@@ -20,8 +20,8 @@ description: Crop and magnify part of an image file to read fine detail. Use whe
 
 ```bash
 img-zoom --info drawing.png
-img-zoom drawing.png 1200 800 1800 1100 -o /tmp/zoom.png
-img-zoom drawing.png 1200 800 1800 1100 -o /tmp/zoom.png --scale 4
+img-zoom drawing.png 1200 800 1800 1100 -o zoom.png
+img-zoom drawing.png 1200 800 1800 1100 -o zoom.png --scale 4
 ```
 
 `--info` prints `WIDTH HEIGHT MODE`. A zoom prints the image size, the crop box and the output size.
@@ -38,4 +38,4 @@ In PowerShell: `& (img-zoom --python) measure.py`. On Windows on ARM that Python
 
 ## When it is missing
 
-`img-zoom: command not found` means terminal-setup has not installed it on this side. Setup run from Windows installs it both natively and in WSL; setup run inside WSL installs it only in WSL. Run `uvx --from git+https://github.com/niksavis/terminal@main terminal-setup` (from Windows it installs both sides), or use `uv run --no-project --with pillow --with opencv-python-headless python` for a script.
+`img-zoom: command not found` means terminal-setup has not installed it on this side. Setup run from Windows installs it both natively and in WSL; setup run inside WSL installs it only in WSL. Run `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup` (from Windows it installs both sides), or use `uv run --no-project --with pillow --with opencv-python-headless python` for a script.

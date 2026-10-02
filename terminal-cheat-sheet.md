@@ -34,8 +34,8 @@ curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh |
 Update everything, then check what is installed:
 
 ```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
 ```
 
 ## WezTerm Shortcuts (project custom)

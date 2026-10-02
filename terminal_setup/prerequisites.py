@@ -112,8 +112,9 @@ def _wsl_distro_status(platform: PlatformInfo, where: str) -> PrerequisiteStatus
             present=False,
             message=(
                 f"{where} WSL distro '{distro}' (ID={os_id}) is not Debian-family, and setup "
-                "needs apt; install Ubuntu with 'wsl --install -d Ubuntu' and make it the "
-                "default with 'wsl --set-default Ubuntu'"
+                "needs apt; in Windows PowerShell, install Ubuntu with "
+                "'wsl.exe --install -d Ubuntu' (needs administrator rights once), then make it "
+                "the default with 'wsl.exe --set-default Ubuntu'"
             ),
         )
     return PrerequisiteStatus(
@@ -1481,6 +1482,16 @@ def _install_wsl_system_packages_unattended(
     return True
 
 
+def _print_system_packages_command(runner: Runner, missing: list[str], *, distro: str) -> None:
+    runner.reporter.step(f"To add them, run this in WSL: {wsl_system_packages_command(missing)}")
+    if is_running_in_wsl():
+        return
+    script = wsl_system_packages_root_script(missing)
+    runner.reporter.step(
+        f"Or in PowerShell, with no password: wsl.exe -d {distro} -u root -- sh -c '{script}'"
+    )
+
+
 def ensure_wsl_system_packages(
     runner: Runner, platform: PlatformInfo, *, allow_sudo: bool, assume_yes: bool
 ) -> None:
@@ -1493,7 +1504,7 @@ def ensure_wsl_system_packages(
     runner.reporter.warn(f"WSL is missing system packages: {', '.join(missing)}.")
     if allow_sudo and runner.unattended:
         if not _install_wsl_system_packages_unattended(runner, missing, distro=distro):
-            runner.reporter.step(f"To add them, run this in WSL: {command}")
+            _print_system_packages_command(runner, missing, distro=distro)
         return
     run_now = allow_sudo and (
         assume_yes
@@ -1507,7 +1518,7 @@ def ensure_wsl_system_packages(
         )
     )
     if not run_now:
-        runner.reporter.step(f"To add them, run this in WSL: {command}")
+        _print_system_packages_command(runner, missing, distro=distro)
         return
     _run_shell_command(
         runner,

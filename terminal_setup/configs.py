@@ -211,6 +211,8 @@ def _skip_shell_change(runner: Runner, shell: str, *, wsl_distro: str | None) ->
         f"Skipping default shell change to {shell}: chsh needs a password "
         "prompt but stdin is not an interactive terminal."
     )
+    where = "in WSL" if wsl_distro or is_running_in_wsl() else "in a terminal"
+    runner.reporter.step(f"To change it, run this {where}: chsh -s {shell}")
 
 
 def set_wsl_default_shell(

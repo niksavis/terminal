@@ -271,7 +271,7 @@ def test_check_wsl_refuses_a_wsl_guest_that_is_not_debian_family() -> None:
         status = check_wsl(platform, runner)
     assert status.present is False
     assert "'FedoraLinux-42' (ID=fedora) is not Debian-family" in status.message
-    assert "wsl --install -d Ubuntu" in status.message
+    assert "wsl.exe --install -d Ubuntu" in status.message
 
 
 def test_check_wsl_refuses_a_windows_default_distro_that_is_not_debian_family() -> None:

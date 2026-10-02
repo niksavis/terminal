@@ -5,9 +5,10 @@ Maintainer notes for publishing tagged releases.
 ## What users run
 
 - Latest from main:
-  - `uvx --from git+https://github.com/niksavis/terminal@main terminal-setup`
+  - `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup`
 - Pinned release (from release page):
-  - `uvx --from git+https://github.com/niksavis/terminal@vX.Y.Z terminal-setup`
+  - `uvx --from https://github.com/niksavis/terminal/archive/vX.Y.Z.zip terminal-setup` (no git needed)
+  - The release page still shows `uvx --from git+https://github.com/niksavis/terminal@vX.Y.Z terminal-setup`, which needs git.
 
 ## Release workflow
 

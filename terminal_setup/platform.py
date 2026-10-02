@@ -86,7 +86,7 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "--exec", *command]
 
 
-SETUP_SOURCE = "git+https://github.com/niksavis/terminal@main"
+SETUP_SOURCE = "https://github.com/niksavis/terminal/archive/main.zip"
 
 
 def setup_command(options: str = "", *, argv0: str | None = None) -> str:
@@ -94,7 +94,7 @@ def setup_command(options: str = "", *, argv0: str | None = None) -> str:
     if script == "setup-terminal.py":
         base = "uv run python setup-terminal.py"
     else:
-        base = f"uvx --from {SETUP_SOURCE} terminal-setup"
+        base = f"uvx --refresh-package terminal --from {SETUP_SOURCE} terminal-setup"
     return f"{base} {options}".rstrip()
 
 

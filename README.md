@@ -54,30 +54,30 @@ Setup does not install a second copy beside a machine-wide one, because Windows 
 With uv already installed, run the setup directly from `main` — no clone required:
 
 ```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup
 ```
 
 Already installed? Re-apply only the configs (fast, no package installs) — for example after a config update:
 
 ```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only config
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only config
 ```
 
 Update every user-local tool, uv, Python, Node.js and every present coding agent that is older than its latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
 
 ```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --update
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update
 ```
 
 Check what is installed and configured:
 
 ```bash
-uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
 ```
 
 These commands run unchanged in PowerShell, Git Bash, a WSL shell, Linux and macOS. Run from Windows, they set up the Windows host and the default WSL distro together.
 
-For a reproducible install pinned to a version, use the command shown on the [latest release](https://github.com/niksavis/terminal/releases/latest) page.
+For a reproducible install pinned to a version, put the release tag in the archive URL, for example `uvx --from https://github.com/niksavis/terminal/archive/v0.11.3.zip terminal-setup`. Each [release](https://github.com/niksavis/terminal/releases/latest) page also shows a pinned `git+` command, which needs git.
 
 ### New Windows machine
 
@@ -131,7 +131,7 @@ Install the terminal setup from https://github.com/niksavis/terminal without adm
 2. Add --agents all (or a list such as claude,codex) only if I asked for coding agents.
 3. If the output prints an apt command, show it to me: it needs my sudo password.
 4. If the output names a machine-wide tool to update through IT or Software Center, tell me; do not try to change it.
-5. When done, run: uvx --from git+https://github.com/niksavis/terminal@main terminal-setup --only report
+5. When done, run: uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
    and summarize what was installed, skipped and failed, and any manual next steps.
 ```
 
@@ -321,26 +321,38 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 ## CLI options
 
-The examples below run from a clone. Without a clone, replace `uv run python setup-terminal.py` with `uvx --from git+https://github.com/niksavis/terminal@main terminal-setup`, or pass the options to a bootstrap script as shown in [Quick install](#quick-install).
+Add options to any setup command. Each command below runs as copied, without a clone and without git:
 
-```bash
-uv run python setup-terminal.py --only check # verify prerequisites, then exit
-uv run python setup-terminal.py --dry-run    # preview changes
-uv run python setup-terminal.py --only config # re-apply all configs (incl. Claude status line); no package installs
-uv run python setup-terminal.py --only report # print verification summary, then exit
-uv run python setup-terminal.py --report     # run setup, then print verification summary
-uv run python setup-terminal.py --unattended # never prompt; safe answers only (for scripts and agents)
-uv run python setup-terminal.py --agents claude,codex # also install these coding agents when missing (or: all)
-uv run python setup-terminal.py --skip-vscode # skip VS Code: settings/extensions
-uv run python setup-terminal.py --skip-starship # skip starship prompt
-uv run python setup-terminal.py --skip-claude # skip the Claude Code status line
-uv run python setup-terminal.py --no-nerd-font # install the universal (no Nerd Font) status line
-uv run python setup-terminal.py --system-install # install system-wide via apt/brew (needs sudo/admin)
-uv run python setup-terminal.py --no-sudo    # never use sudo; print the apt command for missing WSL system packages
-uv run python setup-terminal.py --update     # install the latest release of every user-local tool that is out of date
-uv run python setup-terminal.py --system-versions uninstall # remove system tool versions without prompting
-uv run python setup-terminal.py --system-versions keep # keep system tool versions; only warn
-uv run python setup-terminal.py --windows-terminal-cwd "D:\\Workspace" --wsl-terminal-cwd "$HOME/workspace" # optional user-specific cwd values
+- PowerShell: `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --dry-run`
+- WSL, Linux, macOS: `curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --dry-run`
+- Any shell with uv: `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --dry-run`
+- In a clone: `uv run python setup-terminal.py --dry-run`
+
+| Option | What it does |
+| --- | --- |
+| `--only check` | check the prerequisites, then exit |
+| `--dry-run` | print each step and change nothing |
+| `--only config` | re-apply all configs (also the Claude status line); install no packages |
+| `--only report` | print the verification report, then exit |
+| `--report` | run setup, then print the verification report |
+| `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
+| `--agents claude,codex` | also install these coding agents when missing; `all` installs all three |
+| `--update` | update every user-local tool, Python, Node.js and agent that is out of date |
+| `--skip-vscode` | skip the VS Code settings and extensions |
+| `--skip-starship` | skip the starship prompt |
+| `--skip-claude` | skip the Claude Code status line |
+| `--no-nerd-font` | install the universal (no Nerd Font) status line |
+| `--no-sudo` | never use sudo; print the apt command for missing WSL system packages |
+| `--system-install` | install system-wide through apt or brew (needs sudo or admin) |
+| `--system-versions uninstall` | remove system tool versions without asking |
+| `--system-versions keep` | keep system tool versions; only warn |
+| `--windows-terminal-cwd PATH` | start directory for the VS Code terminal on Windows |
+| `--wsl-terminal-cwd PATH` | start directory for WSL terminals and WezTerm |
+
+The two directory options are optional and personal, so setup never sets them by itself. Quote a path with single quotes, because single quotes work the same in PowerShell and in bash, and write the WSL path in full. Replace `<your-linux-user>` with your Linux user name, which `whoami` prints in WSL:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --windows-terminal-cwd 'D:\Workspace' --wsl-terminal-cwd '/home/<your-linux-user>/workspace'
 ```
 
 By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there); macOS uses Homebrew, which needs no admin either way. The deprecated `--user-install` flag is a no-op kept for compatibility.

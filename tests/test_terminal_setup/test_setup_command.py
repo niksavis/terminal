@@ -26,14 +26,15 @@ def test_a_clone_run_names_the_clone_command() -> None:
 )
 def test_a_uvx_run_names_the_uvx_command(argv0: str) -> None:
     assert setup_command("--only report", argv0=argv0) == (
-        f"uvx --from {SETUP_SOURCE} terminal-setup --only report"
+        f"uvx --refresh-package terminal --from {SETUP_SOURCE} terminal-setup --only report"
     )
 
 
 def test_rerun_command_repeats_the_options(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "argv", ["terminal-setup", "--unattended", "--agents", "all"])
 
-    assert rerun_command() == f"uvx --from {SETUP_SOURCE} terminal-setup --unattended --agents all"
+    base = f"uvx --refresh-package terminal --from {SETUP_SOURCE} terminal-setup"
+    assert rerun_command() == f"{base} --unattended --agents all"
 
 
 @pytest.mark.parametrize("module", ["cli", "prerequisites", "configs", "agents", "release_install"])
@@ -51,3 +52,25 @@ def test_no_hint_names_a_command_that_is_not_on_path(module: str) -> None:
 
 def test_setup_source_is_the_one_the_readme_names() -> None:
     assert platform.SETUP_SOURCE in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        "README.md",
+        "terminal-cheat-sheet.md",
+        "terminal_setup/templates/img-zoom-skill.md",
+    ],
+)
+def test_user_documents_need_no_git_to_run_setup(document: str) -> None:
+    text = (ROOT / document).read_text(encoding="utf-8")
+
+    assert "--from git+" not in text
+
+
+def test_documented_setup_commands_use_the_one_source() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    cheat_sheet = (ROOT / "terminal-cheat-sheet.md").read_text(encoding="utf-8")
+
+    assert setup_command("--update", argv0="terminal-setup") in readme + cheat_sheet
+    assert setup_command("--only report", argv0="terminal-setup") in readme + cheat_sheet
