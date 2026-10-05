@@ -2,6 +2,32 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.2 - 2026-10-05
+
+Delta: v0.12.1..v0.12.2
+
+### Highlights
+
+- **AI coding agents get plain `cd`, `cat` and `ls` again.** The zsh config now sets its aliases only in an interactive shell. Before, an agent shell that loads `~/.zshrc` got `cd=z` and `cat=bat`, so `cd` to a missing folder could jump to another folder with no error. Your own terminal keeps every alias (term-dusvn9).
+- **The `cli-tools` skill shows the correct yq command to convert JSON to YAML**: `yq -o yaml file.json`. `-P` only pretty-prints and does not change the format. Setup installs the skill from basicly v0.20.2 (term-lonez0).
+- **The cheat-sheet page selects a command when you click it**, and shows the copy hint inside the code block (term-a5ah9).
+- **Maintainers: the harness moves to basicly v0.20.2.** The deny-list is unchanged (term-lonez0).
+- **To pick it up on Windows**, run `$env:TERMINAL_SETUP_ARGS = '--unattended --update'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-aegvkx) (4148131)
+- chore(harness): upgrade basicly to v0-20-2 for the corrected yq reference (term-lonez0) (45f7b08)
+- chore(tracker): close the ledger name record as an accepted risk (term-7w72br) (d3b461c)
+- fix(zsh): define the aliases only in an interactive shell (term-dusvn9) (ce14cc5)
+- chore(tracker): file five setup and ledger defects (term-7w72br) (04c6640)
+- chore(tracker): file the session retro findings (term-p4b5z) (2fc3f1a)
+- chore(tracker): write the session handover (term-p4b5z) (8160ff4)
+- fix(docs): show the copy hint inside the code block (term-a5ah9) (77581db)
+- fix(docs): select a command on click instead of writing the clipboard (term-a5ah9) (b185891)
+- chore(tracker): record the v0-12-1 post-release check (term-sw46w) (c88ad17)
+- chore(tracker): close the v0-12-1 release record (term-sw46w) (fab20f3)
+
 ## v0.12.1 - 2026-10-02
 
 Delta: v0.12.0..v0.12.1
