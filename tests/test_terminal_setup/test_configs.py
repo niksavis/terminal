@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -152,6 +153,33 @@ def test_deploy_zsh_config(tmp_path: Path) -> None:
     destination = tmp_path / ".zshrc"
     assert destination.exists()
     assert "HISTFILE" in destination.read_text(encoding="utf-8")
+
+
+def _zsh_aliases(tmp_path: Path, script: str, *flags: str) -> set[str]:
+    result = subprocess.run(
+        ["zsh", "-f", *flags, "-c", f"{script}; alias"],
+        env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"},
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return {line.split("=", 1)[0] for line in result.stdout.splitlines() if "=" in line}
+
+
+def _zshrc_aliases(tmp_path: Path, *flags: str) -> set[str]:
+    sourced = _zsh_aliases(tmp_path, f"source {str(template_path('zshrc'))!r}", *flags)
+    return sourced - _zsh_aliases(tmp_path, "true", *flags)
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="needs zsh")
+def test_zshrc_defines_no_aliases_in_a_non_interactive_shell(tmp_path: Path) -> None:
+    assert _zshrc_aliases(tmp_path) == set()
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="needs zsh")
+def test_zshrc_defines_aliases_in_an_interactive_shell(tmp_path: Path) -> None:
+    assert {"ll", "..", "tm", "clear"} <= _zshrc_aliases(tmp_path, "-i")
 
 
 def test_deploy_micro_config(tmp_path: Path) -> None:
