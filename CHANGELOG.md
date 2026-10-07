@@ -2,6 +2,19 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.4 - 2026-10-07
+
+Delta: v0.12.3..v0.12.4
+
+### Highlights
+
+- **Setup hints name the release that you installed.** After `uvx --from https://github.com/niksavis/terminal/archive/v0.12.4.zip terminal-setup`, the last line now says `Verify anytime with: uvx --from https://github.com/niksavis/terminal/archive/v0.12.4.zip terminal-setup --only report`. Before, every hint named `main.zip`, so a verify, retry or dry-run command ran other code than the release you installed. An install from `main.zip` keeps `--refresh-package terminal` in its hints. Releases before v0.12.4 still print `main.zip` (term-nt1a9z).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-k0eusd) (1388009)
+- fix(setup): name the archive that setup ran from in every hint (term-nt1a9z) (46ccc4c)
+
 ## v0.12.3 - 2026-10-07
 
 Delta: v0.12.2..v0.12.3
