@@ -9,6 +9,7 @@ from unittest import mock
 
 import pytest
 
+from terminal_setup import prerequisites as prerequisites_module
 from terminal_setup import release_install
 from terminal_setup.platform import (
     OperatingSystem,
@@ -873,6 +874,14 @@ def _run_uv_update(runner: FakeRunner) -> None:
         assert install_user_local_tool(cast(Runner, runner), "uv", platform, update=True)
 
 
+def test_every_uv_installer_call_leaves_the_shell_files_alone() -> None:
+    source = Path(prerequisites_module.__file__).read_text(encoding="utf-8")
+
+    assert source.count("astral.sh/uv/install.sh") == 1
+    assert source.count("UV_INSTALL_SCRIPT") >= 3
+    assert "| UV_NO_MODIFY_PATH=1 sh" in source
+
+
 def test_uv_update_skips_a_current_uv() -> None:
     runner = FakeRunner(
         outputs={
@@ -897,7 +906,9 @@ def test_uv_update_runs_the_installer_for_an_older_uv() -> None:
 
     _run_uv_update(runner)
 
-    assert any("astral.sh/uv/install.sh" in c[-1] for c in runner.commands)
+    installs = [c[-1] for c in runner.commands if "astral.sh/uv/install.sh" in c[-1]]
+    assert installs
+    assert all("UV_NO_MODIFY_PATH=1 sh" in script for script in installs)
 
 
 def test_reconcile_removes_unowned_userlocal_duplicate() -> None:

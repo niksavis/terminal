@@ -448,6 +448,7 @@ def _run_shell_read(
     return runner.run(command, check=False, dry_run_safe=True)
 
 
+UV_INSTALL_SCRIPT = "curl -LsSf https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh"
 _RUST_ASSETS = (
     r"[^/]*-{arch}-unknown-linux-musl\.(?:tar\.gz|zip)",
     r"[^/]*-{arch}-unknown-linux-gnu\.(?:tar\.gz|zip)",
@@ -533,7 +534,7 @@ def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | Non
         if not _command_available(runner, "uv", wsl_distro=wsl_distro):
             _run_shell_command(
                 runner,
-                "curl -LsSf https://astral.sh/uv/install.sh | sh",
+                UV_INSTALL_SCRIPT,
                 label="install uv",
                 wsl_distro=wsl_distro,
             )
@@ -1387,7 +1388,7 @@ def _install_user_local_tool(
             return True
         _run_shell_command(
             runner,
-            "curl -LsSf https://astral.sh/uv/install.sh | sh",
+            UV_INSTALL_SCRIPT,
             label="install uv",
             wsl_distro=distro,
         )
