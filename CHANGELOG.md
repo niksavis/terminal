@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.5 - 2026-10-07
+
+Delta: v0.12.4..v0.12.5
+
+### Highlights
+
+- **A re-run of setup keeps your changed config files.** When `~/.zshrc`, `~/.tmux.conf`, `~/.config/starship.toml` or `~/.config/micro/settings.json` differs from the template, setup keeps the old file as `<file>.terminal-setup.bak` and names it in the output. Before, a tool installer's line in `~/.zshrc` was lost on the next run. Put your own shell lines in `~/.zshrc.local`, which setup never overwrites. This applies inside WSL, from Windows into WSL, and on a native Linux or macOS host (term-0h6k6d).
+- **A native Linux host gets the same `yq` as WSL.** Setup installs `yq` from the mikefarah release into `~/.local/bin`, and no longer installs the apt, pacman or dnf `yq` package. On Debian and Ubuntu that package is a different tool with a different syntax. Homebrew keeps its `yq`, which is the same mikefarah tool (term-j4lf0e).
+- **`fd` and `bat` work by these names on native Debian and Ubuntu.** Setup links `~/.local/bin/fd` to `fdfind` and `~/.local/bin/bat` to `batcat`, as it already did in WSL. An existing link or file stays (term-aqebu9).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-apnbv8) (af57b81)
+- fix(prerequisites): give a native linux host the release yq and the fd and bat links (term-j4lf0e) (6c36dab)
+- chore(tracker): write the session handover (term-p4b5z) (2467d46)
+- fix(configs): keep a changed config file as a backup on redeploy (term-0h6k6d) (1dad787)
+- chore(tracker): close the v0-12-2 and v0-12-3 release records (term-aegvkx) (2c88371)
+- chore(tracker): close the v0-12-4 release record (term-k0eusd) (a5b7150)
+
 ## v0.12.4 - 2026-10-07
 
 Delta: v0.12.3..v0.12.4
