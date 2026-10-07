@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 
 from terminal_setup import platform
-from terminal_setup.platform import SETUP_SOURCE, rerun_command, setup_command
+from terminal_setup.platform import (
+    SETUP_ARCHIVES,
+    SETUP_SOURCE,
+    installed_source,
+    rerun_command,
+    setup_command,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -28,6 +34,44 @@ def test_a_uvx_run_names_the_uvx_command(argv0: str) -> None:
     assert setup_command("--only report", argv0=argv0) == (
         f"uvx --refresh-package terminal --from {SETUP_SOURCE} terminal-setup --only report"
     )
+
+
+def test_a_release_run_names_the_release_it_ran_from() -> None:
+    release = f"{SETUP_ARCHIVES}v0.12.3.zip"
+
+    assert setup_command("--only report", argv0="terminal-setup", source=release) == (
+        f"uvx --from {release} terminal-setup --only report"
+    )
+
+
+def test_a_branch_run_refreshes_the_branch_it_ran_from() -> None:
+    branch = f"{SETUP_ARCHIVES}feature.zip"
+
+    assert setup_command("--only report", argv0="terminal-setup", source=branch) == (
+        f"uvx --refresh-package terminal --from {branch} terminal-setup --only report"
+    )
+
+
+def test_installed_source_reads_the_archive_that_uv_installed() -> None:
+    release = f"{SETUP_ARCHIVES}v0.12.3.zip"
+    record = f'{{"url":"{release}","archive_info":{{}}}}'
+
+    assert installed_source(record) == release
+
+
+@pytest.mark.parametrize(
+    "record",
+    [
+        "",
+        "not json",
+        "[]",
+        '{"url":"file:///repo","dir_info":{"editable":true}}',
+        '{"url":"https://example.com/archive/v1.0.0.zip","archive_info":{}}',
+        '{"url":"https://github.com/niksavis/terminal","vcs_info":{"vcs":"git"}}',
+    ],
+)
+def test_installed_source_falls_back_to_main_for_any_other_install(record: str) -> None:
+    assert installed_source(record) == SETUP_SOURCE
 
 
 def test_rerun_command_repeats_the_options(monkeypatch: pytest.MonkeyPatch) -> None:

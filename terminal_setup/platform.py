@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import os
 import platform
+import re
 import shlex
 import shutil
 import subprocess  # nosec B404
 import sys
 from dataclasses import dataclass
 from enum import Enum, auto
+from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
 
@@ -86,15 +89,35 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "--exec", *command]
 
 
-SETUP_SOURCE = "https://github.com/niksavis/terminal/archive/main.zip"
+SETUP_ARCHIVES = "https://github.com/niksavis/terminal/archive/"
+SETUP_SOURCE = f"{SETUP_ARCHIVES}main.zip"
+RELEASE_ARCHIVE = re.compile(re.escape(SETUP_ARCHIVES) + r"v\d+\.\d+\.\d+\.zip")
 
 
-def setup_command(options: str = "", *, argv0: str | None = None) -> str:
+def installed_source(direct_url: str | None = None) -> str:
+    if direct_url is None:
+        try:
+            direct_url = distribution("terminal").read_text("direct_url.json")
+        except PackageNotFoundError:
+            return SETUP_SOURCE
+    try:
+        record = json.loads(direct_url or "{}")
+    except json.JSONDecodeError:
+        return SETUP_SOURCE
+    url = record.get("url", "") if isinstance(record, dict) else ""
+    if "archive_info" in record and isinstance(url, str) and url.startswith(SETUP_ARCHIVES):
+        return url
+    return SETUP_SOURCE
+
+
+def setup_command(options: str = "", *, argv0: str | None = None, source: str | None = None) -> str:
     script = Path(sys.argv[0] if argv0 is None else argv0).name
     if script == "setup-terminal.py":
         base = "uv run python setup-terminal.py"
     else:
-        base = f"uvx --refresh-package terminal --from {SETUP_SOURCE} terminal-setup"
+        url = installed_source() if source is None else source
+        refresh = "" if RELEASE_ARCHIVE.fullmatch(url) else "--refresh-package terminal "
+        base = f"uvx {refresh}--from {url} terminal-setup"
     return f"{base} {options}".rstrip()
 
 
