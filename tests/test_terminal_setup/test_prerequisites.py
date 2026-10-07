@@ -29,6 +29,7 @@ from terminal_setup.prerequisites import (
     PrerequisiteStatus,
     SystemVersionPolicy,
     _add_to_user_path,
+    _link_debian_renamed_tools,
     check_all,
     check_command,
     check_package_manager,
@@ -411,7 +412,6 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -449,7 +449,6 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -468,7 +467,6 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -492,6 +490,77 @@ def test_ensure_host_cli_extras_uses_agent_first_baseline_per_manager() -> None:
             command[:2] == ["sh", "-c"] and "jesseduffield/lazygit/releases/latest" in command[-1]
             for command in runner.commands
         )
+
+
+def _release_repos(commands: list[list[str]]) -> list[str]:
+    return [command[4] for command in commands if command[1:3] == ["-I", "-c"]]
+
+
+@pytest.mark.parametrize("manager", [PackageManager.APT, PackageManager.PACMAN, PackageManager.DNF])
+def test_a_native_linux_host_installs_yq_from_the_mikefarah_release(
+    manager: PackageManager,
+) -> None:
+    runner = SpyRunner()
+
+    ensure_host_cli_extras(cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager))
+
+    assert "yq" not in _installed_packages(runner.commands, manager)
+    assert _release_repos(runner.commands) == ["mikefarah/yq"]
+
+
+def test_a_no_sudo_linux_host_still_installs_the_yq_release() -> None:
+    runner = SpyRunner()
+
+    ensure_host_cli_extras(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT), no_sudo=True
+    )
+
+    assert _release_repos(runner.commands) == ["mikefarah/yq"]
+
+
+def test_a_homebrew_host_keeps_the_yq_formula() -> None:
+    runner = SpyRunner()
+
+    ensure_host_cli_extras(
+        cast(Runner, runner), make_platform(OperatingSystem.MACOS, PackageManager.HOMEBREW)
+    )
+
+    assert "yq" in _installed_packages(runner.commands, PackageManager.HOMEBREW)
+    assert _release_repos(runner.commands) == []
+
+
+@pytest.mark.parametrize(
+    ("manager", "linked"), [(PackageManager.APT, True), (PackageManager.DNF, False)]
+)
+def test_only_a_native_apt_host_links_fd_and_bat(manager: PackageManager, linked: bool) -> None:
+    runner = SpyRunner()
+
+    ensure_host_cli_extras(cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager))
+
+    scripts = [command[-1] for command in runner.commands if command[:2] == ["sh", "-c"]]
+    assert any("fdfind" in script for script in scripts) is linked
+    assert any("batcat" in script for script in scripts) is linked
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the link script runs in a POSIX sh")
+def test_the_link_rule_links_debian_names_and_leaves_an_existing_target(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tools = tmp_path / "usr-bin"
+    tools.mkdir()
+    for name in ("fdfind", "batcat"):
+        (tools / name).write_text("#!/bin/sh\n", encoding="utf-8")
+        (tools / name).chmod(0o755)
+    home = tmp_path / "home"
+    (home / ".local" / "bin").mkdir(parents=True)
+    (home / ".local" / "bin" / "bat").write_text("mine", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("PATH", f"{tools}:/usr/bin:/bin")
+
+    _link_debian_renamed_tools(Runner(dry_run=False), None)
+
+    assert (home / ".local" / "bin" / "fd").resolve() == tools / "fdfind"
+    assert (home / ".local" / "bin" / "bat").read_text(encoding="utf-8") == "mine"
 
 
 def test_ensure_host_cli_extras_noop_on_windows() -> None:

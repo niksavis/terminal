@@ -1615,7 +1615,10 @@ def ensure_wsl_tools(  # noqa: PLR0913
 
 
 def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
-    distro = _wsl_distro(platform)
+    _link_debian_renamed_tools(runner, _wsl_distro(platform))
+
+
+def _link_debian_renamed_tools(runner: Runner, distro: str | None) -> None:
     _run_in_wsl_or_host(
         runner, ["sh", "-c", "mkdir -p ~/.local/bin"], distro=distro, label="create ~/.local/bin"
     )
@@ -1697,7 +1700,6 @@ def ensure_host_cli_extras(
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -1735,7 +1737,6 @@ def ensure_host_cli_extras(
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -1754,7 +1755,6 @@ def ensure_host_cli_extras(
             "bat",
             "ripgrep",
             "jq",
-            "yq",
             "shellcheck",
             "tree",
             "xh",
@@ -1774,6 +1774,10 @@ def ensure_host_cli_extras(
     else:
         for package in extras.get(platform.package_manager, []):
             install_package(runner, platform.package_manager, package)
+    if platform.os == OperatingSystem.LINUX:
+        attempt(runner, "install yq", partial(_install_release_tool, runner, "yq", update=False))
+    if platform.package_manager == PackageManager.APT:
+        _link_debian_renamed_tools(runner, None)
     _install_lazygit_release(runner, no_sudo=no_sudo)
 
 
