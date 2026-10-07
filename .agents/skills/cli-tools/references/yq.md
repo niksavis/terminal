@@ -14,13 +14,13 @@ Read and change YAML files, and convert between YAML and JSON. Use it instead of
 ```bash
 yq '.spec.replicas' file.yaml
 yq -o json file.yaml
-yq -P file.json
+yq -o yaml file.json
 yq -i '.version = "2.0"' file.yaml
 yq eval-all 'select(fi == 0) * select(fi == 1)' a.yaml b.yaml
 ```
 
 ## Output
 
-- Default output is YAML.
-- `-o json` prints JSON.
-- `-P` prints formatted YAML from any supported input.
+- The output format follows the input format. A JSON file prints as JSON.
+- `-o yaml` prints YAML, and `-o json` prints JSON.
+- `-P` pretty-prints. It does not change the format.

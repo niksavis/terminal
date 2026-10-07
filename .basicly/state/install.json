@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.20.1",
+  "basicly_version": "0.20.2",
   "core": {
     "agents/architect/agent.yaml": "sha256:25b0335d5d2f254a9ae5596d6e2aaf90786f5cfdf02664e9a1b3e3c1fe934dfd",
     "agents/auditor/agent.yaml": "sha256:b68326d319210c5c25785033879e5ac3ab3ed1f7a46e506d94537921250608cc",
@@ -116,7 +116,7 @@
     "kit/tracker/locate.py": "sha256:fe5773c733104b49c3d08f4eb2462116d4d69a975232121554ee9cc36b651f78",
     "kit/tracker/migrate.py": "sha256:b9b42d44be1754c06a649edc13d762b0b73033895bce0ebd95c3d146b7c86640",
     "kit/tracker/mirror.py": "sha256:b1907afcba7494b7fd5cb95230ab487304e0706cf1830b4616ffac989ba2ffd6",
-    "kit/tracker/pin.py": "sha256:efb43fd2569ae7c3b02f1edd6bcb79729588b4b07f026b8697e310e65946748c",
+    "kit/tracker/pin.py": "sha256:85fba4275c5e8e5e0057715926d426fa4c661dfb4c6c08a4df2bfdffa0f066ac",
     "kit/tracker/provenance.py": "sha256:5800d8eda460d3e7179e7e920738ef50e04fad0ee15ada48db49e3243e99fc59",
     "kit/tracker/queries.py": "sha256:ee6d60e97e1da26b97e6b7ad3ea1cd11f7787284ddfa5318185c92f397b2489e",
     "kit/tracker/record_view.py": "sha256:3f20169408ead3547500f54d98224259095845e2e77106572e07ceb17c653147",
@@ -185,7 +185,7 @@
     "skills/cli-tools/references/wezterm.md": "sha256:bb881bd82be6c6e12a751a93c3d2a053496e2632020b41d88fff0e81ec8ef3ac",
     "skills/cli-tools/references/wget.md": "sha256:3a95d7059437d73455f9979913301a7549617f1bcd7fd446b280e7327d88c58f",
     "skills/cli-tools/references/xh.md": "sha256:6d46f9ae014c995153dcef28b7c01dce81c38a3ca40d03ac9ed5b6a648de2ee6",
-    "skills/cli-tools/references/yq.md": "sha256:956ffe6492eee3f1e901e06af7ea7f55b759157b8bd7f331a0fa40edd7b2ff0f",
+    "skills/cli-tools/references/yq.md": "sha256:9b0c5f727a6480def9915d26151577841577202c6d1c1ba5be4256e3f03cfed3",
     "skills/cli-tools/references/zsh.md": "sha256:5c5d66d41f5867cfc026df63b79701423e9111b3e02d5e082a862b1d5a47a4c4",
     "skills/cli-tools/skill.yaml": "sha256:0921d1ec8a6794079815c27a49c4121345059f4d324fe8de85f50e6055677584",
     "skills/conventional-commits/evals.yaml": "sha256:038b912fec8749c9731ecb2213df1d101e6f1dd92eec1e519ee59d27754ce7d8",
@@ -274,6 +274,6 @@
     "templates/codex/rule_md.j2": "sha256:0c236f2ac2ab05fafc6d5c199700ead5ec7c69ff21b8850f09a46f585ea94166",
     "templates/copilot/copilot_instructions_md.j2": "sha256:5d69050d4a037b769f918c84bfd1c92dae393b358df7451ae035b86ba98bdb9c"
   },
-  "installed_at": "2026-10-02T12:42:11.937505+00:00",
+  "installed_at": "2026-10-05T12:28:59.371355+00:00",
   "schema_version": 1
 }

@@ -84,48 +84,50 @@ if [[ -z "$EDITOR" ]] && command -v micro >/dev/null 2>&1; then
   export EDITOR=micro
 fi
 
-# Aliases
-alias reload-zsh="source ~/.zshrc"
-alias edit-zsh="${EDITOR:-nano} ~/.zshrc"
-alias clear="clear -x"
-alias cl="clear -x"
-alias ll="ls -la"
-alias ..="cd .."
-alias ...="cd ../.."
-alias grep="grep --color=auto"
-alias tm="tmux"
-alias tma="tmux attach"
+if [[ -o interactive ]]; then
+  # Aliases
+  alias reload-zsh="source ~/.zshrc"
+  alias edit-zsh="${EDITOR:-nano} ~/.zshrc"
+  alias clear="clear -x"
+  alias cl="clear -x"
+  alias ll="ls -la"
+  alias ..="cd .."
+  alias ...="cd ../.."
+  alias grep="grep --color=auto"
+  alias tm="tmux"
+  alias tma="tmux attach"
 
-# Use eza if available (josean-dev style)
-if command -v eza >/dev/null 2>&1; then
-  alias ls="eza --icons=auto"
-  alias ll="eza -la --icons=auto"
-fi
-
-# Use bat if available (josean-dev style)
-if command -v bat >/dev/null 2>&1; then
-  if bat --list-themes 2>/dev/null | grep -qx "tokyonight_night"; then
-    export BAT_THEME=tokyonight_night
-  else
-    unset BAT_THEME
+  # Use eza if available (josean-dev style)
+  if command -v eza >/dev/null 2>&1; then
+    alias ls="eza --icons=auto"
+    alias ll="eza -la --icons=auto"
   fi
-  alias cat="bat"
-fi
 
-# Use zoxide if available (josean-dev style)
-if command -v zoxide >/dev/null 2>&1; then
-  eval "$(zoxide init zsh)"
-  alias cd="z"
-fi
+  # Use bat if available (josean-dev style)
+  if command -v bat >/dev/null 2>&1; then
+    if bat --list-themes 2>/dev/null | grep -qx "tokyonight_night"; then
+      export BAT_THEME=tokyonight_night
+    else
+      unset BAT_THEME
+    fi
+    alias cat="bat"
+  fi
 
-# Use direnv for per-project environment loading.
-if command -v direnv >/dev/null 2>&1; then
-  eval "$(direnv hook zsh)"
-fi
+  # Use zoxide if available (josean-dev style)
+  if command -v zoxide >/dev/null 2>&1; then
+    eval "$(zoxide init zsh)"
+    alias cd="z"
+  fi
 
-# just command runner shorthand
-if command -v just >/dev/null 2>&1; then
-  alias j="just"
+  # Use direnv for per-project environment loading.
+  if command -v direnv >/dev/null 2>&1; then
+    eval "$(direnv hook zsh)"
+  fi
+
+  # just command runner shorthand
+  if command -v just >/dev/null 2>&1; then
+    alias j="just"
+  fi
 fi
 
 # fzf integration (josean-dev style)
