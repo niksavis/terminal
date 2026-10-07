@@ -11,7 +11,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum, auto
 from importlib.metadata import PackageNotFoundError, distribution
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 
 class OperatingSystem(Enum):
@@ -135,6 +135,14 @@ def path_without_own_environment(path: str, executable: str, *, in_virtualenv: b
         if entry and os.path.normcase(entry.rstrip("\\/")) != own
     ]
     return os.pathsep.join(kept)
+
+
+def windows_powershell_module_path(value: str) -> str:
+    return ";".join(
+        entry
+        for entry in value.split(";")
+        if entry and "powershell" not in (part.lower() for part in PureWindowsPath(entry).parts)
+    )
 
 
 def wsl_root_exec_command(distro: str, command: list[str]) -> list[str]:

@@ -652,6 +652,10 @@ def main(argv: list[str] | None = None) -> int:
     os.environ["PATH"] = platform.path_without_own_environment(
         os.environ.get("PATH", ""), sys.executable, in_virtualenv=sys.prefix != sys.base_prefix
     )
+    if sys.platform == "win32" and "PSMODULEPATH" in os.environ:
+        os.environ["PSMODULEPATH"] = platform.windows_powershell_module_path(
+            os.environ["PSMODULEPATH"]
+        )
     parser = build_parser()
     args = parser.parse_args(argv)
     reporter = ConsoleReporter()

@@ -14,6 +14,7 @@ from terminal_setup.platform import (
     PackageManager,
     PlatformInfo,
     path_without_own_environment,
+    windows_powershell_module_path,
 )
 
 
@@ -47,6 +48,40 @@ def test_main_drops_its_own_environment_from_path(monkeypatch: pytest.MonkeyPatc
         main([])
 
     assert own not in os.environ["PATH"].split(os.pathsep)
+
+
+PS7_AND_51 = ";".join([
+    r"C:\Users\dev\Documents\PowerShell\Modules",
+    r"C:\Program Files\PowerShell\Modules",
+    r"c:\program files\powershell\7\Modules",
+    r"C:\Program Files\WindowsPowerShell\Modules",
+    r"C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules",
+    r"D:\team\modules",
+])
+WINDOWS_POWERSHELL_ONLY = ";".join([
+    r"C:\Program Files\WindowsPowerShell\Modules",
+    r"C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules",
+    r"D:\team\modules",
+])
+
+
+def test_powershell_7_module_directories_are_dropped_and_the_rest_kept() -> None:
+    assert windows_powershell_module_path(PS7_AND_51) == WINDOWS_POWERSHELL_ONLY
+
+
+@pytest.mark.parametrize(
+    ("host", "expected"), [("win32", WINDOWS_POWERSHELL_ONLY), ("linux", PS7_AND_51)]
+)
+def test_main_filters_the_module_path_only_on_windows(
+    monkeypatch: pytest.MonkeyPatch, host: str, expected: str
+) -> None:
+    monkeypatch.setenv("PSMODULEPATH", PS7_AND_51)
+    monkeypatch.setattr(sys, "platform", host)
+
+    with mock.patch("terminal_setup.cli._dispatch", return_value=0):
+        main([])
+
+    assert os.environ["PSMODULEPATH"] == expected
 
 
 def test_parser_dry_run_flag() -> None:
