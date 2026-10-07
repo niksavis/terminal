@@ -1963,10 +1963,10 @@ def _ensure_wezterm_user_install(
     install_dir = platform.user_programs_dir / "WezTerm"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
-    base_url = "https://github.com/wez/wezterm/releases/download"
+    base_url = "https://github.com/wezterm/wezterm/releases/download"
     script = (
         "$ErrorActionPreference = 'Stop'; "
-        f"{_powershell_latest_release('wez/wezterm')}"
+        f"{_powershell_latest_release('wezterm/wezterm')}"
         f"{_powershell_skip_when_current('WezTerm', current)}"
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "

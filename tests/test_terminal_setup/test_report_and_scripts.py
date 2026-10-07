@@ -128,7 +128,7 @@ def test_starship_windows_script_verifies_checksum(tmp_path: Path) -> None:
     ("installer", "repo"),
     [
         (_ensure_starship_user_install, "starship/starship"),
-        (_ensure_wezterm_user_install, "wez/wezterm"),
+        (_ensure_wezterm_user_install, "wezterm/wezterm"),
     ],
 )
 def test_windows_installers_read_the_latest_release_without_the_api(
