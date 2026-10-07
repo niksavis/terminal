@@ -38,14 +38,6 @@ local function pane_cwd_basename(pane)
   return basename(cwd_path)
 end
 
-local function pane_process_name(pane)
-  local process = pane and pane:get_foreground_process_name() or nil
-  if not process or process == "" then
-    return "shell"
-  end
-  return basename(process)
-end
-
 -- Default to WSL Ubuntu on Windows, otherwise the native shell.
 if is_windows then
   local function pick_wsl_domain()
@@ -164,17 +156,20 @@ else
 end
 
 -- Performance and stability defaults.
-config.scrollback_lines = 100000
+config.scrollback_lines = 10000
+config.max_fps = 30
+config.animation_fps = 10
+config.cursor_blink_rate = 0
 config.enable_scroll_bar = true
 config.check_for_updates = false
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
 
--- WSL / cross-platform display stability: prefer X11 over Wayland. When
--- running inside WSL use software rendering to avoid MESA/ZINK/DRI warnings
--- caused by incomplete GPU drivers in WSLg; native hosts keep WebGPU.
+-- Display stability: prefer X11 over Wayland.
+-- Windows and WSL use software rendering to bypass GPU driver rendering paths.
+-- Limit redraws above to keep CPU use bounded during long coding sessions.
 config.enable_wayland = false
-config.front_end = is_wsl and "Software" or "WebGpu"
+config.front_end = (is_windows or is_wsl) and "Software" or "WebGpu"
 
 -- Always use the dark color scheme; do not query the desktop environment
 -- for the system theme. This avoids xdg-desktop-portal warnings under WSLg
@@ -191,17 +186,34 @@ config.skip_close_confirmation_for_processes_named = {
   "cmd.exe",
 }
 
--- Color scheme (tokyonight night inspired by josean-dev).
+-- Deep navy background with readable text and distinct terminal colors.
 config.colors = {
-  foreground = "#CBE0F0",
-  background = "#011423",
-  cursor_bg = "#47FF9C",
-  cursor_border = "#47FF9C",
-  cursor_fg = "#011423",
-  selection_bg = "#033259",
-  selection_fg = "#CBE0F0",
-  ansi = { "#214969", "#E52E2E", "#44FFB1", "#FFE073", "#0FC5ED", "#a277ff", "#24EAF7", "#24EAF7" },
-  brights = { "#214969", "#E52E2E", "#44FFB1", "#FFE073", "#A277FF", "#a277ff", "#24EAF7", "#24EAF7" },
+  foreground = "#D2DAE5",
+  background = "#101B2A",
+  cursor_bg = "#89B4FA",
+  cursor_border = "#89B4FA",
+  cursor_fg = "#101B2A",
+  selection_bg = "#29476B",
+  selection_fg = "#DEE6F0",
+  split = "#314A6B",
+  ansi = { "#1E2D45", "#F38BA8", "#A6E3A1", "#F9E2AF", "#89B4FA", "#CBA6F7", "#94E2D5", "#CAD3DF" },
+  brights = { "#B7C5DA", "#FFAAC2", "#C0F0B8", "#FFF0C2", "#B4D0FF", "#DEC2FF", "#B4F0E5", "#DEE6F0" },
+  tab_bar = {
+    background = "#060D18",
+    active_tab = { bg_color = "#1D3557", fg_color = "#DEE6F0", intensity = "Bold" },
+    inactive_tab = { bg_color = "#101D30", fg_color = "#A9BCD5" },
+    inactive_tab_hover = { bg_color = "#243F60", fg_color = "#DEE6F0" },
+    new_tab = { bg_color = "#101D30", fg_color = "#A9BCD5" },
+    new_tab_hover = { bg_color = "#243F60", fg_color = "#DEE6F0" },
+  },
+}
+-- Soften application-selected colors as well as the ANSI palette.
+config.foreground_text_hsb = { hue = 1.0, saturation = 1.0, brightness = 0.92 }
+config.window_frame = {
+  active_titlebar_bg = "#060D18",
+  inactive_titlebar_bg = "#060D18",
+  active_titlebar_fg = "#DCE6F5",
+  inactive_titlebar_fg = "#A9BCD5",
 }
 
 -- Every font named here must resolve on a fresh machine, or WezTerm raises a
@@ -211,8 +223,9 @@ config.colors = {
 -- installing any extra fonts.
 if is_windows then
   config.font = wezterm.font_with_fallback({
+    { family = "Cascadia Mono", weight = "Regular" },
+    "JetBrains Mono",
     "Consolas",
-    "Cascadia Mono",
     "Noto Color Emoji",
   })
 else
@@ -222,7 +235,27 @@ else
     "Noto Color Emoji",
   })
 end
-config.font_size = 13.0
+config.font_size = 12.0
+if is_windows then
+  -- Use solid regular strokes and a readable gray for ANSI dim text.
+  config.font_rules = {
+    {
+      intensity = "Half",
+      font = wezterm.font_with_fallback(
+        { "Cascadia Mono", "JetBrains Mono", "Noto Color Emoji" },
+        { weight = "Regular", foreground = "#C4CEDC" }
+      ),
+    },
+  }
+end
+-- Preserve literal characters when reading commands, code and diffs.
+config.harfbuzz_features = { "calt=0", "clig=0", "liga=0" }
+config.line_height = 1.2
+if is_windows then
+  -- Grayscale smoothing avoids LCD color fringes on scaled displays.
+  config.freetype_load_target = "Normal"
+  config.freetype_render_target = "Normal"
+end
 config.initial_cols = 120
 config.initial_rows = 30
 
@@ -232,7 +265,7 @@ config.hide_tab_bar_if_only_one_tab = false
 config.use_fancy_tab_bar = true
 config.tab_bar_at_bottom = false
 config.window_decorations = "TITLE | RESIZE"
-config.status_update_interval = 1000
+config.status_update_interval = 3000
 
 local new_tab_action = act.SpawnTab("DefaultDomain")
 if is_windows and wsl_default_domain then
@@ -268,10 +301,6 @@ end
 
 wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
   local pane = tab.active_pane
-  local process = pane and basename(pane.foreground_process_name) or "shell"
-  if process == "" then
-    process = "shell"
-  end
   local cwd = ""
   if pane and pane.current_working_dir then
     local cwd_path = pane.current_working_dir.file_path or tostring(pane.current_working_dir)
@@ -280,7 +309,7 @@ wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
 
   local title = tab.tab_title
   if not title or title == "" then
-    title = cwd ~= "" and (cwd .. " | " .. process) or process
+    title = cwd ~= "" and cwd or (pane and pane.title or "shell")
   end
   return wezterm.truncate_right(" " .. title .. " ", max_width)
 end)
@@ -288,15 +317,12 @@ end)
 wezterm.on("update-right-status", function(window, pane)
   local workspace = window:active_workspace()
   local cwd = pane_cwd_basename(pane)
-  local process = pane_process_name(pane)
   local cwd_text = cwd ~= "" and cwd or "~"
   window:set_right_status(wezterm.format({
-    { Foreground = { Color = "#565f89" } },
+    { Foreground = { Color = "#91A4BF" } },
     { Text = " " .. workspace .. " " },
-    { Foreground = { Color = "#7dcfff" } },
+    { Foreground = { Color = "#89B4FA" } },
     { Text = cwd_text .. " " },
-    { Foreground = { Color = "#bb9af7" } },
-    { Text = process .. " " },
   }))
 end)
 
