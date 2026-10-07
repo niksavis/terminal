@@ -63,6 +63,8 @@ Already installed? Re-apply only the configs (fast, no package installs) — for
 uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only config
 ```
 
+When `~/.zshrc`, `~/.tmux.conf`, `~/.config/starship.toml` or `~/.config/micro/settings.json` differs from the template, setup keeps the old file as `<file>.terminal-setup.bak` and names it in the output. Put your own shell lines in `~/.zshrc.local`, which setup never overwrites.
+
 Update every user-local tool, uv, Python, Node.js and every present coding agent that is older than its latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
 
 ```bash

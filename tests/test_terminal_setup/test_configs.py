@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tomllib
+from collections.abc import Callable
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 import pytest
@@ -14,6 +15,7 @@ import terminal_setup.configs as configs_module
 from terminal_setup.configs import (
     _SKILLS_USER,
     _STARSHIP_BLOCK_MARKER,
+    BACKUP_SUFFIX,
     BASICLY_REF,
     BASICLY_SPEC,
     CHEAT_SHEET_PATH,
@@ -664,6 +666,112 @@ def test_deploy_wsl_configs_inside_wsl_uses_platform_home(
     assert (tmp_path / ".zshrc").exists()
     assert (tmp_path / ".config" / "micro" / "settings.json").exists()
     assert (tmp_path / ".config" / "starship.toml").exists()
+
+
+Deploy = Callable[[Path, pytest.MonkeyPatch], list[str]]
+USER_LINE = "export PATH=$HOME/.tool/bin:$PATH  # added by a tool installer"
+
+
+def _deploy_inside_wsl(
+    home: Path, monkeypatch: pytest.MonkeyPatch, *, dry_run: bool = False
+) -> list[str]:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: True)
+    reporter = RecordingReporter()
+    deploy_wsl_configs(
+        Runner(dry_run=dry_run, reporter=reporter), make_platform(OperatingSystem.LINUX, home)
+    )
+    return reporter.messages
+
+
+def _deploy_from_windows(home: Path, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr(
+        "terminal_setup.configs._to_wsl_path", lambda _runner, _distro, source: str(source)
+    )
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+    monkeypatch.setattr(
+        runner,
+        "run",
+        lambda command, **_kwargs: subprocess.run(
+            command[-3:],
+            env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+            capture_output=True,
+            text=True,
+            check=True,
+        ),
+    )
+    deploy_wsl_configs(runner, make_platform(OperatingSystem.WINDOWS, home))
+    return reporter.messages
+
+
+@pytest.mark.parametrize("deploy", [_deploy_inside_wsl, _deploy_from_windows])
+def test_a_redeploy_keeps_a_changed_zshrc_as_a_backup(
+    deploy: Deploy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if deploy is _deploy_from_windows and sys.platform == "win32":
+        pytest.skip("the Windows-to-WSL script runs in a POSIX sh")
+    zshrc = tmp_path / ".zshrc"
+    zshrc.write_text(USER_LINE + "\n", encoding="utf-8")
+
+    messages = deploy(tmp_path, monkeypatch)
+
+    assert (tmp_path / f".zshrc{BACKUP_SUFFIX}").read_text(encoding="utf-8") == USER_LINE + "\n"
+    assert zshrc.read_text(encoding="utf-8") == template_path("zshrc").read_text(encoding="utf-8")
+    notice = next(message for message in messages if message.startswith("Kept the old ~/.zshrc "))
+    assert f"~/.zshrc{BACKUP_SUFFIX}" in notice
+    assert "~/.zshrc.local" in notice
+
+
+@pytest.mark.parametrize("deploy", [_deploy_inside_wsl, _deploy_from_windows])
+def test_a_redeploy_of_unchanged_files_makes_no_backup(
+    deploy: Deploy, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    if deploy is _deploy_from_windows and sys.platform == "win32":
+        pytest.skip("the Windows-to-WSL script runs in a POSIX sh")
+    deploy(tmp_path, monkeypatch)
+
+    messages = deploy(tmp_path, monkeypatch)
+
+    assert not list(tmp_path.rglob(f"*{BACKUP_SUFFIX}"))
+    assert not [message for message in messages if message.startswith("Kept the old")]
+
+
+def test_a_redeploy_keeps_every_changed_config_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    targets = [".tmux.conf", ".zshrc", ".config/micro/settings.json", ".config/starship.toml"]
+    for target in targets:
+        (tmp_path / target).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / target).write_text(USER_LINE, encoding="utf-8")
+
+    _deploy_inside_wsl(tmp_path, monkeypatch)
+
+    for target in targets:
+        assert (tmp_path / f"{target}{BACKUP_SUFFIX}").read_text(encoding="utf-8") == USER_LINE
+
+
+def test_a_native_host_redeploy_keeps_a_changed_zshrc(tmp_path: Path) -> None:
+    (tmp_path / ".zshrc").write_text(USER_LINE, encoding="utf-8")
+
+    deploy_zsh_config(
+        Runner(dry_run=False, reporter=RecordingReporter()),
+        make_platform(OperatingSystem.LINUX, tmp_path),
+    )
+
+    assert (tmp_path / f".zshrc{BACKUP_SUFFIX}").read_text(encoding="utf-8") == USER_LINE
+
+
+def test_a_dry_run_redeploy_changes_no_file_and_claims_no_backup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / ".zshrc").write_text(USER_LINE, encoding="utf-8")
+
+    messages = _deploy_inside_wsl(tmp_path, monkeypatch, dry_run=True)
+
+    assert (tmp_path / ".zshrc").read_text(encoding="utf-8") == USER_LINE
+    assert not (tmp_path / f".zshrc{BACKUP_SUFFIX}").exists()
+    assert not [message for message in messages if message.startswith("Kept the old")]
 
 
 def test_wsl_start_dir_rejects_shell_metacharacters(tmp_path: Path) -> None:

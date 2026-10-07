@@ -69,28 +69,47 @@ def deploy_wezterm_config(
     runner.write_text(destination, rendered)
 
 
+BACKUP_SUFFIX = ".terminal-setup.bak"
+
+
+def _backup_message(target_name: str) -> str:
+    message = f"Kept the old ~/{target_name} as ~/{target_name}{BACKUP_SUFFIX}"
+    if target_name == ".zshrc":
+        message += "; put your own lines in ~/.zshrc.local, which setup never overwrites"
+    return message
+
+
+def _deploy_template(runner: Runner, source: Path, home: Path, target_name: str) -> None:
+    destination = home / target_name
+    if destination.is_file() and destination.read_text(encoding="utf-8") != source.read_text(
+        encoding="utf-8"
+    ):
+        runner.copy(destination, destination.with_name(destination.name + BACKUP_SUFFIX))
+        if not runner.dry_run:
+            runner.reporter.info(_backup_message(target_name))
+    runner.copy(source, destination)
+
+
 def deploy_tmux_config(runner: Runner, platform: PlatformInfo) -> None:
-    destination = platform.home / ".tmux.conf"
-    runner.copy(template_path("tmux.conf"), destination)
+    _deploy_template(runner, template_path("tmux.conf"), platform.home, ".tmux.conf")
 
 
 def deploy_zsh_config(runner: Runner, platform: PlatformInfo) -> None:
-    destination = platform.home / ".zshrc"
-    runner.copy(template_path("zshrc"), destination)
+    _deploy_template(runner, template_path("zshrc"), platform.home, ".zshrc")
 
 
 def deploy_starship_config(runner: Runner, platform: PlatformInfo) -> None:
     config_dir = platform.home / ".config"
     runner.ensure_dir(config_dir)
-    destination = config_dir / "starship.toml"
-    runner.copy(template_path("starship.toml"), destination)
+    _deploy_template(runner, template_path("starship.toml"), platform.home, ".config/starship.toml")
 
 
 def deploy_micro_config(runner: Runner, platform: PlatformInfo) -> None:
     config_dir = platform.home / ".config" / "micro"
     runner.ensure_dir(config_dir)
-    destination = config_dir / "settings.json"
-    runner.copy(template_path("micro-settings.json"), destination)
+    _deploy_template(
+        runner, template_path("micro-settings.json"), platform.home, ".config/micro/settings.json"
+    )
 
 
 _STARSHIP_BLOCK_MARKER = "# terminal-setup: starship"
@@ -332,17 +351,26 @@ def deploy_wsl_configs(
     for template, target_name in templates:
         source = template_path(template)
         if is_running_in_wsl():
-            destination = platform.home / target_name
-            runner.ensure_dir(destination.parent)
-            runner.copy(source, destination)
+            runner.ensure_dir((platform.home / target_name).parent)
+            _deploy_template(runner, source, platform.home, target_name)
         else:
             wsl_source = _to_wsl_path(runner, distro, source)
             parent = target_name.rsplit("/", 1)[0] if "/" in target_name else ""
-            mkdir = f'mkdir -p "$HOME/{parent}" && ' if parent else ""
-            script = f'{mkdir}cp {shlex.quote(wsl_source)} "$HOME/{target_name}"'
-            runner.run(
+            mkdir = f'mkdir -p "$HOME/{parent}" || exit 1; ' if parent else ""
+            quoted = shlex.quote(wsl_source)
+            target = f'"$HOME/{target_name}"'
+            backup = f'"$HOME/{target_name}{BACKUP_SUFFIX}"'
+            script = (
+                f"{mkdir}if [ -f {target} ] && ! cmp -s {quoted} {target}; then "
+                f"cp -f {target} {backup} || exit 1; "
+                f"echo {shlex.quote(_backup_message(target_name))}; fi; "
+                f"cp {quoted} {target}"
+            )
+            result = runner.run(
                 wsl_exec_command(distro, ["sh", "-c", script]), label=f"write ~/{target_name}"
             )
+            for line in (result.stdout or "").splitlines():
+                runner.reporter.info(line)
 
 
 def _claude_statusline_command(*, nerdfont: bool) -> str:
