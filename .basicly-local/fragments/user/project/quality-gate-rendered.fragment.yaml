@@ -1,0 +1,15 @@
+schema_version: 1
+id: quality-gate-rendered
+title: Rendered Output
+description: Check output that a person sees the way that person meets it.
+category: project
+priority: high
+applies_to:
+- all
+tags:
+- verification
+extends:
+- quality-gate
+status: active
+body: |
+  - Check what a person sees as that person sees it: render the page, run the printed command as copied. A text search of the source is not that check.

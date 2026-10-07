@@ -15,5 +15,5 @@ replaces:
 - catalog-authoring
 status: active
 body: |
-  - Customize agent guidance only via YAML fragments under `.basicly-local/fragments/user/` (`basicly fragment-new` scaffolds one); never edit `.basicly/core/` or any generated file.
+  - Customize agent guidance only via YAML fragments under `.basicly-local/fragments/user/`; never edit `.basicly/core/` or any generated file.
   - After editing the overlay, rebuild with the `basicly: build` VS Code task.
