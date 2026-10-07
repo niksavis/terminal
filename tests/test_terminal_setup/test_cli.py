@@ -274,6 +274,47 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
     assert mock_wezterm.call_args.kwargs["no_sudo"] is True
 
 
+@pytest.mark.parametrize("update", [False, True])
+def test_run_setup_passes_update_to_starship_and_wezterm(update: bool) -> None:
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
+        mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
+        mock.patch("terminal_setup.cli.agents.ensure_agents"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_starship") as mock_starship,
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
+    ):
+        result = run_setup(
+            _windows_platform(),
+            mock.Mock(failures=[]),
+            skip_vscode=True,
+            skip_starship=False,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=False,
+            system_install=False,
+            user_install=False,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+            update=update,
+        )
+
+    assert result == 0
+    assert mock_wezterm.call_args.kwargs["update"] is update
+    assert mock_starship.call_args.kwargs["update"] is update
+
+
 def _windows_platform() -> PlatformInfo:
     return PlatformInfo(
         os=OperatingSystem.WINDOWS,

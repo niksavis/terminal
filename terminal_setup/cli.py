@@ -555,7 +555,13 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         prerequisites.attempt(
             runner,
             "install WezTerm",
-            partial(prerequisites.ensure_wezterm, runner, platform_info, no_sudo=effective_no_sudo),
+            partial(
+                prerequisites.ensure_wezterm,
+                runner,
+                platform_info,
+                no_sudo=effective_no_sudo,
+                update=update,
+            ),
         )
 
         if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
@@ -583,7 +589,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             prerequisites.attempt(
                 runner,
                 "install starship",
-                partial(prerequisites.ensure_starship, runner, platform_info),
+                partial(prerequisites.ensure_starship, runner, platform_info, update=update),
             )
 
     runner.reporter.step("Deploying configuration")

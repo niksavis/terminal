@@ -29,6 +29,8 @@ from terminal_setup.prerequisites import (
     PrerequisiteStatus,
     SystemVersionPolicy,
     _add_to_user_path,
+    _ensure_starship_user_install,
+    _ensure_wezterm_user_install,
     _link_debian_renamed_tools,
     check_all,
     check_command,
@@ -37,6 +39,7 @@ from terminal_setup.prerequisites import (
     ensure_host_cli_extras,
     ensure_node,
     ensure_starship,
+    ensure_wezterm,
     ensure_wsl_system_packages,
     ensure_wsl_tools,
     install_package,
@@ -102,6 +105,9 @@ class SpyRunner:
         self.dry_run = False
         self.unattended = False
         self.reporter = FakeReporter()
+
+    def ensure_dir(self, path: Path) -> None:
+        del path
 
     def run(  # noqa: PLR0913
         self,
@@ -1225,10 +1231,114 @@ def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
         ensure_starship(cast(Runner, runner), platform)
 
-    scripts = [command[-1] for command in runner.commands if command[:1] != ["powershell"]]
-    assert any("starship.rs/install.sh" in script for script in scripts), (
-        "expected a WSL guest starship install"
+    assert _release_installs(runner.commands) == [("starship/starship", "0")]
+
+
+def _release_installs(commands: list[list[str]]) -> list[tuple[str, str]]:
+    return [
+        (command[command.index("-c") + 2], command[command.index("-c") + 4])
+        for command in commands
+        if "-I" in command and "-c" in command
+    ]
+
+
+def _starship_runner(*, user_local: bool, system: bool, which: str | None) -> SpyRunner:
+    runner = SpyRunner()
+    original_run = runner.run
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        result = original_run(command, **kwargs)  # type: ignore[arg-type]
+        script = command[-1]
+        if "command -v starship" in script:
+            return subprocess.CompletedProcess(command, 0 if system else 1, "", "")
+        if "test -x ~/.local/bin/starship" in script:
+            return subprocess.CompletedProcess(command, 0 if user_local else 1, "", "")
+        return result
+
+    runner.run = run  # type: ignore[method-assign]
+    runner.which = lambda _command: which  # type: ignore[attr-defined]
+    return runner
+
+
+@pytest.mark.parametrize("update", [False, True])
+def test_a_user_local_wsl_starship_goes_through_the_release_installer(update: bool) -> None:
+    runner = _starship_runner(user_local=True, system=True, which=None)
+
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._ensure_starship_user_install"),
+    ):
+        ensure_starship(
+            cast(Runner, runner),
+            make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+            update=update,
+        )
+
+    assert _release_installs(runner.commands) == [("starship/starship", "1" if update else "0")]
+
+
+def test_a_system_wsl_starship_is_left_alone() -> None:
+    runner = _starship_runner(user_local=False, system=True, which="C:/Program Files/s.exe")
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        ensure_starship(
+            cast(Runner, runner),
+            make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+            update=True,
+        )
+
+    assert _release_installs(runner.commands) == []
+
+
+def _windows_update(tool: str, path: str) -> tuple[SpyRunner, list[str]]:
+    runner = _starship_runner(user_local=False, system=True, which=path)
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        if tool == "starship":
+            ensure_starship(cast(Runner, runner), platform, update=True)
+        else:
+            ensure_wezterm(cast(Runner, runner), platform, update=True)
+    scripts = [command[-1] for command in runner.commands if command[:1] == ["powershell"]]
+    return runner, [script for script in scripts if "releases/latest" in script]
+
+
+@pytest.mark.parametrize(("tool", "program"), [("starship", "starship"), ("wezterm", "WezTerm")])
+def test_update_replaces_a_user_profile_copy_after_a_version_check(tool: str, program: str) -> None:
+    path = str(Path.home() / "AppData" / "Local" / "Programs" / program / f"{tool}.exe")
+
+    _, scripts = _windows_update(tool, path)
+
+    assert len(scripts) == 1
+    assert f"& '{path}' --version" in scripts[0]
+    assert "is up to date'); exit 0" in scripts[0]
+    assert ".terminal-setup-old" in scripts[0]
+    assert scripts[0].index("--version") < scripts[0].index("Invoke-WebRequest")
+
+
+@pytest.mark.parametrize("tool", ["starship", "wezterm"])
+def test_update_leaves_a_machine_wide_copy_and_says_so(tool: str) -> None:
+    path = f"C:/Program Files/{tool}/{tool}.exe"
+
+    runner, scripts = _windows_update(tool, path)
+
+    assert scripts == []
+    assert any(
+        kind == "info" and path in message and "machine-wide" in message
+        for kind, message in runner.reporter.messages
     )
+
+
+@pytest.mark.parametrize("installer", [_ensure_starship_user_install, _ensure_wezterm_user_install])
+def test_a_first_install_skips_the_version_check(installer: object, tmp_path: Path) -> None:
+    runner = SpyRunner()
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    with mock.patch("terminal_setup.prerequisites._add_to_user_path"):
+        installer(cast(Runner, runner), platform)  # type: ignore[operator]
+
+    script = next(command[-1] for command in runner.commands if command[:1] == ["powershell"])
+    assert "--version" not in script
+    assert ".terminal-setup-old" in script
 
 
 def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:

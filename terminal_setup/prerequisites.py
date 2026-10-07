@@ -473,12 +473,18 @@ RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "git-lfs": ("git-lfs/git-lfs", "git-lfs", (r"git-lfs-linux-{arch}-v[0-9.]+\.tar\.gz",)),
     "direnv": ("direnv/direnv", "direnv", (r"direnv\.linux-{arch}",)),
 }
+STARSHIP_RELEASE = ("starship/starship", "starship", _RUST_ASSETS)
 
 
 def _install_release_tool(
-    runner: Runner, package: str, *, update: bool, wsl_distro: str | None = None
+    runner: Runner,
+    package: str,
+    *,
+    update: bool,
+    wsl_distro: str | None = None,
+    spec: tuple[str, str, tuple[str, ...]] | None = None,
 ) -> None:
-    repo, binary, patterns = RELEASE_TOOLS[package]
+    repo, binary, patterns = RELEASE_TOOLS[package] if spec is None else spec
     source = Path(release_install.__file__).read_text(encoding="utf-8")
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
@@ -1792,7 +1798,56 @@ def _powershell_latest_release(repo: str) -> str:
     )
 
 
-def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> None:
+_REPLACED_SUFFIX = ".terminal-setup-old"
+
+
+def _powershell_literal(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def _powershell_skip_when_current(name: str, current: str | None) -> str:
+    if current is None:
+        return ""
+    return (
+        f"$installed = (& {_powershell_literal(current)} --version | Out-String); "
+        "if ($installed.Contains($release.TrimStart('v'))) "
+        f"{{ Write-Output ('{name} ' + $release + ' is up to date'); exit 0 }}; "
+    )
+
+
+def _powershell_replace_files(install_dir: str) -> str:
+    target_dir = _powershell_literal(install_dir)
+    return (
+        f"Get-ChildItem -LiteralPath {target_dir} -Recurse -File -Filter '*{_REPLACED_SUFFIX}' "
+        "| Remove-Item -Force -ErrorAction SilentlyContinue; "
+        "$root = (Get-Item -LiteralPath $source).FullName.TrimEnd('\\'); "
+        "Get-ChildItem -LiteralPath $root -Recurse -File | ForEach-Object { "
+        f"$target = Join-Path {target_dir} $_.FullName.Substring($root.Length); "
+        "if (Test-Path -LiteralPath $target) { Move-Item -LiteralPath $target "
+        f"-Destination ($target + '.' + [guid]::NewGuid().ToString('N') + '{_REPLACED_SUFFIX}') "
+        "-Force } }; "
+        f"Copy-Item -Path (Join-Path $source '*') -Destination {target_dir} -Recurse -Force; "
+    )
+
+
+def _update_windows_release(
+    runner: Runner,
+    platform: PlatformInfo,
+    name: str,
+    install: Callable[[Runner, PlatformInfo, str], None],
+) -> None:
+    path = runner.which(name)
+    if path is None:
+        return
+    if not is_user_scope(path, platform):
+        report_machine_scope(runner, name, None, path, minimum=None)
+        return
+    install(runner, platform, path)
+
+
+def _ensure_starship_user_install(
+    runner: Runner, platform: PlatformInfo, current: str | None = None
+) -> None:
     install_dir = platform.user_programs_dir / "starship"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
@@ -1800,6 +1855,7 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
     script = (
         "$ErrorActionPreference = 'Stop'; "
         f"{_powershell_latest_release('starship/starship')}"
+        f"{_powershell_skip_when_current('starship', current)}"
         f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
         f"$zip = Join-Path $env:TEMP 'starship.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
@@ -1808,8 +1864,12 @@ def _ensure_starship_user_install(runner: Runner, platform: PlatformInfo) -> Non
         f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
         f"if ($actual -ne $expected) "
         f"{{ Remove-Item $zip; throw 'starship checksum verification failed' }}; "
-        f"Expand-Archive -Path $zip -DestinationPath '{install_dir_str}' -Force; "
-        f"Remove-Item $zip"
+        f"$source = Join-Path $env:TEMP 'starship-extract'; "
+        f"if (Test-Path $source) {{ Remove-Item $source -Recurse -Force }}; "
+        f"Expand-Archive -Path $zip -DestinationPath $source -Force; "
+        f"{_powershell_replace_files(install_dir_str)}"
+        f"Remove-Item $zip; "
+        f"Remove-Item $source -Recurse -Force"
     )
     runner.run(["powershell", "-Command", script], interactive=True, label="install starship")
     _add_to_user_path(runner, install_dir)
@@ -1821,21 +1881,24 @@ _STARSHIP_INSTALL_SCRIPT = (
 )
 
 
-def _ensure_starship_wsl_guest(runner: Runner, platform: PlatformInfo) -> None:
+def _ensure_starship_wsl_guest(
+    runner: Runner, platform: PlatformInfo, *, update: bool = False
+) -> None:
     distro = _wsl_distro(platform)
-    if _is_user_local_command_available(runner, "starship", wsl_distro=distro):
+    if not _is_user_local_command_available(
+        runner, "starship", wsl_distro=distro
+    ) and _command_available(runner, "starship", wsl_distro=distro):
         return
-    if _command_available(runner, "starship", wsl_distro=distro):
-        return
-    runner.reporter.info("Installing starship into the WSL guest.")
-    _run_shell_command(
-        runner, _STARSHIP_INSTALL_SCRIPT, label="install starship", wsl_distro=distro
+    _install_release_tool(
+        runner, "starship", update=update, wsl_distro=distro, spec=STARSHIP_RELEASE
     )
 
 
-def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
 
     if platform.os == OperatingSystem.WINDOWS:
+        if update:
+            _update_windows_release(runner, platform, "starship", _ensure_starship_user_install)
         if not runner.which("starship"):
             _ensure_windows_command_in_path(
                 runner,
@@ -1846,7 +1909,7 @@ def ensure_starship(runner: Runner, platform: PlatformInfo) -> None:
                 runner, "Starship.Starship"
             ):
                 _ensure_starship_user_install(runner, platform)
-        _ensure_starship_wsl_guest(runner, platform)
+        _ensure_starship_wsl_guest(runner, platform, update=update)
         return
     if runner.which("starship"):
         return
@@ -1893,7 +1956,9 @@ def _add_to_user_path(runner: Runner, directory: Path) -> None:
     _add_to_process_path(directory)
 
 
-def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None:
+def _ensure_wezterm_user_install(
+    runner: Runner, platform: PlatformInfo, current: str | None = None
+) -> None:
     install_dir = platform.user_programs_dir / "WezTerm"
     runner.ensure_dir(install_dir)
     install_dir_str = str(install_dir).replace("\\", "/")
@@ -1901,6 +1966,7 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
     script = (
         "$ErrorActionPreference = 'Stop'; "
         f"{_powershell_latest_release('wez/wezterm')}"
+        f"{_powershell_skip_when_current('WezTerm', current)}"
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
         f"$zip = Join-Path $env:TEMP 'wezterm.zip'; "
         f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
@@ -1915,8 +1981,7 @@ def _ensure_wezterm_user_install(runner: Runner, platform: PlatformInfo) -> None
         f"$inner = Get-ChildItem -Path $extract -Directory | Select-Object -First 1; "
         f"$source = if ($inner -and -not (Get-ChildItem -Path $extract -File)) "
         f"{{ $inner.FullName }} else {{ $extract }}; "
-        f"Copy-Item -Path (Join-Path $source '*') -Destination '{install_dir_str}' "
-        f"-Recurse -Force; "
+        f"{_powershell_replace_files(install_dir_str)}"
         f"Remove-Item $zip; "
         f"Remove-Item $extract -Recurse -Force"
     )
@@ -1938,7 +2003,11 @@ def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
     _ensure_wezterm_user_install(runner, platform)
 
 
-def ensure_wezterm(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
+def ensure_wezterm(
+    runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False, update: bool = False
+) -> None:
+    if update and platform.os == OperatingSystem.WINDOWS:
+        _update_windows_release(runner, platform, "wezterm", _ensure_wezterm_user_install)
     if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.WINDOWS:
