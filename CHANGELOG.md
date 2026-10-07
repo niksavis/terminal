@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.3 - 2026-10-07
+
+Delta: v0.12.2..v0.12.3
+
+### Highlights
+
+- **WezTerm uses the accepted navy palette and readable text defaults.** Windows uses regular Cascadia Mono at 12 pt with readable dim text and grayscale smoothing. Ligatures are disabled and line height is 1.2; existing non-Windows font choices stay unchanged (term-8tt0zd).
+- **WezTerm limits rendering work during coding sessions.** Windows and WSL use software rendering, with 30 FPS, 10 animation FPS, no cursor blinking, 10,000 scrollback lines and a three-second status interval. Tab and status callbacks no longer poll foreground processes. Software rendering remains a workaround under evaluation; sustained heavy-load stability has not been established (term-8tt0zd).
+- **The current Windows shell launcher fixes are retained.** PowerShell, Git Bash, Command Prompt and the config editor keep their explicit local domain (term-8tt0zd).
+
+### Commit delta (auto-generated)
+
+- fix(wezterm): publish accepted defaults for v0-12-3 (term-8tt0zd) (5174b08)
+
 ## v0.12.2 - 2026-10-05
 
 Delta: v0.12.1..v0.12.2
