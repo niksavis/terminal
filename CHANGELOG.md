@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.6 - 2026-10-07
+
+Delta: v0.12.5..v0.12.6
+
+### Highlights
+
+- **`--update` now updates starship and WezTerm.** In WSL, starship comes from its GitHub release, like the other tools, and `--update` moves it to the latest release. On Windows, a starship or WezTerm in your user profile is checked against the latest release and replaced only when it is older. A running WezTerm does not block the update: setup renames the files in use and removes them on a later run. A machine-wide copy under `C:\Program Files` is left as it is, with one info line (term-atfna).
+- **Setup started from PowerShell 7 no longer breaks Windows PowerShell steps.** Before, a `powershell` step that setup or a tool started could not find `Get-FileHash`, so for example `update codex on Windows` failed. Setup now gives those steps the Windows PowerShell module path (term-szpfx3).
+- **The uv installer no longer adds a line to `~/.zshrc`.** Before, every `--update` run changed `~/.zshrc`, so setup replaced the `~/.zshrc.terminal-setup.bak` backup each time and could lose an older line of yours in it (term-2r1vlb).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-3tiokv) (0baedf0)
+- chore(tracker): close the starship and wezterm update record (term-atfna) (97ba7c2)
+- fix(prerequisites): stop the uv installer from editing shell files (term-2r1vlb) (d2ee0ed)
+- fix(cli): give windows powershell children their own module path (term-szpfx3) (f7cc7b1)
+- feat(setup): update starship and wezterm with the update option (term-atfna) (f797702)
+- chore(tracker): close the v0-12-5 release record (term-apnbv8) (7611664)
+
 ## v0.12.5 - 2026-10-07
 
 Delta: v0.12.4..v0.12.5
