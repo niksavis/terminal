@@ -119,16 +119,16 @@ IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a 
 
 ## Environment Quirks
 
-- The Claude Code Bash tool defines `grep` as a shell function that calls an embedded grep. Its exit status differs from GNU grep: `grep -q -v` returns 1 on input with a line that does not match, where `command grep` returns 0. Decide a status from structured output (`gh ... --json` with `jq -e`), or call `command grep`. Never gate a wait loop on the bare `grep` exit status.
-- A test that branches on `is_running_in_wsl()` passes on a WSL host and can crash on a runner that is not WSL. Before you trust the suite, run it once with `is_running_in_wsl` forced to `False` by an autouse monkeypatch in a temporary `conftest.py`.
+- A test that branches on `is_running_in_wsl()` can pass on WSL and crash elsewhere. Run the suite once with it forced to `False` by an autouse monkeypatch in a temporary `conftest.py`.
 - `ls` can be an alias for `eza --icons`, so `ls | grep -c NAME` counts 0 for a present file. Count files with `find` or check one with `test -e`.
-- Do not end a command with a status probe such as `echo "label=$?"`. The probe makes each command unique, so "don't ask again" saves a one-off allow rule in `.claude/settings.local.json`. Write the output to a file, then read its summary line.
 - A refused `git commit` prints one line per hook and no summary line, so `tail` can show only `Passed` lines and hide the refusal. Confirm a commit with `git log -1`, and search the full output for `Failed`.
 - `gh run list --commit <short-sha>` returns `[]` with exit 0, so a wait loop over it ends at once and reads as done. Pass the full SHA: `$(git rev-parse <sha>)`.
 - In `a && cd DIR && b; c`, a failed `a` skips the `cd`, and `c` then runs in the old directory. Run `cd DIR || exit 1` as a separate first step.
 - `uvx --refresh-package` can reuse a local-folder build when only `.py` files changed, so a run shows old code. Test a checkout with `uvx --no-cache`.
 - setuptools fails to build from `\\wsl.localhost` on Windows (WinError 5 on the egg-info rename). Build a wheel in WSL and run it on Windows.
 - GitHub Pages sends `max-age=600`, so a browser can show the old page for 10 minutes. Reload with Ctrl+F5.
+- Read a new record id with `jq -r .record`. A `tail` on the `create` output can hide it, and a second `create` makes a duplicate.
+- A metadata probe must not put the repo root on `sys.path`: `terminal.egg-info` there hides the installed metadata. Copy the package to a scratch directory.
 
 ## Copilot Notes
 

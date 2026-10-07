@@ -1,0 +1,15 @@
+schema_version: 1
+id: claude-quirks
+title: Claude Code Shell Quirks
+description: Traps of the Claude Code Bash tool that give a false pass.
+category: project
+priority: high
+applies_to:
+- claude
+tags:
+- quirks
+- verification
+status: active
+body: |
+  - The Bash tool's `grep` is a shell function. Its exit status differs from GNU grep: `grep -q -v` returns 1 where `command grep` returns 0. Decide a status from structured output (`jq -e`) or `command grep`, never from bare `grep`.
+  - Do not end a command with `echo "label=$?"`. It makes each command unique, so "don't ask again" saves a one-off allow rule in `.claude/settings.local.json`. Write the output to a file and read its summary line.
