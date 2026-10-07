@@ -122,6 +122,9 @@ IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a 
 - A refused `git commit` prints one line per hook and no summary line, so `tail` can show only `Passed` lines and hide the refusal. Confirm a commit with `git log -1`, and search the full output for `Failed`.
 - `gh run list --commit <short-sha>` returns `[]` with exit 0, so a wait loop over its result runs zero times and reads as done. Pass the full SHA with `$(git rev-parse <sha>)`.
 - In `a && cd DIR && b; c`, a failed `a` skips the `cd`, and `c` then runs in the old directory. Run `cd DIR || exit 1` as a separate first step.
+- `uvx --refresh-package` can reuse a local-folder build when only `.py` files changed, so a run shows old code. Test a checkout with `uvx --no-cache`.
+- setuptools fails to build from `\\wsl.localhost` on Windows (WinError 5 on the egg-info rename). Build a wheel in WSL and run it on Windows.
+- GitHub Pages sends `max-age=600`, so a browser can show the old page for 10 minutes after a deploy. Reload with Ctrl+F5.
 
 ## Claude Notes
 
