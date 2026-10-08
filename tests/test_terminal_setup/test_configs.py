@@ -103,6 +103,15 @@ def test_template_path_points_to_existing_files() -> None:
         assert template_path(name).exists(), f"template {name} is missing"
 
 
+def test_starship_git_status_symbols_escape_the_dollar_sign() -> None:
+    template = tomllib.loads(template_path("starship.toml").read_text(encoding="utf-8"))
+    git_status = template["git_status"]
+    symbols = {key: value for key, value in git_status.items() if key not in {"format", "style"}}
+    unescaped = {key: value for key, value in symbols.items() if re.search(r"(?<!\\)\$", value)}
+    assert "stashed" in symbols
+    assert unescaped == {}
+
+
 def test_template_dir_exists() -> None:
     assert TEMPLATE_DIR.is_dir()
     assert len(list(TEMPLATE_DIR.iterdir())) >= 5
