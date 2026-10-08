@@ -2,6 +2,31 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.12.7 - 2026-10-08
+
+Delta: v0.12.6..v0.12.7
+
+### Highlights
+
+- **The starship prompt shows the stash symbol again.** Before, in a git repo with a stash, starship printed `Error parsing format string git_status.stashed` and showed no stash symbol. The template now escapes the dollar sign. To get the fix, run setup again, for example with `--only config`. Setup keeps your old file as `~/.config/starship.toml.terminal-setup.bak` (term-zqcxlb).
+- **WezTerm installs from its current GitHub repository.** Setup now downloads WezTerm and checks its latest release at `wezterm/wezterm`, not at the old `wez/wezterm` name (term-sgdyv2).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-f877zc) (6261ee9)
+- chore(tracker): close the starship stash record (term-zqcxlb) (2912b65)
+- fix(starship): escape the stashed dollar sign (term-zqcxlb) (bb5e634)
+- chore(tracker): write the session handover (term-p4b5z) (e4a0de0)
+- docs(project-defaults): name the uvx archive entry point (term-u7w4o7) (b9f7c41)
+- fix(prerequisites): use the current wezterm repository name (term-sgdyv2) (b3d7d74)
+- chore(tracker): write the session handover (term-p4b5z) (53f42c1)
+- docs(quirks): name the record id and egg-info probe traps (term-qpc3z0) (cf1a554)
+- chore(tracker): write the session handover (term-p4b5z) (b88c1f2)
+- docs(quality-gate): check rendered output by rendering it (term-yydt7c) (873ed2d)
+- docs(quirks): name the uvx cache and wsl share build and pages cache traps (term-htspi4) (24e70c3)
+- chore(tracker): record the v0-12-6 post-release check and handover (term-3tiokv) (e15b01a)
+- chore(tracker): close the v0-12-6 release record (term-3tiokv) (d697c65)
+
 ## v0.12.6 - 2026-10-07
 
 Delta: v0.12.5..v0.12.6
