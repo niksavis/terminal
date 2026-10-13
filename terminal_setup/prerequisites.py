@@ -562,32 +562,6 @@ def update_packages(
     runner.run(command, check=False, interactive=interactive)
 
 
-def install_wsl_ubuntu(runner: Runner) -> None:
-
-    if runner.which("wsl") is None:
-        raise RuntimeError(
-            "the 'wsl' command is not available on this system; install WSL "
-            "(Windows feature 'Windows Subsystem for Linux'), then run: " + rerun_command()
-        )
-    if runner.unattended:
-        raise RuntimeError(
-            "WSL Ubuntu is missing, and unattended mode cannot install it: 'wsl --install' "
-            "needs administrator rights and asks for a new Linux user. Run "
-            "'wsl --install -d Ubuntu' once, create the user, then run: " + rerun_command()
-        )
-    runner.reporter.warn(
-        "Installing WSL requires administrator rights. Without them, ask an "
-        "administrator to run 'wsl --install -d Ubuntu' or install Ubuntu "
-        "from the Microsoft Store, then run: " + rerun_command()
-    )
-    result = runner.run(["wsl", "--install", "-d", "Ubuntu"], check=False, interactive=True)
-    if result.returncode != 0:
-        raise RuntimeError(
-            "wsl --install failed (administrator rights are likely required). "
-            "Install WSL Ubuntu manually, then run: " + rerun_command()
-        )
-
-
 def _wsl_apt_install_script(packages: list[str]) -> str:
     package_list = " ".join(packages)
     return (

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import subprocess
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from unittest import mock
 
@@ -125,13 +125,17 @@ def test_unattended_inside_wsl_prints_the_command_when_sudo_needs_a_password(
     assert ("step", f"To add them, run this in WSL: {command}") in runner.reporter.messages  # type: ignore[attr-defined]
 
 
-def test_unattended_refuses_to_install_wsl_by_name() -> None:
+def test_a_windows_host_without_wsl_is_refused_by_name_and_nothing_runs() -> None:
     runner = _unattended_runner()
-    runner.which = lambda _command: "wsl"  # type: ignore[method-assign]
+    windows = replace(
+        _windows_platform(), is_wsl_available=False, is_wsl_default_debian_family=False
+    )
 
-    with pytest.raises(RuntimeError, match="wsl --install -d Ubuntu"):
-        prerequisites.install_wsl_ubuntu(runner)
+    with mock.patch.object(prerequisites, "is_running_in_wsl", return_value=False):
+        status = prerequisites.check_wsl(windows, runner)
 
+    assert status.present is False
+    assert "wsl --install" in status.message
     assert runner.commands == []
 
 

@@ -537,16 +537,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
     if not config_only:
-        if platform_info.os == platform.OperatingSystem.WINDOWS:
-            if not platform_info.is_wsl_available:
-                runner.reporter.warn("WSL is not available; attempting to install Ubuntu.")
-                prerequisites.install_wsl_ubuntu(runner)
-            elif not platform_info.is_wsl_default_debian_family:
-                runner.reporter.warn(
-                    "WSL default is not Debian-family; attempting to install Ubuntu."
-                )
-                prerequisites.install_wsl_ubuntu(runner)
-
         runner.reporter.step("Installing tools")
         if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
             if in_wsl:
