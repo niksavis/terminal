@@ -1689,8 +1689,14 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
         PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget"],
         PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget"],
     }
+    if platform.package_manager == PackageManager.APT:
+        update_packages(runner, PackageManager.APT)
     for package in packages.get(platform.package_manager, []):
-        install_package(runner, platform.package_manager, package)
+        attempt(
+            runner,
+            f"install {package}",
+            partial(install_package, runner, platform.package_manager, package),
+        )
 
 
 def ensure_host_cli_extras(
@@ -1780,12 +1786,16 @@ def ensure_host_cli_extras(
         )
     else:
         for package in extras.get(platform.package_manager, []):
-            install_package(runner, platform.package_manager, package)
+            attempt(
+                runner,
+                f"install {package}",
+                partial(install_package, runner, platform.package_manager, package),
+            )
     if platform.os == OperatingSystem.LINUX:
         attempt(runner, "install yq", partial(_install_release_tool, runner, "yq", update=False))
     if platform.package_manager == PackageManager.APT:
         _link_debian_renamed_tools(runner, None)
-    _install_lazygit_release(runner, no_sudo=no_sudo)
+    attempt(runner, "install lazygit", partial(_install_lazygit_release, runner, no_sudo=no_sudo))
 
 
 def _powershell_latest_release(repo: str) -> str:

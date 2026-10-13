@@ -570,6 +570,105 @@ def test_the_link_rule_links_debian_names_and_leaves_an_existing_target(
     assert (home / ".local" / "bin" / "bat").read_text(encoding="utf-8") == "mine"
 
 
+def test_an_apt_host_refreshes_the_package_lists_before_the_first_install() -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT)
+    )
+
+    apt_commands = [
+        command[:3] for command in runner.commands if command[:2] == ["sudo", "apt-get"]
+    ]
+    assert apt_commands[0] == ["sudo", "apt-get", "update"]
+    assert apt_commands.count(["sudo", "apt-get", "update"]) == 1
+    assert ["sudo", "apt-get", "install"] in apt_commands
+
+
+@pytest.mark.parametrize(
+    ("os", "manager"),
+    [
+        (OperatingSystem.LINUX, PackageManager.PACMAN),
+        (OperatingSystem.LINUX, PackageManager.DNF),
+        (OperatingSystem.MACOS, PackageManager.HOMEBREW),
+    ],
+)
+def test_a_non_apt_host_installs_without_a_package_list_refresh(
+    os: OperatingSystem, manager: PackageManager
+) -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(cast(Runner, runner), make_platform(os, manager))
+
+    assert ["sudo", "apt-get", "update"] not in runner.commands
+    assert ["brew", "update"] not in runner.commands
+    assert ["sudo", "pacman", "-Sy"] not in runner.commands
+
+
+class FailingPackageRunner(SpyRunner):
+    def __init__(self, failing: list[str]) -> None:
+        super().__init__()
+        self.failing = failing
+        self.failures: list[str] = []
+
+    def run(  # noqa: PLR0913
+        self,
+        command: list[str],
+        *,
+        check: bool = True,
+        dry_run_safe: bool = False,
+        interactive: bool = False,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+        label: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        if command == ["sudo", "apt-get", "install", "-y", *self.failing]:
+            self.commands.append(command)
+            raise subprocess.CalledProcessError(100, command, stderr="E: Unable to fetch\n")
+        return super().run(
+            command,
+            check=check,
+            dry_run_safe=dry_run_safe,
+            interactive=interactive,
+            cwd=cwd,
+            env=env,
+            label=label,
+        )
+
+
+def test_a_failed_apt_package_costs_that_package_and_the_rest_still_install() -> None:
+    runner = FailingPackageRunner(["bat"])
+
+    ensure_host_cli_extras(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT)
+    )
+
+    installed = _installed_packages(runner.commands, PackageManager.APT)
+    assert installed.index("bat") < installed.index("ripgrep")
+    assert "uv" in installed
+    assert runner.failures == ["install bat"]
+    assert any(
+        "jesseduffield/lazygit/releases/latest" in command[-1] for command in runner.commands
+    )
+
+
+def test_a_failed_shell_tool_costs_that_tool_and_the_rest_still_install() -> None:
+    runner = FailingPackageRunner(["tmux"])
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT)
+    )
+
+    assert _installed_packages(runner.commands, PackageManager.APT) == [
+        "zsh",
+        "tmux",
+        "git",
+        "curl",
+        "wget",
+    ]
+    assert runner.failures == ["install tmux"]
+
+
 def test_ensure_host_cli_extras_noop_on_windows() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
