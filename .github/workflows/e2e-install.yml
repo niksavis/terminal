@@ -58,7 +58,7 @@ jobs:
       - uses: Vampire/setup-wsl@v7
         with:
           distribution: Ubuntu-24.04
-          additional-packages: git curl wget tmux
+          additional-packages: git curl wget
       - name: Install ripgrep with winget, to test the replace option
         id: winget
         continue-on-error: true

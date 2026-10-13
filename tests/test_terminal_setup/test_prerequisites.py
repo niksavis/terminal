@@ -1584,6 +1584,7 @@ def test_missing_system_packages_on_a_fresh_image_include_podman_docker() -> Non
 
     assert missing == [
         "zsh",
+        "tmux",
         "tree",
         "podman",
         "bubblewrap",
@@ -1622,6 +1623,7 @@ def _run_system_packages(
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     dpkg, available = _dpkg_state({
         "zsh",
+        "tmux",
         "tree",
         "podman",
         "bubblewrap",
