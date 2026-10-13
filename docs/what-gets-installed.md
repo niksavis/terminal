@@ -221,7 +221,7 @@ Setup finds a Windows tool with the PATH. It does not ask winget which tool wing
 | Setup finds | WezTerm, starship | Python, Node.js | Claude Code, Copilot CLI, Codex |
 | --- | --- | --- | --- |
 | No copy | installs its copy | installs its copy | installs its copy, only with `--agents` |
-| A machine-wide copy, for example in `C:\Program Files` | prints an info line and changes nothing | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update` |
+| A machine-wide copy, for example in `C:\Program Files` | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update` |
 | A copy in the user profile, for example from winget | keeps it | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy |
 | With `--update`, a user-profile copy that is older than the latest release | installs its own copy into `%LOCALAPPDATA%\Programs\<tool>`. A winget copy stays and can come first on PATH | upgrades Python only when uv manages it. Node.js: see the row above | runs `<agent> update` |
 
