@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 from pathlib import Path, PureWindowsPath
 from typing import cast
 
@@ -110,9 +112,17 @@ def test_the_winget_id_comes_from_the_package_folder() -> None:
 
 
 class Calls:
-    def __init__(self, monkeypatch: pytest.MonkeyPatch, found: str | None, *, verify_ok=True):
+    def __init__(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        found: str | None,
+        *,
+        verify_ok: bool = True,
+        hidden: tuple[str, ...] = (),
+    ):
         self.events: list[str] = []
-        monkeypatch.setattr(windows_tools, "other_copy", lambda _c, _p: found)
+        copies = ([found] if found else []) + list(hidden)
+        monkeypatch.setattr(windows_tools, "all_copies", lambda _c, _p: copies)
 
         def install(_runner, platform, tool, *, update):
             self.events.append(f"install {tool.command} update={update}")
@@ -222,6 +232,86 @@ def test_a_machine_wide_or_foreign_copy_is_kept_even_with_replace(
 
     assert calls.events == []
     assert any(reason in message for _, message in runner.reporter.messages)
+
+
+WINGET_STARSHIP = f"{PACKAGES}/Starship.Starship_Microsoft.Winget.Source_8wekyb3d8bbwe/starship.exe"
+MACHINE_STARSHIP = "C:/Program Files/starship/bin/starship.exe"
+
+
+def test_replace_removes_a_hidden_winget_copy_and_installs_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls(monkeypatch, MACHINE_STARSHIP, hidden=(WINGET_STARSHIP,))
+
+    ensure_tool(
+        cast(Runner, FakeRunner(unattended=True)),
+        make_platform(),
+        STARSHIP,
+        update=False,
+        policy="replace",
+    )
+
+    assert calls.events == ["uninstall Starship.Starship"]
+
+
+@pytest.mark.parametrize(("policy", "answer"), [("keep", False), (None, False)])
+def test_a_hidden_winget_copy_is_kept_without_replace(
+    monkeypatch: pytest.MonkeyPatch, policy: str | None, answer: bool
+) -> None:
+    calls = Calls(monkeypatch, MACHINE_STARSHIP, hidden=(WINGET_STARSHIP,))
+    runner = FakeRunner(answer=answer)
+
+    ensure_tool(cast(Runner, runner), make_platform(), STARSHIP, update=False, policy=policy)
+
+    assert calls.events == []
+    assert any(
+        "unused winget copy" in message and "--winget-versions replace" in message
+        for _, message in runner.reporter.messages
+    )
+
+
+def test_an_interactive_run_asks_about_a_hidden_winget_copy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls(monkeypatch, MACHINE_STARSHIP, hidden=(WINGET_STARSHIP,))
+    runner = FakeRunner(answer=True)
+
+    ensure_tool(cast(Runner, runner), make_platform(), STARSHIP, update=False, policy=None)
+
+    assert len(runner.prompts) == 1
+    assert "never runs" in runner.prompts[0]
+    assert calls.events == ["uninstall Starship.Starship"]
+
+
+def test_a_hidden_copy_that_did_not_come_from_winget_is_left_alone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = Calls(monkeypatch, MACHINE_STARSHIP, hidden=(f"{HOME}/scoop/shims/starship.exe",))
+
+    ensure_tool(
+        cast(Runner, FakeRunner()), make_platform(), STARSHIP, update=False, policy="replace"
+    )
+
+    assert calls.events == []
+
+
+def test_all_copies_lists_each_copy_once_in_path_order_without_ours(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    first, second, ours = tmp_path / "first", tmp_path / "second", tmp_path / "ours"
+    name = "demo.exe" if sys.platform == "win32" else "demo"
+    for folder in (first, second, ours):
+        folder.mkdir()
+        tool = folder / name
+        tool.write_text("#!/bin/sh\n", encoding="utf-8")
+        tool.chmod(0o755)
+    platform = make_platform()
+    monkeypatch.setattr(type(platform), "terminal_tools_dir", property(lambda _self: ours))
+    monkeypatch.setenv("PATH", os.pathsep.join([str(ours), str(first), str(first), str(second)]))
+
+    copies = windows_tools.all_copies("demo", platform)
+
+    assert [Path(copy) for copy in copies] == [(first / name).resolve(), (second / name).resolve()]
 
 
 def test_the_old_starship_moves_into_terminal_tools(monkeypatch: pytest.MonkeyPatch) -> None:

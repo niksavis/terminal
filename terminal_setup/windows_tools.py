@@ -60,6 +60,16 @@ class Origin(Enum):
     OTHER = auto()
 
 
+ORIGIN_LABELS = {
+    Origin.MISSING: "not found",
+    Origin.OURS: "terminal-tools",
+    Origin.LEGACY: "old setup folder",
+    Origin.WINGET: "winget",
+    Origin.MACHINE: "machine-wide",
+    Origin.OTHER: "user profile",
+}
+
+
 def _same_dir(path: PureWindowsPath, directory: Path) -> bool:
     return str(path).lower().rstrip("\\") == str(PureWindowsPath(directory)).lower().rstrip("\\")
 
@@ -102,19 +112,25 @@ def classify(path: str | None, platform: PlatformInfo, tool: WindowsTool) -> Ori
     return Origin.OTHER
 
 
-def other_copy(command: str, platform: PlatformInfo) -> str | None:
-    entries = [
-        entry
-        for entry in os.environ.get("PATH", "").split(os.pathsep)
-        if entry and not _same_dir(PureWindowsPath(entry), platform.terminal_tools_dir)
-    ]
-    found = shutil.which(command, path=os.pathsep.join(entries))
-    if found is None:
-        return None
+def _resolved(path: str) -> str:
     try:
-        return str(Path(found).resolve())
+        return str(Path(path).resolve())
     except OSError:
-        return found
+        return path
+
+
+def all_copies(command: str, platform: PlatformInfo) -> list[str]:
+    copies: list[str] = []
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        if not entry or _same_dir(PureWindowsPath(entry), platform.terminal_tools_dir):
+            continue
+        which = shutil.which(command, path=entry)
+        if which is None:
+            continue
+        found = _resolved(which)
+        if all(found.lower() != known.lower() for known in copies):
+            copies.append(found)
+    return copies
 
 
 def _install(runner: Runner, platform: PlatformInfo, tool: WindowsTool, *, update: bool) -> Path:
@@ -226,7 +242,8 @@ def ensure_tool(
     update: bool,
     policy: str | None,
 ) -> None:
-    found = other_copy(tool.command, platform)
+    copies = all_copies(tool.command, platform)
+    found = copies[0] if copies else None
     origin = classify(found, platform, tool)
     package_dir = winget_package_dir(found) if found else None
     if found is None or origin == Origin.OURS:
@@ -243,17 +260,40 @@ def ensure_tool(
             f"{tool.command} at {found} came from winget ({winget_id(package_dir)}). "
             f"Replace it with the setup copy in {platform.terminal_tools_dir}?"
         )
-        if not _replace_wanted(runner, policy, prompt):
+        if _replace_wanted(runner, policy, prompt):
+            _verify(runner, _install(runner, platform, tool, update=update))
+            _uninstall_winget(runner, platform, package_dir)
+        else:
             runner.reporter.info(_keep_winget_message(tool.command, found))
-            return
-        _verify(runner, _install(runner, platform, tool, update=update))
-        _uninstall_winget(runner, platform, package_dir)
     else:
         runner.reporter.info(_keep_message(tool.command, found, "not from setup or winget"))
+    remove_hidden_winget(runner, platform, tool.command, copies[1:], policy=policy)
+
+
+def remove_hidden_winget(
+    runner: Runner, platform: PlatformInfo, command: str, hidden: list[str], *, policy: str | None
+) -> None:
+    for path in hidden:
+        package_dir = winget_package_dir(path)
+        if package_dir is None or not is_user_scope(path, platform):
+            continue
+        prompt = (
+            f"{command} at {path} came from winget ({winget_id(package_dir)}) and never runs, "
+            "because another copy comes first on PATH. Uninstall the unused winget copy?"
+        )
+        if _replace_wanted(runner, policy, prompt):
+            _uninstall_winget(runner, platform, package_dir)
+            continue
+        runner.reporter.info(
+            f"{command}: keeps the unused winget copy at {path}; to remove it, run: "
+            f"{setup_command('--winget-versions replace')}"
+        )
 
 
 def replace_winget_wezterm(runner: Runner, platform: PlatformInfo, *, policy: str | None) -> None:
-    found = other_copy("wezterm", platform)
+    copies = all_copies("wezterm", platform)
+    remove_hidden_winget(runner, platform, "wezterm", copies[1:], policy=policy)
+    found = copies[0] if copies else None
     package_dir = winget_package_dir(found) if found else None
     if found is None or package_dir is None or not is_user_scope(found, platform):
         return
