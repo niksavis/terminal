@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess  # nosec B404
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 
 
@@ -78,8 +80,12 @@ def _tracker_root() -> Path:
 
 
 def _ids_from_jsonl(path: Path, key: str) -> set[str]:
+    return _ids_from_text(path.read_text(encoding="utf-8"), key)
+
+
+def _ids_from_text(text: str, key: str) -> set[str]:
     known_ids: set[str] = set()
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
+    for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
@@ -93,8 +99,44 @@ def _ids_from_jsonl(path: Path, key: str) -> set[str]:
     return known_ids
 
 
+def _git(root: Path, *args: str) -> str | None:
+
+    completed = subprocess.run(  # nosec B603 B607
+        ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+    )
+    return completed.stdout if completed.returncode == 0 else None
+
+
+def _staged_ledger_ids(root: Path) -> set[str] | None:
+
+    listed = _git(root, "ls-files", "-z", "--", LEDGER_DIR.as_posix())
+    if listed is None:
+        return None
+    ids: set[str] = set()
+    for name in filter(None, listed.split("\0")):
+        if any(fnmatch(Path(name).name, glob) for glob in LEDGER_GLOBS):
+            ids |= _ids_from_text(_git(root, "show", f":{name}") or "", "record")
+    return ids
+
+
+def _unstaged_holders(ids: set[str]) -> list[tuple[str, str]]:
+
+    root = _project_root()
+    ledger_dir = root / LEDGER_DIR
+    return [
+        (record, log.relative_to(root).as_posix())
+        for log in sorted(f for glob in LEDGER_GLOBS for f in ledger_dir.glob(glob))
+        for record in sorted(ids & _ids_from_jsonl(log, "record"))
+    ]
+
+
 def _known_ids_with_source() -> tuple[set[str], str] | None:
 
+    root = _project_root()
+    if _tracker_root() == root:
+        staged = _staged_ledger_ids(root)
+        if staged:
+            return staged, "staged ledger (" + " or ".join(LEDGER_GLOBS) + ")"
     ledger_dir = _tracker_root() / LEDGER_DIR
     ledger_ids: set[str] = set()
     for log in sorted(f for glob in LEDGER_GLOBS for f in ledger_dir.glob(glob)):
@@ -126,9 +168,14 @@ def validate(
 
     matched_ids = candidates & known_ids
     if not matched_ids:
-        return False, UNKNOWN_ID_MESSAGE_TEMPLATE.format(
+        hint = "".join(
+            f"\n  {record} is in {path}, which is not staged: git add {path}"
+            for record, path in _unstaged_holders(candidates)
+        )
+        message = UNKNOWN_ID_MESSAGE_TEMPLATE.format(
             ids=", ".join(sorted(candidates)), source=source
         )
+        return False, message + hint
 
     return True, ""
 

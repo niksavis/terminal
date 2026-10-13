@@ -140,8 +140,8 @@ _ADVICE = (
     "third at 13960, which is why this is a hook and not a note.\n"
     "Use one of:\n"
     "  <cmd> > out.txt 2>&1; echo $?; tail -5 out.txt   # no pipe to mis-read\n"
-    "  <cmd> | tail -5; echo ${PIPESTATUS[1]}           # the stage you meant\n"
     "  set -o pipefail; <cmd> | tail -5                 # leftmost failure wins\n"
+    "  <cmd> | tail -5; <next>                          # status not needed: ; not &&\n"
     "Then confirm the result from the explicit pass/fail summary line, not from the "
     "exit code alone — truncated output hides failures."
 )
