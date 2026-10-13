@@ -110,14 +110,32 @@ def test_shell_skips_a_present_agent() -> None:
     assert ("success", "codex is present on this host") in runner.reporter.messages  # type: ignore[attr-defined]
 
 
-def test_shell_update_runs_the_self_update_of_each_present_agent() -> None:
-    runner = _run_shell((), update=True, outputs=_absent("copilot"))
+def test_shell_update_runs_the_self_update_of_each_named_present_agent() -> None:
+    runner = _run_shell(("claude", "codex"), update=True, outputs={})
 
     scripts = [command[-1] for command in runner.commands]
     assert shell_update_script("claude") in scripts
     assert shell_update_script("codex") in scripts
     assert shell_update_script("copilot") not in scripts
-    assert shell_install_script("copilot") not in scripts
+
+
+def test_an_agent_that_is_not_named_is_neither_installed_nor_updated() -> None:
+    runner = _run_shell((), update=True, outputs=_absent("copilot"))
+
+    assert runner.commands == []
+
+
+def test_the_shell_installers_are_the_vendor_scripts() -> None:
+    assert shell_install_script("claude") == "curl -fsSL https://claude.ai/install.sh | bash"
+    assert shell_install_script("copilot") == "curl -fsSL https://gh.io/copilot-install | bash"
+    assert shell_install_script("codex") == "curl -fsSL https://chatgpt.com/codex/install.sh | sh"
+    assert "npm" not in " ".join(shell_install_script(agent) for agent in AGENTS)
+
+
+def test_an_unattended_codex_install_answers_its_questions_with_no() -> None:
+    assert shell_install_script("codex", unattended=True).endswith("| CODEX_NON_INTERACTIVE=1 sh")
+    assert "CODEX_NON_INTERACTIVE = '1'" in agents.windows_codex_command(unattended=True)[-1]
+    assert "CODEX_NON_INTERACTIVE" not in agents.windows_codex_command(unattended=False)[-1]
 
 
 def test_shell_install_runs_in_wsl_from_a_windows_host(tmp_path: Path) -> None:
@@ -153,10 +171,8 @@ def _run_windows(
     runner.found = found
     platform = replace(_windows_platform(), home=tmp_path)
     with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
-        for agent in AGENTS:
-            agents._ensure_windows_agent(
-                runner, platform, agent, install=agent in selected, update=update
-            )
+        for agent in selected:
+            agents._ensure_windows_agent(runner, platform, agent, update=update)
     return runner
 
 
@@ -168,7 +184,13 @@ def test_windows_installs_claude_with_its_native_installer(tmp_path: Path) -> No
 
 def test_windows_npm_agent_without_npm_fails_by_name(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="npm is not on the Windows PATH"):
-        _run_windows(tmp_path, ("codex",), {})
+        _run_windows(tmp_path, ("copilot",), {})
+
+
+def test_windows_installs_codex_with_its_vendor_script(tmp_path: Path) -> None:
+    runner = _run_windows(tmp_path, ("codex",), {})
+
+    assert runner.commands == [agents.windows_codex_command(unattended=False)]
 
 
 def test_windows_finds_claude_in_the_local_bin_before_path_refresh(tmp_path: Path) -> None:
@@ -187,7 +209,7 @@ def test_windows_update_runs_the_self_update_of_each_user_scope_agent(tmp_path: 
     copilot = "C:/Program Files/GitHub Copilot/copilot.exe"
 
     runner = _run_windows(
-        tmp_path, (), {"claude": claude, "codex": codex, "copilot": copilot}, update=True
+        tmp_path, AGENTS, {"claude": claude, "codex": codex, "copilot": copilot}, update=True
     )
 
     assert runner.commands == [[claude, "update"], [codex, "update"]]
@@ -208,7 +230,7 @@ def test_windows_failed_agent_update_names_the_manual_retry(tmp_path: Path) -> N
         pytest.raises(subprocess.CalledProcessError),
     ):
         agents._ensure_windows_agent(
-            runner, replace(_windows_platform(), home=tmp_path), "codex", install=False, update=True
+            runner, replace(_windows_platform(), home=tmp_path), "codex", update=True
         )
 
     assert ("step", "To retry, run 'codex update' in Windows PowerShell (powershell.exe).") in (

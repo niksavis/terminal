@@ -17,9 +17,15 @@ from .prerequisites import (
 from .runner import Runner
 
 AGENTS = ("claude", "copilot", "codex")
-NPM_PACKAGES = {"copilot": "@github/copilot", "codex": "@openai/codex"}
-CLAUDE_INSTALL_SH = "curl -fsSL https://claude.ai/install.sh | bash"
+NPM_PACKAGES = {"copilot": "@github/copilot"}
+SHELL_INSTALL_SCRIPTS = {
+    "claude": "curl -fsSL https://claude.ai/install.sh | bash",
+    "copilot": "curl -fsSL https://gh.io/copilot-install | bash",
+    "codex": "curl -fsSL https://chatgpt.com/codex/install.sh | sh",
+}
 CLAUDE_INSTALL_PS1 = "irm https://claude.ai/install.ps1 | iex"
+CODEX_INSTALL_PS1 = "irm https://chatgpt.com/codex/install.ps1 | iex"
+CODEX_NON_INTERACTIVE = "CODEX_NON_INTERACTIVE=1"
 _LOCAL_PATH = 'PATH="$HOME/.local/bin:$PATH"; '
 
 
@@ -43,10 +49,16 @@ def present_query(agent: str) -> str:
     )
 
 
-def shell_install_script(agent: str) -> str:
-    if agent == "claude":
-        return CLAUDE_INSTALL_SH
-    return f"{_LOCAL_PATH}npm install -g {NPM_PACKAGES[agent]}"
+def shell_install_script(agent: str, *, unattended: bool = False) -> str:
+    script = SHELL_INSTALL_SCRIPTS[agent]
+    if agent == "codex" and unattended:
+        return script.replace("| sh", f"| {CODEX_NON_INTERACTIVE} sh")
+    return script
+
+
+def windows_codex_command(*, unattended: bool) -> list[str]:
+    script = ("$env:CODEX_NON_INTERACTIVE = '1'; " if unattended else "") + CODEX_INSTALL_PS1
+    return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]
 
 
 def shell_update_script(agent: str) -> str:
@@ -54,18 +66,17 @@ def shell_update_script(agent: str) -> str:
 
 
 def _ensure_shell_agent(
-    runner: Runner, agent: str, *, install: bool, update: bool, wsl_distro: str | None
+    runner: Runner, agent: str, *, update: bool, wsl_distro: str | None
 ) -> None:
     where = "in WSL" if wsl_distro else "on this host"
     present = _run_shell_read(runner, present_query(agent), wsl_distro=wsl_distro).returncode == 0
     if not present:
-        if install:
-            _run_shell_command(
-                runner,
-                shell_install_script(agent),
-                label=f"install {agent} {where}",
-                wsl_distro=wsl_distro,
-            )
+        _run_shell_command(
+            runner,
+            shell_install_script(agent, unattended=runner.unattended),
+            label=f"install {agent} {where}",
+            wsl_distro=wsl_distro,
+        )
         return
     if not update:
         runner.reporter.success(f"{agent} is present {where}")
@@ -94,12 +105,10 @@ def _windows_npm(runner: Runner) -> str:
 
 
 def _ensure_windows_agent(
-    runner: Runner, platform: PlatformInfo, agent: str, *, install: bool, update: bool
+    runner: Runner, platform: PlatformInfo, agent: str, *, update: bool
 ) -> None:
     found = _windows_agent_path(runner, platform, agent)
     if found is None:
-        if not install:
-            return
         if agent == "claude":
             runner.run(
                 ["powershell", "-NoProfile", "-Command", CLAUDE_INSTALL_PS1],
@@ -107,6 +116,13 @@ def _ensure_windows_agent(
                 label="install claude on Windows",
             )
             _add_to_user_path(runner, platform.home / ".local" / "bin")
+            return
+        if agent == "codex":
+            runner.run(
+                windows_codex_command(unattended=runner.unattended),
+                interactive=True,
+                label="install codex on Windows",
+            )
             return
         runner.run(
             [_windows_npm(runner), "install", "-g", NPM_PACKAGES[agent]],
@@ -135,7 +151,8 @@ def ensure_agents(
     windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
     wsl_distro = _wsl_distro(platform) if windows_host else None
     for agent in AGENTS:
-        install = agent in selected
+        if agent not in selected:
+            continue
         verb = "update" if update else "install"
         attempt(
             runner,
@@ -144,7 +161,6 @@ def ensure_agents(
                 _ensure_shell_agent,
                 runner,
                 agent,
-                install=install,
                 update=update,
                 wsl_distro=wsl_distro,
             ),
@@ -153,7 +169,5 @@ def ensure_agents(
             attempt(
                 runner,
                 f"{verb} {agent} on Windows",
-                partial(
-                    _ensure_windows_agent, runner, platform, agent, install=install, update=update
-                ),
+                partial(_ensure_windows_agent, runner, platform, agent, update=update),
             )

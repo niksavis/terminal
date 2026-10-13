@@ -30,7 +30,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 When `~/.zshrc`, `~/.tmux.conf`, `~/.config/starship.toml` or `~/.config/micro/settings.json` differs from the template, setup keeps the old file as `<file>.terminal-setup.bak` and names it in the output. Put your own shell lines in `~/.zshrc.local`, which setup never overwrites.
 
-Update every user-local tool, uv, Python, Node.js and every present coding agent that is older than its latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
+Update every user-local tool, uv, Python, Node.js, and the coding agents that you name with `--agents`, when they are older than their latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
 
 ```powershell
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
@@ -85,7 +85,7 @@ Setup never runs as administrator. On Windows it changes only what is in your us
 | Tool is | Setup does |
 | --- | --- |
 | missing | installs it in your user profile |
-| installed by setup in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, the WezTerm release zip, the tools in `%LOCALAPPDATA%\Programs\terminal-tools\bin`, `claude update`, `copilot update`, `codex update`. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
+| installed by setup in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, the WezTerm release zip, the tools in `%LOCALAPPDATA%\Programs\terminal-tools\bin`, and `claude update`, `copilot update`, `codex update` for the agents named in `--agents`. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
 | installed by winget in your user profile | asks per tool, or follows `--winget-versions replace` or `keep`. See [Tools that are already on Windows](what-gets-installed.md#tools-that-are-already-on-windows) |
 | machine-wide, new enough | prints one info line and changes nothing |
 | machine-wide, too old | prints one warning with the version and the path: ask IT or use Software Center for a newer version |
@@ -283,8 +283,8 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--only report` | print the verification report, then exit |
 | `--report` | run setup, then print the verification report |
 | `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
-| `--agents claude,codex` | also install these coding agents when missing; `all` installs all three |
-| `--update` | update every user-local tool, Python, Node.js and agent that is out of date |
+| `--agents claude,codex` | also install these coding agents when missing; `all` installs all three. Setup never installs or updates an agent that you do not name |
+| `--update` | update every user-local tool, Python and Node.js that is out of date, and the agents named in `--agents` |
 | `--skip-vscode` | skip the VS Code settings and extensions |
 | `--skip-starship` | skip the starship prompt |
 | `--skip-claude` | skip the Claude Code status line |

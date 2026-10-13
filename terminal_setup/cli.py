@@ -131,7 +131,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NAMES",
         help=(
             "Install these coding agents when they are absent: a comma list of claude, "
-            "copilot and codex, or all. --update also updates every present agent."
+            "copilot and codex, or all. With --update, setup updates only these agents."
         ),
     )
     install.add_argument(

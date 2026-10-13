@@ -95,8 +95,8 @@ Setup does not change VS Code settings on Linux or macOS.
 | Rule | Tools |
 | --- | --- |
 | Latest GitHub release on the day of the install, checked against its sha256 digest | WezTerm (Windows), starship, lazygit, fd, bat, ripgrep, fzf, jq, yq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos |
-| Latest release from the vendor installer | uv, Claude Code |
-| Latest release from the npm registry | GitHub Copilot CLI, OpenAI Codex |
+| Latest release from the vendor installer | uv, Claude Code, OpenAI Codex, GitHub Copilot CLI (WSL, Linux, macOS) |
+| Latest release from the npm registry | GitHub Copilot CLI on Windows |
 | Python 3.14, the newest 3.14 patch that uv knows | Python |
 | Node.js 26, the newest 26.x release on nodejs.org, checked against `SHASUMS256.txt` | Node.js |
 | The version that the distro or Homebrew publishes | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1 (WSL), and the CLI tools on Linux outside WSL |
@@ -208,7 +208,8 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | Node.js 26 | nodejs.org archive into `~/.local` | nodejs.org zip into `%LOCALAPPDATA%\Programs\nodejs` | nodejs.org archive into `~/.local` | nodejs.org archive into `~/.local` |
 | img-zoom | `uv tool install` | `uv tool install` | `uv tool install` | `uv tool install` |
 | Claude Code | vendor installer | vendor installer | vendor installer | vendor installer |
-| Copilot CLI, Codex | `npm install -g` | `npm install -g` | `npm install -g` | `npm install -g` |
+| Codex | vendor installer (`chatgpt.com/codex/install.sh`) | vendor installer (`chatgpt.com/codex/install.ps1`) | vendor installer | vendor installer |
+| Copilot CLI | vendor installer (`gh.io/copilot-install`) | `npm install -g @github/copilot` | vendor installer | vendor installer |
 | VS Code Remote - WSL extension | | when `code` is on PATH | ✗ | ✗ |
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
@@ -244,9 +245,9 @@ A replace runs in this order, so a failed step leaves the winget copy in place:
 | Setup finds | WezTerm | Python, Node.js | Claude Code, Copilot CLI, Codex |
 | --- | --- | --- | --- |
 | No copy | installs its copy | installs its copy | installs its copy, only with `--agents` |
-| A machine-wide copy | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update` |
+| A machine-wide copy | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update`, only for an agent named in `--agents` |
 | Its own copy in `%LOCALAPPDATA%\Programs\WezTerm` or `nodejs` | `--update` updates it | `--update` updates it | not applicable |
-| A copy from winget in your user profile | asks, like the command-line tools above | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy |
+| A copy from winget in your user profile | asks, like the command-line tools above | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy, only for an agent named in `--agents` |
 | Any other user-profile copy | keeps it. `--update` leaves it as it is | as above | as above |
 
 To find which copy runs, use `Get-Command <tool> -All` in PowerShell. The first line is the copy that runs.
@@ -275,7 +276,7 @@ When a config file differs from the template, setup keeps the old file as `<file
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Agent image tool: `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Run from Windows, setup installs it both in WSL and natively on Windows (its folder goes on the user PATH); run inside WSL or on Linux/macOS, it installs it there. uv installs it from a copy setup keeps in `~/.local/share/terminal-setup/img_zoom_tool` (Windows: `%LOCALAPPDATA%\terminal-setup\img_zoom_tool`), so `uv tool upgrade` keeps working after `uv cache clean`. `img-zoom --python` prints its Python, which has Pillow and OpenCV for measuring scripts (Pillow only on Windows on ARM, where OpenCV publishes no build)
 - Runtimes: Python 3.14 from `uv python install 3.14 --default`, which puts `python` and `python3` in `~/.local/bin`; `--update` upgrades a uv-managed 3.14 to the latest patch. `node` (latest v26): user-local in `~/.local` on WSL, Linux and macOS, and on Windows from the official zip into `%LOCALAPPDATA%\Programs\nodejs`, checked against `SHASUMS256.txt` and added to the user PATH. npm installs global packages into that folder, so they stay when Node.js is updated. Setup warns when an older Node.js elsewhere may come first on PATH
-- Coding agents (only with `--agents`): Claude Code from its native installer (`claude.ai/install.sh`, `claude.ai/install.ps1`), and GitHub Copilot CLI (`@github/copilot`) and OpenAI Codex (`@openai/codex`) with `npm install -g` on the managed Node.js. Run from Windows, setup installs them in WSL and natively on Windows. An agent that is already on PATH is skipped; `--update` runs its own `update` command
+- Coding agents (only with `--agents`): each agent comes from the method that its vendor puts first. Claude Code from its native installer (`claude.ai/install.sh`, `claude.ai/install.ps1`). OpenAI Codex from its installer (`chatgpt.com/codex/install.sh`, `install.ps1`); with `--unattended`, setup sets `CODEX_NON_INTERACTIVE=1`, so the installer asks nothing and keeps an existing npm copy. GitHub Copilot CLI from its installer `gh.io/copilot-install` in WSL, Linux and macOS, and with `npm install -g @github/copilot` on Windows, because that installer only calls winget on Windows. Run from Windows, setup installs them in WSL and natively on Windows. An agent that is already on PATH is skipped. Setup never installs or updates an agent that you did not name: `--update` runs `<agent> update` only for the agents in `--agents`
 - Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when Claude Code is installed and not skipped with `--skip-claude`. The skill goes to each side where `img-zoom` is installed: the WSL home and, when setup runs from Windows, `%USERPROFILE%\.claude`
 - Claude Code skills from [basicly](https://github.com/niksavis/basicly): `~/.claude/skills/cli-tools`, with one reference file for each of 25 tools in `cli-tools/references/`, written by `basicly skills-user` at the basicly version this repository pins. Run from Windows, setup writes it in the WSL home and in `%USERPROFILE%\.claude`. A rerun removes the separate `tool-<name>` skills that older versions of setup wrote, and leaves every skill that you wrote yourself alone. It needs network access to fetch basicly with `uv`, is skipped when `~/.claude` is missing, and `--skip-claude` skips it
 
