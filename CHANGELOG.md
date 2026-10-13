@@ -2,6 +2,27 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.14.0 - 2026-10-13
+
+Delta: v0.13.0..v0.14.0
+
+### Highlights
+
+- **The command-line tools now install on the Windows host too.** Run from Windows, setup installs rg, fd, bat, fzf, jq, yq, xh, ast-grep, sd, typos, shellcheck, lazygit, delta, just and starship into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with one entry in your user PATH. An agent in PowerShell, cmd or Git Bash now has the same tools as in WSL. zsh, tmux, tree, git-lfs and direnv stay WSL-only (term-0741zo).
+- **New option `--winget-versions keep|replace`.** For each tool that winget installed in your user profile, setup asks whether to replace it. `replace` installs the setup copy, checks that it runs, uninstalls the winget copy with `--scope user`, and removes its PATH entry after it saves a backup of your user PATH. `keep` and `--unattended` keep the winget copy. Setup never touches a machine-wide copy, because that needs administrator rights (term-0741zo).
+- **starship on Windows moves.** A starship that an earlier setup put into `%LOCALAPPDATA%\Programs\starship` moves into `terminal-tools\bin`, and the old folder and its PATH entry go away (term-0741zo).
+- **`--update` no longer installs a second WezTerm.** Before, a WezTerm that setup did not install got a second, unused copy beside it. Now setup leaves it and says so (term-d7wbzj).
+- **A WSL run names the next step.** At the end of a run inside WSL, setup prints the PowerShell command that sets up the Windows host (term-0741zo).
+- **The README is short.** It holds the install commands and the tool table. The details moved to the [User guide](docs/user-guide.md), [What gets installed](docs/what-gets-installed.md) and [Contributing](docs/contributing.md) (term-6k5d2j).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-o0zex6) (1b5076b)
+- docs(windows): describe the native tools and the winget replace option (term-0741zo) (41f43a1)
+- feat(windows): install the cli tools natively and replace winget copies on request (term-0741zo) (d3480bb)
+- docs(readme): split the readme into a short user page and docs per reader (term-6k5d2j) (5f1a746)
+- chore(tracker): close the v0-13-0 release record (term-u1zjaq) (ef0ebfc)
+
 ## v0.13.0 - 2026-10-13
 
 Delta: v0.12.7..v0.13.0
