@@ -273,9 +273,7 @@ def _print_windows_report(
     *,
     include_starship: bool,
 ) -> None:
-    for command in ["wezterm", "starship"]:
-        if command == "starship" and not include_starship:
-            continue
+    for command in ["wezterm"]:
         path = runner.which(command)
         if path is None:
             for directory in prerequisites.windows_tool_candidate_dirs(platform_info, command):
@@ -285,12 +283,11 @@ def _print_windows_report(
                     break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
 
-    for tool in windows_tools.WINDOWS_TOOLS:
-        path = runner.which(tool.command)
-        local = platform_info.terminal_tools_dir / f"{tool.command}.exe"
-        if path is None and local.exists():
-            path = f"{local} (restart terminal for PATH)"
-        _report_status(runner, f"windows:{tool.command}", path is not None, path or "not found")
+    tools = windows_tools.WINDOWS_TOOLS
+    if include_starship:
+        tools = (*tools, windows_tools.STARSHIP)
+    for tool in tools:
+        _report_windows_tool(runner, platform_info, tool)
 
     for command in WINDOWS_RUNTIMES:
         detail = _windows_tool_detail(runner, platform_info, command)
@@ -316,6 +313,32 @@ def _print_windows_report(
             wezterm_path.exists(),
             str(wezterm_path),
         )
+
+
+def _report_windows_tool(
+    runner: Runner, platform_info: platform.PlatformInfo, tool: windows_tools.WindowsTool
+) -> None:
+    label = f"windows:{tool.command}"
+    path = runner.which(tool.command)
+    note = ""
+    local = platform_info.terminal_tools_dir / f"{tool.command}.exe"
+    if path is None and local.exists():
+        path, note = str(local), ", restart terminal for PATH"
+    if path is None:
+        _report_status(runner, label, False, "not found")
+        return
+    result = runner.run([path, "--version"], check=False, dry_run_safe=True)
+    version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
+    origin = windows_tools.ORIGIN_LABELS[windows_tools.classify(path, platform_info, tool)]
+    _report_status(runner, label, True, f"{path}, {version}, {origin}{note}")
+    for hidden in windows_tools.all_copies(tool.command, platform_info)[1:]:
+        if windows_tools.winget_package_dir(hidden) is not None:
+            _report_status(
+                runner,
+                f"{label}: unused winget copy at {hidden}",
+                False,
+                f"remove it with: {setup_command('--winget-versions replace')}",
+            )
 
 
 def _print_wsl_report(
