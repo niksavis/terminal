@@ -2,6 +2,35 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.13.0 - 2026-10-13
+
+Delta: v0.12.7..v0.13.0
+
+### Highlights
+
+- **The install commands changed. They now install the latest release, not `main`.** Use `irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex` in PowerShell, or `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh` in WSL, Linux or macOS. Each release carries its own `install.ps1` and `install.sh`, and that copy installs that release. The old `raw.githubusercontent.com/.../main/...` commands still work, but they install unreleased code (term-28vrff).
+- **Node.js, Copilot CLI and Codex now work in a fresh WSL Ubuntu.** Setup installs `libatomic1` with the other WSL system packages. Before, `node` failed with `libatomic.so.1: cannot open shared object file` (term-jfajlp).
+- **A Linux host install no longer stops at the first failed package.** Setup runs `apt-get update` once before it installs, and a failed package costs only that package (term-gilsgp).
+- **Setup installs xh and WezTerm on a Linux host without a terminal attached.** xh comes from its GitHub release. A `sudo` step runs when `sudo` needs no password (term-fj8x84, term-amacw9).
+- **Windows now tells running programs about a PATH change.** The broadcast code did not compile before, so only a new sign-in showed the new PATH (term-7hm595).
+- **New docs:** [What gets installed](docs/what-gets-installed.md) lists each tool, its version rule and its source on each platform and shell. [Windows and WSL setup](docs/windows-wsl-setup.md) gives the prerequisites and the WSL steps. Windows needs WSL: without it, setup stops and installs nothing (term-bg4h2a).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-u1zjaq) (000ba59)
+- fix(setup): allow a sudo step when sudo needs no password (term-amacw9) (12dc966)
+- fix(setup): install xh from its release instead of a tty script (term-fj8x84) (d1c4c08)
+- feat(release): point install commands at the latest release (term-28vrff) (a631f67)
+- fix(windows): name the path broadcast type apart from its method (term-7hm595) (b7ca6d2)
+- fix(wsl): install libatomic1 so node runs on a fresh distro (term-jfajlp) (3630457)
+- fix(setup): refresh apt lists and continue after a failed host package (term-gilsgp) (9938820)
+- ci(e2e): keep stderr from stopping the no-wsl check (term-bg4h2a) (5d80788)
+- docs(install): correct the machine-wide wezterm and starship row (term-bg4h2a) (e406e0f)
+- ci(e2e): add an on-demand end-to-end install workflow (term-bg4h2a) (3f3170f)
+- docs(install): document what each platform and shell installs (term-bg4h2a) (fbdad0a)
+- chore(tracker): write the session handover (term-p4b5z) (88a55f5)
+- chore(tracker): close the v0-12-7 release record (term-f877zc) (02906b5)
+
 ## v0.12.7 - 2026-10-08
 
 Delta: v0.12.6..v0.12.7
