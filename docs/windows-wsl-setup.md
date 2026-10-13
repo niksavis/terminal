@@ -19,17 +19,17 @@ WSL means Windows Subsystem for Linux. It runs a Linux distro inside Windows. Se
 | Windows 10 version 2004 (build 19041) or newer, or Windows 11 | `wsl --install` needs it | Run `winver` |
 | Virtualization on in the BIOS or UEFI firmware | WSL 2 runs a small virtual machine | See [Enable virtualization on Windows](https://support.microsoft.com/windows/c5578302-6e43-4b4b-a449-8ced115f58e1) |
 | Administrator rights, once | `wsl --install` turns on Windows features | Ask IT on a managed machine |
-| `winget` | Setup refuses to run without a package manager | Run `winget --version` |
 | A Debian or Ubuntu WSL distro as the default distro | Setup installs Linux packages with `apt` | Run `wsl -l -v` |
-| `git`, `curl`, `wget` and `tmux` in the distro | Setup needs them and does not install them | See [Step 4](#step-4-check-the-distro) |
+| `git`, `curl` and `wget` in the distro | Setup needs them and does not install them | See [Step 4](#step-4-check-the-distro) |
 
 Optional on Windows:
 
+- **winget.** Setup needs it only to replace or remove copies that winget installed.
 - **PowerShell 7 (`pwsh`).** Setup adds the starship prompt to its profile, and WezTerm offers it in the launch menu.
 - **Git for Windows.** Setup adds the starship prompt to Git Bash. The Claude Code status line on the Windows host needs Git Bash.
 - **VS Code.** When `code` is on PATH, setup installs the Remote - WSL extension and makes WSL the default VS Code terminal.
 
-Setup does not install these three. Install them from your software catalogue or from the vendor.
+Setup does not install these. Install them from your software catalogue or from the vendor.
 
 The Windows version and the virtualization rule come from the Microsoft pages [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install) and [Troubleshooting WSL](https://learn.microsoft.com/en-us/windows/wsl/troubleshooting), read on 2026-10-13.
 
@@ -88,13 +88,13 @@ Setup always uses the default distro. With a distro that is not Debian or Ubuntu
 Open Ubuntu and run:
 
 ```bash
-command -v git curl wget tmux
+command -v git curl wget
 ```
 
-The output must show four paths. When a path is missing, install the missing tools:
+The output must show three paths. When a path is missing, install the missing tools:
 
 ```bash
-sudo apt-get update && sudo apt-get install -y git curl wget tmux
+sudo apt-get update && sudo apt-get install -y git curl wget
 ```
 
 ### Step 5: Run the install
@@ -129,7 +129,6 @@ Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu.
 | Setup prints `wsl: WSL is not installed or not responsive` | WSL is missing | Do Step 1 to Step 3 |
 | Setup prints `wsl-distro: ... is not Debian-family` | The default distro is not Debian or Ubuntu | Do Step 1, then `wsl --set-default Ubuntu-24.04` |
 | Setup prints `git not found in WSL` | The distro has no `git` | Do Step 4 |
-| Setup prints `package-manager: No supported package manager found` | `winget` is missing | Ask IT to install `winget` |
 | Setup prints an `apt-get` command | Setup could not run `sudo` | Run that command in Ubuntu, then run the install again |
 | `python` opens the Microsoft Store | The Store app alias comes first on PATH | Turn off the `python.exe` and `python3.exe` App execution aliases in Settings > Apps > Advanced app settings |
 | A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](user-guide.md#managed-windows-machines) |

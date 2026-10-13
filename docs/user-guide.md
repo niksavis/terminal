@@ -56,7 +56,7 @@ With uv already installed, you can also run one fixed release directly, with no 
 
 ## Unattended install for scripts and agents
 
-`--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tree, podman, bubblewrap, socat, libatomic1) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command. On Windows, unattended mode keeps every copy that winget installed, unless you also pass `--winget-versions replace`.
+`--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tmux, tree, podman, bubblewrap, socat, libatomic1) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command. On Windows, unattended mode keeps every copy that winget installed, unless you also pass `--winget-versions replace`.
 
 ## Install with an AI coding agent
 

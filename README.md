@@ -38,7 +38,7 @@ Use the same form with `--update` to update every tool, and with `--only report`
 | --- | --- | --- | --- | --- |
 | WezTerm | Terminal with tabs, panes and a launch menu | ✓ | (1) | ✓ |
 | zsh | Shell | ✗ | ✓ | ✓ |
-| tmux | Sessions that stay alive after the window closes | ✗ | (2) | ✓ |
+| tmux | Sessions that stay alive after the window closes | ✗ | ✓ | ✓ |
 | starship | Prompt with the git branch and state | ✓ | ✓ | ✓ |
 | ripgrep (`rg`), fd | Fast search in file contents and file names | ✓ | ✓ | ✓ |
 | bat, fzf | Read files with line numbers, find files and commands | ✓ | ✓ | ✓ |
@@ -56,7 +56,6 @@ Use the same form with `--update` to update every tool, and with `--only report`
 | Claude Code, Copilot CLI, Codex | Coding agents, only with `--agents` | ✓ | ✓ | ✓ |
 
 1. Run from Windows, setup does not install WezTerm in WSL: the WezTerm on Windows opens WSL. Run inside WSL, setup installs WezTerm there when it is missing.
-2. Setup does not install tmux in WSL. Ubuntu includes it.
 
 On Windows, the tools go into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with one entry in your user PATH. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
 
