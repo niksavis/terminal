@@ -71,6 +71,7 @@ jobs:
       - name: Install as a consumer and expect the WSL refusal
         shell: powershell
         run: |
+          $ErrorActionPreference = 'Continue'
           $log = Join-Path $env:RUNNER_TEMP 'install.log'
           powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended *>&1 | Tee-Object -FilePath $log
           $code = $LASTEXITCODE
