@@ -1074,6 +1074,14 @@ UV_PYTHON_INSTALL_ARGS = (
 )
 UV_PYTHON_MANAGED_ARGS = ("python", "find", "--managed-python", TARGET_PYTHON_MINOR)
 UV_PYTHON_UPGRADE_ARGS = (*UV_PYTHON_INSTALL_ARGS, "--upgrade")
+UV_PYTHON_LIST_ARGS = (
+    "python",
+    "list",
+    TARGET_PYTHON_MINOR,
+    "--managed-python",
+    "--output-format",
+    "json",
+)
 _UV_ON_PATH = 'PATH="$HOME/.local/bin:$PATH"; uv '
 
 
@@ -1081,6 +1089,44 @@ def python_meets_target(version: str | None) -> bool:
     if version is None:
         return False
     return _parse_version_tuple(version)[:2] >= _parse_version_tuple(TARGET_PYTHON_MINOR)
+
+
+def newer_python_patch(listing: str) -> str | None:
+    entries = [
+        entry
+        for entry in json.loads(listing)
+        if entry["implementation"] == "cpython" and entry.get("variant", "default") == "default"
+    ]
+    installed = [_parse_version_tuple(entry["version"]) for entry in entries if entry["path"]]
+    downloads = [entry["version"] for entry in entries if not entry["path"]]
+    newest = max(downloads, key=_parse_version_tuple, default=None)
+    if newest is None or (installed and _parse_version_tuple(newest) <= max(installed)):
+        return None
+    return newest
+
+
+def _python_upgrade_needed(runner: Runner, listing: subprocess.CompletedProcess[str]) -> bool:
+    newer: str | None = TARGET_PYTHON_MINOR
+    try:
+        if listing.returncode != 0:
+            raise ValueError(listing.stderr.strip() or f"exit code {listing.returncode}")
+        newer = newer_python_patch(listing.stdout)
+    except (ValueError, KeyError, TypeError) as error:
+        runner.reporter.warn(
+            f"uv did not list its Python {TARGET_PYTHON_MINOR} downloads ({error}); "
+            "setup upgrades without the check."
+        )
+    if newer is None:
+        runner.reporter.info(
+            f"Python {TARGET_PYTHON_MINOR} has the newest patch that uv offers; no upgrade."
+        )
+        return False
+    runner.reporter.warn(
+        f"The upgrade to Python {newer} switches every uv environment on Python "
+        f"{TARGET_PYTHON_MINOR} to the new interpreter. Python sessions that run now can "
+        "fail; restart them after the upgrade."
+    )
+    return True
 
 
 def _ensure_python_shell(runner: Runner, *, update: bool, wsl_distro: str | None) -> None:
@@ -1101,6 +1147,11 @@ def _ensure_python_shell(runner: Runner, *, update: bool, wsl_distro: str | None
     )
     if managed.returncode != 0:
         runner.reporter.info(f"Python {installed} is not managed by uv; leaving it as it is.")
+        return
+    listing = _run_shell_read(
+        runner, _UV_ON_PATH + shlex.join(UV_PYTHON_LIST_ARGS), wsl_distro=wsl_distro
+    )
+    if not _python_upgrade_needed(runner, listing):
         return
     _run_shell_command(
         runner,
@@ -1157,7 +1208,11 @@ def _ensure_python_windows(runner: Runner, platform: PlatformInfo, *, update: bo
         runner.reporter.success(f"Python {installed} is present")
         managed = runner.run([uv, *UV_PYTHON_MANAGED_ARGS], check=False, dry_run_safe=True)
         if update and managed.returncode == 0:
-            runner.run([uv, *UV_PYTHON_UPGRADE_ARGS], label=f"upgrade Python {TARGET_PYTHON_MINOR}")
+            listing = runner.run([uv, *UV_PYTHON_LIST_ARGS], check=False, dry_run_safe=True)
+            if _python_upgrade_needed(runner, listing):
+                runner.run(
+                    [uv, *UV_PYTHON_UPGRADE_ARGS], label=f"upgrade Python {TARGET_PYTHON_MINOR}"
+                )
         return
     runner.run([uv, *UV_PYTHON_INSTALL_ARGS], label=f"install Python {TARGET_PYTHON_MINOR}")
     _add_to_user_path(runner, platform.home / ".local" / "bin")

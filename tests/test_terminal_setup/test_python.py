@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import shlex
+import subprocess
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
@@ -12,9 +14,11 @@ from terminal_setup.platform import OperatingSystem, PackageManager, wsl_exec_co
 from terminal_setup.prerequisites import (
     PYTHON_INSTALLED_QUERY,
     UV_PYTHON_INSTALL_ARGS,
+    UV_PYTHON_LIST_ARGS,
     UV_PYTHON_MANAGED_ARGS,
     UV_PYTHON_UPGRADE_ARGS,
     ensure_python,
+    newer_python_patch,
     python_meets_target,
 )
 
@@ -26,9 +30,21 @@ WSL_QUERY = tuple(wsl_exec_command("Ubuntu", ["sh", "-c", PYTHON_INSTALLED_QUERY
 WSL_MANAGED = tuple(
     wsl_exec_command("Ubuntu", ["sh", "-c", UV + shlex.join(UV_PYTHON_MANAGED_ARGS)])
 )
+WSL_LIST = tuple(wsl_exec_command("Ubuntu", ["sh", "-c", UV + shlex.join(UV_PYTHON_LIST_ARGS)]))
 WSL_INSTALL = wsl_exec_command("Ubuntu", ["sh", "-c", UV + shlex.join(UV_PYTHON_INSTALL_ARGS)])
 WSL_UPGRADE = wsl_exec_command("Ubuntu", ["sh", "-c", UV + shlex.join(UV_PYTHON_UPGRADE_ARGS)])
 WINDOWS_UV = "C:/uv/uv.exe"
+
+
+def _listing(*entries: tuple[str, str | None], implementation: str = "cpython") -> str:
+    return json.dumps([
+        {"implementation": implementation, "variant": "default", "version": v, "path": p}
+        for v, p in entries
+    ])
+
+
+CURRENT_LISTING = _listing(("3.14.8", "/uv/cpython-3.14.8/bin/python3.14"))
+NEWER_LISTING = _listing(("3.14.9", None), ("3.14.8", "/uv/cpython-3.14.8/bin/python3.14"))
 
 
 @pytest.mark.parametrize(
@@ -96,7 +112,11 @@ def test_wsl_skips_a_present_python_without_update() -> None:
 def test_wsl_update_upgrades_only_a_uv_managed_python(*, managed: int, upgraded: bool) -> None:
     runner = RecordingRunner(
         reporter=CapturingReporter(),
-        outputs={WSL_QUERY: (0, "3.14.6\n"), WSL_MANAGED: (managed, "")},
+        outputs={
+            WSL_QUERY: (0, "3.14.6\n"),
+            WSL_MANAGED: (managed, ""),
+            WSL_LIST: (0, NEWER_LISTING),
+        },
     )
 
     _run(runner, update=True)
@@ -201,3 +221,72 @@ def test_update_relinks_python_and_python3_to_the_new_patch() -> None:
     assert UV_PYTHON_UPGRADE_ARGS[: len(UV_PYTHON_INSTALL_ARGS)] == UV_PYTHON_INSTALL_ARGS
     assert UV_PYTHON_UPGRADE_ARGS[-1] == "--upgrade"
     assert "--default" in UV_PYTHON_UPGRADE_ARGS
+
+
+@pytest.mark.parametrize(
+    ("listing", "expected"),
+    [
+        (CURRENT_LISTING, None),
+        (NEWER_LISTING, "3.14.9"),
+        (_listing(("3.14.9", None)), "3.14.9"),
+        (_listing(("3.14.7", None), ("3.14.8", "/uv/python")), None),
+        (
+            CURRENT_LISTING[:-1] + ", " + _listing(("3.14.9", None), implementation="graalpy")[1:],
+            None,
+        ),
+    ],
+)
+def test_newer_python_patch_compares_cpython_downloads_with_installs(
+    listing: str, expected: str | None
+) -> None:
+    assert newer_python_patch(listing) == expected
+
+
+class OrderedRunner(RecordingRunner):
+    def run(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        self.reporter.messages.append(("run", " ".join(command)))  # type: ignore[attr-defined]
+        return super().run(command, **kwargs)  # type: ignore[arg-type]
+
+
+def _wsl_update(listing: tuple[int, str]) -> OrderedRunner:
+    runner = OrderedRunner(
+        reporter=CapturingReporter(),
+        outputs={WSL_QUERY: (0, "3.14.8\n"), WSL_MANAGED: (0, ""), WSL_LIST: listing},
+    )
+    _run(runner, update=True)
+    return runner
+
+
+def test_wsl_update_skips_the_upgrade_when_the_patch_is_current() -> None:
+    runner = _wsl_update((0, CURRENT_LISTING))
+
+    assert WSL_UPGRADE not in runner.commands
+    assert not [m for _, m in runner.reporter.messages if "sessions" in m]  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("listing", [(0, NEWER_LISTING), (2, ""), (0, "not json")])
+def test_wsl_update_warns_about_running_sessions_before_the_upgrade(
+    listing: tuple[int, str],
+) -> None:
+    runner = _wsl_update(listing)
+
+    messages = runner.reporter.messages  # type: ignore[attr-defined]
+    warning = next(
+        i for i, (level, m) in enumerate(messages) if level == "warn" and "sessions" in m
+    )
+    upgrade = messages.index(("run", " ".join(WSL_UPGRADE)))
+    assert warning < upgrade
+
+
+@pytest.mark.parametrize(("listing", "upgraded"), [(CURRENT_LISTING, False), (NEWER_LISTING, True)])
+def test_windows_update_upgrades_a_user_python_only_for_a_newer_patch(
+    tmp_path: Path, listing: str, *, upgraded: bool
+) -> None:
+    runner = _windows_runner(_user_python(tmp_path), (0, "3.14.8\n"))
+    runner.outputs[(WINDOWS_UV, *UV_PYTHON_MANAGED_ARGS)] = (0, "")
+    runner.outputs[(WINDOWS_UV, *UV_PYTHON_LIST_ARGS)] = (0, listing)
+    runner.outputs[WSL_MANAGED] = (2, "")
+
+    _run(runner, update=True, tmp_home=tmp_path)
+
+    assert ([WINDOWS_UV, *UV_PYTHON_UPGRADE_ARGS] in runner.commands) is upgraded
