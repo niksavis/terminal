@@ -2,6 +2,29 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.14.1 - 2026-10-13
+
+Delta: v0.14.0..v0.14.1
+
+### Highlights
+
+- **Setup finds winget copies that never run.** When a machine-wide copy of a tool runs first, a winget copy behind it in your user profile is unused. Setup now asks to uninstall it, and `--winget-versions replace` uninstalls it without asking. It installs no copy of its own in that case (term-owy1he).
+- **The report shows more for each Windows tool.** Each line now shows the path, the version, and where the copy came from: `terminal-tools`, `winget`, `machine-wide` or `user profile`. The report also warns about an unused winget copy (term-amp4r4).
+- **Windows without winget no longer stops setup.** Setup needs winget only to replace or remove copies that winget installed (term-k5uhi8).
+- **Setup installs tmux in WSL.** tmux is now one of the WSL system packages, with zsh and tree (term-myw708).
+- **A dry run on Windows without WSL no longer shows a WSL install step that a real run never takes.** Setup stops at the prerequisite check and names `wsl --install` (term-aaakua).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-iebd7p) (774f36e)
+- docs(install): describe the windows and wsl changes for v0-14-1 (term-owy1he) (ebeb720)
+- fix(wsl): install tmux with the other wsl system packages (term-myw708) (56107fc)
+- fix(setup): let windows without winget pass the package manager check (term-k5uhi8) (b09f74a)
+- fix(cli): remove the wsl install branch that never runs (term-aaakua) (9912c38)
+- feat(report): show the version and origin of each windows tool (term-amp4r4) (dbd8521)
+- fix(windows): find winget copies behind the first copy and offer to remove them (term-owy1he) (c1c4e4c)
+- chore(tracker): close the v0-14-0 release record (term-o0zex6) (3996a23)
+
 ## v0.14.0 - 2026-10-13
 
 Delta: v0.13.0..v0.14.0
