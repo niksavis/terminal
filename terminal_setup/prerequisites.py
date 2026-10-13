@@ -1434,7 +1434,7 @@ def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
     )
 
 
-WSL_SYSTEM_PACKAGES = ("zsh", "tree", "podman", "bubblewrap", "socat")
+WSL_SYSTEM_PACKAGES = ("zsh", "tree", "podman", "bubblewrap", "socat", "libatomic1")
 _DOCKER_PACKAGES = ("docker.io", "docker-ce-cli")
 
 

@@ -51,7 +51,7 @@ Setup changes the Windows host and the default WSL distro in one run.
 | Where | What setup installs | What setup writes |
 | --- | --- | --- |
 | Windows host | uv, Python 3.14, Node.js 26, WezTerm, starship, img-zoom, the agents named with `--agents`, the VS Code Remote - WSL extension when `code` is on PATH | `wezterm.lua`, `starship.toml`, the starship lines in the PowerShell 7 profile and in the Git Bash `.bashrc`, VS Code `settings.json`, and the Claude Code add-ons when `%USERPROFILE%\.claude` exists |
-| Default WSL distro | zsh, tree, podman, bubblewrap, socat, podman-docker, all the command-line tools, uv, Python 3.14, Node.js 26, starship, img-zoom, the agents named with `--agents` | `.zshrc`, `.tmux.conf`, `starship.toml`, micro `settings.json`, the default shell, and the Claude Code add-ons when `~/.claude` exists |
+| Default WSL distro | zsh, tree, podman, bubblewrap, socat, libatomic1, podman-docker, all the command-line tools, uv, Python 3.14, Node.js 26, starship, img-zoom, the agents named with `--agents` | `.zshrc`, `.tmux.conf`, `starship.toml`, micro `settings.json`, the default shell, and the Claude Code add-ons when `~/.claude` exists |
 
 The Windows host does not get `rg`, `fd`, `jq` or the other command-line tools. Setup does not install WezTerm in WSL on a Windows run. The WezTerm on Windows opens the WSL distro.
 
@@ -99,7 +99,7 @@ Setup does not change VS Code settings on Linux or macOS.
 | Latest release from the npm registry | GitHub Copilot CLI, OpenAI Codex |
 | Python 3.14, the newest 3.14 patch that uv knows | Python |
 | Node.js 26, the newest 26.x release on nodejs.org, checked against `SHASUMS256.txt` | Node.js |
-| The version that the distro or Homebrew publishes | zsh, tmux, tree, podman, bubblewrap, socat (WSL), and the CLI tools on Linux outside WSL |
+| The version that the distro or Homebrew publishes | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1 (WSL), and the CLI tools on Linux outside WSL |
 | Fixed in this repository | img-zoom 0.1.0, the basicly `cli-tools` skill at basicly v0.20.2 |
 
 A rerun installs a missing tool and skips a current tool. For a tool that is older than its latest release, setup prints a line and changes nothing. Add `--update` to install the latest release. To see what is installed, run `--only report`. For a fixed version, pin the setup itself with a release tag, for example `TERMINAL_SETUP_REF=v0.12.7`. A pinned setup still installs the latest release of each tool.
@@ -167,6 +167,7 @@ A rerun installs a missing tool and skips a current tool. For a tool that is old
 | podman-docker | `docker` | A `docker` command that runs podman. Setup installs it only when no Docker is present. | Scripts that call `docker` work. |
 | bubblewrap | `bwrap` | A sandbox for a process. | The Claude Code sandbox (`/sandbox`) needs it on WSL2. |
 | socat | `socat` | Relays data between sockets. | The Claude Code sandbox needs it on WSL2. |
+| libatomic1 | (a library) | A runtime library. Node.js 26 needs it on Linux, and a fresh WSL Ubuntu does not have it. | Node.js, Copilot CLI and Codex start in WSL. |
 
 ### Agent tools
 
@@ -198,7 +199,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | zsh, tree | apt, as root | ✗ | package manager | Homebrew |
 | tmux | must be present: setup warns when it is missing | ✗ | package manager | Homebrew |
 | git, curl, wget | must be present | ✗ | must be present | must be present |
-| podman, bubblewrap, socat, podman-docker | apt, as root | ✗ | ✗ | ✗ |
+| podman, bubblewrap, socat, libatomic1, podman-docker | apt, as root | ✗ | ✗ | ✗ |
 | lazygit | release into `~/.local/bin` | ✗ | release into `/usr/local/bin`, with sudo | release into `/usr/local/bin`, with sudo |
 | yq | release into `~/.local/bin` | ✗ | release into `~/.local/bin` | Homebrew |
 | fd, bat, ripgrep, fzf, jq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos | release into `~/.local/bin` | ✗ | package manager. When apt has no package: release for ast-grep, just and typos, and the vendor installer for xh | Homebrew |
@@ -258,7 +259,7 @@ irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
 1. `install.ps1` installs uv into `%USERPROFILE%\.local\bin` when uv is missing.
 2. uv downloads Python 3.14 and runs the setup.
 3. Setup checks `winget`, WSL, the default distro, and `git`, `curl` and `wget` in that distro. When one is missing, setup stops.
-4. Setup installs the WSL system packages as root: zsh, tree, podman, bubblewrap, socat, and podman-docker when no Docker is present. In an interactive run, setup asks first. With `--unattended`, it uses `wsl -u root` and asks for no password.
+4. Setup installs the WSL system packages as root: zsh, tree, podman, bubblewrap, socat, libatomic1, and podman-docker when no Docker is present. In an interactive run, setup asks first. With `--unattended`, it uses `wsl -u root` and asks for no password.
 5. Setup installs the command-line tools, uv, Python, Node.js, starship and img-zoom into the WSL home.
 6. Setup installs WezTerm, starship, Python, Node.js and img-zoom on the Windows host, in the user profile.
 7. Setup installs the agents that you name with `--agents`, on both sides.

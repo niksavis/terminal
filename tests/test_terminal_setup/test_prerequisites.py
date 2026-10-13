@@ -1515,7 +1515,15 @@ def test_missing_system_packages_on_a_fresh_image_include_podman_docker() -> Non
     with dpkg, available:
         missing = missing_wsl_system_packages(cast(Runner, SpyRunner()), wsl_distro="Ubuntu")
 
-    assert missing == ["zsh", "tree", "podman", "bubblewrap", "socat", "podman-docker"]
+    assert missing == [
+        "zsh",
+        "tree",
+        "podman",
+        "bubblewrap",
+        "socat",
+        "libatomic1",
+        "podman-docker",
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1545,7 +1553,14 @@ def _run_system_packages(
     runner = SpyRunner()
     runner.confirm = lambda _message: answer  # type: ignore[attr-defined]
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
-    dpkg, available = _dpkg_state({"zsh", "tree", "podman", "bubblewrap", "docker.io"})
+    dpkg, available = _dpkg_state({
+        "zsh",
+        "tree",
+        "podman",
+        "bubblewrap",
+        "libatomic1",
+        "docker.io",
+    })
     with (
         dpkg,
         available,
