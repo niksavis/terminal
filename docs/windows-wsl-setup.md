@@ -142,8 +142,7 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 
 | Host | Used for |
 | --- | --- |
-| `raw.githubusercontent.com` | `install.ps1`, `install.sh`, the xh installer on Linux |
-| `github.com`, `api.github.com`, and the GitHub release download hosts | The setup archive, each tool release, the release digests, the basicly `cli-tools` skill |
+| `github.com`, `api.github.com`, and the GitHub release download hosts | `install.ps1` and `install.sh`, the setup archive, each tool release, the release digests, the basicly `cli-tools` skill |
 | `astral.sh` | The uv installer. uv also downloads Python from GitHub |
 | `pypi.org`, `files.pythonhosted.org` | The setup package dependencies and the img-zoom dependencies (Pillow, OpenCV) |
 | `nodejs.org` | Node.js archives and their checksums |

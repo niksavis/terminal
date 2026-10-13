@@ -516,18 +516,8 @@ def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
 
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
-    if package in {"ast-grep", "typos", "just"}:
+    if package in {"ast-grep", "typos", "just", "xh"}:
         _install_release_tool(runner, package, update=False, wsl_distro=wsl_distro)
-        return True
-
-    if package == "xh":
-        if not _command_available(runner, "xh", wsl_distro=wsl_distro):
-            _run_shell_command(
-                runner,
-                "curl -sfL https://raw.githubusercontent.com/ducaale/xh/master/install.sh | sh",
-                label="install xh",
-                wsl_distro=wsl_distro,
-            )
         return True
 
     if package == "uv":

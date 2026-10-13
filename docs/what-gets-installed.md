@@ -202,7 +202,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | podman, bubblewrap, socat, libatomic1, podman-docker | apt, as root | ✗ | ✗ | ✗ |
 | lazygit | release into `~/.local/bin` | ✗ | release into `/usr/local/bin`, with sudo | release into `/usr/local/bin`, with sudo |
 | yq | release into `~/.local/bin` | ✗ | release into `~/.local/bin` | Homebrew |
-| fd, bat, ripgrep, fzf, jq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos | release into `~/.local/bin` | ✗ | package manager. When apt has no package: release for ast-grep, just and typos, and the vendor installer for xh | Homebrew |
+| fd, bat, ripgrep, fzf, jq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos | release into `~/.local/bin` | ✗ | package manager. When apt has no package: release for ast-grep, just, typos and xh | Homebrew |
 | uv | vendor installer into `~/.local/bin` | vendor installer (`install.ps1`) into `%USERPROFILE%\.local\bin` | package manager, else vendor installer | Homebrew |
 | Python 3.14 | `uv python install` into `~/.local/bin` | `uv python install` into `%USERPROFILE%\.local\bin` | `uv python install` | `uv python install` |
 | Node.js 26 | nodejs.org archive into `~/.local` | nodejs.org zip into `%LOCALAPPDATA%\Programs\nodejs` | nodejs.org archive into `~/.local` | nodejs.org archive into `~/.local` |

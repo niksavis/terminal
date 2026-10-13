@@ -669,6 +669,15 @@ def test_a_failed_shell_tool_costs_that_tool_and_the_rest_still_install() -> Non
     assert runner.failures == ["install tmux"]
 
 
+def test_xh_without_an_apt_package_installs_from_its_release_without_a_terminal() -> None:
+    runner = SpyRunner()
+
+    assert prerequisites_module._install_apt_fallback(cast(Runner, runner), "xh")
+
+    assert _release_repos(runner.commands) == ["ducaale/xh"]
+    assert not any("/dev/tty" in part or "xh/master" in part for c in runner.commands for part in c)
+
+
 def test_ensure_host_cli_extras_noop_on_windows() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()
