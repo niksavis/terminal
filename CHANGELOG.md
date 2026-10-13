@@ -2,6 +2,24 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.15.0 - 2026-10-13
+
+Delta: v0.14.1..v0.15.0
+
+### Highlights
+
+- **`--update` no longer touches an agent that you did not name.** Before, it updated every Claude Code, Copilot CLI or Codex it found. Now setup installs and updates only the agents in `--agents`, for example `--update --agents claude` (term-xrypvb).
+- **Codex installs with its vendor installer, not npm.** Setup runs `chatgpt.com/codex/install.sh` or `install.ps1`, which OpenAI lists first. It needs no Node.js and installs per user. With `--unattended`, setup sets `CODEX_NON_INTERACTIVE=1`, so the installer asks nothing and keeps an existing npm copy (term-xrypvb).
+- **Copilot CLI installs with `gh.io/copilot-install` in WSL, Linux and macOS.** GitHub shows that script first on its product page. It installs into `~/.local/bin` and needs no Node.js. On Windows, setup keeps `npm install -g @github/copilot`, because the script only calls winget there (term-xrypvb).
+- **Claude Code is unchanged.** It keeps its native installer, which Anthropic marks as recommended (term-xrypvb).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-8vvg1w) (67e6397)
+- chore(tracker): record the agent install record (term-xrypvb) (dbd7da0)
+- feat(agents): install each agent with its vendor method and only when named (term-xrypvb) (789c1a6)
+- chore(tracker): close the v0-14-1 release record (term-iebd7p) (31d2ce0)
+
 ## v0.14.1 - 2026-10-13
 
 Delta: v0.14.0..v0.14.1
