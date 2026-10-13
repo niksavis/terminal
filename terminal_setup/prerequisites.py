@@ -47,11 +47,7 @@ def windows_tool_candidate_dirs(platform: PlatformInfo, command: str) -> list[Pa
             platform.user_programs_dir / "WezTerm",
         ]
     if command == "starship":
-        return [
-            Path("C:/Program Files/starship/bin"),
-            platform.user_programs_dir / "starship",
-            platform.user_programs_dir / "starship" / "bin",
-        ]
+        return [Path("C:/Program Files/starship/bin"), platform.terminal_tools_dir]
     return []
 
 
@@ -490,7 +486,11 @@ def _install_release_tool(
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
     result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=f"install {package}")
-    message = (result.stdout or "").strip()
+    report_release_message(runner, result.stdout or "")
+
+
+def report_release_message(runner: Runner, message: str) -> None:
+    message = message.strip()
     if message.endswith(" is available"):
         message += f"; to update, run: {setup_command('--update')}"
     if message:
@@ -1838,6 +1838,7 @@ def _update_windows_release(
     runner: Runner,
     platform: PlatformInfo,
     name: str,
+    own_dir: Path,
     install: Callable[[Runner, PlatformInfo, str], None],
 ) -> None:
     path = runner.which(name)
@@ -1846,37 +1847,12 @@ def _update_windows_release(
     if not is_user_scope(path, platform):
         report_machine_scope(runner, name, None, path, minimum=None)
         return
+    if str(PureWindowsPath(path).parent).lower() != str(PureWindowsPath(own_dir)).lower():
+        runner.reporter.info(
+            f"{name} at {path} was not installed by setup, so --update leaves it as it is."
+        )
+        return
     install(runner, platform, path)
-
-
-def _ensure_starship_user_install(
-    runner: Runner, platform: PlatformInfo, current: str | None = None
-) -> None:
-    install_dir = platform.user_programs_dir / "starship"
-    runner.ensure_dir(install_dir)
-    install_dir_str = str(install_dir).replace("\\", "/")
-    base_url = "https://github.com/starship/starship/releases/download"
-    script = (
-        "$ErrorActionPreference = 'Stop'; "
-        f"{_powershell_latest_release('starship/starship')}"
-        f"{_powershell_skip_when_current('starship', current)}"
-        f"$url = '{base_url}/' + $release + '/starship-x86_64-pc-windows-msvc.zip'; "
-        f"$zip = Join-Path $env:TEMP 'starship.zip'; "
-        f"Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing; "
-        f"$expected = ((Invoke-RestMethod -Uri ($url + '.sha256') -UseBasicParsing) "
-        f"-split '\\s+')[0].ToLower(); "
-        f"$actual = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower(); "
-        f"if ($actual -ne $expected) "
-        f"{{ Remove-Item $zip; throw 'starship checksum verification failed' }}; "
-        f"$source = Join-Path $env:TEMP 'starship-extract'; "
-        f"if (Test-Path $source) {{ Remove-Item $source -Recurse -Force }}; "
-        f"Expand-Archive -Path $zip -DestinationPath $source -Force; "
-        f"{_powershell_replace_files(install_dir_str)}"
-        f"Remove-Item $zip; "
-        f"Remove-Item $source -Recurse -Force"
-    )
-    runner.run(["powershell", "-Command", script], interactive=True, label="install starship")
-    _add_to_user_path(runner, install_dir)
 
 
 _STARSHIP_INSTALL_SCRIPT = (
@@ -1901,18 +1877,6 @@ def _ensure_starship_wsl_guest(
 def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
 
     if platform.os == OperatingSystem.WINDOWS:
-        if update:
-            _update_windows_release(runner, platform, "starship", _ensure_starship_user_install)
-        if not runner.which("starship"):
-            _ensure_windows_command_in_path(
-                runner,
-                "starship",
-                windows_tool_candidate_dirs(platform, "starship"),
-            )
-            if not runner.which("starship") and not _is_winget_package_installed(
-                runner, "Starship.Starship"
-            ):
-                _ensure_starship_user_install(runner, platform)
         _ensure_starship_wsl_guest(runner, platform, update=update)
         return
     if runner.which("starship"):
@@ -1924,32 +1888,71 @@ def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = Fa
         install_package(runner, PackageManager.HOMEBREW, "starship")
 
 
+_USER_PATH_READ = (
+    "$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true); "
+    "$path = [string]$key.GetValue('Path', '', "
+    "[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
+    "$parts = @($path -split ';' | Where-Object { $_ -ne '' }); "
+)
+_USER_PATH_BROADCAST = (
+    '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
+    "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
+    "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
+    "$smto = Add-Type -MemberDefinition $sig -Name 'User32' "
+    "-Namespace 'Win32Broadcast' -PassThru; "
+    "[UIntPtr]$out = [UIntPtr]::Zero; "
+    "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "
+    "2, 5000, [ref]$out) | Out-Null "
+)
+
+
+def read_user_path_entries(runner: Runner) -> list[str]:
+    result = runner.run(
+        ["powershell", "-NoProfile", "-Command", _USER_PATH_READ + "$key.Close(); $parts"],
+        check=False,
+        dry_run_safe=True,
+    )
+    return [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+
+
+def remove_from_user_path(runner: Runner, entries: list[str], backup: Path) -> None:
+    if not entries:
+        return
+    runner.reporter.info(f"Keep a copy of the user PATH in {backup}")
+    if runner.dry_run:
+        return
+    backup.parent.mkdir(parents=True, exist_ok=True)
+    quoted = ", ".join(_powershell_literal(entry.rstrip("\\")) for entry in entries)
+    script = (
+        _USER_PATH_READ + f"$drop = @({quoted}); "
+        "$kept = @($parts | Where-Object { $p = $_.TrimEnd('\\'); "
+        "-not ($drop | Where-Object { $_ -ieq $p }) }); "
+        "if ($kept.Count -ne $parts.Count) { "
+        f"Set-Content -LiteralPath {_powershell_literal(str(backup))} -Value $path -Encoding UTF8; "
+        "$key.SetValue('Path', ($kept -join ';'), "
+        "[Microsoft.Win32.RegistryValueKind]::ExpandString); "
+        + _USER_PATH_BROADCAST
+        + "}; $key.Close()"
+    )
+    runner.run(
+        ["powershell", "-NoProfile", "-Command", script],
+        interactive=True,
+        label=f"remove {len(entries)} stale entries from the user PATH",
+    )
+
+
 def _add_to_user_path(runner: Runner, directory: Path) -> None:
 
     if runner.dry_run:
         return
     directory_str = str(directory).replace("/", "\\")
     script = (
-        f"$dir = '{directory_str}'; "
-        "$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true); "
-        "$path = [string]$key.GetValue('Path', '', "
-        "[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
-        "$parts = @($path -split ';' | Where-Object { $_ -ne '' }); "
-        "$exists = $false; "
+        f"$dir = '{directory_str}'; " + _USER_PATH_READ + "$exists = $false; "
         "foreach ($p in $parts) { "
         "if ($p.TrimEnd('\\') -ieq $dir.TrimEnd('\\')) { $exists = $true } }; "
         "if (-not $exists) { "
         "$key.SetValue('Path', (($parts + $dir) -join ';'), "
-        "[Microsoft.Win32.RegistryValueKind]::ExpandString); "
-        '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
-        "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
-        "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
-        "$smto = Add-Type -MemberDefinition $sig -Name 'User32' "
-        "-Namespace 'Win32Broadcast' -PassThru; "
-        "[UIntPtr]$out = [UIntPtr]::Zero; "
-        "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "
-        "2, 5000, [ref]$out) | Out-Null "
-        "}; "
+        "[Microsoft.Win32.RegistryValueKind]::ExpandString); " + _USER_PATH_BROADCAST + "}; "
         "$key.Close()"
     )
     runner.run(
@@ -2011,7 +2014,13 @@ def ensure_wezterm(
     runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False, update: bool = False
 ) -> None:
     if update and platform.os == OperatingSystem.WINDOWS:
-        _update_windows_release(runner, platform, "wezterm", _ensure_wezterm_user_install)
+        _update_windows_release(
+            runner,
+            platform,
+            "wezterm",
+            platform.user_programs_dir / "WezTerm",
+            _ensure_wezterm_user_install,
+        )
     if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.WINDOWS:

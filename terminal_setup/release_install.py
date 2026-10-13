@@ -16,7 +16,12 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-ARCH_ALIASES = {"x86_64": ("x86_64", "amd64"), "aarch64": ("aarch64", "arm64")}
+ARCH_ALIASES = {
+    "x86_64": ("x86_64", "amd64"),
+    "aarch64": ("aarch64", "arm64"),
+    "AMD64": ("x86_64", "amd64"),
+    "ARM64": ("aarch64", "arm64", "x86_64", "amd64"),
+}
 VERSION = re.compile(r"\d+(?:\.\d+)+")
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
@@ -44,9 +49,9 @@ def installed_version(binary: Path) -> str:
     return version_of(result.stdout + result.stderr)
 
 
-def current_version(binary: str) -> str:
-    reported = installed_version(BIN_DIR / binary)
-    state = STATE_DIR / binary
+def current_version(binary: str, bin_dir: Path, state_dir: Path) -> str:
+    reported = installed_version(bin_dir / binary)
+    state = state_dir / binary
     if reported and state.is_file():
         tag, _, recorded = state.read_text(encoding="utf-8").strip().partition(" ")
         if recorded == reported:
@@ -54,10 +59,10 @@ def current_version(binary: str) -> str:
     return reported
 
 
-def record(binary: str, tag: str) -> None:
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    (STATE_DIR / binary).write_text(
-        f"{tag} {installed_version(BIN_DIR / binary)}\n", encoding="utf-8"
+def record(binary: str, tag: str, bin_dir: Path, state_dir: Path) -> None:
+    state_dir.mkdir(parents=True, exist_ok=True)
+    (state_dir / binary).write_text(
+        f"{tag} {installed_version(bin_dir / binary)}\n", encoding="utf-8"
     )
 
 
@@ -150,13 +155,22 @@ def release_of(repo: str, tag: str) -> dict:
         raise
 
 
-def run(repo: str, binary: str, update: bool, patterns: list[str]) -> str:
+def run(  # noqa: PLR0913
+    repo: str,
+    binary: str,
+    update: bool,
+    patterns: list[str],
+    bin_dir: Path | None = None,
+    state_dir: Path | None = None,
+) -> str:
+    bin_dir = BIN_DIR if bin_dir is None else bin_dir
+    state_dir = STATE_DIR if state_dir is None else state_dir
     tag = latest_tag(repo)
     latest = version_of(tag)
     if not latest:
         raise InstallError(f"{repo}: the latest release tag {tag!r} holds no version")
-    destination = BIN_DIR / binary
-    current = current_version(binary)
+    destination = bin_dir / binary
+    current = current_version(binary, bin_dir, state_dir)
     if current == latest:
         return f"{binary} {current} is up to date"
     if current and not update:
@@ -168,7 +182,7 @@ def run(repo: str, binary: str, update: bool, patterns: list[str]) -> str:
         raise InstallError(f"refusing a download outside {repo}'s releases: {url}")
     payload = verified(fetch(url), asset.get("digest") or "")
     install(destination, extract(asset["name"], payload, binary))
-    record(binary, latest)
+    record(binary, latest, bin_dir, state_dir)
     return f"installed {binary} {latest} into {destination}"
 
 

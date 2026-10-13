@@ -47,6 +47,14 @@ class PlatformInfo:
     def user_programs_dir(self) -> Path:
         return self.home / "AppData" / "Local" / "Programs"
 
+    @property
+    def terminal_tools_dir(self) -> Path:
+        return self.user_programs_dir / "terminal-tools" / "bin"
+
+    @property
+    def setup_data_dir(self) -> Path:
+        return self.home / "AppData" / "Local" / "terminal-setup"
+
 
 def detect_os() -> OperatingSystem:
     system = platform.system()
@@ -91,6 +99,9 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
 
 SETUP_ARCHIVES = "https://github.com/niksavis/terminal/archive/"
 SETUP_SOURCE = f"{SETUP_ARCHIVES}main.zip"
+WINDOWS_BOOTSTRAP = (
+    "irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex"
+)
 RELEASE_ARCHIVE = re.compile(re.escape(SETUP_ARCHIVES) + r"v\d+\.\d+\.\d+\.zip")
 
 

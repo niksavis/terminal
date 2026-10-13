@@ -7,7 +7,7 @@ import sys
 from functools import partial
 from pathlib import Path
 
-from . import agents, configs, platform, prerequisites
+from . import agents, configs, platform, prerequisites, windows_tools
 from .platform import is_running_in_wsl, rerun_command, setup_command, wsl_exec_command
 from .runner import ConsoleReporter, Runner
 
@@ -132,6 +132,16 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Install these coding agents when they are absent: a comma list of claude, "
             "copilot and codex, or all. --update also updates every present agent."
+        ),
+    )
+    install.add_argument(
+        "--winget-versions",
+        choices=("keep", "replace"),
+        dest="winget_versions",
+        help=(
+            "Windows only: how to handle a tool that winget installed in your user profile. "
+            "'replace' installs the setup copy, uninstalls the winget copy and removes its PATH "
+            "entry; 'keep' leaves it. Prompts per tool when unset; --unattended keeps."
         ),
     )
     install.add_argument(
@@ -274,6 +284,13 @@ def _print_windows_report(
                     path = f"{executable} (restart terminal for PATH)"
                     break
         _report_status(runner, f"windows:{command}", path is not None, path or "")
+
+    for tool in windows_tools.WINDOWS_TOOLS:
+        path = runner.which(tool.command)
+        local = platform_info.terminal_tools_dir / f"{tool.command}.exe"
+        if path is None and local.exists():
+            path = f"{local} (restart terminal for PATH)"
+        _report_status(runner, f"windows:{tool.command}", path is not None, path or "not found")
 
     for command in WINDOWS_RUNTIMES:
         detail = _windows_tool_detail(runner, platform_info, command)
@@ -468,6 +485,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     update: bool = False,
     no_sudo: bool = False,
     selected_agents: tuple[str, ...] = (),
+    winget_versions: str | None = None,
     uninstall_system_versions: bool,
     keep_system_versions: bool,
     report: bool,
@@ -565,6 +583,13 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
         if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
+            windows_tools.ensure_windows_tools(
+                runner,
+                platform_info,
+                update=update,
+                policy=winget_versions,
+                include_starship=not skip_starship,
+            )
             prerequisites.attempt(
                 runner,
                 "check uv on Windows",
@@ -640,8 +665,8 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         if in_wsl:
             runner.reporter.step("Restart your WSL session for the updated PATH to take effect.")
             runner.reporter.step(
-                "Agents started from PowerShell or Git Bash get img-zoom only when setup "
-                "also runs from Windows."
+                "The Windows host was not changed. To install the Windows tools, run in "
+                f"PowerShell: {platform.WINDOWS_BOOTSTRAP}"
             )
     runner.reporter.step(f"Verify anytime with: {setup_command('--only report')}")
     return 0
@@ -718,6 +743,7 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         update=args.update,
         no_sudo=args.no_sudo,
         selected_agents=args.agents,
+        winget_versions=args.winget_versions,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",
         report=args.report,

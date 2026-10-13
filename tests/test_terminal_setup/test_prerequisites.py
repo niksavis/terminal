@@ -30,7 +30,6 @@ from terminal_setup.prerequisites import (
     PrerequisiteStatus,
     SystemVersionPolicy,
     _add_to_user_path,
-    _ensure_starship_user_install,
     _ensure_wezterm_user_install,
     _link_debian_renamed_tools,
     check_all,
@@ -1152,7 +1151,7 @@ def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
     wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
     starship_dirs = windows_tool_candidate_dirs(platform, "starship")
     assert platform.user_programs_dir / "WezTerm" in wezterm_dirs
-    assert platform.user_programs_dir / "starship" in starship_dirs
+    assert platform.terminal_tools_dir in starship_dirs
     assert windows_tool_candidate_dirs(platform, "unknown-tool") == []
 
 
@@ -1403,10 +1402,7 @@ def _starship_runner(*, user_local: bool, system: bool, which: str | None) -> Sp
 def test_a_user_local_wsl_starship_goes_through_the_release_installer(update: bool) -> None:
     runner = _starship_runner(user_local=True, system=True, which=None)
 
-    with (
-        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
-        mock.patch("terminal_setup.prerequisites._ensure_starship_user_install"),
-    ):
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
         ensure_starship(
             cast(Runner, runner),
             make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
@@ -1441,7 +1437,7 @@ def _windows_update(tool: str, path: str) -> tuple[SpyRunner, list[str]]:
     return runner, [script for script in scripts if "releases/latest" in script]
 
 
-@pytest.mark.parametrize(("tool", "program"), [("starship", "starship"), ("wezterm", "WezTerm")])
+@pytest.mark.parametrize(("tool", "program"), [("wezterm", "WezTerm")])
 def test_update_replaces_a_user_profile_copy_after_a_version_check(tool: str, program: str) -> None:
     path = str(Path.home() / "AppData" / "Local" / "Programs" / program / f"{tool}.exe")
 
@@ -1454,7 +1450,7 @@ def test_update_replaces_a_user_profile_copy_after_a_version_check(tool: str, pr
     assert scripts[0].index("--version") < scripts[0].index("Invoke-WebRequest")
 
 
-@pytest.mark.parametrize("tool", ["starship", "wezterm"])
+@pytest.mark.parametrize("tool", ["wezterm"])
 def test_update_leaves_a_machine_wide_copy_and_says_so(tool: str) -> None:
     path = f"C:/Program Files/{tool}/{tool}.exe"
 
@@ -1467,7 +1463,28 @@ def test_update_leaves_a_machine_wide_copy_and_says_so(tool: str) -> None:
     )
 
 
-@pytest.mark.parametrize("installer", [_ensure_starship_user_install, _ensure_wezterm_user_install])
+def test_update_leaves_a_wezterm_that_setup_did_not_install() -> None:
+    path = str(
+        Path.home()
+        / "AppData"
+        / "Local"
+        / "Microsoft"
+        / "WinGet"
+        / "Packages"
+        / "wez.wezterm_Microsoft.Winget.Source_8wekyb3d8bbwe"
+        / "wezterm.exe"
+    )
+
+    runner, scripts = _windows_update("wezterm", path)
+
+    assert scripts == []
+    assert any(
+        kind == "info" and path in message and "not installed by setup" in message
+        for kind, message in runner.reporter.messages
+    )
+
+
+@pytest.mark.parametrize("installer", [_ensure_wezterm_user_install])
 def test_a_first_install_skips_the_version_check(installer: object, tmp_path: Path) -> None:
     runner = SpyRunner()
     platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)

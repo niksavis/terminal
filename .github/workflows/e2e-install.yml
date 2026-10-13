@@ -59,9 +59,27 @@ jobs:
         with:
           distribution: Ubuntu-24.04
           additional-packages: git curl wget tmux
+      - name: Install ripgrep with winget, to test the replace option
+        id: winget
+        continue-on-error: true
+        shell: powershell
+        run: winget install --id BurntSushi.ripgrep.MSVC --exact --scope user --silent --disable-interactivity --accept-source-agreements --accept-package-agreements
       - name: Install as a consumer
         shell: powershell
-        run: powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --report
+        run: |
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --winget-versions replace --report
+      - name: Check that the setup copy replaced the winget ripgrep
+        if: steps.winget.outcome == 'success'
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $tools = Join-Path $env:LOCALAPPDATA 'Programs\terminal-tools\bin'
+          if (-not (Test-Path (Join-Path $tools 'rg.exe'))) { throw "rg.exe is missing in $tools" }
+          $left = winget list --id BurntSushi.ripgrep.MSVC --exact --disable-interactivity --accept-source-agreements | Out-String
+          if ($left -match 'BurntSushi.ripgrep.MSVC') { throw 'winget still lists ripgrep' }
+          Write-Output "rg.exe is in $tools and winget no longer lists ripgrep."
+          $global:LASTEXITCODE = 0
 
   windows-without-wsl:
     runs-on: windows-latest

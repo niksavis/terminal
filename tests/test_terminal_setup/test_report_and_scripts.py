@@ -11,7 +11,6 @@ import pytest
 from terminal_setup.cli import _wsl_command_present, _wsl_file_exists
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
 from terminal_setup.prerequisites import (
-    _ensure_starship_user_install,
     _ensure_wezterm_appimage,
     _ensure_wezterm_user_install,
 )
@@ -115,19 +114,9 @@ def test_wezterm_appimage_script_verifies_checksum() -> None:
     assert any("sha256" in script.lower() for script in scripts), scripts
 
 
-def test_starship_windows_script_verifies_checksum(tmp_path: Path) -> None:
-    runner = ScriptedRunner({})
-    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
-    _ensure_starship_user_install(cast(Runner, runner), platform)
-    scripts = [command[-1] for command in runner.commands if command[0] == "powershell"]
-    assert scripts
-    assert any("Get-FileHash" in script for script in scripts)
-
-
 @pytest.mark.parametrize(
     ("installer", "repo"),
     [
-        (_ensure_starship_user_install, "starship/starship"),
         (_ensure_wezterm_user_install, "wezterm/wezterm"),
     ],
 )
