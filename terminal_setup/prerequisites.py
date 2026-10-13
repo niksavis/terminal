@@ -1951,7 +1951,7 @@ def _add_to_user_path(runner: Runner, directory: Path) -> None:
         '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
         "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
         "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
-        "$smto = Add-Type -MemberDefinition $sig -Name 'SendMessageTimeout' "
+        "$smto = Add-Type -MemberDefinition $sig -Name 'User32' "
         "-Namespace 'Win32Broadcast' -PassThru; "
         "[UIntPtr]$out = [UIntPtr]::Zero; "
         "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "

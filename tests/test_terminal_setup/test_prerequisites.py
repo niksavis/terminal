@@ -1465,6 +1465,18 @@ def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> No
     assert "SendMessageTimeout" in script
 
 
+def test_the_path_broadcast_type_is_not_named_after_its_method() -> None:
+    runner = SpyRunner()
+    with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
+        _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
+
+    script = runner.commands[-1][-1]
+    type_name = script.split("-MemberDefinition $sig -Name '", 1)[1].split("'", 1)[0]
+    method = script.split("public static extern IntPtr ", 1)[1].split("(", 1)[0]
+    assert method == "SendMessageTimeout"
+    assert type_name != method
+
+
 def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     runner = SpyRunner()
