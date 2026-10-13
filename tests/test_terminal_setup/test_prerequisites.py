@@ -678,6 +678,26 @@ def test_xh_without_an_apt_package_installs_from_its_release_without_a_terminal(
     assert not any("/dev/tty" in part or "xh/master" in part for c in runner.commands for part in c)
 
 
+class SudoRunner(FakeRunner):
+    def which(self, command: str) -> str | None:
+        return "/usr/bin/sudo" if command == "sudo" else None
+
+
+@pytest.mark.parametrize("returncode", [0, 1])
+def test_a_sudo_step_without_a_terminal_runs_only_when_sudo_needs_no_password(
+    returncode: int,
+) -> None:
+    runner = SudoRunner({("sudo", "-n", "true"): (returncode, "")})
+    runner.unattended = True
+
+    if returncode == 0:
+        prerequisites_module._require_interactive_stdin_for_sudo(cast(Runner, runner))
+    else:
+        with pytest.raises(RuntimeError, match="--no-sudo"):
+            prerequisites_module._require_interactive_stdin_for_sudo(cast(Runner, runner))
+    assert ["sudo", "-n", "true"] in runner.commands
+
+
 def test_ensure_host_cli_extras_noop_on_windows() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
     runner = SpyRunner()

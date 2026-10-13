@@ -1402,20 +1402,23 @@ def _stdin_is_interactive(runner: Runner) -> bool:
     return not runner.unattended and (runner.dry_run or sys.stdin.isatty())
 
 
+def _sudo_needs_no_password(runner: Runner) -> bool:
+    if runner.which("sudo") is None:
+        return False
+    return runner.run(["sudo", "-n", "true"], check=False, dry_run_safe=True).returncode == 0
+
+
 def root_shell_command(runner: Runner, script: str, *, wsl_distro: str | None) -> list[str] | None:
     if wsl_distro and not is_running_in_wsl():
         return wsl_root_exec_command(wsl_distro, ["sh", "-c", script])
-    if runner.which("sudo") is None:
-        return None
-    probe = runner.run(["sudo", "-n", "true"], check=False, dry_run_safe=True)
-    if probe.returncode != 0:
+    if not _sudo_needs_no_password(runner):
         return None
     return ["sudo", "-n", "sh", "-c", script]
 
 
 def _require_interactive_stdin_for_sudo(runner: Runner) -> None:
 
-    if _stdin_is_interactive(runner):
+    if _stdin_is_interactive(runner) or _sudo_needs_no_password(runner):
         return
     raise RuntimeError(
         "This step may require a sudo password but stdin is not an interactive "
