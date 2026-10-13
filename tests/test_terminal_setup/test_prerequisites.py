@@ -238,6 +238,15 @@ def test_check_package_manager_unknown() -> None:
     assert status.present is False
 
 
+def test_a_windows_host_without_winget_passes_the_package_manager_check() -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.UNKNOWN)
+
+    status = check_package_manager(platform)
+
+    assert status.present is True
+    assert "winget not found" in status.message
+
+
 def test_check_package_manager_known() -> None:
     platform = make_platform(OperatingSystem.LINUX, PackageManager.APT)
     status = check_package_manager(platform)

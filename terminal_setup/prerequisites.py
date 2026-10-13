@@ -144,6 +144,15 @@ def _is_wsl_target(platform: PlatformInfo) -> bool:
 
 
 def check_package_manager(platform: PlatformInfo) -> PrerequisiteStatus:
+    if (
+        platform.package_manager == PackageManager.UNKNOWN
+        and platform.os == OperatingSystem.WINDOWS
+    ):
+        return PrerequisiteStatus(
+            name="package-manager",
+            present=True,
+            message="winget not found; setup needs it only to replace copies that winget installed",
+        )
     if platform.package_manager == PackageManager.UNKNOWN:
         return PrerequisiteStatus(
             name="package-manager",
