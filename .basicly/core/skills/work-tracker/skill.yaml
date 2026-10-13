@@ -4,7 +4,7 @@ token_cost:
   listing: 41
 name: work-tracker
 invocation: model
-description: "Reads, files, claims and closes records in the ledger tracker. Use to plan work, check what is ready, file a bug or claim an issue."
+description: "Reads, files, claims and closes records in the ledger tracker. Use to plan work, check what is ready, file a bug, or claim an issue before work starts."
 instructions: |
   # Work Tracker
 
@@ -45,6 +45,10 @@ instructions: |
     `.basicly/ledger/redirect` points every worktree at the same log. A per-worktree ledger
     loses the writes of a lane at teardown.
 
+  **Stage the claim with its code.** Commit hooks read the Git index. In a shared-ledger
+  worktree, publish the claim on the base and update the lane from that committed base
+  before committing its code.
+
   ## Read
 
   Start a session with the one report that takes no id. Its first line is the newest note
@@ -62,12 +66,16 @@ instructions: |
   basicly tracker stats                     # totals by status
   basicly tracker show <id>                 # one record's folded state and dates, as JSON
   basicly tracker list --status open        # the set, as JSON
+  basicly tracker items --json              # one slim item per record, for a tool that reads them
+  basicly tracker describe --json           # the adapter description: watch globs, writes, statuses
   ```
+
+  These reads run no code from the repository. `write`, `import`, `scrub`, `fold` and
+  `serve` run the repository's tracker kit.
 
   `ready` ranks by priority, then by the number of records that depend on each one. A
   record with children is an anchor, not the work, so it is never ready. `ready` leaves
-  out a record labelled `refine`, and a record created under the current rule that fails
-  `dor`. Pass acceptance criteria and requirements as `--acceptance` and `--requirements`;
+  out every record labelled `refine` or failing `dor`. Pass acceptance criteria and requirements as `--acceptance` and `--requirements`;
   a description that holds either heading is refused.
 
   The loop views answer about one unit:
@@ -131,6 +139,15 @@ instructions: |
   - The tracker refuses a write of a field that no code reads. `fields` prints the table.
 
   ## Refine a record
+
+  Before refinement, read the **INVEST** and **Card, Conversation, Confirmation** sections
+  in `.basicly/core/kit/tracker/GUIDANCE.md`. They define the shared review and evidence
+  workflow. Use this skill's engine commands to record the same card, conversation and
+  confirmation. `dor` enforces recorded evidence; the agent judges semantic quality.
+  Use `basicly tracker write -- review <id> --evidence '<JSON>'` before claim and
+  `basicly tracker write -- confirm <id> --evidence '<JSON>'` after the agreed checks.
+  The shared guidance defines both JSON shapes. Completed close needs current evidence;
+  use `--resolution cancelled` with an abandonment reason for work that will not ship.
 
   A person writes or edits a story, often in the served page, and the page adds the label
   `refine`. The record is not ready to build until a refinement pass:

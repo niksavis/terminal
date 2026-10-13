@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
 from typing import Any
@@ -27,28 +26,18 @@ def _kit_events() -> Any:
     return module
 
 
-def ledger_write_holder(repo_root: Path) -> int | None:
-
+def ledger_write_in_flight(repo_root: Path) -> bool:
     events = _kit_events()
     if events is None:
-        return None
-    lock = repo_root / _LEDGER_DIR / events.LOCK_NAME
-    try:
-        holder = json.loads(lock.read_text(encoding="utf-8"))
-    except OSError, ValueError:
-        return None
-    pid = holder.get("pid") if isinstance(holder, dict) else None
-    if not isinstance(pid, int):
-        return None
-    return pid if events.default_pid_liveness(pid) is True else None
+        return False
+    return events.locking.is_held(repo_root / _LEDGER_DIR / events.LOCK_NAME)
 
 
 def main() -> int:
     root = project_root()
-    pid = ledger_write_holder(root)
-    if pid is not None:
+    if ledger_write_in_flight(root):
         print(
-            f"pre-push: a ledger write is in flight (pid {pid}), so this push would race it.\n"
+            "pre-push: a ledger write is in flight, so this push would race it.\n"
             "`pre-commit` stashes the unstaged tree for this stage and the landing changes it\n"
             "underneath, which surfaces as `Stashed changes conflicted with hook auto-fixes` —\n"
             "a message about the stash, not about the contention. Your commits are unaffected.\n"

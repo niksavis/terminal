@@ -48,12 +48,32 @@ def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> st
     for agents in (".claude", ".agents"):
         installed += [f"{agents}/skills/{name}/" for name in INSTALLED_SKILLS]
     flags = " ".join(f'--installed "{one}"' for one in installed)
-    check = f'"$@" commit-check "{ledger}" "$tracker_message" --stdin --runner "$tracker_typed"'
+    check = (
+        f'"$@" commit-check "$tracker_index/{ledger}" "$tracker_message" --stdin '
+        f'--ledger-label "{ledger}" --runner "$tracker_typed"'
+    )
     return "\n".join((
         CLAIM_BEGIN,
         f'if [ -d "{ledger}" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then',
         '  tracker_message="$1"',
-        f"  tracker_check() {{ git diff --cached --name-only | {check} {flags}; }}",
+        "  tracker_check() (",
+        '    tracker_index="$(mktemp -d)" || exit 1',
+        "    trap 'find \"$tracker_index\" -depth -delete' 0",
+        f'    mkdir -p "$tracker_index/{ledger}" || exit 1',
+        f'    git ls-files --stage -- "{ledger}/events-*.jsonl" "{ledger}/pending-*.jsonl" '
+        '>"$tracker_index/modes" || exit 1',
+        "    while read -r tracker_mode tracker_rest; do",
+        '      [ "$tracker_mode" != 120000 ] ||',
+        '        { echo "the staged ledger contains a symlink; '
+        'stage regular event files" >&2; exit 1; }',
+        '    done <"$tracker_index/modes"',
+        f'    git ls-files -z -- "{ledger}/events-*.jsonl" "{ledger}/pending-*.jsonl" '
+        '>"$tracker_index/files" || exit 1',
+        '    git checkout-index --stdin -z --prefix="$tracker_index/" '
+        '<"$tracker_index/files" || exit 1',
+        '    git diff --cached --name-only >"$tracker_index/paths" || exit 1',
+        f'    {check} {flags} <"$tracker_index/paths"',
+        "  )",
         *locate.shell_lines(ledger, places),
         '  tracker_python=""',
         "  for tracker_try in python3 python; do",

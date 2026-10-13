@@ -21,8 +21,17 @@ def _candidate_ids(message: str, known_ids: set[str]) -> set[str]:
     if not prefixes:
         return set()
     alternation = "|".join(re.escape(prefix) for prefix in sorted(prefixes))
-    pattern = re.compile(rf"\b(?:{alternation})-[a-z0-9]+(?:\.[0-9]+)*\b")
-    return set(pattern.findall(message))
+    pattern = re.compile(rf"\b(?:{alternation})-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*\b")
+    return {_longest_known(token, known_ids) for token in pattern.findall(message)}
+
+
+def _longest_known(token: str, known_ids: set[str]) -> str:
+
+    parts = token.split("-")
+    for end in range(len(parts), 1, -1):
+        if "-".join(parts[:end]) in known_ids:
+            return "-".join(parts[:end])
+    return "-".join(parts[:2])
 
 
 NO_ID_MESSAGE = """ERROR: Commit message does not reference a tracked issue id.

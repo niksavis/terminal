@@ -28,7 +28,7 @@ events = _load("events.py", "basicly_tracker_kit_events")
 
 HOLDER_FIELD = events.HOLDER_FIELD
 HELD_STATUSES = frozenset({"in_progress", "closed"})
-_ID = re.compile(r"\b[a-z][a-z0-9]*-[a-z0-9]+(?:\.[0-9]+)*\b")
+_ID = re.compile(r"\b[a-z][a-z0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*\b")
 
 
 class UnclaimedError(events.LedgerError):
@@ -42,23 +42,33 @@ class CommitContext(NamedTuple):
     installed: tuple[str, ...] = ()
 
 
+def cited_id(token: str, states: Mapping[str, Any]) -> str:
+    parts = token.split("-")
+    for end in range(len(parts), 1, -1):
+        if "-".join(parts[:end]) in states:
+            return "-".join(parts[:end])
+    return "-".join(parts[:2])
+
+
 def named_ids(message: str, states: Mapping[str, Any]) -> list[str]:
-    return sorted({token for token in _ID.findall(message) if token in states})
+    cited = {cited_id(token, states) for token in _ID.findall(message)}
+    return sorted(record for record in cited if record in states)
 
 
 def unknown_ids(message: str, states: Mapping[str, Any]) -> list[str]:
     prefixes = {record.split("-", 1)[0] for record in states}
+    cited = {cited_id(token, states) for token in _ID.findall(message)}
     return sorted({
-        token
-        for token in _ID.findall(message)
-        if token not in states and token.split("-", 1)[0] in prefixes
+        record for record in cited if record not in states and record.split("-", 1)[0] in prefixes
     })
 
 
 def _describe(states: Mapping[str, Any], record: str) -> str:
     state = states[record]
     holder = str(state.fields.get(HOLDER_FIELD) or "") or "nobody"
-    return f"{record} is {state.status or 'open'} and held by {holder}"
+    status = state.status or "open"
+    status += " (cancelled)" if state.fields.get("close_resolution") == "cancelled" else ""
+    return f"{record} is {status} and held by {holder}"
 
 
 def refuse_commit(
@@ -73,8 +83,13 @@ def refuse_commit(
         for path in changed
         if path.strip() and not path.startswith(folders) and path not in files
     ]
-    if not code or not states:
+    if not code:
         return
+    if not states:
+        raise UnclaimedError(
+            f"this code commit has no record in the staged ledger {ledger}. File and claim "
+            f"a record, then stage it with `git add {ledger}` and commit again"
+        )
     ids = named_ids(message, states)
     if not committer:
         raise UnclaimedError(
@@ -82,6 +97,7 @@ def refuse_commit(
         )
     if any(
         states[record].status in HELD_STATUSES
+        and states[record].fields.get("close_resolution") != "cancelled"
         and str(states[record].fields.get(HOLDER_FIELD) or "") == committer
         for record in ids
     ):

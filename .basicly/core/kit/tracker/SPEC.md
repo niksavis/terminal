@@ -29,7 +29,7 @@ tracker: added to .gitattributes: pending-*.jsonl -text merge=union
 tracker: added to .gitignore: .basicly/ledger/snapshot.jsonl
 tracker: added to .gitignore: .basicly/ledger/checkpoint-*.jsonl
 tracker: added to .gitignore: .basicly/kit/tracker/__pycache__/
-tracker: 31 file(s) written, 0 unchanged, in .basicly/kit/tracker
+tracker: 47 file(s) written, 0 unchanged, in .basicly/kit/tracker
 tracker: wrote the skill to .claude/skills/tracker/SKILL.md
 tracker: wrote the skill to .agents/skills/tracker/SKILL.md
 ```
@@ -69,15 +69,38 @@ $ python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix demo --tit
 }
 $ python3 .basicly/kit/tracker/cli.py ready .basicly/ledger
 {
-  "count": 1,
-  "records": [{"rank": 1, "record": "demo-qeom", "score": 2000, "title": "try the tracker"}],
+  "count": 0,
+  "records": [],
   "schema": "basicly.scheduler.v1",
   "sort": "priority ASC, dependents DESC, id ASC"
 }
 ```
 
 Each write reports the sections of the definition of ready that the record still owes, and
-`dor` refuses a record that cannot be verified against.
+`dor` refuses a record that cannot be verified against. Raw capture still writes an
+unready card. Under the default template, `ready`, `dor`, `claim`, and a move to
+`in_progress` share the kit's shaping rules. The engine reads these same rules.
+
+A trigger sentence includes three filled parts: situation or persona, motivation or goal,
+and outcome or benefit. The parser retains the complete sentence, including its outcome.
+It refuses empty parts, punctuation alone, and named placeholders. A filled trigger does
+not prove value, independence, or testability. The agent reviews INVEST and records Card,
+Conversation, Confirmation as described in `GUIDANCE.md`. Acceptance criteria and
+requirements are typed fields. Every entry in a list must be filled.
+
+New claims require six filled INVEST rationales, actual same-card comment sequence
+references, and one planned argv and expected result per criterion. `review --evidence`
+records these with an internally computed semantic revision and generic writer identity.
+Card, dependency edge or direct dependency contract edits invalidate the evidence; holder and status changes do not.
+These checks establish recorded evidence, not automated proof of semantic INVEST quality.
+
+A completed close requires a meaningful delivered reason and current `confirm --evidence`
+for every criterion: the agreed exact argv, a filled observed result, and exit code 0.
+Generic closed updates share this refusal before writing events. `close --resolution
+cancelled` requires a meaningful abandonment reason, retains closed history, and leaves
+blocking dependencies unmet. Existing imports and closed history remain readable without
+retroactive certification. Open legacy cards receive the same evidence debts as new cards.
+The API uses the same kit validators; planned argv is displayed and never executed.
 
 A hand copy of the files still runs, because the kit imports only the standard library. But
 a hand copy does not write the git attributes, so that repository keeps the merge conflicts
@@ -160,6 +183,9 @@ change two different paths, and the forge has nothing to flag.
 - The kit derives the writer name from `.git/HEAD` by a file read, not a subprocess.
 - In a linked worktree, the kit follows the `.git` file to that worktree's own `HEAD`, so
   each lane is its own writer.
+- A ledger directory that holds a `redirect` file names the base checkout. Every read and
+  write then uses the ledger at the same place under that checkout, and the writer is the
+  base checkout's `HEAD`. The kit refuses a redirect that names no ledger.
 - A directory outside a repository keeps the single trunk log, so an existing ledger reads
   and writes as before.
 - `events.append` accepts `writer=` for a caller that knows the writer better.
@@ -301,10 +327,11 @@ is published by a write to a temporary file and an atomic rename. Contention is 
   replace the lock.
 - **No `fsync` for each event.** The push is the durability boundary. An `fsync` would
   destroy the short lock hold that makes one writer at a time practical.
-- **An orphaned lock must not block every lane.** The lock file holds a process id and a
-  monotonic clock reading. A writer steals the lock in three cases: the process is dead,
-  the reading is from another monotonic epoch, or the hold is older than 30 seconds. The lock uses `O_CREAT|O_EXCL` and this steal rule, because `fcntl.flock`
-  does not exist on Windows (§12).
+- **An orphaned lock must not block every lane.** The operating system owns the lock:
+  `flock` on POSIX and a one-byte `msvcrt.locking` region on Windows. Closing the
+  descriptor or exiting releases ownership. Age, a process id and malformed file content
+  never authorize a takeover. The `.events.lock` file remains in place and is ignored by
+  git; deleting it would let two writers lock different files under the same name.
 - **A writer that rewrites a whole log takes the same lock as an append.** A rewrite reads
   the file, writes a temporary file and renames it. Without the lock, it silently deletes an
   append made in between, and the log still parses.
@@ -508,8 +535,10 @@ an unrecorded rank.
 - **Evidence does not change.** A decision, a found fact or a dispatch marker records one
   moment. So its id **is** derived from content, and a second recording of the same evidence
   changes nothing.
-- **No slugs in ids.** A slug adds hyphens that read as a prefix boundary, and that breaks a
-  commit-message gate that parses the prefix.
+- **No slugs in minted ids.** A minted id never carries a slug. An imported id keeps the slug
+  its source gave it, such as `dev-memory-audit-multi-target-2zx` from `br create --slug`, so a
+  commit that cites it still resolves. The commit-message gates resolve the longest hyphen
+  prefix that the ledger holds, so `dev-abc-related` still names `dev-abc`.
 
 ### 9.4.1 The declared collision budget, derived
 
@@ -607,8 +636,9 @@ Provenance is part of the schema, not a convention, for three reasons:
 - **LF and UTF-8, explicitly.** Mark the ledger in `.gitattributes`, not by `text=auto`.
   Write newlines and UTF-8 without platform defaults. Read tolerantly: a stray carriage
   return must not corrupt a fold.
-- **No POSIX-only locking.** The lock must work on Windows, so no bare `fcntl`. The
-  temporary write and atomic rename is portable and is the intended mechanism (§4.4).
+- **No POSIX-only locking.** The lock selects `fcntl.flock` on POSIX and
+  `msvcrt.locking` on Windows, both from the standard library. Snapshot publication uses
+  a temporary write and atomic rename (§4.4).
 - **No new runtime dependency.** A pure-Python store works on each platform that the host
   already tests (§4).
 - **Nothing machine-specific in any file that the kit writes or installs.** A tracked file

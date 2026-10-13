@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +27,7 @@ scheduler = _load("scheduler.py", "basicly_tracker_kit_scheduler")
 snapshot = _load("snapshot.py", "basicly_tracker_kit_snapshot")
 holders = _load("holders.py", "basicly_tracker_kit_holders")
 templates = _load("templates.py", "basicly_tracker_kit_templates")
+values = _load("values.py", "basicly_tracker_kit_values")
 events = differential.events
 
 
@@ -48,15 +49,21 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
 
 
 def query_records(
-    directory: Path | str, *, status: str | None = None, limit: int | None = None
+    directory: Path | str,
+    *,
+    status: str | Sequence[str] | None = None,
+    limit: int | None = None,
 ) -> list[dict[str, object]]:
 
+    wanted = None if status is None else {status} if isinstance(status, str) else set(status)
+    for each in sorted(wanted or ()):
+        values.require_status(each)
     records = folded(directory)
     views, _ = views_and_children(directory)
     matched = [
         {**snapshot.record_to_dict(records[key]), "dependencies": _edges_of(views, key)}
         for key in sorted(records)
-        if not records[key].tombstoned and (status is None or records[key].status == status)
+        if not records[key].tombstoned and (wanted is None or records[key].status in wanted)
     ]
     return matched if limit is None else matched[:limit]
 
@@ -129,7 +136,7 @@ def _open_blockers(view: Any, views: Mapping[str, Any], vocabulary: Any) -> list
         target = views.get(edge.target)
         if target is None:
             found.append({"record": edge.target, "status": "unknown"})
-        elif target.status not in vocabulary.closed_statuses:
+        elif target.status not in vocabulary.closed_statuses or target.resolution == "cancelled":
             found.append({"record": edge.target, "status": target.status or ""})
     return sorted(found, key=lambda row: row["record"])
 
@@ -139,16 +146,21 @@ def stats(directory: Path | str) -> dict[str, object]:
     folded = events.fold(events.read_events(ledger)[0]).records
     by_status: dict[str, int] = {}
     tombstoned = 0
+    by_resolution: dict[str, int] = {}
     for state in folded.values():
         if state.tombstoned:
             tombstoned += 1
             continue
         key = state.status or "unset"
         by_status[key] = by_status.get(key, 0) + 1
+        if state.status == "closed":
+            resolution = str(state.fields.get("close_resolution") or "historical")
+            by_resolution[resolution] = by_resolution.get(resolution, 0) + 1
     return {
         "records": len(folded) - tombstoned,
         "tombstoned": tombstoned,
         "by_status": dict(sorted(by_status.items())),
+        "by_resolution": dict(sorted(by_resolution.items())),
         "ready": ready(ledger)["count"],
         "blocked": blocked(ledger)["count"],
     }

@@ -184,7 +184,11 @@ def is_ready(
         if edge.type not in vocabulary.blocking_types:
             continue
         blocker = views.get(edge.target)
-        if blocker is None or blocker.status not in vocabulary.closed_statuses:
+        if (
+            blocker is None
+            or blocker.status not in vocabulary.closed_statuses
+            or blocker.resolution == "cancelled"
+        ):
             return False
     return True
 

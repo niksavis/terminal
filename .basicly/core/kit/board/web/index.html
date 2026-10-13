@@ -5,49 +5,44 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22%3E%3Cdefs%3E%3Cpath id=%22module%22 d=%22M25 25 H66 V36 H36 V54 H25 Z%22/%3E%3Cmask id=%22bHoles%22%3E%3Crect x=%2241%22 y=%2241%22 width=%2246%22 height=%2246%22 rx=%222%22 fill=%22%23fff%22/%3E%3Crect x=%2275%22 y=%2247%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2254%22 y=%2254%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2261%22 y=%2254%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2268%22 y=%2254%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2275%22 y=%2261%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2254%22 y=%2268%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2261%22 y=%2268%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2268%22 y=%2268%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3Crect x=%2275%22 y=%2275%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23000%22/%3E%3C/mask%3E%3C/defs%3E%3Cuse href=%22%23module%22 fill=%22%23818cf8%22/%3E%3Cuse href=%22%23module%22 fill=%22%236366f1%22 transform=%22rotate(90 64 64)%22/%3E%3Cuse href=%22%23module%22 fill=%22%23ea580c%22 transform=%22rotate(180 64 64)%22/%3E%3Cuse href=%22%23module%22 fill=%22%236366f1%22 transform=%22rotate(270 64 64)%22/%3E%3Crect x=%2241%22 y=%2241%22 width=%2246%22 height=%2246%22 rx=%222%22 fill=%22%234f46e5%22 mask=%22url(%23bHoles)%22/%3E%3Cg%3E%3Crect x=%2247%22 y=%2247%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fdba74%22/%3E%3Crect x=%2254%22 y=%2247%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fb923c%22/%3E%3Crect x=%2261%22 y=%2247%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f97316%22/%3E%3Crect x=%2268%22 y=%2247%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f59e0b%22/%3E%3Crect x=%2247%22 y=%2254%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fb923c%22/%3E%3Crect x=%2275%22 y=%2254%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fdba74%22/%3E%3Crect x=%2247%22 y=%2261%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f97316%22/%3E%3Crect x=%2254%22 y=%2261%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f59e0b%22/%3E%3Crect x=%2261%22 y=%2261%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23ea580c%22/%3E%3Crect x=%2268%22 y=%2261%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fdba74%22/%3E%3Crect x=%2247%22 y=%2268%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f59e0b%22/%3E%3Crect x=%2275%22 y=%2268%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f97316%22/%3E%3Crect x=%2247%22 y=%2275%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23ea580c%22/%3E%3Crect x=%2254%22 y=%2275%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fdba74%22/%3E%3Crect x=%2261%22 y=%2275%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23fb923c%22/%3E%3Crect x=%2268%22 y=%2275%22 width=%226%22 height=%226%22 rx=%221.5%22 fill=%22%23f97316%22/%3E%3C/g%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tracker</title>
+<link rel="stylesheet" href="tokens.css">
 <style>
-  :root {
-    color-scheme: light dark;
-    --bg: light-dark(#f7f7f8, #121214); --panel: light-dark(#ffffff, #1a1a1d); --raise: light-dark(#f0f0f3, #232327);
-    --line: light-dark(#dcdce2, #2e2e34); --text: light-dark(#18181b, #e7e7ea); --muted: light-dark(#63636e, #9a9aa5);
-    --accent: light-dark(#2563eb, #6b9bff); --warn: light-dark(#b45309, #f0a24a); --bad: light-dark(#c81e1e, #ff6b6b);
-    --held: light-dark(#5b5bd6, #a5a5ff); --ok: light-dark(#15803d, #4ade80);
-  }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
-  body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+  body { margin: 0; font: var(--text-base)/var(--leading-normal) var(--font-sans); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
   button, input, select, textarea { font: inherit; color: inherit; }
-  header { display: flex; align-items: center; gap: 1rem; padding: .6rem 1.2rem; border-bottom: 1px solid var(--line); background: var(--panel); }
-  header h1 { font-size: 1.05rem; margin: 0; }
-  .search-box { flex: 0 1 28rem; }
-  #search { width: 100%; padding: .4rem .7rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-  #counts { display: flex; gap: .9rem; color: var(--muted); font-size: .9rem; margin-left: auto; }
+  header { display: flex; align-items: center; gap: var(--space-5); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { font-size: var(--text-md); margin: 0; }
+  header .search-box { flex: 0 1 28rem; min-width: 0; }
+  header #new { flex: none; white-space: nowrap; }
+  #search { width: 100%; padding: var(--space-2) var(--space-4); border: 1px solid var(--edge); border-radius: var(--radius-3); background: var(--bg); }
+  #counts { display: flex; gap: var(--space-5); color: var(--muted); font-size: var(--text-base); margin-left: auto; }
   #counts b { color: var(--text); }
   main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(22rem, 44%) 1fr; }
   #list-pane { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
-  #detail-pane { overflow: auto; padding: 1.2rem 1.6rem 3rem; }
-  .toolbar { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: .6rem 1rem; border-bottom: 1px solid var(--line); }
-  .tab, .chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: .15rem .7rem; cursor: pointer; color: var(--muted); }
-  .tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: white; }
+  #detail-pane { min-width: 0; overflow-wrap: anywhere; overflow: auto; padding: var(--space-5) var(--space-6) var(--space-8); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--line); }
+  .tab, .chip { border: 1px solid var(--line); background: transparent; border-radius: var(--radius-pill); padding: var(--space-0) var(--space-4); cursor: pointer; color: var(--muted); }
+  .tab[aria-pressed="true"] { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); }
   .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-  .tab .n { opacity: .75; margin-left: .3rem; font-size: .85em; }
+  .tab .n { opacity: .75; margin-left: var(--space-1); font-size: var(--text-xs); }
   .grow { flex: 1; }
-  select.small { padding: .15rem .4rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
-  #rows { list-style: none; margin: 0; padding: .4rem .6rem; overflow: auto; flex: 1; }
-  #rows button { all: unset; display: grid; grid-template-columns: 1.1rem 1fr; gap: .2rem .5rem; align-items: baseline; width: 100%; box-sizing: border-box; padding: .5rem .6rem; border-radius: 8px; cursor: pointer; }
+  select.small { padding: var(--space-0) var(--space-2); border: 1px solid var(--edge); border-radius: var(--radius-2); background: var(--panel); }
+  #rows { list-style: none; margin: 0; padding: var(--space-2) var(--space-3); overflow: auto; flex: 1; }
+  #rows button { all: unset; display: grid; grid-template-columns: 1.1rem 1fr; gap: var(--space-1) var(--space-3); align-items: baseline; width: 100%; box-sizing: border-box; padding: var(--space-3) var(--space-3); border-radius: var(--radius-3); cursor: pointer; }
   #rows button:hover { background: var(--raise); }
   #rows button:focus-visible { outline: 2px solid var(--accent); }
   #rows button > .st { grid-row: 1; align-self: center; }
   #rows button > .title { grid-column: 2; }
   #rows button > .meta, #rows button > .links-line { grid-column: 1 / -1; }
-  #rows button[aria-current="true"] { background: var(--raise); box-shadow: inset 3px 0 0 var(--accent); }
-  .title { font-weight: 500; }
-  .meta { color: var(--muted); font-size: .82rem; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
-  .id { font-family: ui-monospace, monospace; font-size: .82rem; color: var(--muted); }
-  .pr0 { color: white; background: var(--bad); border-color: var(--bad) !important; } .pr1 { color: var(--warn); }
+  #rows button[aria-current="true"] { background: var(--raise); box-shadow: var(--shadow-current); }
+  .title { font-weight: var(--weight-medium); }
+  .meta { color: var(--muted); font-size: var(--text-sm); display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); }
+  .id { font-family: var(--font-mono); font-size: var(--text-sm); color: var(--muted); }
+  .pr0 { color: var(--on-accent); background: var(--bad-fill); border-color: var(--bad-fill) !important; } .pr1 { color: var(--warn); }
   .pr2 { color: var(--text); } .pr3, .pr4, .pr- { color: var(--muted); }
-  .pill { display: inline-block; font-size: .75rem; font-weight: 600; line-height: 1.5; padding: 0 .5rem; border-radius: 999px; border: 1px solid currentColor; }
-  .pill[class*="t-"] { color: var(--muted); border-color: var(--line); font-weight: 500; }
+  .pill { display: inline-block; font-size: var(--text-xs); font-weight: var(--weight-bold); line-height: var(--leading-normal); padding: 0 var(--space-3); border-radius: var(--radius-pill); border: 1px solid currentColor; }
+  .pill[class*="t-"] { color: var(--muted); border-color: var(--line); font-weight: var(--weight-medium); }
   .st { flex: none; width: .8rem; height: .8rem; border-radius: 50%; border: 2px solid var(--muted); box-sizing: border-box; display: inline-block; position: relative; }
   .st-in_progress { border-color: var(--accent); background: linear-gradient(90deg, var(--accent) 50%, transparent 50%); }
   .st-blocked { border-color: var(--bad); background: var(--bad); }
@@ -56,79 +51,85 @@
   .st-closed { border-color: var(--ok); background: var(--ok); }
   .s-in_progress { color: var(--accent); } .s-blocked { color: var(--bad); } .s-deferred, .s-open { color: var(--muted); } .s-closed { color: var(--ok); }
   .bad { color: var(--bad); } .held { color: var(--held); } .ok { color: var(--ok); }
-  .empty { color: var(--muted); padding: 1rem; }
-  .links-line { color: var(--muted); font-size: .8rem; display: flex; flex-wrap: wrap; gap: .1rem .7rem; }
+  .empty { color: var(--muted); padding: var(--space-5); }
+  .links-line { color: var(--muted); font-size: var(--text-sm); display: flex; flex-wrap: wrap; gap: var(--space-0) var(--space-4); }
   .links-line .open-blocker { color: var(--bad); }
-  .checklist { display: flex; flex-wrap: wrap; gap: .3rem .9rem; font-size: .85rem; color: var(--muted); }
-  .checklist .have, .dod li.have { color: var(--ok); }
-  .dod ul { list-style: none; padding-left: .2rem; }
+  .checklist { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-5); font-size: var(--text-base); color: var(--muted); }
+  .dod ul { list-style: none; padding-left: var(--space-1); }
+  .dod details:not([open]) > :not(summary) { display: none; }
   .needs { color: var(--muted); border-bottom: 1px dotted var(--muted); cursor: help; }
-  .notice ul { margin: .3rem 0 0; padding-left: 1.2rem; }
-  .notice li b { font-weight: 600; }
-  .label { font-size: .72rem; padding: 0 .4rem; border-radius: 4px; background: var(--raise); color: var(--muted); }
-  details.facts summary { cursor: pointer; color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
-  details.facts dl { display: grid; grid-template-columns: 11rem 1fr; gap: .2rem .8rem; margin: .5rem 0 0; font-size: .88rem; }
+  .notice ul { margin: var(--space-1) 0 0; padding-left: var(--space-5); }
+  .notice li b { font-weight: var(--weight-bold); }
+  .label { font-size: var(--text-xs); padding: 0 var(--space-2); border-radius: var(--radius-1); background: var(--raise); color: var(--muted); }
+  details.facts summary { cursor: pointer; color: var(--muted); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: var(--track-label); }
+  details.facts dl { display: grid; grid-template-columns: 11rem 1fr; gap: var(--space-1) var(--space-4); margin: var(--space-3) 0 0; font-size: var(--text-base); }
   details.facts dt { color: var(--muted); }
   details.facts dd { margin: 0; white-space: pre-wrap; word-break: break-word; }
-  .crumbs { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; color: var(--muted); }
-  .crumbs select { padding: .1rem .3rem; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
-  h2.story-title { font-size: 1.35rem; margin: .4rem 0 .6rem; line-height: 1.3; }
-  .bar { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); margin-bottom: 1rem; }
-  .btn { border: 1px solid var(--accent); background: var(--accent); color: white; border-radius: 7px; padding: .3rem .9rem; cursor: pointer; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; color: var(--muted); }
+  .crumbs select { padding: var(--space-0) var(--space-1); border: 1px solid var(--edge); border-radius: var(--radius-2); background: var(--panel); }
+  h2.story-title { font-size: var(--text-xl); margin: var(--space-2) 0 var(--space-3); line-height: var(--leading-snug); }
+  .bar { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-3); background: var(--panel); margin-bottom: var(--space-5); }
+  .btn { border: 1px solid var(--accent-fill); background: var(--accent-fill); color: var(--on-accent); border-radius: var(--radius-2); padding: var(--space-1) var(--space-5); cursor: pointer; }
   .btn.plain { background: transparent; color: var(--accent); }
-  .btn.danger { border-color: var(--bad); background: var(--bad); }
+  .btn.danger { border-color: var(--bad-fill); background: var(--bad-fill); }
   .btn:disabled { opacity: .45; cursor: default; }
-  .link { all: unset; color: var(--accent); cursor: pointer; font-size: .85rem; }
+  .link { all: unset; color: var(--accent); cursor: pointer; font-size: var(--text-base); }
   .link:hover { text-decoration: underline; }
   details.more { position: relative; }
-  details.more summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 7px; padding: .3rem .7rem; color: var(--muted); }
+  details.more summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: var(--radius-2); padding: var(--space-1) var(--space-4); color: var(--muted); }
   details.more summary::-webkit-details-marker { display: none; }
-  details.more .menu { position: absolute; right: 0; z-index: 5; margin-top: .3rem; min-width: 15rem; padding: .3rem; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 24px #0004; }
-  details.more .menu button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: .35rem .6rem; border-radius: 5px; cursor: pointer; }
+  details.more:not([open]) .menu { display: none; }
+  details.more .menu { position: absolute; right: 0; z-index: 5; margin-top: var(--space-1); min-width: 15rem; padding: var(--space-1); border: 1px solid var(--line); border-radius: var(--radius-3); background: var(--panel); box-shadow: var(--shadow-pop); }
+  details.more .menu button { all: unset; display: block; width: 100%; box-sizing: border-box; padding: var(--space-2) var(--space-3); border-radius: var(--radius-1); cursor: pointer; }
   details.more .menu button:hover { background: var(--raise); }
-  .bar select { padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--text); }
+  .bar select { padding: var(--space-2) var(--space-3); border: 1px solid var(--edge); border-radius: var(--radius-2); background: var(--panel); color: var(--text); }
   .picker { position: relative; flex: 1; min-width: 16rem; }
-  .picker ul { position: absolute; z-index: 6; left: 0; right: 0; margin: .2rem 0 0; padding: .3rem; list-style: none; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); box-shadow: 0 6px 24px #0004; max-height: 18rem; overflow: auto; }
-  .picker li { padding: .3rem .5rem; border-radius: 5px; cursor: pointer; display: flex; gap: .5rem; align-items: baseline; }
+  .picker ul { position: absolute; z-index: 6; left: 0; right: 0; margin: var(--space-1) 0 0; padding: var(--space-1); list-style: none; border: 1px solid var(--line); border-radius: var(--radius-3); background: var(--panel); box-shadow: var(--shadow-pop); max-height: 18rem; overflow: auto; }
+  .picker li { padding: var(--space-1) var(--space-3); border-radius: var(--radius-1); cursor: pointer; display: flex; gap: var(--space-3); align-items: baseline; }
   .picker li[aria-selected="true"], .picker li:hover { background: var(--raise); }
-  .verdict { font-size: .85rem; flex-basis: 100%; }
-  .notice { padding: .5rem .8rem; border-radius: 8px; margin-bottom: .8rem; border: 1px solid var(--line); }
+  .verdict { font-size: var(--text-base); flex-basis: 100%; }
+  .notice { padding: var(--space-3) var(--space-4); border-radius: var(--radius-3); margin-bottom: var(--space-4); border: 1px solid var(--line); }
   .notice.note { border-color: var(--line); color: var(--text); } .notice.bad { border-color: var(--bad); }
-  section.block { margin: 1.1rem 0; }
-  section.block > h3 { display: flex; align-items: baseline; gap: .8rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 .4rem; }
-  .md p { margin: .3rem 0; } .md h4 { margin: .7rem 0 .2rem; font-size: .95rem; }
-  .md ul { margin: .2rem 0; padding-left: 1.2rem; } .md li.check { list-style: none; margin-left: -1.2rem; }
-  .md code { font-family: ui-monospace, monospace; font-size: .88em; background: var(--raise); padding: .05rem .25rem; border-radius: 4px; }
-  .md table { border-collapse: collapse; margin: .4rem 0; font-size: .9em; }
-  .md th, .md td { border: 1px solid var(--line); padding: .25rem .5rem; text-align: left; vertical-align: top; }
+  section.block { margin: var(--space-5) 0; }
+  section.block > h3 { display: flex; align-items: baseline; gap: var(--space-4); font-size: var(--text-sm); text-transform: uppercase; letter-spacing: var(--track-label); color: var(--muted); margin: 0 0 var(--space-2); }
+  .md { overflow-wrap: anywhere; }
+  .md p { margin: var(--space-1) 0; } .md h4 { margin: var(--space-4) 0 var(--space-1); font-size: var(--text-md); }
+  .md ul { margin: var(--space-1) 0; padding-left: var(--space-5); } .md li.check { list-style: none; margin-left: -1.2rem; }
+  .md code { font-family: var(--font-mono); font-size: var(--text-sm); background: var(--raise); padding: var(--space-0) var(--space-1); border-radius: var(--radius-1); }
+  .md table { border-collapse: collapse; margin: var(--space-2) 0; font-size: var(--text-sm); }
+  .md th, .md td { border: 1px solid var(--line); padding: var(--space-1) var(--space-3); text-align: left; vertical-align: top; }
   .md th { background: var(--raise); }
-  .md pre { background: var(--raise); padding: .6rem; border-radius: 6px; overflow: auto; }
+  .md pre { background: var(--raise); padding: var(--space-3); border-radius: var(--radius-2); overflow: auto; }
   .none { color: var(--muted); font-style: italic; }
-  textarea, input.field { width: 100%; padding: .45rem .6rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); }
-  textarea { min-height: 7rem; resize: vertical; font-family: ui-monospace, monospace; font-size: .88rem; line-height: 1.5; overflow: hidden; }
-  textarea.tall { min-height: 16rem; }
-  .form-foot { position: sticky; bottom: -3rem; display: flex; gap: .6rem; align-items: center; padding: .7rem 0 3rem; background: var(--bg); border-top: 1px solid var(--line); margin-top: .6rem; }
-  .row-actions { display: flex; gap: .5rem; margin-top: .4rem; align-items: center; }
+  textarea, input.field { width: 100%; padding: var(--space-3) var(--space-3); border: 1px solid var(--edge); border-radius: var(--radius-2); background: var(--panel); }
+  textarea { min-height: 7rem; resize: vertical; font-family: var(--font-mono); font-size: var(--text-base); line-height: var(--leading-normal); overflow: auto; }
+  textarea.tall { min-height: 10rem; }
+  .form-foot { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: var(--space-4) 0; background: var(--bg); border-top: 1px solid var(--line); margin-top: var(--space-3); }
+  .row-actions { display: flex; gap: var(--space-3); margin-top: var(--space-2); align-items: center; }
   .links { list-style: none; margin: 0; padding: 0; }
-  .links li { display: flex; gap: .6rem; align-items: baseline; padding: .15rem 0; }
-  .links .kind { width: 6.5rem; flex: none; color: var(--muted); font-size: .82rem; }
-  .comments { list-style: none; margin: 0 0 .6rem; padding: 0; }
-  .comments li { border-left: 3px solid var(--line); padding: .1rem 0 .1rem .7rem; margin: .6rem 0; }
-  .comments .who { color: var(--muted); font-size: .8rem; }
+  .links li { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; padding: var(--space-0) 0; }
+  .links .kind { width: 6.5rem; flex: none; color: var(--muted); font-size: var(--text-sm); }
+  .comments { list-style: none; margin: 0 0 var(--space-3); padding: 0; }
+  .comments li { border-left: 3px solid var(--line); padding: var(--space-0) 0 var(--space-0) var(--space-4); margin: var(--space-3) 0; }
+  .comments .who { color: var(--muted); font-size: var(--text-sm); }
   .comments .text { white-space: pre-wrap; }
-  form.grid { display: grid; gap: .6rem; }
-  form.grid label { display: grid; gap: .2rem; color: var(--muted); font-size: .85rem; }
-  form.grid select { min-width: 10rem; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--text); font-size: .9rem; }
-  .inline { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
-  #toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 34rem; padding: .6rem .9rem; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 6px 24px #0004; display: none; }
-  #outage { margin: .6rem 1.2rem 0; }
+  form.grid { display: grid; gap: var(--space-3); }
+  form.grid details:not([open]) > :not(summary) { display: none; }
+  form.grid label { display: grid; gap: var(--space-1); color: var(--muted); font-size: var(--text-base); }
+  form.grid select { min-width: 10rem; padding: var(--space-2) var(--space-3); border: 1px solid var(--edge); border-radius: var(--radius-2); background: var(--panel); color: var(--text); font-size: var(--text-base); }
+  .inline { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; }
+  #toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 34rem; padding: var(--space-3) var(--space-5); border-radius: var(--radius-3); background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow-pop); display: none; }
+  #outage { margin: var(--space-3) var(--space-5) 0; }
+  #stale { position: fixed; top: 0; left: 0; right: 0; z-index: 10; padding: var(--space-3) var(--space-5); background: var(--panel); border-bottom: 2px solid var(--bad); color: var(--bad); }
+  .ready-line { padding: var(--space-2) var(--space-4); } .dod.folded summary { cursor: pointer; color: var(--muted); }
+  .handoff { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; } .handoff details { flex: 1 1 100%; }
   #toast.show { display: block; } #toast.bad { border-color: var(--bad); color: var(--bad); }
   .back { display: none; }
   @media (max-width: 900px) {
     main { grid-template-columns: 1fr; }
     body.reading #list-pane { display: none; }
     body:not(.reading) #detail-pane { display: none; }
-    .back { display: inline-block; margin-bottom: .6rem; }
+    .back { display: inline-block; margin-bottom: var(--space-3); }
     #counts { display: none; }
   }
 </style>
@@ -157,18 +158,18 @@
   </div>
   <div id="detail-pane" aria-live="polite"></div>
 </main>
+<div id="stale" role="alert" hidden></div>
 <div id="toast" role="status"></div>
 <script>
 "use strict";
 const API = "/api/v1";
 const REFINE = "refine";
-const TYPES = ["task", "feature", "bug", "chore", "epic"];
 const PRIORITIES = [["0", "critical"], ["1", "high"], ["2", "medium"], ["3", "low"], ["4", "backlog"]];
 const STATUSES = ["open", "in_progress", "blocked", "deferred"];
 const EDGE_NAMES = { blocks: "waits on", "parent-child": "is a child of", related: "is related to", "discovered-from": "was discovered from" };
 const TABS = [["ready", "Ready"], ["working", "In progress"], ["refine", "Refine"], ["blocked", "Blocked"], ["mine", "Mine"], ["active", "All open"], ["closed", "Closed"]];
 const LIST_CAP = 400;
-const state = { dependents: new Map(), edgeTypes: ["blocks"], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
+const state = { dependents: new Map(), edgeTypes: ["blocks"], recordTypes: [], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
 
 function el(tag, attrs, ...children) {
   const node = document.createElement(tag);
@@ -190,9 +191,17 @@ async function call(method, path, body) {
   }
   const response = await fetch(API + path, init);
   const report = await response.json();
+  kitBanner(document.getElementById("stale"), response.status, report.refused);
   if (report.found === false) throw new Error("no story " + (report.record || "") + " in this ledger");
   if (!response.ok || typeof report.refused === "string") throw new Error(report.refused || JSON.stringify(report.blocking || report));
   return report;
+}
+
+function kitBanner(node, status, refused) {
+  const stale = status === 503 && typeof refused === "string";
+  node.hidden = !stale;
+  node.textContent = stale ? refused : "";
+  return stale;
 }
 
 function toast(text, bad) {
@@ -236,16 +245,37 @@ function sectionOf(name) {
 
 function needs(names) {
   const parts = (names || []).map(sectionOf);
-  return el("span", { class: "needs", title: parts.map(([bare, , what]) => bare + ": " + what).join("\n") }, "DoR: " + parts.map(([, short]) => short).join(", "));
+  return el("span", { class: "needs", title: parts.map(([bare, , what]) => bare + ": " + what).join("\n") }, "needs " + stillNeeds(names));
 }
 
 function doneBlock(shown) {
   const f = shown.fields;
-  const item = (ok, name, what) => el("li", { class: ok ? "have" : "" }, (ok ? "✓ " : "○ ") , el("b", {}, name), ": " + what);
-  return el("div", { class: "notice note dod" }, "Definition of Done: closing needs a reason as evidence, and the engine checks:",
+  const process = shown.process;
+  if (process) {
+    const review = process.review || {};
+    const confirmation = process.confirmation || {};
+    const reviewed = Boolean(process.revision && review.revision === process.revision && !(process.owed || []).length);
+    const confirmed = reviewed && confirmation.revision === process.revision;
+    const details = el("details", {}, el("summary", {}, "Review and confirmation · INVEST review: " + (reviewed ? "recorded for this card" : "required") + ". Confirmation: " + (confirmed ? "recorded for this card" : "required") + "."));
+    if (review.revision && !reviewed) details.append(el("p", {}, "The saved review does not cover the current card. Refine it with an agent."));
+    if (review.invest) details.append(el("ul", {}, Object.entries(review.invest).map(([name, reason]) => el("li", {}, el("b", {}, name), ": " + reason))));
+    if (review.conversation && review.conversation.length) details.append(el("p", {}, "Conversation references: " + review.conversation.join(", ")));
+    const results = new Map((confirmation.checks || []).map((check) => [check.criterion, check]));
+    details.append(el("ul", {}, (review.checks || []).map((check) => {
+      const result = results.get(check.criterion);
+      return el("li", {}, el("b", {}, check.criterion),
+        el("p", {}, "Expected: " + check.expected),
+        el("p", {}, "Command: " + JSON.stringify(check.command)),
+        result ? el("p", {}, "Recorded result: " + result.result + " (exit " + result.exit_code + ")" + (confirmed ? "" : "; current confirmation required")) : el("p", {}, "No observed result recorded."));
+    })));
+    if (reviewed && confirmed) details.append(el("p", {}, "Review the recorded evidence before closing as completed."));
+    return el("div", { class: "dod folded" }, details);
+  }
+  const item = (present, name, what) => el("li", {}, el("b", {}, name), ": " + (present ? "available" : "missing") + ". " + what);
+  return el("div", { class: "notice note dod" }, "Confirmation needs review and recorded evidence; available fields do not prove completion:",
     el("ul", {}, [
-      item(Boolean(String(f.acceptance_criteria || "").trim()), "acceptance criteria", "verify checks each one"),
-      item(Boolean(String(f.requirements || "").trim()), "requirements", "validation judges the result against them, and refuses without them"),
+      item(Boolean(String(f.acceptance_criteria || "").trim()), "acceptance criteria", "check each one against the result"),
+      item(Boolean(String(f.requirements || "").trim()), "requirements", "check the result against its intended use"),
     ]));
 }
 
@@ -283,6 +313,7 @@ async function load() {
   state.version = version;
   state.me = index.holder || "";
   state.edgeTypes = index.edge_types || state.edgeTypes;
+  state.recordTypes = index.record_types || state.recordTypes;
   state.records = new Map(lists.flatMap((list) => list.records).map((one) => [one.record, one]));
   state.dependents = new Map();
   for (const one of state.records.values()) {
@@ -397,6 +428,12 @@ async function closedRecords() {
 }
 
 async function pick(key) {
+  const hash = routeHash(key, state.current && state.current.record);
+  if (location.hash !== hash) location.hash = hash;
+  else await showView(key);
+}
+
+async function showView(key) {
   state.tab = key;
   if (key === "closed") await attempt(closedRecords);
   drawList();
@@ -407,7 +444,7 @@ function drawTabs() {
   document.getElementById("tabs").replaceChildren(...TABS.map(([key, name]) => el("button", {
     class: "tab", type: "button", "aria-pressed": String(state.tab === key), onclick: () => pick(key),
   }, name, sizes[key] === null ? null : el("span", { class: "n" }, String(sizes[key])))));
-  document.getElementById("types").replaceChildren(...[["", "all types"], ...TYPES.map((t) => [t, t])].map(([key, name]) => el("button", {
+  document.getElementById("types").replaceChildren(...[["", "all types"], ...state.recordTypes.map((t) => [t, t])].map(([key, name]) => el("button", {
     class: "chip", type: "button", "aria-pressed": String(state.type === key), onclick: () => { state.type = key; drawList(); },
   }, name)));
 }
@@ -516,7 +553,8 @@ function markdown(text) {
 }
 
 function go(record) {
-  if (location.hash !== "#/record/" + record) location.hash = "#/record/" + record;
+  const hash = routeHash(state.tab, record);
+  if (location.hash !== hash) location.hash = hash;
   else open(record);
 }
 
@@ -619,59 +657,69 @@ function labelInput(value) {
 const templates = new Map();
 
 async function templateFor(type) {
-  if (!templates.has(type)) templates.set(type, call("GET", "/scaffold?type=" + encodeURIComponent(type)).catch(() => ({ required: [] })));
+  if (!templates.has(type)) templates.set(type, call("GET", "/scaffold?type=" + encodeURIComponent(type)));
   return templates.get(type);
 }
 
-function has(form, name) {
-  const bare = name.replace(/^## /, "");
-  if (bare === "Trigger") return form.description.value.trim().length > 0;
-  if (bare === "Acceptance Criteria") return form.acceptance.value.trim().length > 0;
-  if (bare === "Requirements") return form.requirements.value.trim().length > 0;
-  return form.description.value.includes("## " + bare);
+async function drawChecklist(box, type) {
+  try {
+    const { required } = await templateFor(type || "task");
+    box.replaceChildren(el("span", {}, "Before work starts, a " + (type || "task") + " needs:"), ...(required || []).map((name) => {
+      const [bare, short, what] = sectionOf(name);
+      return el("span", { title: bare + ": " + what }, short);
+    }), el("span", {}, "Capture now; saved-card readiness comes from the tracker."));
+  } catch (error) {
+    box.textContent = "Readiness template unavailable: " + error.message + ". You can still capture an idea.";
+  }
 }
 
-async function drawChecklist(form, box, type) {
-  const { required } = await templateFor(type || "task");
-  box.replaceChildren(el("span", { title: "Definition of Ready: what a story needs before work can start" }, "Definition of Ready for a " + (type || "task") + ":"), ...(required || []).map((name) => {
-    const [bare, short, what] = sectionOf(name);
-    const ok = has(form, name);
-    return el("span", { class: ok ? "have" : "", title: bare + ": " + what }, (ok ? "✓ " : "○ ") + short);
-  }), el("span", {}, "An agent fills in what is missing."));
-}
-
-function storyForm(values, { status, submit, cancel, note }) {
+function storyForm(values, { status, submit, cancel, note, draft, revision }) {
+  try {
+    const saved = draft && localStorage.getItem("tracker-draft:" + draft);
+    if (saved) {
+      const retained = JSON.parse(saved);
+      values = { ...values, ...retained.values };
+      revision = retained.revision ?? revision;
+    }
+  } catch (error) { toast("The browser could not restore this draft: " + error.message, true); }
   const checklist = el("div", { class: "checklist", "aria-live": "polite" });
-  const type = select(TYPES.map((t) => [t, t]), values.issue_type, () => drawChecklist(form, checklist, type.value), "no type");
+  const type = select(state.recordTypes.map((t) => [t, t]), values.issue_type, () => drawChecklist(checklist, type.value), "no type");
   const priority = select(PRIORITIES.map(([key, name]) => [key, "P" + key + " " + name]), values.priority, () => {}, "no priority");
-  const state_ = status ? select(STATUSES.map((one) => [one, one.replace("_", " ")]), status, () => {}) : null;
+  const state_ = status ? select(STATUSES.map((one) => [one, one.replace("_", " ")]), values.status || status, () => {}) : null;
   const area = (name, text, placeholder, tall) => grow(el("textarea", { name, placeholder, class: tall ? "tall" : null }, String(text || "")));
   const form = el("form", { class: "grid" },
     el("label", {}, "Title", el("input", { class: "field", name: "title", required: true, value: String(values.title || "") })),
     el("div", { class: "inline" }, el("label", {}, "Type", type), el("label", {}, "Priority", priority), state_ ? el("label", {}, "Status", state_) : null),
     el("label", {}, "Labels", labelInput(values.labels)),
-    el("label", {}, "Story", area("description", values.description, "When <situation>, I want to <motivation>, so I can <outcome>.", true)),
+    el("label", {}, "Idea / context", area("description", values.description, "Capture what you know. An agent can help shape the story later.", true)),
+    el("details", { open: Boolean(status) }, el("summary", {}, "Refinement details · optional for capture"),
     el("label", {}, "Acceptance criteria", area("acceptance", values.acceptance, "- [ ] a check a person can run")),
     el("label", {}, "Requirements", area("requirements", values.requirements, "- what the solution must hold to")),
-    checklist,
+    checklist),
     el("div", { class: "form-foot" }, el("button", { class: "btn", type: "submit" }, submit),
       el("button", { class: "btn plain", type: "button", onclick: cancel }, "Cancel"),
-      el("span", { class: "meta" }, note + "  ·  Ctrl+Enter saves")));
+      el("span", { class: "meta", role: "status", "aria-live": "polite" }, note + "  ·  Ctrl+Enter saves")));
   form.addEventListener("keydown", (event) => { if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) form.requestSubmit(); });
-  form.addEventListener("input", () => drawChecklist(form, checklist, type.value));
-  drawChecklist(form, checklist, type.value);
+  form.addEventListener("input", () => drawChecklist(checklist, type.value));
+  drawChecklist(checklist, type.value);
   form.read = () => ({
     title: form.title.value, description: form.description.value, acceptance: form.acceptance.value, requirements: form.requirements.value,
     issue_type: type.value, priority: priority.value, status: state_ ? state_.value : undefined,
     labels: labelsOf(form.labels.value),
   });
+  if (draft) form.addEventListener("input", () => {
+    try { localStorage.setItem("tracker-draft:" + draft, JSON.stringify({ values: form.read(), revision: form.revision })); }
+    catch (error) { toast("The browser could not retain this draft: " + error.message, true); }
+  });
+  form.draft = draft;
+  form.revision = revision;
   return form;
 }
 
 function edit(shown) {
   const f = shown.fields;
   const before = { title: f.title, description: f.description, acceptance: f.acceptance_criteria, requirements: f.requirements, issue_type: f.issue_type, priority: f.priority, labels: labelsOf(f.labels) };
-  const form = storyForm(before, { status: shown.status, submit: "Save", cancel: () => open(shown.record), note: "a change to the text asks for an agent refinement pass" });
+  const form = storyForm(before, { status: shown.status, submit: "Save", cancel: () => open(shown.record), draft: shown.record, revision: shown.max_seq, note: "Draft retained in this browser. Text changes ask for agent review." });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     const after = form.read();
@@ -689,7 +737,7 @@ function edit(shown) {
     if (added.length) body.add_labels = added;
     if (removed.length) body.remove_labels = removed;
     if (!Object.keys(body).length) return open(shown.record);
-    body.if_seq = shown.max_seq;
+    body.if_seq = form.revision;
     saveEdit(form, shown.record, body, text ? "saved; an agent refinement pass owes it before it is ready" : "saved");
   });
   document.getElementById("detail-pane").replaceChildren(
@@ -698,17 +746,22 @@ function edit(shown) {
 }
 
 async function saveEdit(form, record, body, done) {
+  if (form.dataset.pending) return;
+  pendingForm(form, "Saving…");
   try {
     await call("PATCH", "/records/" + encodeURIComponent(record), body);
-    await load();
-    await open(record);
-    toast(done);
   } catch (error) {
+    pendingForm(form, "Save", false);
+    form.querySelector("[role=status]").textContent = "Save failed: " + error.message + ". Your draft is retained; retry or cancel.";
     form.querySelector(".notice")?.remove();
-    form.prepend(el("div", { class: "notice bad" }, error.message + ". Your text stays in the form, so copy what you need. ",
-      el("button", { class: "link", type: "button", onclick: () => open(record) }, "Discard my edit and reload")));
-    document.getElementById("detail-pane").scrollTop = 0;
+    form.prepend(el("div", { class: "notice bad" }, "To start again from the current saved card, ",
+      el("button", { class: "link", type: "button", onclick: () => { clearDraft(form.draft); open(record); } }, "Discard my retained draft and reload")));
+    return;
   }
+  clearDraft(form.draft);
+  await open(record);
+  toast(done);
+  load().catch((error) => toast("Saved. The list could not refresh: " + error.message, true));
 }
 
 function assignForm(bar, shown, cancel) {
@@ -746,8 +799,23 @@ function actionsBar(shown, waiting) {
   const item = (label, handler) => menu.append(el("button", { type: "button", onclick: () => { more.open = false; handler(); } }, label));
   const cancel = () => el("button", { class: "btn plain", type: "button", onclick: () => open(shown.record) }, "Cancel");
   const closeForm = () => {
-    const reason = el("input", { class: "field", placeholder: "Why is it done? This is the permanent record of what shipped." });
-    bar.replaceChildren(reason, el("button", { class: "btn", type: "button", onclick: () => act("close", { reason: reason.value }, "closed") }, "Close story"), cancel());
+    const resolution = el("select", { class: "field", "aria-label": "Closure outcome" },
+      el("option", { value: "completed" }, "Completed: work delivered"),
+      el("option", { value: "cancelled" }, "Cancelled: work no longer needed"));
+    const reason = el("input", { class: "field", "aria-label": "Closure reason" });
+    const explanation = el("span", { class: "meta" });
+    const submit = el("button", { class: "btn", type: "button", disabled: true, onclick: () => act("close", { reason: reason.value, resolution: resolution.value }, "closed as " + resolution.value) }, "Close as completed");
+    const judge = () => {
+      const cancelled = resolution.value === "cancelled";
+      reason.placeholder = cancelled ? "Why is this work no longer needed?" : "What shipped and what evidence confirms it?";
+      explanation.textContent = cancelled ? "Cancellation preserves the idea and its history. It does not satisfy dependencies." : "Completion requires the current INVEST review and recorded results for every planned check.";
+      submit.textContent = cancelled ? "Cancel work" : "Close as completed";
+      submit.disabled = !reason.value.trim();
+    };
+    resolution.addEventListener("change", judge);
+    reason.addEventListener("input", judge);
+    judge();
+    bar.replaceChildren(resolution, reason, explanation, submit, cancel());
     reason.focus();
   };
   if (!held) {
@@ -861,26 +929,50 @@ function factsBlock(shown) {
 function commentsBlock(shown) {
   const log = shown.comment_log || shown.comments.map((text) => ({ text }));
   const text = el("textarea", { placeholder: "Add a comment", style: "min-height: 5rem" });
-  return el("section", { class: "block" }, el("h3", {}, "Comments", el("span", {}, String(log.length))),
+  return el("section", { class: "block" }, el("h3", {}, "Conversation", el("span", {}, String(log.length))),
     el("ul", { class: "comments" }, log.map((one) => el("li", {},
       one.writer ? el("div", { class: "who" }, writer(one.writer) + (one.at ? " · " + one.at.slice(0, 16).replace("T", " ") : "")) : null,
       el("div", { class: "text" }, one.text)))),
     text, el("div", { class: "row-actions" }, el("button", { class: "btn plain", type: "button", onclick: () => act("comments", { text: text.value }, "comment added") }, "Comment")));
 }
 
+function refinementBlock(shown, dor) {
+  const missing = (dor.blocking || []).map((name) => sectionOf(name)[0]);
+  const prompt = "Refine tracker record " + shown.record + ". Read its card and conversation using the installed tracker CLI. Preserve the person's raw context. Ask about missing facts instead of inventing them. Check INVEST: independent, negotiable, valuable, estimable, small, testable. Shape its trigger, requirements and acceptance criteria into the typed fields. "
+    + (missing.length ? "The tracker currently requires: " + missing.join(", ") + ". " : "")
+    + "Keep Card, Conversation and Confirmation linked: discuss decisions on the record, and make each acceptance criterion a check. Re-read authoritative readiness after updating; clear the refine label only after agent review.";
+  const text = grow(el("textarea", { readonly: true, "aria-label": "Agent refinement handoff" }, prompt));
+  const copy = el("button", { class: "btn plain", type: "button", onclick: async () => {
+    text.select();
+    try { await navigator.clipboard.writeText(prompt); toast("Agent handoff copied"); }
+    catch (error) { toast("Select and copy the handoff text: " + error.message, true); }
+  } }, "Copy agent handoff");
+  return el("section", { class: "block handoff" }, copy,
+    el("details", {}, el("summary", {}, "Show handoff text"), text));
+}
+
 function notices(shown, dor) {
   const found = [];
   const labels = String(shown.fields.labels || "").split(",").map((one) => one.trim());
   if (shown.conflicts && shown.conflicts.length) found.push(el("div", { class: "notice bad" }, "Two branches set different values: " + shown.conflicts.map((c) => c.key + " = " + c.values.join(" / ")).join("; ") + ". Run the kit's resolve command to keep the current value."));
-  if (labels.includes(REFINE)) found.push(el("div", { class: "notice note" }, "Needs agent review. A person wrote or changed this story, so an agent reviews it and fills in what is missing before work can start. Ask an agent to refine " + shown.record + "."));
-  if (shown.status !== "closed" && dor.blocking && dor.blocking.length) found.push(el("div", { class: "notice note" }, "Definition of Ready not met. Edit the story and add:", needsList(dor.blocking)));
-  if (shown.status !== "closed") found.push(doneBlock(shown));
+  const needs = shown.status !== "closed" ? stillNeeds(dor.blocking) : "";
+  if (labels.includes(REFINE) || needs) found.push(el("div", { class: "notice note ready-line" }, "Not ready: needs " + (needs || "an agent review") + ". Copy the agent handoff below the story to refine it."));
+  if (shown.status !== "closed" || (shown.process && shown.process.review && shown.process.review.revision)) found.push(doneBlock(shown));
   return found;
+}
+
+const REVIEW_DEBT = /^## (INVEST Review|Conversation$|Confirmation Plan$)/;
+
+function stillNeeds(blocking) {
+  const names = blocking || [];
+  const gaps = names.filter((name) => !REVIEW_DEBT.test(name)).map((name) => name.replace(/^## /, ""));
+  const parts = [...gaps, ...(names.some((name) => REVIEW_DEBT.test(name)) ? ["an agent review"] : [])];
+  return parts.length > 1 ? parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1] : parts.join("");
 }
 
 function waitingReason(shown, dor) {
   if (labelsOf(shown.fields.labels).includes(REFINE)) return "an agent reviews this story before work can start";
-  if (dor && !dor.ready && shown.fields.shaped_under) return "the story is not ready: it still needs " + (dor.blocking || []).map((name) => sectionOf(name)[1]).join(", ");
+  if (dor && !dor.ready) return "the story is not ready: it still needs " + stillNeeds(dor.blocking);
   return "";
 }
 
@@ -895,7 +987,7 @@ function crumbs(shown) {
     el("span", { class: "inline" }, statusMark(shown.status), el("span", { class: "s-" + shown.status }, STATUS_NAMES[shown.status] || shown.status)),
     priorityPill(f.priority, true),
     f.issue_type ? typePill(f.issue_type) : el("span", { class: "pill t-task" }, "no type"),
-    shown.dates && shown.dates.updated ? el("span", { title: shown.dates.updated }, "updated " + age(shown.dates.updated) + " ago") : null,
+    shown.dates && shown.dates.updated ? el("span", { title: shown.dates.updated }, "updated " + age(shown.dates.updated) + (age(shown.dates.updated) === "now" ? "" : " ago")) : null,
     ...labels.map((label) => el("span", { class: "label" }, label)),
     el("span", { class: "id" }, shown.record));
 }
@@ -907,22 +999,26 @@ async function open(record, quiet) {
   const path = "/records/" + encodeURIComponent(record);
   let shown, dor;
   try {
-    [shown, dor] = await Promise.all([call("GET", path), fetch(API + path + "/dor").then((r) => r.json())]);
+    [shown, dor] = await Promise.all([call("GET", path), call("GET", path + "/dor")]);
   } catch (error) {
     pane.replaceChildren(el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"), el("p", { class: "bad" }, error.message));
     return;
   }
   state.current = shown;
   const f = shown.fields;
+  const cards = notices(shown, dor);
+  const reviewed = (card) => Boolean(card.classList && card.classList.contains("dod"));
   pane.replaceChildren(
     el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"),
     crumbs(shown),
     titleBlock(shown),
-    shown.status === "closed" ? el("div", { class: "notice" }, "Closed: " + String(f.close_reason || "")) : actionsBar(shown, waitingReason(shown, dor)),
-    ...notices(shown, dor),
-    section("Story", f.description, "no story yet: say when it happens, what the person wants, and what for"),
-    section("Acceptance criteria", f.acceptance_criteria, "no acceptance criteria yet"),
+    shown.status === "closed" ? el("div", { class: "notice" }, (f.close_resolution === "cancelled" ? "Cancelled: " : "Closed: ") + String(f.close_reason || "")) : actionsBar(shown, waitingReason(shown, dor)),
+    ...cards.filter((card) => !reviewed(card)),
+    section("Card · story / context", f.description, "no story yet: say when it happens, what the person wants, and what for"),
+    section("Confirmation · acceptance criteria", f.acceptance_criteria, "no acceptance criteria yet"),
     section("Requirements", f.requirements, "no requirements yet"),
+    ...(shown.status !== "closed" && (!dor.ready || labelsOf(f.labels).includes(REFINE)) ? [refinementBlock(shown, dor)] : []),
+    ...cards.filter(reviewed),
     linksBlock(shown),
     commentsBlock(shown),
     factsBlock(shown));
@@ -931,35 +1027,81 @@ async function open(record, quiet) {
 }
 
 function back() {
+  const hash = routeHash(state.tab);
+  if (location.hash !== hash) location.hash = hash;
+  else closeDetail();
+}
+
+function closeDetail() {
   document.body.classList.remove("reading");
-  history.replaceState(null, "", location.pathname + location.search);
+  state.current = null;
+  document.getElementById("detail-pane").replaceChildren(el("div", { class: "empty" }, "Pick a story from the list, or press New story."));
+  drawList();
+}
+
+function clearDraft(draft) {
+  try { localStorage.removeItem("tracker-draft:" + draft); }
+  catch (error) { toast("Saved, but the browser could not clear the retained draft: " + error.message, true); }
+}
+
+function pendingForm(form, text, pending = true) {
+  form.dataset.pending = pending ? "true" : "";
+  form.setAttribute("aria-busy", String(pending));
+  for (const control of form.querySelectorAll("input, textarea, select, button")) control.disabled = pending;
+  form.querySelector('[type="submit"]').textContent = text;
+  if (pending) toast(text + " Your draft is retained.");
+  form.querySelector("[role=status]").textContent = pending ? text + " Your draft is retained." : "Your draft is retained; retry or cancel.";
 }
 
 function blank() {
+  const previous = state.current;
   document.body.classList.add("reading");
   state.current = null;
   drawList();
-  const form = storyForm({ issue_type: "task", priority: "2" }, { submit: "Create", cancel: back, note: "a new story waits for an agent refinement pass before it is ready" });
-  form.addEventListener("submit", (event) => {
+  const cancel = () => previous ? open(previous.record) : back();
+  const form = storyForm({ issue_type: "task", priority: "2" }, { submit: "Create", cancel, draft: "new", note: "Only a title is required. Draft retained in this browser, including after Cancel." });
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (form.dataset.pending) return;
     const made = form.read();
     const labels = [...new Set([...made.labels, REFINE])].join(",");
     const body = { title: made.title, description: made.description, fields: { issue_type: made.issue_type || "task", priority: Number(made.priority || 2), labels } };
     if (made.acceptance.trim()) body.acceptance = made.acceptance;
     if (made.requirements.trim()) body.requirements = made.requirements;
-    attempt(async () => {
-      const report = await call("POST", "/records", body);
-      await load();
-      go(report.record);
-    }, "created");
+    pendingForm(form, "Creating…");
+    let report;
+    try {
+      report = await call("POST", "/records", body);
+    } catch (error) {
+      pendingForm(form, "Create", false);
+      form.querySelector("[role=status]").textContent = "Create failed: " + error.message + ". Your draft is retained; retry or cancel.";
+      return;
+    }
+    clearDraft("new");
+    go(report.record);
+    toast("Created. Opening the card…");
+    load().catch((error) => toast("Created " + report.record + ". The list could not refresh: " + error.message, true));
   });
-  document.getElementById("detail-pane").replaceChildren(el("button", { class: "link back", type: "button", onclick: back }, "← back to the list"), el("h2", { class: "story-title" }, "New story"), form);
+  document.getElementById("detail-pane").replaceChildren(el("button", { class: "link back", type: "button", onclick: cancel }, "← back · draft retained"), el("h2", { class: "story-title" }, "New story"), form);
   form.title.focus();
 }
 
-function routed() {
-  const match = location.hash.match(/^#\/record\/(.+)$/);
-  if (match) open(decodeURIComponent(match[1]));
+function parseRoute(hash) {
+  const match = String(hash || "").match(/^#\/(?:([a-z_]+)\/?)?(?:record\/(.+))?$/);
+  if (!match) return { view: null, record: null };
+  const view = TABS.some(([key]) => key === match[1]) ? match[1] : null;
+  return { view, record: match[2] ? decodeURIComponent(match[2]) : null };
+}
+
+function routeHash(view, record) {
+  return "#/" + view + (record ? "/record/" + encodeURIComponent(record) : "");
+}
+
+async function routed() {
+  const route = parseRoute(location.hash);
+  if (route.view && route.view !== state.tab) await showView(route.view);
+  if (route.record && (!state.current || state.current.record !== route.record)) await open(route.record);
+  else if (!route.record) closeDetail();
 }
 
 const search = document.getElementById("search");
@@ -969,7 +1111,7 @@ search.after(suggest(search, { source: (text) => matching(text, ""), choose: (on
 function busy() {
   const pane = document.getElementById("detail-pane");
   return document.hidden || Boolean(pane.querySelector("form, .bar input, details[open]"))
-    || [...pane.querySelectorAll("textarea")].some((area) => area.value.trim());
+    || [...pane.querySelectorAll("textarea")].some((area) => !area.readOnly && area.value.trim());
 }
 
 async function refreshQuietly() {

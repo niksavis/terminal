@@ -18,7 +18,7 @@ instructions: |
 
   - **Isolate every non-trivial change.** This includes multi-file work, work that runs the gates, and work parallel to another track.
   - **Skip isolation for a trivial edit, such as a typo.** A worktree has a real setup cost.
-  - **Put the worktree at the sibling path `<repo>.worktrees/<name>`.** A worktree inside the repository is not provisioned, so its hooks run no gates.
+  - **Put the worktree at the sibling path `<repo>.worktrees/<name>`.** The sibling checkout stays outside repository scans. Git hooks share the common Git directory regardless of checkout placement.
   - **Never pass `-c core.hooksPath=...` in a worktree.** A relative path skips every hook with no message.
   - **Do not resolve a merge conflict by hand.** A conflict means the scopes missed a coupling, so the lane applies its intent again on the new base.
   - **Run merge commands from the base checkout.** Git refuses to update a branch that another worktree has checked out.
@@ -37,13 +37,17 @@ instructions: |
      It gets its own `.venv` (`uv sync`) and its own `node_modules`.
      The `node_modules` tree is copied from a checkout with an identical `package-lock.json`, else it comes from `npm install`.
      Neither tree is a symlink to the main checkout, so cleanup is safe.
-     The command installs the repository's git hooks for every stage.
+     The command installs the repository's git hooks for every stage and refuses success when provisioning fails.
+     It never reads or copies dotenv files. Names must be one portable path component.
+     Failed provisioning retains the checkout, branch and session: inspect them, preserve any work, then use `cleanup` before recreating the lane.
      It refuses when `[worktree].concurrency` is reached. Read the configured value.
   2. **Work.** Do the change in the worktree. Its hooks gate each commit as on the main checkout.
   3. **Merge.** Under `basicly loop`, the build-to-verify advance merges for you.
      Use `merge` or `merge-queue` only for a worktree that the loop does not drive.
   4. **Clean up.** `cleanup` removes the worktree, prunes the registry, and deletes `harness/<name>` when it is merged.
      It keeps an unmerged branch unless you pass `--force`. It never touches the base branch.
+     It refuses locked checkouts even with `--force`; finish the active session and explicitly unlock the checkout first.
+     Unknown ignored files and tracked changes under dependency paths stop ordinary cleanup. Only untracked or ignored dependency directories, the tracker redirect, and the named verify counters, run artifact and their ignore marker are disposable generated output.
      It can reclaim a worktree whose directory is gone.
 
   ## Hooks

@@ -66,7 +66,12 @@ def comment_spans(source: str, language: Language) -> list[Span]:
             index = _skip_string(source, index, rule, line)
             previous = '"'
             continue
-        if language.regex_literals and char == "/" and _regex_here(previous):
+        if (
+            language.regex_literals
+            and char == "/"
+            and _regex_here(previous)
+            and not (language.jsx_tags and _ends_jsx_tag(source, index, previous))
+        ):
             index = _skip_regex(source, index, line)
             previous = "/"
             continue
@@ -121,6 +126,12 @@ def _skip_string(source: str, index: int, rule, line: int) -> int:
 def _regex_here(previous: str) -> bool:
 
     return previous == "" or previous in _REGEX_PRECEDERS
+
+
+def _ends_jsx_tag(source: str, index: int, previous: str) -> bool:
+    if index > 0 and source[index - 1] == "<":
+        return True
+    return previous == "}" and source.startswith(">", index + 1)
 
 
 def _skip_regex(source: str, index: int, line: int) -> int:

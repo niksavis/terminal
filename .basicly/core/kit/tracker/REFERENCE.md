@@ -347,3 +347,21 @@ dependency drawing and every record with what it still owes.
 ```sh
 python3 .basicly/kit/tracker/cli.py board .basicly/ledger --out tracker-board.html
 ```
+
+## Review and confirmation
+
+### review
+
+`review <ledger> <id> --evidence '<JSON>'` records the six INVEST rationales, actual
+same-card comment `seq` references, and one planned command argv and expected result per
+criterion. `confirm <ledger> <id> --evidence '<JSON>'` records exact matching argv,
+observed results and exit code 0 for every criterion. `GUIDANCE.md` gives both JSON shapes.
+The tracker computes revisions and writer identities; these keys cannot be supplied.
+
+### confirm
+
+Confirmation uses the `confirm` command and the completion JSON shape in `GUIDANCE.md`.
+
+`close <ledger> <id> --reason "<delivered outcome>"` defaults to completed and requires
+current review and confirmation. `--resolution cancelled` records reasoned abandonment,
+keeps history, and does not satisfy a blocking dependency. `stats` includes `by_resolution`.

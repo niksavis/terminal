@@ -15,7 +15,7 @@ def _add_shape_arguments(parser: Any) -> None:
         "--acceptance",
         default="",
         metavar="TEXT",
-        help="the acceptance criteria a check is derived from",
+        help="the acceptance criteria a check is derived from; one criterion per line",
     )
     parser.add_argument(
         "--requirements",
@@ -61,7 +61,9 @@ def parser() -> argparse.ArgumentParser:
 
     listing = sub.add_parser("list", help="query the records the ledger holds")
     listing.add_argument("directory", help=DIRECTORY_HELP)
-    listing.add_argument("--status", default=None, help="only records at this status")
+    listing.add_argument(
+        "--status", action="append", default=None, help="only records at this status; repeat it"
+    )
     listing.add_argument("--limit", type=int, default=None, help="at most this many records")
 
     compaction = sub.add_parser(
@@ -83,22 +85,7 @@ def parser() -> argparse.ArgumentParser:
     page.add_argument("directory", help=DIRECTORY_HELP)
     page.add_argument("--out", default="tracker-board.html", help="the file to write")
 
-    claim_check = sub.add_parser(
-        "commit-check", help="refuse a code commit that names no record the committer holds"
-    )
-    claim_check.add_argument("directory", help=DIRECTORY_HELP)
-    claim_check.add_argument("message", help="the commit message file git passes to commit-msg")
-    claim_check.add_argument("path", nargs="*", help="the staged paths")
-    claim_check.add_argument("--stdin", action="store_true", help="read staged paths from stdin")
-    claim_check.add_argument(
-        "--installed",
-        action="append",
-        default=[],
-        help="a path an install manages, not code; a trailing / names a folder",
-    )
-    claim_check.add_argument(
-        "--runner", default="", help="the tracker command a refusal tells the committer to type"
-    )
+    _add_commit_check(sub)
 
     check = sub.add_parser(
         "fsck", help="fold the whole log and report anything unparseable or broken"
@@ -199,6 +186,9 @@ def _add_write_parsers(sub: Any) -> None:
     closing.add_argument("directory", help=DIRECTORY_HELP)
     closing.add_argument("record", nargs="+", help="the record ids to close")
     closing.add_argument("--reason", default="", help="why, recorded as a field")
+    closing.add_argument("--resolution", choices=("completed", "cancelled"), default="completed")
+
+    _add_process_parsers(sub)
 
     note = sub.add_parser("comment", help="append one comment to a record")
     note.add_argument("directory", help=DIRECTORY_HELP)
@@ -254,3 +244,33 @@ def _add_sync_parser(sub: Any) -> None:
     mirrored.add_argument("directory", help=DIRECTORY_HELP)
     mirrored.add_argument("--root", default=".", help="the repository that holds the source")
     mirrored.add_argument("--dry-run", action="store_true", help="report and write nothing")
+
+
+def _add_commit_check(sub: Any) -> None:
+    claim_check = sub.add_parser(
+        "commit-check", help="refuse a code commit that names no record the committer holds"
+    )
+    claim_check.add_argument("directory", help=DIRECTORY_HELP)
+    claim_check.add_argument("message", help="the commit message file git passes to commit-msg")
+    claim_check.add_argument("path", nargs="*", help="the staged paths")
+    claim_check.add_argument("--stdin", action="store_true", help="read staged paths from stdin")
+    claim_check.add_argument(
+        "--ledger-label", default="", help="the repository ledger shown in remedies"
+    )
+    claim_check.add_argument(
+        "--installed",
+        action="append",
+        default=[],
+        help="a path an install manages, not code; a trailing / names a folder",
+    )
+    claim_check.add_argument(
+        "--runner", default="", help="the tracker command a refusal tells the committer to type"
+    )
+
+
+def _add_process_parsers(sub: Any) -> None:
+    for action in ("review", "confirm"):
+        process = sub.add_parser(action, help="record current INVEST/C3 process evidence")
+        process.add_argument("directory", help=DIRECTORY_HELP)
+        process.add_argument("record", help="the card id")
+        process.add_argument("--evidence", required=True, help="the structured evidence as JSON")

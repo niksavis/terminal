@@ -22,7 +22,7 @@ MINT_ATTEMPTS = 16
 
 DIGEST_CHARS = 10
 
-_RECORD = r"[a-z][a-z0-9]*-[a-z0-9]+(?:\.[0-9]+)*"
+_RECORD = r"[a-z][a-z0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[0-9]+)*"
 _FAMILY = r"[a-z][a-z0-9]*"
 _DIGEST = rf"[0-9a-f]{{{DIGEST_CHARS}}}"
 

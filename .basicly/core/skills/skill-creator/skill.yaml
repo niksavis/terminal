@@ -13,7 +13,7 @@ metadata:
   source: anthropics/skills skills/skill-creator
   source-commit: 8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4
   modified-by: basicly 2026-10-02
-description: "Writes a new skill or improves one with evals, a benchmark, graded versions and trigger tuning. Use when turning a workflow into a skill."
+description: "Writes a new skill or improves one with evals, a benchmark, graded versions and trigger tuning. Use when turning a workflow into a skill or when a skill never gets picked up."
 instructions: |
   # Skill Creator
 

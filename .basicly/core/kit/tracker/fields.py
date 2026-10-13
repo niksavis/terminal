@@ -32,6 +32,7 @@ WRITER = "writer"
 TEMPLATE = "template"
 IMPORTED = "imported"
 DERIVED = "derived"
+PROCESS = "process"
 
 WRITABLE_ROLES = frozenset({REQUIRED, READY, CLOSING, OPTIONAL, WRITER, TEMPLATE})
 
@@ -52,7 +53,24 @@ TABLE = (
     Field("priority", REQUIRED, "the ready ranking"),
     Field("acceptance_criteria", READY, "the definition of ready, and the check at verify"),
     Field("requirements", READY, "the definition of ready, and the judgement at validate"),
-    Field("close_reason", CLOSING, "the close refusal; it is the permanent record of what shipped"),
+    Field(
+        "close_reason", CLOSING, "the close refusal; it records the delivered or cancelled outcome"
+    ),
+    Field(
+        "close_resolution",
+        CLOSING,
+        "completed or cancelled disposition; cancellation does not satisfy blocking dependencies",
+    ),
+    Field(
+        "process_review",
+        PROCESS,
+        "the shared INVEST and C3 readiness refusal; use review --evidence",
+    ),
+    Field(
+        "process_confirmation",
+        PROCESS,
+        "the shared completed close refusal; use confirm --evidence",
+    ),
     Field("labels", OPTIONAL, "label queries and the label shape check"),
     Field("assignee", OPTIONAL, "a person who asks who holds the record"),
     Field("external_ref", OPTIONAL, "the engine, which binds a record to its worktree"),
@@ -94,9 +112,9 @@ def declared_by(template: Any) -> frozenset:
 
 def refuse(name: str, template: Any = None) -> None:
 
-    if name in declared_by(template):
-        return
     known = BY_NAME.get(f"{DATES_KEY}.created" if name == DATES_KEY else name)
+    if name in declared_by(template) and (known is None or known.role != PROCESS):
+        return
     if known is not None and known.role in WRITABLE_ROLES:
         return
     if known is None:
@@ -105,6 +123,8 @@ def refuse(name: str, template: Any = None) -> None:
             f"field {name!r} is not in the field table, so nothing reads it; declare it as "
             f"a section in template.json, or write one of: {', '.join(callers)}"
         )
+    elif known.role == PROCESS:
+        message = f"{name!r} is managed evidence; use review or confirm --evidence"
     elif known.role == DERIVED:
         message = f"{name!r} is computed from the event times; read it from `show`"
     else:

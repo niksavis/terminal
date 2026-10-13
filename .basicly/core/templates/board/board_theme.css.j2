@@ -1,66 +1,56 @@
-{#- The board's one stylesheet head, included by every page inside its own `<style>`: the palette
-    `site/index.html` holds first, the bridge that puts bootstrap's components on that palette,
-    and the board's own control and card skins. One file rather than four copies, so a card on
-    the wall reads as a card on the loop and the backlog (basicly-lywzp71). `board_serve` dates
-    its staleness off every template in this directory, so a change here is seen by a running
-    server the same way a change to the wall is. #}
-      /* Every custom property below is already defined in site/index.html :root. The board
-         looks like basicly because it lifts that palette rather than inventing one. */
+{#- The board's one stylesheet head, included by every page inside its own `<style>`: the
+    shared tokens from `kit/board/web/tokens.css` first (the tracker links the same file), the
+    bridge that puts bootstrap's components on those tokens, and the board's own control and
+    card skins. One file rather than four copies, so a card on the wall reads as a card on the
+    loop and the backlog (basicly-lywzp71). `board_serve` dates its staleness off every
+    template in this directory and the token file, so a change to either is seen by a running
+    server (basicly-c309uki). #}
+{% include "tokens.css" %}
       :root {
-        --bg: #0f1117;
-        --bg-raise: #171a23;
-        --bg-sunk: #0b0d12;
-        --border: #262b38;
-        --border-lit: #333a4d;
-        --text: #d7dce6;
-        --text-bright: #f2f5fa;
-        --text-dim: #8b93a7;
-        --indigo: #818cf8;
-        --indigo-deep: #6366f1;
-        --amber: #f59e0b;
-        --orange: #fb923c;
-        --green: #34d399;
-        --mono:
-          ui-monospace, "Cascadia Code", "JetBrains Mono", Consolas, monospace;
-        --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      }
-      /* Bootstrap's components read these and nothing else of the palette: the board adopts
-         the components and the spacing scale, never the colours. Both selectors, so this wins
-         over the vendored `[data-bs-theme=dark]` block at equal specificity. */
-      :root,
-      [data-bs-theme="dark"] {
         --bs-body-bg: var(--bg);
         --bs-body-color: var(--text);
-        --bs-body-color-rgb: 215, 220, 230;
-        --bs-body-font-family: var(--sans);
-        --bs-body-line-height: 1.3;
-        --bs-emphasis-color: var(--text-bright);
-        --bs-emphasis-color-rgb: 242, 245, 250;
-        --bs-secondary-color: var(--text-dim);
-        --bs-secondary-color-rgb: 139, 147, 167;
-        --bs-tertiary-color: var(--text-dim);
-        --bs-secondary-bg: var(--bg-raise);
-        --bs-tertiary-bg: var(--bg-sunk);
-        --bs-border-color: var(--border);
-        --bs-border-color-translucent: var(--border);
-        --bs-border-radius: 4px;
-        --bs-border-radius-sm: 3px;
-        --bs-border-radius-lg: 6px;
-        --bs-primary: var(--indigo);
-        --bs-primary-rgb: 129, 140, 248;
-        --bs-success: var(--green);
-        --bs-success-rgb: 52, 211, 153;
-        --bs-warning: var(--amber);
-        --bs-warning-rgb: 245, 158, 11;
-        --bs-link-color: var(--indigo);
-        --bs-link-color-rgb: 129, 140, 248;
-        --bs-link-hover-color: var(--indigo-deep);
-        --bs-link-hover-color-rgb: 99, 102, 241;
-        --bs-code-color: var(--indigo);
+        --bs-body-color-rgb: 24, 24, 27;
+        --bs-body-font-family: var(--font-sans);
+        --bs-body-line-height: var(--leading-snug);
+        --bs-emphasis-color: var(--text-strong);
+        --bs-emphasis-color-rgb: 9, 9, 11;
+        --bs-secondary-color: var(--muted);
+        --bs-secondary-color-rgb: 99, 99, 110;
+        --bs-tertiary-color: var(--muted);
+        --bs-secondary-bg: var(--panel);
+        --bs-tertiary-bg: var(--sunk);
+        --bs-border-color: var(--line);
+        --bs-border-color-translucent: var(--line);
+        --bs-border-radius: var(--radius-1);
+        --bs-border-radius-sm: calc(var(--radius-1) - 1px);
+        --bs-border-radius-lg: var(--radius-2);
+        --bs-primary: var(--accent);
+        --bs-primary-rgb: 79, 70, 229;
+        --bs-success: var(--ok);
+        --bs-success-rgb: 22, 101, 52;
+        --bs-warning: var(--warn);
+        --bs-warning-rgb: 146, 64, 14;
+        --bs-link-color: var(--accent);
+        --bs-link-color-rgb: 79, 70, 229;
+        --bs-link-hover-color: var(--accent);
+        --bs-link-hover-color-rgb: 79, 70, 229;
+        --bs-code-color: var(--accent);
         --bs-highlight-bg: transparent;
-        --bs-font-sans-serif: var(--sans);
-        --bs-font-monospace: var(--mono);
-        --bs-focus-ring-color: rgba(129, 140, 248, 0.45);
+        --bs-font-sans-serif: var(--font-sans);
+        --bs-font-monospace: var(--font-mono);
+        --bs-focus-ring-color: var(--accent);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bs-body-color-rgb: 215, 220, 230;
+          --bs-emphasis-color-rgb: 242, 245, 250;
+          --bs-secondary-color-rgb: 139, 147, 167;
+          --bs-primary-rgb: 129, 140, 248;
+          --bs-success-rgb: 52, 211, 153;
+          --bs-warning-rgb: 245, 158, 11;
+          --bs-link-color-rgb: 129, 140, 248;
+          --bs-link-hover-color-rgb: 129, 140, 248;
+        }
       }
       /* Bootstrap's reboot spaces a *document*. A board page is laid out by grid gaps and the
          spacing scale, so an element brings no margin of its own and a page opts back in
@@ -78,76 +68,76 @@
          beside them. */
       .btn-board {
         --bs-btn-padding-y: 0;
-        --bs-btn-padding-x: 6px;
-        --bs-btn-font-family: var(--sans);
+        --bs-btn-padding-x: var(--space-2);
+        --bs-btn-font-family: var(--font-sans);
         --bs-btn-font-size: 12px;
         --bs-btn-font-weight: 600;
         --bs-btn-line-height: 1.4;
         --bs-btn-border-radius: 3px;
-        --bs-btn-color: var(--text-dim);
+        --bs-btn-color: var(--muted);
         --bs-btn-bg: transparent;
         --bs-btn-border-color: transparent;
         --bs-btn-hover-color: var(--text);
         --bs-btn-hover-bg: transparent;
-        --bs-btn-hover-border-color: var(--border-lit);
-        --bs-btn-active-color: var(--text-bright);
-        --bs-btn-active-bg: var(--bg-raise);
-        --bs-btn-active-border-color: var(--border-lit);
-        --bs-btn-focus-shadow-rgb: 129, 140, 248;
-        --bs-btn-disabled-color: var(--text-dim);
+        --bs-btn-hover-border-color: var(--edge);
+        --bs-btn-active-color: var(--text-strong);
+        --bs-btn-active-bg: var(--panel);
+        --bs-btn-active-border-color: var(--edge);
+        --bs-btn-focus-box-shadow: 0 0 0 2px var(--accent);
+        --bs-btn-disabled-color: var(--muted);
         --bs-btn-disabled-bg: transparent;
         --bs-btn-disabled-border-color: transparent;
       }
       /* The filled form, for the one control an operator came to press. */
       .btn-board-fill {
-        --bs-btn-padding-y: 3px;
-        --bs-btn-padding-x: 12px;
+        --bs-btn-padding-y: var(--space-0);
+        --bs-btn-padding-x: var(--space-4);
         --bs-btn-font-size: 13px;
-        --bs-btn-color: var(--text-bright);
-        --bs-btn-bg: var(--indigo-deep);
-        --bs-btn-border-color: var(--indigo);
-        --bs-btn-hover-color: var(--text-bright);
-        --bs-btn-hover-bg: var(--indigo);
-        --bs-btn-hover-border-color: var(--indigo);
-        --bs-btn-active-color: var(--text-bright);
-        --bs-btn-active-bg: var(--indigo-deep);
-        --bs-btn-active-border-color: var(--indigo);
-        --bs-btn-disabled-color: var(--text-bright);
-        --bs-btn-disabled-bg: var(--indigo-deep);
-        --bs-btn-disabled-border-color: var(--indigo);
+        --bs-btn-color: var(--on-accent);
+        --bs-btn-bg: var(--accent-fill);
+        --bs-btn-border-color: var(--accent-fill);
+        --bs-btn-hover-color: var(--on-accent);
+        --bs-btn-hover-bg: var(--accent-fill-hover);
+        --bs-btn-hover-border-color: var(--accent-fill-hover);
+        --bs-btn-active-color: var(--on-accent);
+        --bs-btn-active-bg: var(--accent-fill-hover);
+        --bs-btn-active-border-color: var(--accent-fill-hover);
+        --bs-btn-disabled-color: var(--on-accent);
+        --bs-btn-disabled-bg: var(--accent-fill);
+        --bs-btn-disabled-border-color: var(--accent-fill);
       }
       /* Stopping work is not the ordinary action on a running lane, so it is amber and
          outlined, never the indigo the rest of the page acts in. */
       .btn-board-stop {
-        --bs-btn-padding-y: 2px;
-        --bs-btn-padding-x: 9px;
-        --bs-btn-color: var(--amber);
-        --bs-btn-bg: var(--bg-sunk);
-        --bs-btn-border-color: var(--amber);
-        --bs-btn-hover-color: var(--bg-sunk);
-        --bs-btn-hover-bg: var(--amber);
-        --bs-btn-hover-border-color: var(--amber);
-        --bs-btn-active-color: var(--bg-sunk);
-        --bs-btn-active-bg: var(--amber);
-        --bs-btn-active-border-color: var(--amber);
-        --bs-btn-focus-shadow-rgb: 245, 158, 11;
-        --bs-btn-disabled-color: var(--amber);
-        --bs-btn-disabled-bg: var(--bg-sunk);
-        --bs-btn-disabled-border-color: var(--amber);
+        --bs-btn-padding-y: var(--space-0);
+        --bs-btn-padding-x: var(--space-3);
+        --bs-btn-color: var(--warn);
+        --bs-btn-bg: var(--sunk);
+        --bs-btn-border-color: var(--warn);
+        --bs-btn-hover-color: var(--on-fill);
+        --bs-btn-hover-bg: var(--warn-fill);
+        --bs-btn-hover-border-color: var(--warn-fill);
+        --bs-btn-active-color: var(--on-fill);
+        --bs-btn-active-bg: var(--warn-fill);
+        --bs-btn-active-border-color: var(--warn-fill);
+        --bs-btn-focus-box-shadow: 0 0 0 2px var(--warn);
+        --bs-btn-disabled-color: var(--warn);
+        --bs-btn-disabled-bg: var(--sunk);
+        --bs-btn-disabled-border-color: var(--warn);
       }
       /* The board's card: bootstrap's component on basicly's two surfaces. A region that
          frames itself is a raised card; a lane and a loop column's entry are sunk ones. */
       .card {
-        --bs-card-bg: var(--bg-sunk);
+        --bs-card-bg: var(--sunk);
         --bs-card-color: var(--text);
-        --bs-card-border-color: var(--border);
+        --bs-card-border-color: var(--line);
         --bs-card-border-radius: 4px;
         --bs-card-inner-border-radius: 3px;
         --bs-card-spacer-y: 0;
         --bs-card-spacer-x: 0;
       }
       .card.raised {
-        --bs-card-bg: var(--bg-raise);
+        --bs-card-bg: var(--panel);
         --bs-card-border-width: 2px;
         --bs-card-border-radius: 6px;
       }
@@ -155,9 +145,9 @@
       .table {
         --bs-table-bg: transparent;
         --bs-table-color: var(--text);
-        --bs-table-border-color: var(--border);
-        --bs-table-striped-bg: var(--bg-raise);
-        --bs-table-hover-bg: var(--bg-raise);
-        --bs-table-hover-color: var(--text-bright);
+        --bs-table-border-color: var(--line);
+        --bs-table-striped-bg: var(--panel);
+        --bs-table-hover-bg: var(--panel);
+        --bs-table-hover-color: var(--text-strong);
         margin-bottom: 0;
       }

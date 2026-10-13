@@ -40,7 +40,7 @@ _PATH_TAIL = r"[^\s\"'`,;)\]}]*"
 MACHINE_PATH_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("posix-home-path", re.compile(rf"/(?:home|Users)/[A-Za-z0-9._-]+{_PATH_TAIL}")),
     ("windows-unc-path", re.compile(rf"\\\\\?\\[A-Za-z]:\\{_PATH_TAIL}")),
-    ("windows-drive-path", re.compile(rf"[A-Za-z]:\\{_PATH_TAIL}")),
+    ("windows-drive-path", re.compile(r"(?<![A-Za-z0-9_])[A-Za-z]:\\[^\s\"'`,;)\]}]+")),
 )
 
 _SAME_STATUSES = {status: status for status in values.WRITABLE_STATUSES}
@@ -127,12 +127,10 @@ def _value_refusal(record: object, source: Source, name: str, value: str) -> str
             f"not imported, a record this ledger already holds is reported absent, and the "
             f"tracker's delete command tombstones it"
         )
-    table = source.statuses if name == STATUS_FIELD else source.types
-    targets = values.WRITABLE_STATUSES if name == STATUS_FIELD else WORK_TYPES
     return (
         f"{record!r} has {name} {value!r}, which the {source.name} table does not map: it maps "
-        f"{', '.join(sorted(table))} onto {', '.join(targets)}; change it in {source.name} "
-        f"and export again"
+        f"{', '.join(sorted(source.statuses))} onto {', '.join(values.WRITABLE_STATUSES)}; "
+        f"change it in {source.name} and export again"
     )
 
 
@@ -148,7 +146,7 @@ def normalize(raw: Mapping[str, object]) -> tuple[dict[str, object] | None, str]
         value = record.get(name)
         if not isinstance(value, str) or not value:
             continue
-        mapped = table.get(value)
+        mapped = table.get(value, value if name == TYPE_FIELD else None)
         if mapped is None:
             return None, _value_refusal(raw.get("id"), source, name, value)
         record[name] = mapped

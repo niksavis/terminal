@@ -20,18 +20,22 @@ Every command takes the ledger directory as its first argument and prints one JS
   drop it.
 - **Read `ready` before you propose work.** Take the top row that nobody holds. Do not
   invent a task.
-- **Run `dor` before you build.** `ready` leaves out a record labelled `refine` and a new
-  record that fails `dor`, but it keeps an older unshaped record. `dor` refuses a record
-  that has no trigger, acceptance criteria or requirements.
+- **Run `dor` before you build.** `ready` leaves out every record labelled `refine` or
+  failing `dor`. `dor` names missing card fields, INVEST rationales, conversation references and planned checks.
 - **Criteria and requirements are fields.** Pass them as `--acceptance` and
   `--requirements`. A description that holds either heading is refused.
-- **A close reason is evidence.** Name what shipped, the command you ran and its result.
+- **Confirm before completing.** Record actual results with `confirm`, then name the delivered
+  outcome in `close --reason`. Use `--resolution cancelled` with an abandonment reason when
+  work will not be built. Cancellation does not satisfy a dependency.
 - **Put a finding on the record**, not in a code comment.
 - **Name the record id in the commit message.** It is the only link from a change to its
   reason.
 - **Claim a record before you change code for it.** The `commit-msg` hook refuses a commit
   that changes files outside the ledger unless you hold a record it names in progress (or
   closed). Filing and closing commits that touch only the ledger pass.
+- **Stage the claim with its code.** The commit hook reads the Git index, not unsaved
+  ledger changes. In a shared-ledger worktree, publish the claim on the base and update
+  the lane from that committed base before committing its code.
 - **File what you notice.** A defect that you do not file is invisible to everyone else.
 
 ## Read
@@ -75,13 +79,118 @@ A shaped record carries three things:
 3. **Requirements** as `--requirements`. Name the standard that the result must obey, not
    the method.
 
-A placeholder counts as absent. One record is one change that a person can see. A record
-that needs more than one session is two records: split it with `child`.
+Each trigger part needs text: the situation or persona, motivation or goal, and outcome
+or benefit. Empty parts, punctuation alone, and placeholders such as `<outcome>`, `TODO`
+or `TBD` cannot shape a trigger. Each criterion and requirement must be filled.
+
+Capture a raw idea with `create --title` even when these parts are unknown. The reply names
+what it owes. `ready` leaves it out, and `claim` refuses it until refinement fills the gaps.
+One record is one change that a person can confirm.
 
 `scaffold --type <type>` prints what a record of that type must carry. A `template.json`
 beside the log adds sections (`extend`) or replaces them (`override`), for all records or
 for one `issue_type`. A field named after a section, such as `--field risks="<text>"`,
 satisfies it.
+
+A record has one of six types: `task`, `bug`, `feature`, `chore`, `epic` or `research`. An
+`epic` holds features, tasks, bugs, chores and research records. A `feature` holds tasks, bugs
+and chores. A task, bug, chore or research record holds no children. `GET /api/v1` lists the
+types as `record_types` and the allowed children as `child_types`.
+
+## INVEST
+
+Before an agent starts a card, review these six qualities and record a rationale for each
+with `review --evidence`. Resolve a failed quality before claiming. The tracker enforces
+recorded, filled evidence. It cannot prove that a rationale is semantically correct.
+
+| Quality | Observable check | Action when it fails |
+| --- | --- | --- |
+| Independent | Read `show` and its dependencies. Can this change ship without an unfinished card? | Add a `dep` for real waiting work. Split coupled work with `child`. |
+| Negotiable | Can the implementation change while the outcome and required standard stay true? | Discuss the constraint in a `comment`. Keep a required method only when the person confirms why. |
+| Valuable | Does the outcome name an observable benefit to a person or system? | Ask who or what benefits. Keep the answer in the trigger. |
+| Estimable | Can the agent name the scope, unknowns, and check from evidence it has read? | Record the missing fact in a `comment`. Leave `refine` until the fact is resolved. |
+| Small | Does the card have one outcome that can be built and confirmed in one session? | Use `child` for each separately confirmable outcome. Preserve the parent intent. |
+| Testable | Does each criterion name an input or event and an observable response? | Rewrite `--acceptance`. Name the demonstration or test and its expected result before building. |
+
+`dor`, `ready` and `claim` require this recorded review, references to actual same-card
+conversation comments, and a planned check for every criterion. A dependency can be valid
+and still keep a reviewed card out of `ready`.
+
+## Card, Conversation, Confirmation
+
+Use all three parts of C3 throughout the card's life:
+
+1. **Card:** capture the person's intent, then fill the trigger, acceptance criteria, and
+   requirements with `update`. Run `show` to read the saved card. Keep scope and outcomes
+   small enough to confirm independently.
+2. **Conversation:** use `comment` for a question, its answer, an alternative, or an agreed
+   constraint. Read the comments in `show` before rewriting intent. When a fact is missing,
+   leave `refine` and ask the person. A saved comment records an answer; it does not grant
+   permission or settle an unanswered question.
+3. **Confirmation:** agree a command argv and expected result for every criterion before
+   `claim`. After implementation, run those checks and exercise the result as a consumer.
+   Use `confirm --evidence` to record each exact argv, its observed result and exit code 0.
+   Close as completed only after every criterion is confirmed, with the delivered outcome
+   in `--reason`. A comment alone does not satisfy completion confirmation.
+
+Read `show` first. Its `comment_log` gives each comment's `seq`; its `process` report gives
+stored review and confirmation evidence. `review` takes this JSON shape:
+
+```json
+{
+  "invest": {
+    "independent": "The save operation has no unfinished prerequisites.",
+    "negotiable": "Storage may change while saved tasks remain readable.",
+    "valuable": "A person can return to a captured task.",
+    "estimable": "The existing save and show paths bound the change.",
+    "small": "One saved title is the card's outcome.",
+    "testable": "The saved title can be observed through show."
+  },
+  "conversation": [3],
+  "checks": [{
+    "criterion": "When a task is saved, show shall return its title.",
+    "command": ["python3", "check_saved_title.py"],
+    "expected": "The saved title appears in show."
+  }]
+}
+```
+
+Replace `3` with an actual same-card comment sequence and the check with your actual
+criterion and planned argv. The tracker displays these commands; it does not execute them.
+Every criterion must appear once. Pass the JSON as one argument:
+
+```sh
+python3 .basicly/kit/tracker/cli.py review .basicly/ledger <id> --evidence '<review JSON>'
+python3 .basicly/kit/tracker/cli.py claim .basicly/ledger <id>
+```
+
+After running the agreed check, `confirm` takes the following shape. Record only output
+you actually observed; preserve a failed result in a comment and keep the card open.
+
+```json
+{
+  "checks": [{
+    "criterion": "When a task is saved, show shall return its title.",
+    "command": ["python3", "check_saved_title.py"],
+    "result": "The saved title appeared in show.",
+    "exit_code": 0
+  }]
+}
+```
+
+```sh
+python3 .basicly/kit/tracker/cli.py confirm .basicly/ledger <id> --evidence '<confirmation JSON>'
+python3 .basicly/kit/tracker/cli.py close .basicly/ledger <id> --reason "Saved tasks can be read again."
+python3 .basicly/kit/tracker/cli.py close .basicly/ledger <id> --resolution cancelled --reason "This work is no longer needed."
+```
+
+The tracker computes the review revision and generic writer identity itself. Editing the
+title, trigger, criteria, requirements, type, dependency edges or a direct dependency
+contract invalidates review and confirmation. Effective template headings and required
+custom field values also bind the review. Record updated evidence before the next claim
+or completed close. Holder
+and status changes preserve the review. Existing closed history remains readable, while
+legacy open cards need current evidence. `stats` reports closed dispositions separately.
 
 ## Refine a record
 
@@ -91,8 +200,9 @@ A person writes or edits a story, often in the served page. The page adds the la
 1. Run `refine` to list the open records that carry the label or fail `dor`.
 2. For each record, read it with `show` and rewrite it with `update`: the trigger, the
    acceptance criteria, the requirements, the type, the priority and the `dep` edges.
-3. Run `dor`. When it passes, remove the label: `update <id> --remove-label refine`. You
-   may fill the missing fields and remove the label in the same `update`.
+3. Record `review` evidence, then run `dor`. When it passes, remove the label with
+   `update <id> --remove-label refine`. Editing the reviewed fields requires a new review
+   before removing the label.
 
 Only an agent removes the label, and only when nothing is owed. The kit reads the writer
 class from `BR_AGENT_NAME` or `AI_AGENT` (set it to your agent's name), or from
@@ -109,6 +219,7 @@ cause. It refuses:
 
 - a record id that the ledger does not hold, and an edge that makes a cycle;
 - a status outside `open`, `in_progress`, `blocked`, `deferred`, `closed`;
+- a type outside the six, and a parent and child whose types the hierarchy does not allow;
 - a priority outside 0 (critical) to 4 (backlog), and a `close` without `--reason`;
 - a field that no code reads, an import-history field, or a derived date. `fields` prints
   each field, its role and its reader;

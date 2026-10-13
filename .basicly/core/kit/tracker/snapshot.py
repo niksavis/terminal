@@ -161,7 +161,7 @@ def record_from_dict(raw: Mapping[str, object]) -> Any:
     return events.RecordState(
         record=record,
         status=status,
-        fields=dict(fields),
+        fields={name: events.settled_field(name, value) for name, value in fields.items()},
         comments=list(comments),
         checkpoints=dict(checkpoints),
         artifacts=dict(artifacts),
@@ -193,13 +193,29 @@ def read_header(path: Path | str) -> Header | None:
     return Header.from_dict(_object_from_line(first, file_path, 1))
 
 
+PARSED_SNAPSHOTS = 8
+_PARSED = events.StampedFiles(PARSED_SNAPSHOTS)
+
+
 def read_snapshot(path: Path | str) -> Snapshot | None:
 
     file_path = Path(path)
+    stamp = events.file_stamp(file_path)
+    if stamp is None:
+        return None
     try:
         text = events.read_published(file_path)
     except FileNotFoundError:
         return None
+    parsed = _PARSED.held(file_path, stamp, text)
+    if not isinstance(parsed, Snapshot):
+        parsed = _parse_snapshot(file_path, text)
+        _PARSED.keep(file_path, stamp, text, parsed)
+    records = {name: events.copy_state(state) for name, state in parsed.records.items()}
+    return Snapshot(header=parsed.header, records=records)
+
+
+def _parse_snapshot(file_path: Path, text: str) -> Snapshot:
     lines = [line for line in text.splitlines() if line.strip()]
     if not lines:
         raise SnapshotError(f"{file_path.name} has no header line")

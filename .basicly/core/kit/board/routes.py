@@ -184,8 +184,10 @@ def _comment_argv(where: str, record: str, body: object) -> list:
 
 
 def _close_argv(where: str, record: str, body: object) -> list:
-    reason = _text(_checked(body, frozenset({"reason"})), "reason")
-    return ["close", f"--reason={reason}", "--", where, record]
+    held = _checked(body, frozenset({"reason", "resolution"}))
+    reason = _text(held, "reason")
+    resolution = _text(held, "resolution") or "completed"
+    return ["close", f"--reason={reason}", f"--resolution={resolution}", "--", where, record]
 
 
 def _dep_argv(where: str, record: str, body: object) -> list:
@@ -214,7 +216,17 @@ def _unassign_argv(where: str, record: str, body: object) -> list:
     return ["unassign", "--", where, record]
 
 
+def _process_argv(action: str) -> Callable[[str, str, object], list]:
+    def build(where: str, record: str, body: object) -> list:
+        held = _checked(body, frozenset({"evidence"}))
+        return [action, "--evidence=" + json.dumps(held.get("evidence")), "--", where, record]
+
+    return build
+
+
 _ACTIONS: dict[str, Callable[[str, str, object], list]] = {
+    "review": _process_argv("review"),
+    "confirm": _process_argv("confirm"),
     "comments": _comment_argv,
     "close": _close_argv,
     "deps": _dep_argv,

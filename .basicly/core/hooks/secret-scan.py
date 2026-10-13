@@ -3,8 +3,10 @@ from __future__ import annotations
 import re
 import subprocess  # nosec B404
 import sys
+from pathlib import Path
 
 ALLOWLIST_PRAGMA = "pragma: allowlist secret"
+PRECOMMIT_CONFIG = ".pre-commit-config.yaml"
 
 _GENERIC_RULE = "generic-secret-assignment"
 
@@ -41,15 +43,45 @@ _PLACEHOLDER = re.compile(
 )
 
 
-def rule_hit(text: str) -> str | None:
+def rule_hit(text: str, *, generic: bool = True) -> str | None:
     if ALLOWLIST_PRAGMA in text:
         return None
     for name, pattern in _RULES:
         if pattern.search(text):
-            if name == _GENERIC_RULE and _PLACEHOLDER.search(text):
+            if name == _GENERIC_RULE and (not generic or _PLACEHOLDER.search(text)):
                 continue
             return name
     return None
+
+
+def precommit_exclude(config: str) -> str | None:
+    lines = config.splitlines()
+    for index, line in enumerate(lines):
+        match = re.match(r"exclude:\s*(.*?)\s*$", line)
+        if not match:
+            continue
+        value = match.group(1)
+        if value[:1] in ("|", ">"):
+            block = []
+            for follow in lines[index + 1 :]:
+                if follow.strip() and not follow[:1].isspace():
+                    break
+                block.append(follow.strip())
+            return ("\n" if value[0] == "|" else " ").join(part for part in block if part)
+        if len(value) > 1 and value[0] == value[-1] == "'":
+            return value[1:-1].replace("''", "'")
+        if len(value) > 1 and value[0] == value[-1] == '"':
+            return re.sub(r"\\(.)", r"\1", value[1:-1])
+        return re.split(r"\s+#", value)[0] or None
+    return None
+
+
+def excluded_paths() -> re.Pattern[str] | None:
+    config = Path(PRECOMMIT_CONFIG)
+    if not config.is_file():
+        return None
+    source = precommit_exclude(config.read_text(encoding="utf-8"))
+    return re.compile(source) if source else None
 
 
 def staged_added_lines() -> list[tuple[str, int, str]]:
@@ -81,10 +113,19 @@ def staged_added_lines() -> list[tuple[str, int, str]]:
 
 
 def main() -> int:
+    try:
+        excluded = excluded_paths()
+    except re.error as err:
+        print(
+            f"secret-scan: the top-level exclude in {PRECOMMIT_CONFIG} is not a valid regex "
+            f"({err}), so nothing was scanned; fix that exclude and commit again.",
+            file=sys.stderr,
+        )
+        return 1
     findings = [
         (path, lineno, rule)
         for path, lineno, text in staged_added_lines()
-        if (rule := rule_hit(text))
+        if (rule := rule_hit(text, generic=not (excluded and excluded.search(path))))
     ]
     if not findings:
         return 0

@@ -20,16 +20,21 @@ JOB_STORY_EXAMPLE = "When <situation>, I want to <motivation>, so I can <outcome
 USER_STORY_EXAMPLE = "As a <persona>, I want <goal>, so that <benefit>."
 
 _SPAN = 400
+_END = rf"(?P<outcome>.{{0,{_SPAN}}}?)(?:[.!?](?=\s|$)|$)"
 _JOB_STORY = re.compile(
-    rf"\bwhen\b.{{0,{_SPAN}}}?\bi want\b.{{0,{_SPAN}}}?\bso (?:i|we) can\b",
-    re.IGNORECASE | re.DOTALL,
+    rf"\bwhen\b(?P<situation>.{{0,{_SPAN}}}?)\bi want\b"
+    rf"(?P<motivation>.{{0,{_SPAN}}}?)\bso (?:i|we) can\b{_END}",
+    re.IGNORECASE,
 )
 _USER_STORY = re.compile(
-    rf"\bas an?\b.{{0,200}}?\bi want\b.{{0,{_SPAN}}}?\bso that\b",
-    re.IGNORECASE | re.DOTALL,
+    rf"\bas an?\b(?P<situation>.{{0,200}}?)\bi want\b"
+    rf"(?P<motivation>.{{0,{_SPAN}}}?)\bso that\b{_END}",
+    re.IGNORECASE,
 )
+_PARAGRAPH_BREAK = re.compile(r"\n\s*\n|\n(?=\s*#|\s*[-*] )")
 
 _PLACEHOLDER = re.compile(r"<[^>]+>|\bTODO\b")
+_TRIGGER_PLACEHOLDER = re.compile(r"\b(?:todo|tbd|tbc|fixme)\b", re.IGNORECASE)
 _CODE_SPAN = re.compile(r"`[^`\n]*`")
 _BULLET = re.compile(r"^- (.+)$")
 
@@ -37,13 +42,38 @@ JOB_VOICE = "job"
 USER_VOICE = "user"
 
 
-def trigger_voice(description):
+def _stated_intent(text: str, *, motivation: bool = False) -> bool:
+    plain = _CODE_SPAN.sub("", text).strip(" ,.:;!?-_")
+    if motivation:
+        plain = re.sub(r"^to\b", "", plain, flags=re.IGNORECASE).strip()
+    return (
+        bool(re.search(r"[^\W_]", plain))
+        and not unfilled(text)
+        and not _TRIGGER_PLACEHOLDER.fullmatch(plain)
+    )
 
-    for voice, pattern in ((JOB_VOICE, _JOB_STORY), (USER_VOICE, _USER_STORY)):
-        for match in pattern.finditer(description):
-            if not unfilled(match.group(0)):
-                return voice
+
+def _trigger(description: str) -> tuple[str, str] | None:
+    for paragraph in _PARAGRAPH_BREAK.split(description):
+        text = " ".join(paragraph.split())
+        for voice, pattern in ((JOB_VOICE, _JOB_STORY), (USER_VOICE, _USER_STORY)):
+            for match in pattern.finditer(text):
+                if all(
+                    _stated_intent(match.group(name), motivation=name == "motivation")
+                    for name in ("situation", "motivation", "outcome")
+                ):
+                    return voice, match.group(0).strip()
     return None
+
+
+def trigger_voice(description: str) -> str | None:
+    found = _trigger(description)
+    return found[0] if found else None
+
+
+def trigger_sentence(description: str) -> str:
+    found = _trigger(description)
+    return found[1] if found else ""
 
 
 def section_entries(description: str, heading: str):
@@ -75,7 +105,7 @@ def _held(record: Mapping[str, object], field: str, heading: str, closed: bool) 
     value = record.get(field)
     if isinstance(value, str) and states_something(value):
         return True
-    if isinstance(value, (list, tuple)) and any(states_something(one) for one in value):
+    if isinstance(value, (list, tuple)) and value and all(states_something(one) for one in value):
         return True
     if not closed:
         return False
@@ -139,15 +169,16 @@ def meets(record: Mapping[str, object], heading: str, *, closed: bool = False) -
     return _meets(record, heading, described if isinstance(described, str) else "", closed)
 
 
-def owed(record: Mapping[str, object], *, closed: bool = False, template=None) -> tuple:
+def owed(record: Mapping[str, object], *, closed: bool = False, template=None, process=()) -> tuple:
 
     described = record.get(DESCRIPTION_FIELD)
     body = described if isinstance(described, str) else ""
-    return tuple(
+    structural = tuple(
         heading
         for heading in required(record, template)
         if not _meets(record, heading, body, closed)
     )
+    return (*structural, *(() if closed else process))
 
 
 def minted_under_the_rule(record: Mapping[str, object]) -> bool:
@@ -155,12 +186,16 @@ def minted_under_the_rule(record: Mapping[str, object]) -> bool:
     return bool(record.get(SHAPED_UNDER_FIELD))
 
 
-def refused(record: Mapping[str, object], *, closed: bool = False, template=None) -> tuple:
-    return owed(record, closed=closed, template=template)
+def refused(
+    record: Mapping[str, object], *, closed: bool = False, template=None, process=()
+) -> tuple:
+    return owed(record, closed=closed, template=template, process=process)
 
 
-def held_from_ready(record: Mapping[str, object], *, labelled: bool, template=None) -> bool:
-    return labelled or bool(refused(record, template=template))
+def held_from_ready(
+    record: Mapping[str, object], *, labelled: bool, template=None, process=()
+) -> bool:
+    return labelled or bool(refused(record, template=template, process=process))
 
 
 def shaped(record: Mapping[str, object], *, closed: bool = False, template=None) -> bool:
@@ -173,7 +208,9 @@ def remedy(missing: Sequence[str]) -> str:
     for name in missing:
         if name == TRIGGER_HEADING:
             parts.append(
-                f"state the trigger in either voice - a situation, {JOB_STORY_EXAMPLE!r}, "
+                f"state a complete trigger with a situation/persona, motivation/goal and "
+                f"outcome/benefit; each part must contain text without placeholders. "
+                f"Use either voice - a situation, {JOB_STORY_EXAMPLE!r}, "
                 f"or a persona, {USER_STORY_EXAMPLE!r}. A persona is never required: where "
                 f"a situation triggers the work and no person wants it, inventing a persona "
                 f"is the defect"
@@ -187,6 +224,22 @@ def remedy(missing: Sequence[str]) -> str:
             parts.append(
                 "state the requirements as `--requirements`; they are the standard "
                 "validation judges the built thing against"
+            )
+        elif name.startswith("## INVEST Review"):
+            parts.append(
+                f"use review --evidence to record a text rationale for {name.partition(': ')[2]}"
+            )
+        elif name == "## Conversation":
+            parts.append(
+                "use review --evidence with actual same-card comment seqs from show comment_log"
+            )
+        elif name == "## Confirmation Plan":
+            parts.append(
+                "use review --evidence: checks of criterion, command (an argv list) and expected"
+            )
+        elif name == "## Completion Confirmation":
+            parts.append(
+                "use confirm --evidence: checks of criterion, planned command, result, exit_code 0"
             )
         else:
             parts.append(

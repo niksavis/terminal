@@ -4,7 +4,7 @@ token_cost:
   listing: 48
 name: cli-tools
 invocation: model
-description: "Picks the fast tool for a shell task: rg to find every file that mentions a word, fd to list files, jq or yq for a JSON or YAML field, curl for an HTTP endpoint."
+description: "Picks the fast tool for a shell task: rg to find each file that mentions a word, fd to list files, jq or yq for a JSON or YAML field, curl for an HTTP endpoint."
 resource_technologies:
   references/starship.md: [starship]
   references/tmux.md: [tmux]

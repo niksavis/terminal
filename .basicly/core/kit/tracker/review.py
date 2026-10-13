@@ -27,6 +27,7 @@ events = _load("events.py", "basicly_tracker_kit_events")
 shaping = _load("shaping.py", "basicly_tracker_kit_shaping")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
 writers = _load("writers.py", "basicly_tracker_kit_writers")
+process = _load("process_evidence.py", "basicly_tracker_kit_process_evidence")
 
 REVIEW_LABEL = shaping.REFINE_LABEL
 IN_PROGRESS = "in_progress"
@@ -40,6 +41,8 @@ def _after(state: Any, drafts: Sequence[Any], record: str) -> dict[str, object]:
 
     fields = dict(state.fields) if state is not None else {}
     for draft in drafts:
+        if draft.record == record and draft.kind == events.KIND_CREATED:
+            fields.update(draft.payload)
         if draft.record == record and draft.kind == events.KIND_FIELD:
             fields[str(draft.payload.get("name"))] = draft.payload.get("value")
     return fields
@@ -58,14 +61,34 @@ def _starts(drafts: Sequence[Any], record: str) -> bool:
     )
 
 
-def refuse(states: Mapping[str, Any], drafts: Sequence[Any], writer: str, template=None) -> None:
+def _unreviewed(record: str, owed: Sequence[str], debt: Sequence[str]) -> str:
+
+    shape = [heading for heading in owed if heading not in debt]
+    review = [heading for heading in owed if heading in debt]
+    told = f"{record} still owes {', '.join(owed)}, so the review is not done; "
+    if not review:
+        return told + f"fill them in the same update that removes {REVIEW_LABEL}"
+    steps = [f"fill {', '.join(shape)} with update"] if shape else []
+    steps.append(f"record {', '.join(review)} with `review <ledger> {record} --evidence <json>`")
+    return told + ", then ".join(steps) + f", then remove {REVIEW_LABEL}"
+
+
+def refuse(
+    states: Mapping[str, Any],
+    drafts: Sequence[Any],
+    writer: str,
+    template=None,
+    *,
+    found: Sequence[Any] = (),
+) -> None:
 
     for record in sorted({draft.record for draft in drafts}):
         state = states.get(record)
         before = _labels(state.fields) if state is not None else set()
         fields = _after(state, drafts, record)
         marked = REVIEW_LABEL in _labels(fields)
-        owed = shaping.refused(fields, template=template)
+        debt = process.readiness(found, record, fields, drafts, template=template)
+        owed = shaping.refused(fields, template=template, process=debt)
         if REVIEW_LABEL in before and not marked:
             if not writer.startswith(writers.AGENT):
                 raise UnreviewedError(
@@ -73,16 +96,53 @@ def refuse(states: Mapping[str, Any], drafts: Sequence[Any], writer: str, templa
                     f"{REVIEW_LABEL} label, after it fills the missing detail"
                 )
             if owed:
-                raise UnreviewedError(
-                    f"{record} still owes {', '.join(owed)}, so the review is not done; fill "
-                    f"them in the same update that removes {REVIEW_LABEL}"
-                )
-        if _starts(drafts, record) and shaping.held_from_ready(
-            fields, labelled=marked, template=template
-        ):
+                raise UnreviewedError(_unreviewed(record, owed, debt))
+        if _starts(drafts, record) and (marked or owed):
             why = f"it waits for an agent review ({REVIEW_LABEL})" if marked else "it owes "
             why += "" if marked else ", ".join(owed)
+            note = (
+                ""
+                if marked or not debt
+                else process.review_note(found, record, fields, drafts, template=template)
+            )
+            why += f" ({note})" if note else ""
             raise UnreviewedError(
                 f"{record} cannot start: {why}; an agent reviews it and fills the missing "
                 f"detail first"
             )
+
+        closing = any(
+            draft.record == record
+            and draft.kind == events.KIND_STATUS
+            and draft.payload.get("status") == "closed"
+            for draft in drafts
+        )
+        changed_resolution = any(
+            draft.record == record
+            and draft.kind == events.KIND_FIELD
+            and draft.payload.get("name") == process.RESOLUTION_FIELD
+            for draft in drafts
+        )
+        if changed_resolution and not closing:
+            raise UnreviewedError(
+                "set close_resolution only with closed status; use close --resolution --reason"
+            )
+        historical = state is not None and state.status == "closed" and not changed_resolution
+        if closing and not historical:
+            resolution = fields.get(process.RESOLUTION_FIELD, "completed")
+            if resolution not in ("completed", "cancelled"):
+                raise UnreviewedError("close_resolution must be completed or cancelled")
+            if not process._text(fields.get("close_reason")):
+                raise UnreviewedError(
+                    "closing requires a filled delivered reason; use close --reason"
+                )
+            if resolution == "completed":
+                missing = (
+                    *shaping.refused(fields, template=template),
+                    *process.closing_owed(found, record, fields, drafts, template=template),
+                )
+                if missing:
+                    raise UnreviewedError(
+                        f"{record} cannot complete: it owes {', '.join(missing)}; "
+                        f"{shaping.remedy(missing)}"
+                    )

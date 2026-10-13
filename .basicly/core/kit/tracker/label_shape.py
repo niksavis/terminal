@@ -24,8 +24,8 @@ def _load(file_name: str, module_name: str) -> Any:
 
 events = _load("events.py", "basicly_tracker_kit_events")
 
-LABELS_FIELD = "labels"
-LABEL_SEPARATOR = ","
+LABELS_FIELD = events.LABELS_FIELD
+LABEL_SEPARATOR = events.LABEL_SEPARATOR
 
 KIND_CREATED = events.KIND_CREATED
 KIND_FIELD = events.KIND_FIELD
@@ -33,13 +33,7 @@ KIND_FIELD = events.KIND_FIELD
 MAX_SPLIT_LABEL_CHARS = 1
 
 
-def labels_of(value: object) -> tuple:
-
-    if isinstance(value, str):
-        return tuple(part for part in (raw.strip() for raw in value.split(LABEL_SEPARATOR)) if part)
-    if isinstance(value, (list, tuple)):
-        return tuple(str(item) for item in value)
-    return ()
+labels_of = events.labels_of
 
 
 def labels_written_by(event: Any) -> tuple:

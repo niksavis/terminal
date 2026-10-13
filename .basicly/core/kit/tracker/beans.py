@@ -155,7 +155,9 @@ def _record(bean: str, found: dict[str, Any], body: str, where: str, archived: b
         if key not in found and key not in FILLED_WHEN_ABSENT:
             raise _refused(where, f"has no {key}")
         value = found.get(key, FILLED_WHEN_ABSENT.get(key))
-        mapped = table.get(value)
+        mapped = table.get(value) or (
+            {"issue_type": value} if key == "type" and isinstance(value, str) and value else None
+        )
         if mapped is None:
             raise _refused(where, f"holds {key} {value!r}, which is not one of {', '.join(table)}")
         labels.extend(mapped.get("labels", []))

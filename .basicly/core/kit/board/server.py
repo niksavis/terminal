@@ -7,8 +7,8 @@ import json
 import mimetypes
 import os
 import sys
+import time
 from collections.abc import Callable, Sequence
-from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
@@ -33,6 +33,8 @@ def _load(file_name: str, module_name: str) -> Any:
 
 
 routes = _load("routes.py", "basicly_board_kit_routes")
+framing = _load("framing.py", "basicly_board_kit_framing")
+reload = _load("reload.py", "basicly_board_kit_reload")
 RequestError = routes.RequestError
 tracker_cli = routes.tracker_cli
 API = routes.API
@@ -50,7 +52,7 @@ EXIT_PORT_IN_USE = 1
 KIT_MODULES = ("basicly_tracker_kit_", "basicly_board_kit_")
 NAMED_CHANGES = 3
 JSON_TYPE = "application/json"
-MAX_BODY_BYTES = 1_000_000
+MAX_BODY_BYTES = framing.MAX_BODY_BYTES
 
 ENDPOINTS = (
     "GET  /api/v1/version",
@@ -67,7 +69,9 @@ ENDPOINTS = (
     "PATCH /api/v1/records/<id>  {title, description, acceptance, requirements, fields, status, "
     "add_labels, remove_labels}",
     "POST /api/v1/records/<id>/comments  {text}",
-    "POST /api/v1/records/<id>/close  {reason}",
+    "POST /api/v1/records/<id>/review  {evidence}",
+    "POST /api/v1/records/<id>/confirm  {evidence}",
+    "POST /api/v1/records/<id>/close  {reason, resolution}",
     "POST /api/v1/records/<id>/deps  {target, type}",
     "POST /api/v1/records/<id>/undep  {target, type}",
     "POST /api/v1/records/<id>/assign  {to, take}",
@@ -84,6 +88,11 @@ def api_index(ledger: Path) -> dict:
         "endpoints": list(ENDPOINTS),
         "holder": commands.holders.default_holder(ledger),
         "edge_types": sorted(commands.differential.DEFAULT_VOCABULARY.edge_types),
+        "record_types": list(commands.values.record_types.RECORD_TYPES),
+        "child_types": {
+            parent: list(children)
+            for parent, children in commands.values.record_types.CHILD_TYPES.items()
+        },
         "mirror": tracker_cli().mirror.read(ledger),
     }
 
@@ -129,33 +138,25 @@ def loaded_kit_files() -> tuple[Path, ...]:
     return tuple(sorted(files))
 
 
-def kit_stamps(files: Sequence[Path]) -> tuple[tuple[int, int] | None, ...]:
-
-    stamps: list[tuple[int, int] | None] = []
-    for path in files:
-        try:
-            held = path.stat()
-        except OSError:
-            stamps.append(None)
-            continue
-        stamps.append((held.st_mtime_ns, held.st_size))
-    return tuple(stamps)
+kit_stamps = reload.kit_stamps
 
 
 class LoadedKit:
     def __init__(self, restart: str) -> None:
         self.files = loaded_kit_files()
         self.stamps = kit_stamps(self.files)
-        self.started = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+        self.started = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
         self.restart = restart
 
     def refuse_a_changed_kit(self) -> None:
 
         now = kit_stamps(self.files)
+        if len(self.files) != len(self.stamps) or len(self.stamps) != len(now):
+            raise ValueError("the loaded kit stamp counts do not match its files")
         changed = [
             f"{path.parent.name}/{path.name}"
-            for path, then, held in zip(self.files, self.stamps, now, strict=True)
-            if then != held
+            for index, path in enumerate(self.files)
+            if self.stamps[index] != now[index]
         ]
         if not changed:
             return
@@ -213,12 +214,18 @@ class Handler(BaseHTTPRequestHandler):
 
         if self.headers.get("Content-Type", "").split(";")[0].strip() != JSON_TYPE:
             raise routes.refuse(f"a write must send Content-Type {JSON_TYPE}")
-        size = int(self.headers.get("Content-Length") or 0)
-        if size > MAX_BODY_BYTES:
-            raise routes.refuse(f"the body is over {MAX_BODY_BYTES} bytes")
+        try:
+            size = framing.content_length(self.headers)
+        except framing.FramingError as error:
+            self.consumed = True
+            self.close_connection = True
+            raise routes.refuse(str(error), error.status) from error
         self.consumed = True
         try:
-            return json.loads(self.rfile.read(size) or b"{}")
+            return json.loads(framing.read_body(self.rfile, size) or b"{}")
+        except framing.FramingError as error:
+            self.close_connection = True
+            raise routes.refuse(str(error), error.status) from error
         except ValueError:
             raise routes.refuse("the body is not JSON") from None
 
@@ -227,15 +234,21 @@ class Handler(BaseHTTPRequestHandler):
         if getattr(self, "consumed", False):
             return
         try:
-            size = int(self.headers.get("Content-Length") or 0)
-        except ValueError:
+            size = framing.content_length(self.headers)
+        except framing.FramingError:
+            self.close_connection = True
+            self.consumed = True
             return
-        if 0 < size <= MAX_BODY_BYTES:
-            self.rfile.read(size)
+        if size > 0:
+            try:
+                framing.read_body(self.rfile, size)
+            except framing.FramingError:
+                self.close_connection = True
         self.consumed = True
 
     def _handle(self, method: str) -> None:
 
+        self.connection.settimeout(framing.BODY_TIMEOUT_S)
         split = urlsplit(self.path)
         try:
             self._trusted()
@@ -281,6 +294,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 class LookupFreeServer(ThreadingHTTPServer):
+    kit: LoadedKit
+
     def server_bind(self) -> None:
         super(HTTPServer, self).server_bind()
 
@@ -293,12 +308,14 @@ def make_server(  # noqa: PLR0913 - one keyword per fact the handler binds; a se
     web: Path = WEB_DIR,
     redact: Any = None,
     restart: str = "",
-) -> ThreadingHTTPServer:
+) -> LookupFreeServer:
 
     kit = LoadedKit(restart or relaunch(str(_HERE / "server.py"), str(ledger)))
     bound = {"ledger": ledger, "web": web, "bound": host, "kit": kit}
     handler = type("BoundHandler", (Handler,), {**bound, "redact": staticmethod(redact)})
-    return LookupFreeServer((host, port), handler)
+    served = LookupFreeServer((host, port), handler)
+    served.kit = kit
+    return served
 
 
 def address_in_use(error: OSError) -> bool:
@@ -360,12 +377,16 @@ def run(args: Any, redact: Callable[[str], str] | None = None) -> int:
     if args.host not in LOOPBACK:
         sys.stderr.write(f"board: {args.host} is not loopback; the network can write\n")
     sys.stderr.write(f"board: http://{host}:{port}/ serves {ledger}; API at {API}\n")
+    watcher = reload.Watcher(server, server.kit).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         sys.stderr.write("board: stopped\n")
     finally:
+        watcher.stop()
         server.server_close()
+    if watcher.due:
+        reload.restart()
     return 0
 
 

@@ -21,7 +21,7 @@ ALLOWED_TYPES = (
     "revert",
 )
 
-ISSUE_ID = r"[a-z][a-z0-9]*-[a-z0-9]+(?:\.[a-z0-9]+)*"
+ISSUE_ID = r"[a-z][a-z0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+)*"
 HEADER_PATTERN = re.compile(
     r"^(" + "|".join(ALLOWED_TYPES) + r")(\([a-z0-9]+(?:-[a-z0-9]+)*\))?(!)?: "
     r"(.+?)(?:\s+\((" + ISSUE_ID + r"(?:,\s*" + ISSUE_ID + r")*)\))?$"

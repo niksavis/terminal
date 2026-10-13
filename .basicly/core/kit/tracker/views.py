@@ -36,6 +36,7 @@ class RecordView:
     dependencies: tuple[Edge, ...] = ()
     gates: tuple[GateRow, ...] = ()
     tombstoned: bool = False
+    resolution: str = ""
 
 
 @dataclass(frozen=True)

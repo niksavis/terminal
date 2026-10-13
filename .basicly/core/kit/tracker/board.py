@@ -26,6 +26,7 @@ def _load(file_name: str, module_name: str) -> Any:
 queries = _load("queries.py", "basicly_tracker_kit_queries")
 shaping = _load("shaping.py", "basicly_tracker_kit_shaping")
 templates = _load("templates.py", "basicly_tracker_kit_templates")
+process = _load("process_evidence.py", "basicly_tracker_kit_process_evidence")
 differential = queries.differential
 
 EMPTY_LEDGER = "This ledger holds no record yet."
@@ -95,9 +96,13 @@ def _owed_by_record(directory: Path | str) -> dict[str, tuple]:
     states = queries.folded(directory)
     closed_statuses = differential.DEFAULT_VOCABULARY.closed_statuses
     template = templates.load(directory)
+    found = differential.events.read_events(directory)[0]
     return {
         record: shaping.owed(
-            dict(state.fields), closed=state.status in closed_statuses, template=template
+            dict(state.fields),
+            closed=state.status in closed_statuses,
+            template=template,
+            process=process.readiness(found, record, state.fields, template=template),
         )
         for record, state in states.items()
         if not state.tombstoned

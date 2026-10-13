@@ -18,6 +18,7 @@ class Language(NamedTuple):
     regex_literals: bool
     word_boundary: bool = False
     heredocs: bool = False
+    jsx_tags: bool = False
 
 
 _QUOTES = (StringRule("'", "'", True), StringRule('"', '"', True))
@@ -57,6 +58,7 @@ JAVASCRIPT = Language(
     block_comments=(("/*", "*/"),),
     strings=_QUOTES_AND_TEMPLATE,
     regex_literals=True,
+    jsx_tags=True,
 )
 
 CSS = Language(

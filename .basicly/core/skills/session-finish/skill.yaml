@@ -4,7 +4,7 @@ token_cost:
   listing: 39
 name: session-finish
 invocation: model
-description: "Closes a session with a usage report, a retro and a handover of what changed and what is open. Use when the user wraps up or a long run ends."
+description: "Closes a session with a usage report, a retro and a handover of what changed and is open. Use when the user wraps up or a long run ends."
 instructions: |
   # Session Finish
 

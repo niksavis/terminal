@@ -163,6 +163,7 @@ def views_from_events(ledger_events: Iterable[Any]) -> dict[str, RecordView]:
             dependencies=tuple(edge for edge, held in edges.get(record, {}).items() if held),
             gates=tuple(gates.get(record, {}).values()),
             tombstoned=state.tombstoned,
+            resolution=str(state.fields.get("close_resolution") or ""),
         )
     return views
 

@@ -3,16 +3,10 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
 HOOK_NAME = "post-merge"
-
-GIT_DIR_NAME = ".git"
-_GIT_DIR_MARK = "gitdir:"
-DEFAULT_HOOKS_DIR = "hooks"
-HOOKS_PATH_KEY = "hookspath"
 
 DEFAULT_INTERPRETER = "uv run --no-project --no-python-downloads python"
 
@@ -58,36 +52,9 @@ def _within(path: Path, root: Path) -> str:
         ) from exc
 
 
-def git_dir(root: Path) -> Path | None:
-
-    candidate = root / GIT_DIR_NAME
-    if candidate.is_dir():
-        return candidate
-    if candidate.is_file():
-        text = candidate.read_text(encoding="utf-8").strip()
-        if text.startswith(_GIT_DIR_MARK):
-            linked = Path(text[len(_GIT_DIR_MARK) :].strip())
-            return linked if linked.is_absolute() else (root / linked).resolve()
-    return None
-
-
-def hooks_dir(root: Path) -> Path | None:
-
-    found = git_dir(root)
-    if found is None:
-        return None
-    config = found / "config"
-    declared = ""
-    if config.is_file():
-        for line in config.read_text(encoding="utf-8").splitlines():
-            name, sep, value = line.strip().partition("=")
-            if sep and name.strip().lower() == HOOKS_PATH_KEY:
-                declared = value.strip()
-    if not declared:
-        return found / DEFAULT_HOOKS_DIR
-    path = Path(declared)
-    return path if path.is_absolute() else (root / path)
-
+layout = _load("git_layout.py", "basicly_tracker_kit_git_layout")
+git_dir = layout.git_dir
+hooks_dir = layout.hooks_dir
 
 ON_DEFAULT_BRANCH = (
     'tracker_default="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"',
@@ -96,6 +63,7 @@ ON_DEFAULT_BRANCH = (
     '[ -n "$tracker_default" ] || tracker_default=main',
     '[ "$(git symbolic-ref --quiet --short HEAD 2>/dev/null)" = "$tracker_default" ] &&',
 )
+HAS_WORK_TO_PUSH = "  [ \"$(git rev-list --count '@{u}..HEAD' 2>/dev/null || echo 1)\" != 0 ] &&"
 
 
 def body(interpreter: str, script: str, ledger: str, command: str = "", advice: str = "") -> str:
@@ -105,6 +73,7 @@ def body(interpreter: str, script: str, ledger: str, command: str = "", advice: 
             BEGIN,
             *ON_DEFAULT_BRANCH[:-1],
             f"if {ON_DEFAULT_BRANCH[-1]}",
+            HAS_WORK_TO_PUSH,
             f'  [ -z "$(git status --porcelain -- . ":(exclude){ledger}")" ]; then',
             f"  {command} >/dev/null 2>&1 ||",
             f"    echo 'tracker: the pending shards are not folded; run {advice or command}' >&2",
@@ -117,6 +86,7 @@ def body(interpreter: str, script: str, ledger: str, command: str = "", advice: 
         BEGIN,
         *ON_DEFAULT_BRANCH[:-1],
         f'if {ON_DEFAULT_BRANCH[-1]} [ -f "{script}" ] &&',
+        HAS_WORK_TO_PUSH,
         f'  [ -z "$(git status --porcelain -- . ":(exclude){ledger}")" ]',
         "then",
         '  tracker_run=""',
@@ -187,11 +157,12 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     command: str = "",
     advice: str = "",
     script: str = "",
+    hooks: Path | None = None,
 ) -> int:
 
     script = "" if command else (script or _within(_HERE / CLI_FILE, root))
     within = ensure_ledger(root, ledger, dry_run=dry_run, stream=stream)
-    directory = hooks_dir(root)
+    directory = hooks_dir(root, hooks)
     if directory is None:
         stream.write(
             f"tracker: {root} is not a git checkout, so there is no {HOOK_NAME} to wire; "
@@ -283,28 +254,28 @@ def install_claim(
     ledger: Path,
     dry_run: bool,
     stream: Any,
-    layout: tuple[Sequence[str] | None, Sequence[str] | None] = (None, None),
+    layout: tuple[list[str] | None, list[str] | None, Path | None] = (None, None, None),
 ) -> None:
 
-    directory = hooks_dir(root)
+    places, managed, hooks = layout
+    directory = hooks_dir(root, hooks)
     if directory is None:
         return
-    places, managed = layout
     at = _claim().default_places(root, _HERE) if places is None else places
     held = _claim().default_managed(at) if managed is None else managed
     text = _claim().claim_body(_within(ledger, root), at, held)
     _install_claim(directory, text, dry_run=dry_run, stream=stream)
 
 
-def uninstall(root: Path, *, dry_run: bool, stream: Any) -> int:
+def uninstall(root: Path, *, dry_run: bool, stream: Any, hooks: Path | None = None) -> int:
 
-    _uninstall_claim(hooks_dir(root), dry_run=dry_run)
-    return uninstall_fold(root, dry_run=dry_run, stream=stream)
+    _uninstall_claim(hooks_dir(root, hooks), dry_run=dry_run)
+    return uninstall_fold(root, dry_run=dry_run, stream=stream, hooks=hooks)
 
 
-def uninstall_fold(root: Path, *, dry_run: bool, stream: Any) -> int:
+def uninstall_fold(root: Path, *, dry_run: bool, stream: Any, hooks: Path | None = None) -> int:
 
-    directory = hooks_dir(root)
+    directory = hooks_dir(root, hooks)
     hook = directory / HOOK_NAME if directory is not None else None
     if hook is None or not hook.is_file():
         return 0
@@ -349,6 +320,12 @@ def main(argv: Any = None) -> int:
         )
     )
     parser.add_argument("--root", default=".", help="the repository to wire")
+    parser.add_argument(
+        "--hooks-dir",
+        type=Path,
+        default=None,
+        help="the effective Git hooks directory supplied by the host",
+    )
     parser.add_argument(
         "--ledger",
         default="",
@@ -416,8 +393,9 @@ def main(argv: Any = None) -> int:
     mirror.add_arguments(parser)
     args = parser.parse_args(None if argv is None else list(argv))
     root = Path(args.root).resolve()
+    hooks = args.hooks_dir
     if args.uninstall:
-        return uninstall(root, dry_run=args.dry_run, stream=sys.stdout)
+        return uninstall(root, dry_run=args.dry_run, stream=sys.stdout, hooks=hooks)
     ledger = Path(args.ledger) if args.ledger else _HERE.parent.parent / "ledger"
     if not ledger.is_absolute():
         ledger = root / ledger
@@ -432,18 +410,18 @@ def main(argv: Any = None) -> int:
         pin_ledger(ledger, dry_run=args.dry_run, stream=sys.stdout)
     wanted = args.dry_run or mirror.claim_wanted(ledger, args.mirror, args.end_mirror, sys.stdout)
     if not wanted:
-        _uninstall_claim(hooks_dir(root), dry_run=args.dry_run)
+        _uninstall_claim(hooks_dir(root, hooks), dry_run=args.dry_run)
     elif not args.command:
         install_claim(
             root,
             ledger=ledger,
             dry_run=args.dry_run,
             stream=sys.stdout,
-            layout=(args.tracker_at, args.managed),
+            layout=(args.tracker_at, args.managed, hooks),
         )
     if not args.fold_on_merge:
         sys.stdout.write(NO_FOLD)
-        wired = uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout)
+        wired = uninstall_fold(root, dry_run=args.dry_run, stream=sys.stdout, hooks=hooks)
     else:
         wired = install(
             root,
@@ -454,6 +432,7 @@ def main(argv: Any = None) -> int:
             command=args.command,
             advice=args.advice,
             script=_fold_script(root, args),
+            hooks=hooks,
         )
     terminal = sys.stdin is not None and sys.stdin.isatty()
     try:

@@ -4,7 +4,7 @@ token_cost:
   listing: 41
 name: harness-client
 invocation: model
-description: "Attaches to a running supervisor: shows what the factory is doing and records answers to its decisions. Use while a supervisor runs or waits."
+description: "Attaches to a running supervisor: shows what the factory does and records answers to its decisions. Use while a supervisor runs or a lane waits on a human judgment."
 instructions: |
   # Harness Client
 

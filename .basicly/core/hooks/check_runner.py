@@ -10,6 +10,43 @@ CONFIG_FILE = "basicly.toml"
 
 FRAGMENT_DIR = "basicly.d"
 
+VENV_CONFIG = Path(".venv") / "pyvenv.cfg"
+
+
+def interpreter_home(repo_root: Path) -> Path:
+
+    try:
+        lines = (repo_root / VENV_CONFIG).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return Path(sys.base_prefix)
+    for line in lines:
+        key, _, value = line.partition("=")
+        if key.strip() == "home" and value.strip():
+            return Path(value.strip())
+    return Path(sys.base_prefix)
+
+
+def interpreter_target(home: Path) -> str | None:
+
+    try:
+        return home.resolve(strict=True).as_posix()
+    except OSError:
+        return None
+
+
+def interpreter_swap_notice(home: Path, before: str | None) -> str | None:
+
+    after = interpreter_target(home)
+    if after == before:
+        return None
+    return (
+        f"the Python behind this run changed while it ran: {before or 'missing'} -> "
+        f"{after or 'missing'} (through {home}). A `uv python upgrade` or "
+        "`uv python install --upgrade` moves every uv venv to the new patch release, so a "
+        "check that ran during the swap fails for that reason, not for this change. "
+        "Run the checks again."
+    )
+
 
 def project_root() -> Path:
 
@@ -200,6 +237,8 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
         return 0
 
     skips = scoped_skips(repo_root, mode) if scope_to_diff else {}
+    home = interpreter_home(repo_root)
+    interpreter_before = interpreter_target(home)
     total_start = time.perf_counter()
     failed: list[str] = []
     for name, command in checks:
@@ -238,6 +277,9 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
             f"(failed: {', '.join(failed)}){tail}",
             file=sys.stderr,
         )
+        notice = interpreter_swap_notice(home, interpreter_before)
+        if notice:
+            print(f"checks: {notice}", file=sys.stderr)
         return 1
     print(f"checks passed: {ran}/{ran} in {total_elapsed:.2f}s{tail}")
     return 0

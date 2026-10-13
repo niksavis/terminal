@@ -5,7 +5,7 @@ token_cost:
 name: node
 invocation: model
 technologies: [node]
-description: "Runs Node and npm for the markdownlint hook and other node tools. Use when npm or npx fails or resolves the wrong node binary, often on WSL."
+description: "Runs Node and npm for the markdownlint hook and other tools. Use when npm or npx fails or resolves the wrong node binary, often on WSL."
 instructions: |
   # Node
 

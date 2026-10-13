@@ -5,12 +5,13 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
-from types import MappingProxyType
+from types import MappingProxyType, ModuleType
 
 
 class LedgerError(Exception):
@@ -29,21 +30,22 @@ _HERE = Path(__file__).resolve().parent
 _IDS_MODULE_NAME = "basicly_tracker_kit_ids"
 
 
-def _load_ids() -> object:
+def _load_sibling(file_name: str, module_name: str) -> ModuleType:
 
-    cached = sys.modules.get(_IDS_MODULE_NAME)
+    cached = sys.modules.get(module_name)
     if cached is not None:
         return cached
-    spec = importlib.util.spec_from_file_location(_IDS_MODULE_NAME, _HERE / "ids.py")
+    spec = importlib.util.spec_from_file_location(module_name, _HERE / file_name)
     if spec is None or spec.loader is None:
-        raise LedgerError("the tracker kit's ids.py is missing from beside events.py")
+        raise LedgerError(f"the tracker kit's {file_name} is missing from beside events.py")
     module = importlib.util.module_from_spec(spec)
-    sys.modules[_IDS_MODULE_NAME] = module
+    sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
 
 
-ids = _load_ids()
+ids = _load_sibling("ids.py", _IDS_MODULE_NAME)
+locking = _load_sibling("locking.py", "basicly_tracker_kit_locking")
 
 
 LOG_GLOB = "events-*.jsonl"
@@ -93,10 +95,8 @@ BUFFER_CHUNK_BYTES = 8192
 MAX_TEXT_BYTES = 4096
 
 DEFAULT_LOCK_TIMEOUT_S = 5.0
-LOCK_STALE_AFTER_S = 30.0
 LOCK_POLL_S = 0.01
 
-MAX_LOCK_STEALS = 8
 
 KIND_CREATED = "created"
 KIND_FIELD = "field"
@@ -274,6 +274,17 @@ def canonical_key(event: Event) -> tuple[str, int, str]:
 
 def canonical_order(events: Iterable[Event]) -> list[Event]:
 
+    collected = list(events)
+    if len(collected) < MEMO_MIN_EVENTS:
+        return _ordered(collected)
+    held = _memo(collected)
+    with _MEMO_LOCK:
+        if held.ordered is None:
+            held.ordered = _ordered(held.events)
+    return list(held.ordered)
+
+
+def _ordered(events: list[Event]) -> list[Event]:
     seen: set[str] = set()
     ordered = []
     for event in sorted(events, key=canonical_key):
@@ -383,15 +394,32 @@ class FoldResult:
     withdrawals: list[Withdrawal] = field(default_factory=list)
 
 
+LABELS_FIELD = "labels"
+LABEL_SEPARATOR = ","
+
+
+def labels_of(value: object) -> tuple:
+
+    if isinstance(value, str):
+        return tuple(part for part in (raw.strip() for raw in value.split(LABEL_SEPARATOR)) if part)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(item) for item in value)
+    return ()
+
+
+def settled_field(name: str, value: object) -> object:
+    return list(labels_of(value)) if name == LABELS_FIELD else value
+
+
 def _apply_created(state: RecordState, payload: Mapping[str, object]) -> None:
-    state.fields.update(payload)
+    state.fields.update({name: settled_field(name, value) for name, value in payload.items()})
 
 
 def _apply_field(state: RecordState, payload: Mapping[str, object]) -> None:
     name = payload.get("name")
     if not isinstance(name, str):
         raise InvalidEventError(f"a {KIND_FIELD} event needs a string name, got {name!r}")
-    state.fields[name] = payload.get("value")
+    state.fields[name] = settled_field(name, payload.get("value"))
 
 
 def _apply_status(state: RecordState, payload: Mapping[str, object]) -> None:
@@ -475,7 +503,7 @@ def classify_kind(kind: str) -> str:
     return UNKNOWN
 
 
-def _resumed(state: RecordState) -> RecordState:
+def copy_state(state: RecordState) -> RecordState:
     return RecordState(
         record=state.record,
         status=state.status,
@@ -551,12 +579,74 @@ def _hold(state: RecordState, event: Event) -> None:
         state.dates[DATE_ASSIGNED] = event.ts if after else None
 
 
+MEMO_ENTRIES = 16
+MEMO_MIN_EVENTS = 64
+_MEMO_LOCK = threading.RLock()
+
+
+@dataclass
+class _Memo:
+    events: list[Event]
+    ordered: list[Event] | None = None
+    folded: FoldResult | None = None
+
+
+_MEMOS: dict[tuple[int, ...], _Memo] = {}
+
+
+def _memo(collected: list[Event]) -> _Memo:
+
+    key = tuple(map(id, collected))
+    with _MEMO_LOCK:
+        held = _MEMOS.pop(key, None) or _Memo(collected)
+        _MEMOS[key] = held
+        while len(_MEMOS) > MEMO_ENTRIES:
+            del _MEMOS[next(iter(_MEMOS))]
+    return held
+
+
+def _copied(result: FoldResult) -> FoldResult:
+    return FoldResult(
+        records={name: copy_state(state) for name, state in result.records.items()},
+        delegated_kinds=dict(result.delegated_kinds),
+        unknown_kinds=dict(result.unknown_kinds),
+        duplicate_ids=list(result.duplicate_ids),
+        forked=list(result.forked),
+        mismatched_totals=list(result.mismatched_totals),
+        withdrawals=list(result.withdrawals),
+    )
+
+
+def _shared_fold(collected: list[Event]) -> FoldResult:
+    if len(collected) < MEMO_MIN_EVENTS:
+        return _folded(collected)
+    held = _memo(collected)
+    with _MEMO_LOCK:
+        if held.folded is None:
+            held.folded = _folded(held.events)
+    return held.folded
+
+
 def fold(events: Iterable[Event], *, seed: Mapping[str, RecordState] | None = None) -> FoldResult:
 
     collected = list(events)
+    if seed is not None or len(collected) < MEMO_MIN_EVENTS:
+        return _folded(collected, seed)
+    return _copied(_shared_fold(collected))
+
+
+def fields_by_record(events: Iterable[Event]) -> Mapping[str, Mapping[str, object]]:
+
+    folded = _shared_fold(list(events))
+    return MappingProxyType({
+        name: MappingProxyType(state.fields) for name, state in folded.records.items()
+    })
+
+
+def _folded(collected: list[Event], seed: Mapping[str, RecordState] | None = None) -> FoldResult:
     result = FoldResult()
     if seed is not None:
-        result.records = {name: _resumed(state) for name, state in seed.items()}
+        result.records = {name: copy_state(state) for name, state in seed.items()}
     counts: dict[str, int] = {}
     for event in collected:
         counts[event.id] = counts.get(event.id, 0) + 1
@@ -667,13 +757,73 @@ def derive_writer(directory: Path | str) -> str | None:
     return _slug(branch)
 
 
+Stamp = tuple[int, int, int, int]
+
+
+def file_stamp(path: Path) -> Stamp | None:
+    try:
+        held = path.stat()
+    except FileNotFoundError:
+        return None
+    return held.st_dev, held.st_ino, held.st_size, held.st_mtime_ns
+
+
+def _decoded(data: bytes) -> str:
+    return data.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n")
+
+
+class StampedFiles:
+    def __init__(self, limit: int) -> None:
+        self.limit = limit
+        self._held: dict[Path, tuple[Stamp, str | bytes, object]] = {}
+        self._lock = threading.Lock()
+
+    def held(self, path: Path, stamp: Stamp, content: str | bytes) -> object | None:
+        entry = self._held.get(path.absolute())
+        if entry is None or entry[0] != stamp or entry[1] != content:
+            return None
+        return entry[2]
+
+    def keep(self, path: Path, stamp: Stamp, content: str | bytes, value: object) -> None:
+        key = path.absolute()
+        with self._lock:
+            self._held.pop(key, None)
+            self._held[key] = (stamp, content, value)
+            while len(self._held) > self.limit:
+                del self._held[next(iter(self._held))]
+
+
+PARSED_LOGS = 32
+
+
+@dataclass(frozen=True)
+class _Parsed:
+    events: tuple[Event, ...]
+    quarantined: tuple[Quarantine, ...]
+
+
+_PARSED = StampedFiles(PARSED_LOGS)
+
+
 def read_log(path: Path | str) -> tuple[list[Event], list[Quarantine]]:
 
     file_path = Path(path)
+    stamp = file_stamp(file_path)
+    if stamp is None:
+        return [], []
     try:
-        text = file_path.read_text(encoding="utf-8")
+        data = file_path.read_bytes()
     except FileNotFoundError:
         return [], []
+    parsed = _PARSED.held(file_path, stamp, data)
+    if not isinstance(parsed, _Parsed):
+        found, quarantined = _parse_log(file_path, _decoded(data))
+        parsed = _Parsed(tuple(found), tuple(quarantined))
+        _PARSED.keep(file_path, stamp, data, parsed)
+    return list(parsed.events), [replace(bad, path=file_path) for bad in parsed.quarantined]
+
+
+def _parse_log(file_path: Path, text: str) -> tuple[list[Event], list[Quarantine]]:
     complete = text.endswith("\n")
     lines = text.splitlines()
     events: list[Event] = []
@@ -713,129 +863,62 @@ def append_target(directory: Path | str, *, writer: str | None = None) -> Path:
     return paths[-1] if paths else Path(directory) / INITIAL_LOG_NAME
 
 
-def default_pid_liveness(pid: int) -> bool | None:
-
-    if os.name == "nt":
-        return None
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
-
-
 class LedgerLock:
-    def __init__(  # noqa: PLR0913 — one keyword per injected seam; see the class docstring
+    def __init__(
         self,
         directory: Path | str,
         *,
         timeout_s: float = DEFAULT_LOCK_TIMEOUT_S,
-        stale_after_s: float = LOCK_STALE_AFTER_S,
         poll_s: float = LOCK_POLL_S,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
-        pid: int | None = None,
-        is_alive: Callable[[int], bool | None] = default_pid_liveness,
     ) -> None:
         self.path = Path(directory) / LOCK_NAME
         self._timeout_s = timeout_s
-        self._stale_after_s = stale_after_s
         self._poll_s = poll_s
         self._monotonic = monotonic
         self._sleep = sleep
-        self._pid = os.getpid() if pid is None else pid
-        self._is_alive = is_alive
-        self._held = False
-        self.steals = 0
+        self._handle: int | None = None
 
     @property
     def held(self) -> bool:
-        return self._held
+        return self._handle is not None
 
     def acquire(self) -> LedgerLock:
-
+        if self.held:
+            raise LedgerError(
+                f"this writer already owns {self.path}; release it before acquiring again"
+            )
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        handle = os.open(str(self.path), os.O_CREAT | os.O_RDWR, 0o600)
         deadline = self._monotonic() + self._timeout_s
-        while True:
-            if self._try_create():
-                self._held = True
-                return self
-            if self._steal_if_stale():
-                if self.steals > MAX_LOCK_STEALS:
-                    raise LockUnavailableError(
-                        f"{self.path} went stale {self.steals} times in one acquire: "
-                        f"the staleness answers are wrong, not the lock"
-                    )
-                continue
-            if self._monotonic() >= deadline:
-                raise LockUnavailableError(
-                    f"another writer holds {self.path} after {self._timeout_s}s"
-                )
-            self._sleep(self._poll_s)
+        acquired = False
+        try:
+            while not locking.try_exclusive(handle):
+                if self._monotonic() >= deadline:
+                    break
+                self._sleep(self._poll_s)
+            else:
+                acquired = True
+        finally:
+            if not acquired:
+                os.close(handle)
+        if not acquired:
+            raise LockUnavailableError(f"another writer holds {self.path} after {self._timeout_s}s")
+        self._handle = handle
+        return self
 
     def release(self) -> None:
-
-        self._held = False
-        record = self._read_holder()
-        if record is not None and record.get("pid") != self._pid:
+        if self._handle is None:
             return
-        try:
-            self.path.unlink()
-        except FileNotFoundError:
-            return
+        handle, self._handle = self._handle, None
+        os.close(handle)
 
     def __enter__(self) -> LedgerLock:
         return self.acquire()
 
     def __exit__(self, *_exc: object) -> None:
         self.release()
-
-    def _try_create(self) -> bool:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            handle = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        except FileExistsError:
-            return False
-        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
-            json.dump({"pid": self._pid, "monotonic": self._monotonic()}, stream, sort_keys=True)
-        return True
-
-    def _read_holder(self) -> dict[str, object] | None:
-        try:
-            raw = self.path.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            return None
-        except OSError:
-            return None
-        try:
-            record = json.loads(raw)
-        except ValueError:
-            return None
-        return record if isinstance(record, dict) else None
-
-    def _steal_if_stale(self) -> bool:
-        record = self._read_holder()
-        if record is None:
-            return self._steal()
-        pid = record.get("pid")
-        if _is_int(pid) and self._is_alive(int(pid)) is False:  # type: ignore[arg-type]
-            return self._steal()
-        stamp = record.get("monotonic")
-        if not isinstance(stamp, (int, float)) or isinstance(stamp, bool):
-            return self._steal()
-        age = self._monotonic() - float(stamp)
-        if age < 0.0 or age > self._stale_after_s:
-            return self._steal()
-        return False
-
-    def _steal(self) -> bool:
-        self.steals += 1
-        try:
-            self.path.unlink()
-        except FileNotFoundError:
-            return True
-        return True
 
 
 def _stamp(seconds: float) -> str:

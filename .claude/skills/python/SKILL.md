@@ -1,6 +1,6 @@
 ---
 name: python
-description: Writes typed Python with pathlib and Windows-safe subprocesses, and judges whether an abstraction earns its keep. Use for .py edits, an except clause, a size gate or a silenced warning.
+description: Writes typed Python with pathlib and Windows-safe subprocesses, and judges if an abstraction earns its keep. Use for .py edits, an except clause, a size gate or a silenced warning.
 paths:
 - '**/*.py'
 ---

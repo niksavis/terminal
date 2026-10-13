@@ -134,7 +134,15 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
         if_seq=a.if_seq,
         claimant=_holder(a),
     ),
-    "close": lambda a, r: commands.close(a.directory, a.record, reason=a.reason, redact=r),
+    "close": lambda a, r: commands.close(
+        a.directory, a.record, reason=a.reason, resolution=a.resolution, redact=r
+    ),
+    "review": lambda a, r: commands.record_process(
+        a.directory, a.record, json.loads(a.evidence), redact=r
+    ),
+    "confirm": lambda a, r: commands.record_process(
+        a.directory, a.record, json.loads(a.evidence), completed=True, redact=r
+    ),
     "comment": lambda a, r: commands.comment(a.directory, a.record, a.text, redact=r),
     "dep": lambda a, r: commands.add_dependency(
         a.directory, a.record, a.target, edge_type=a.edge_type, redact=r
@@ -237,13 +245,30 @@ def _relative(path: Path) -> str:
 def _commit_check(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
     message = Path(args.message).read_text(encoding="utf-8")
     changed = [line.strip() for line in sys.stdin] if args.stdin else list(args.path)
-    states = events.fold(events.read_events(args.directory)[0]).records
+    linked = [
+        path.name
+        for pattern in ("events-*.jsonl", "pending-*.jsonl")
+        for path in Path(args.directory).glob(pattern)
+        if path.is_symlink()
+    ]
+    if linked:
+        raise commands.claims.UnclaimedError(
+            f"the staged ledger contains symlink files {', '.join(sorted(linked))}; "
+            "stage regular event files before committing"
+        )
+    found, unreadable = events.read_events(args.directory)
+    states = events.fold(found).records
     committer = commands.holders.default_holder(Path.cwd())
     ledger = Path(args.directory).resolve()
     here = Path(__file__).resolve()
     runner = args.runner or f"python3 {_relative(here)}"
-    shown = _relative(ledger)
+    shown = args.ledger_label or _relative(ledger)
     context = commands.claims.CommitContext(committer, shown, runner, tuple(args.installed))
+    if unreadable:
+        raise commands.claims.UnclaimedError(
+            f"the staged ledger {shown} has unreadable events; run `{runner} fsck {shown}` "
+            "and repair the ledger before committing"
+        )
     commands.claims.refuse_commit(states, message, changed, context)
     return EXIT_OK, {"committer": committer, "ids": commands.claims.named_ids(message, states)}
 
@@ -314,6 +339,9 @@ def main(argv: Sequence[str] | None = None, *, redact: Callable[[str], str] | No
 
     args = arguments.parser().parse_args(argv)
     code, report = invoke(args, redact)
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
     print(json.dumps(report, sort_keys=True, indent=2, ensure_ascii=False))
     return code
 

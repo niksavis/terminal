@@ -11,7 +11,7 @@
 {%- if ident in linkable %}<a class="rec" href="{{ record_dir }}/{{ ident }}{{ record_ext }}">{{ text }}</a>{% else %}{{ text }}{% endif -%}
 {%- endmacro -%}
 <!doctype html>
-<html lang="en" data-bs-theme="dark">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -34,7 +34,7 @@
       body {
         background: var(--bg);
         color: var(--text);
-        font-family: var(--sans);
+        font-family: var(--font-sans);
         /* Six metres, not a laptop: the floor is well above site/index.html's 16px. */
         font-size: 19px;
         height: 100vh;
@@ -42,14 +42,14 @@
         /* The page never scrolls and neither does a region. Anything that does not fit was
            dropped by the model, which said how many and of what. */
         overflow: hidden;
-        padding: 8px;
+        padding: var(--space-3);
       }
       /* Fixed columns, and rows that reflow only when a *capacity* changes. A wall display
          that moves when a number changes is unreadable, so every region caps what it draws at
          a slot count the model states and reports the rest. */
       .wall {
         display: grid;
-        gap: 7px;
+        gap: var(--space-2);
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas:
           "head"
@@ -83,24 +83,24 @@
         overflow: hidden;
       }
       .region.framed {
-        padding: 5px 10px;
+        padding: var(--space-1) var(--space-3);
       }
       h2 {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 14px;
         font-weight: 600;
         letter-spacing: 0.22em;
         text-transform: uppercase;
       }
       .label {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 13px;
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
       .value,
       .mono {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
       }
       /* A state glyph carries the border-style channel, so it is a bordered inline box and it
          stands taller than the text beside it - a 16px value on a 1.3 line box is 21px while a
@@ -109,10 +109,10 @@
          one: the border stays 3px, because `double` needs three to read as double and that is
          the channel that distinguishes withheld from renderable. */
       .glyph {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 0.82em;
         line-height: 1;
-        margin-right: 5px;
+        margin-right: var(--space-1);
       }
       a.rec {
         color: inherit;
@@ -123,13 +123,13 @@
          only channel left once colour and case are the heading's: the second surface has to
          announce itself (basicly-lc2bd3v.6). */
       a.rec.way {
-        color: var(--indigo);
+        color: var(--accent);
         letter-spacing: normal;
         text-transform: none;
       }
       a.rec:hover,
       a.rec:focus {
-        color: var(--indigo);
+        color: var(--accent);
         text-decoration: underline;
       }
       .clip {
@@ -138,8 +138,8 @@
         white-space: nowrap;
       }
       .note {
-        color: var(--text-dim);
-        font-family: var(--mono);
+        color: var(--muted);
+        font-family: var(--font-mono);
         font-size: 13px;
       }
 
@@ -153,17 +153,17 @@
         display: grid;
         grid-area: head;
         grid-template-columns: minmax(0, 1fr) auto;
-        gap: 0 18px;
+        gap: 0 var(--space-5);
       }
       .facts {
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 2px 18px;
+        gap: var(--space-0) var(--space-5);
         min-width: 0;
       }
       .facts .brand {
-        color: var(--indigo);
+        color: var(--accent);
         font-size: 22px;
         font-weight: 700;
         letter-spacing: 0.04em;
@@ -172,7 +172,7 @@
       .facts .cell {
         align-items: baseline;
         display: flex;
-        gap: 7px;
+        gap: var(--space-2);
         min-width: 0;
       }
       .facts .cell .value {
@@ -193,7 +193,7 @@
         font-size: 21px;
         font-weight: 700;
         letter-spacing: 0.04em;
-        padding: 0 9px;
+        padding: 0 var(--space-3);
       }
       .facts .token .note {
         min-width: 0;
@@ -202,7 +202,7 @@
          value on the wall is drawn under it, which is what makes one enough. */
       .fresh {
         align-self: start;
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 15px;
         margin-left: auto;
         text-align: right;
@@ -215,7 +215,7 @@
         align-items: center;
         display: inline-flex;
         font-size: 17px;
-        gap: 6px;
+        gap: var(--space-2);
       }
 
       .fresh .note {
@@ -243,9 +243,9 @@
       .band.state-stuck .kicker,
       .band.state-stuck .stale,
       .band.state-stuck .note {
-        background: var(--orange);
-        border-color: var(--orange);
-        color: var(--bg-sunk);
+        background: var(--stuck-fill);
+        border-color: var(--stuck-fill);
+        color: var(--on-fill);
       }
       .band {
         align-items: center;
@@ -253,7 +253,7 @@
         display: flex;
         /* Stated, because the card it now is lays its children out as a column. */
         flex-direction: row;
-        gap: 22px;
+        gap: var(--space-6);
         grid-area: band;
         /* The one stated height on the page, and it is a floor rather than a fixture: the
            alarm has to be the same size whether or not anybody is waiting, or the region
@@ -285,7 +285,7 @@
         font-size: 30px;
       }
       .band .lines {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 18px;
         min-width: 0;
       }
@@ -296,8 +296,8 @@
         text-transform: uppercase;
       }
       .band .stale {
-        color: var(--amber);
-        font-family: var(--mono);
+        color: var(--warn);
+        font-family: var(--font-mono);
         font-size: 16px;
         margin-left: auto;
         max-width: 300px;
@@ -310,129 +310,129 @@
          the `1fr` ready row, which is correct: a human decision the factory is stopped on
          outranks a list of what could be started next. */
       .acts {
-        --bs-card-border-color: var(--amber);
+        --bs-card-border-color: var(--warn);
         grid-area: acts;
-        padding: 5px 9px 7px;
+        padding: var(--space-1) var(--space-3) var(--space-2);
       }
       .acts h2 {
-        color: var(--amber);
+        color: var(--warn);
       }
       .act {
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 10px;
-        padding: 3px 0;
+        gap: var(--space-1) var(--space-3);
+        padding: var(--space-0) 0;
       }
       .act + .act {
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--line);
       }
       .act .who {
         align-items: baseline;
         display: flex;
         flex: 1 1 100%;
-        gap: 8px;
+        gap: var(--space-3);
         min-width: 0;
       }
       .act .subject {
-        color: var(--text-bright);
+        color: var(--text-strong);
         font-weight: 600;
       }
       .act .issue {
-        color: var(--indigo);
-        font-family: var(--mono);
+        color: var(--accent);
+        font-family: var(--font-mono);
       }
       .act .question {
-        color: var(--text-dim);
+        color: var(--muted);
         min-width: 0;
       }
       /* The command, always drawn. A board with no server behind it still owes the line. */
       .act .command {
-        color: var(--text-dim);
-        font-family: var(--mono);
+        color: var(--muted);
+        font-family: var(--font-mono);
         font-size: 12px;
       }
       .act form {
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 6px;
+        gap: var(--space-2);
       }
       .act label {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 11px;
       }
       .act input {
         background: var(--bg);
-        border: 1px solid var(--border-lit);
+        border: 1px solid var(--edge);
         border-radius: 3px;
         color: var(--text);
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 13px;
-        padding: 2px 5px;
+        padding: var(--space-0) var(--space-1);
       }
       /* What the board already knew against what the operator still owes. Two channels, the
          label's colour and the input's border, because a form whose filled and empty inputs
          look alike is one an operator has to read field by field. */
       .act label.known input {
-        color: var(--text-dim);
+        color: var(--muted);
       }
       .act label.typed {
-        color: var(--amber);
+        color: var(--warn);
       }
       .act label.typed input {
-        border-color: var(--amber);
+        border-color: var(--warn);
       }
       /* The kill form on a lane card. It borrows the `.act` input and button rules by
          repeating only what differs: it sits at the card's foot, it is amber rather than
          indigo because stopping work is not the ordinary action on a running lane, and its
          one typed field is the reason, which the ledger keeps (basicly-x1h1dl5). */
       .card .kill {
-        margin-top: 3px;
+        margin-top: var(--space-0);
       }
       .card .kill summary {
-        color: var(--amber);
+        color: var(--warn);
         cursor: pointer;
         font-size: 11px;
       }
       .card .kill form {
         align-items: baseline;
         display: flex;
-        gap: 6px;
-        margin-top: 3px;
+        gap: var(--space-2);
+        margin-top: var(--space-0);
       }
       .card .kill label {
-        color: var(--amber);
+        color: var(--warn);
         font-size: 11px;
       }
       .card .kill input {
         background: var(--bg);
-        border: 1px solid var(--amber);
+        border: 1px solid var(--warn);
         border-radius: 3px;
         color: var(--text);
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 12px;
         min-width: 0;
-        padding: 1px 4px;
+        padding: var(--space-hair) var(--space-1);
       }
       .card .kill .btn {
         flex: 0 0 auto;
       }
       /* No server to post to, so the operator is owed the line to type. */
       .card .command {
-        color: var(--text-dim);
+        color: var(--muted);
         display: block;
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 11px;
-        margin-top: 4px;
+        margin-top: var(--space-1);
       }
       /* Where the CLI's own output lands, so a submission never navigates the wall away. */
       .acts iframe {
         background: var(--bg);
-        border: 1px solid var(--border);
+        border: 1px solid var(--line);
         border-radius: 3px;
         height: 46px;
-        margin-top: 4px;
+        margin-top: var(--space-1);
         width: 100%;
       }
 
@@ -473,24 +473,27 @@
         }
       }
       .flow text {
-        font-family: var(--sans);
+        font-family: var(--font-sans);
       }
       .flow .station rect {
-        fill: var(--bg-sunk);
-        stroke: var(--border);
+        fill: var(--sunk);
+        stroke: var(--line);
         stroke-width: 1;
       }
       .flow .station.working rect {
-        fill: var(--indigo-deep);
-        stroke: var(--indigo);
+        fill: var(--accent-fill);
+        stroke: var(--accent);
+      }
+      .flow .station.working .count {
+        fill: var(--on-accent);
       }
       .flow .station.waiting rect {
-        stroke: var(--amber);
+        stroke: var(--warn);
         stroke-width: 2;
       }
       .flow .station .count {
-        fill: var(--text-bright);
-        font-family: var(--mono);
+        fill: var(--text-strong);
+        font-family: var(--font-mono);
         font-size: 22px;
         font-weight: 700;
         text-anchor: middle;
@@ -508,19 +511,19 @@
          be deleted: seven digits drawn twice said nothing twice. The denominator is the
          units *inside* the loop, so `intake` holding 91% of them cannot flatten it. */
       .flow .mag {
-        fill: var(--indigo);
+        fill: var(--accent);
       }
       .flow .agent {
-        fill: var(--text-dim);
+        fill: var(--muted);
         font-size: 11px;
       }
       .flow .lane {
-        fill: var(--text-dim);
+        fill: var(--muted);
       }
       /* This lane moved within the document's own beat. It is the one mark that separates a
          working factory from a wedged one, because a still picture of positions cannot. */
       .flow .lane.moved {
-        fill: var(--green);
+        fill: var(--ok);
       }
       /* A lane nobody is moving. Hollow rather than a second hue: the palette's four are
          spent, and a ring against a disc reads at six metres where two greens do not. Amber
@@ -528,64 +531,64 @@
          wall carrying it in five places has no alarm (`test_board_render` pins this). */
       .flow .lane.stuck {
         fill: none;
-        stroke: var(--amber);
+        stroke: var(--warn);
         stroke-width: 2;
       }
       .flow .waits {
-        fill: var(--amber);
+        fill: var(--warn);
       }
       .flow .waits-age {
-        fill: var(--amber);
-        font-family: var(--mono);
+        fill: var(--warn);
+        font-family: var(--font-mono);
         font-size: 11px;
       }
       .flow .terminal path {
         fill: none;
-        stroke: var(--border-lit);
+        stroke: var(--edge);
         stroke-dasharray: 4 3;
         stroke-width: 1;
       }
       .flow .terminal .count {
-        fill: var(--text-dim);
-        font-family: var(--mono);
+        fill: var(--muted);
+        font-family: var(--font-mono);
         font-size: 20px;
         text-anchor: middle;
       }
       .flow .terminal .name,
       .flow .terminal .detail {
-        fill: var(--text-dim);
+        fill: var(--muted);
         font-size: 12px;
         text-anchor: middle;
       }
       .flow .flow-edge .line {
         fill: none;
-        stroke: var(--border-lit);
+        stroke: var(--edge);
         stroke-width: 2;
       }
       /* The loop's one merge, `build -> verify`, where children land into their parent and
          where the landing gate binds. Thicker because it is the edge that fails. */
       .flow .flow-edge.merge .line {
-        stroke: var(--text-dim);
+        stroke: var(--muted);
         stroke-width: 4;
       }
       /* Amber for the same reason the wedged lane is: this edge failing is the next thing
          that will go wrong, which wants attention, and it is not a person waiting. */
       .flow .flow-edge.failing .line {
-        stroke: var(--amber);
+        stroke: var(--warn);
       }
       .flow .artifact {
-        fill: var(--text-dim);
+        fill: var(--muted);
         font-size: 11px;
         text-anchor: middle;
       }
       .flow .verdict {
-        fill: var(--text-dim);
-        font-family: var(--mono);
+        fill: var(--muted);
+        font-family: var(--font-mono);
         font-size: 12px;
         text-anchor: middle;
       }
       .flow .flow-edge.failing .verdict {
-        fill: var(--amber);
+        fill: var(--warn);
         font-weight: 700;
       }
       /* A human approval, drawn as a person on the edge it gates. Three exist: classify,
@@ -594,17 +597,17 @@
          rotated square cannot answer and a person shape can (basicly-e1c4pct). `fill` is
          inherited in SVG, so this reaches the path inside the group. */
       .flow .checkpoint {
-        fill: var(--amber);
+        fill: var(--warn);
       }
 
       /* --- claimed: taken by somebody, driven by no lane -------------------------------
          Rows rather than cards, and above them: a claimed record has no agent, no branch and
          no spend, and it is the population the page counted three times and never named. */
       .claimed {
-        margin-bottom: 5px;
+        margin-bottom: var(--space-1);
       }
       .claimed h3 {
-        color: var(--amber);
+        color: var(--warn);
         font-size: 11px;
         font-weight: 600;
         letter-spacing: 0.06em;
@@ -612,24 +615,24 @@
       }
       .claim {
         align-items: baseline;
-        border-left: 2px solid var(--amber);
+        border-left: 2px solid var(--warn);
         display: flex;
-        gap: 10px;
+        gap: var(--space-3);
         min-width: 0;
-        padding: 1px 0 1px 7px;
+        padding: var(--space-hair) 0 var(--space-hair) var(--space-2);
       }
       .claim .pri {
-        color: var(--text-dim);
-        font-family: var(--mono);
+        color: var(--muted);
+        font-family: var(--font-mono);
         font-size: 13px;
       }
       .claim .ident {
-        color: var(--indigo);
-        font-family: var(--mono);
+        color: var(--accent);
+        font-family: var(--font-mono);
         font-size: 15px;
       }
       .claim .at {
-        color: var(--text-bright);
+        color: var(--text-strong);
         font-size: 14px;
         letter-spacing: 0.04em;
       }
@@ -646,21 +649,21 @@
       .queue .bands {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 16px;
+        gap: var(--space-1) var(--space-5);
       }
       .queue .band {
         align-items: baseline;
         display: flex;
-        gap: 6px;
+        gap: var(--space-2);
       }
       .queue .n {
-        color: var(--text-bright);
-        font-family: var(--mono);
+        color: var(--text-strong);
+        font-family: var(--font-mono);
         font-size: 15px;
         font-weight: 700;
       }
       .queue .what {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 12px;
       }
       .queue .track {
@@ -671,14 +674,14 @@
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 10px;
-        margin-top: 2px;
+        gap: var(--space-1) var(--space-3);
+        margin-top: var(--space-0);
       }
       /* An id and, where it has one, the count of what waits on it. `--indigo` because every
          other id on this page is that colour and a reader follows them by hue. */
       .queue .who {
-        color: var(--indigo);
-        font-family: var(--mono);
+        color: var(--accent);
+        font-family: var(--font-mono);
         font-size: 13px;
       }
       /* The unblocks-most row names three records by title on one line, so each is bounded
@@ -690,9 +693,9 @@
         vertical-align: bottom;
       }
       .queue .who .n {
-        color: var(--amber);
+        color: var(--warn);
         font-size: 13px;
-        margin-left: 4px;
+        margin-left: var(--space-1);
       }
       /* The chain reads as a sequence, so each hop but the first is announced. Drawn as a
          path and not as `content: "\2192"`: that was a codepoint spelled as a CSS escape,
@@ -704,7 +707,7 @@
          exactly that, measured on `dense-v1` at 1920x1080. */
       .queue .chain .hop {
         align-self: center;
-        fill: var(--text-dim);
+        fill: var(--muted);
         flex: none;
         height: 13px;
         width: 13px;
@@ -727,7 +730,7 @@
       .flight {
         align-content: start;
         display: grid;
-        gap: 6px;
+        gap: var(--space-2);
         grid-area: flight;
         grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
       }
@@ -739,22 +742,22 @@
       .flight.quiet {
         align-items: baseline;
         display: flex;
-        gap: 14px;
+        gap: var(--space-4);
       }
       .flight .card {
         border-width: 3px;
-        padding: 9px 12px 10px;
+        padding: var(--space-3) var(--space-4) var(--space-3);
       }
       /* The activity line is the field with no substitute (basicly-0xtzf1): the summary
          carries the one-line clip so a card still fits collapsed, and the disclosure
          beneath it is the same text again, unclipped, for a reader who wants it in full. */
       .card > .note {
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--line);
         color: var(--text);
         font-size: 14px;
         line-height: 1.35;
-        margin-top: 7px;
-        padding-top: 6px;
+        margin-top: var(--space-2);
+        padding-top: var(--space-2);
       }
       .card > .note summary {
         cursor: pointer;
@@ -766,19 +769,19 @@
         display: none;
       }
       .card > .note .full {
-        margin-top: 4px;
+        margin-top: var(--space-1);
         white-space: pre-wrap;
       }
       /* A still card and a wedged card look identical, so a lane reporting a live stream
          carries a moving mark. Motion is the one channel a frozen page cannot fake. */
       .card.working .phase-name::after {
         animation: pulse 1.6s ease-in-out infinite;
-        background: var(--indigo);
+        background: var(--accent);
         border-radius: 50%;
         content: "";
         display: inline-block;
         height: 8px;
-        margin-left: 8px;
+        margin-left: var(--space-3);
         width: 8px;
       }
       @keyframes pulse {
@@ -786,9 +789,9 @@
         50% { opacity: 0.15; }
       }
       .miss {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 13px;
-        margin-right: 14px;
+        margin-right: var(--space-4);
       }
       /* The title and the phase share one line. A card is the region that takes the wall's
          slack - every other row is bounded by a capacity and this one absorbs what is left -
@@ -796,15 +799,15 @@
       .card .title {
         align-items: baseline;
         display: flex;
-        gap: 12px;
+        gap: var(--space-4);
         min-width: 0;
       }
       /* The unit title (basicly-0xtzf1's `units[].title` join, id demoted to a dim cell
          below), never the id itself - a card no longer leads with the one line a human
          cannot recognise on sight. */
       .card .title-text {
-        color: var(--text-bright);
-        font-family: var(--sans);
+        color: var(--text-strong);
+        font-family: var(--font-sans);
         font-size: 17px;
         font-weight: 600;
         min-width: 0;
@@ -825,17 +828,17 @@
       }
       /* Two pairs to a line, halving how many rows a card's figures cost. */
       .card dl {
-        column-gap: 8px;
+        column-gap: var(--space-3);
         display: grid;
         grid-template-columns: repeat(2, auto minmax(0, 1fr));
         line-height: 1.15;
       }
       .card dt {
-        color: var(--text-dim);
+        color: var(--muted);
         font-size: 14px;
       }
       .card dd {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 14px;
         margin: 0;
         min-width: 0;
@@ -860,7 +863,7 @@
       .ready .table > :not(caption) > * > * {
         border-bottom-width: 0;
         box-shadow: none;
-        padding: 1px 0;
+        padding: var(--space-hair) 0;
       }
       /* Only in the reclaimed row, where the height is the list's to use. Beside the lanes the
          same rule spread eight rows over 700px, which is the dead space one column over. */
@@ -868,9 +871,9 @@
         flex: 1 1 auto;
       }
       .ready td {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 17px;
-        padding: 1px 0;
+        padding: var(--space-hair) 0;
       }
       /* The widths live on the columns, not on the first row's cells: `table-layout: fixed`
          reads row one, and row one is a group heading whose single cell spans all three, so
@@ -901,20 +904,20 @@
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 4px 14px;
-        margin-top: 5px;
+        gap: var(--space-1) var(--space-4);
+        margin-top: var(--space-1);
       }
       .parked .one {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 12px;
         white-space: nowrap;
       }
       .parked .ident {
-        color: var(--indigo);
+        color: var(--accent);
       }
       .parked .pri,
       .parked .at {
-        color: var(--text-dim);
+        color: var(--muted);
       }
       /* Bounded here rather than by a shorter clip in the producer: the strip reserves a
          fixed height (`board_regions.PARKED_STRIP_PX`) and a long title that wrapped the line
@@ -928,28 +931,28 @@
         display: inline;
       }
       .ready .pri {
-        color: var(--amber);
+        color: var(--warn);
       }
       .ready .id {
-        color: var(--indigo);
+        color: var(--accent);
       }
       /* The heading a row is read *through*: it has to win against the rows without taking
          a row's worth of height, so it pays in weight and colour rather than in leading. The
          rule above it is what separates two features at six metres once the list is dense. */
       .ready .feature td {
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--line);
         color: var(--text);
-        font-family: var(--sans);
+        font-family: var(--font-sans);
         font-weight: 600;
         letter-spacing: 0.02em;
-        padding: 7px 0 1px;
+        padding: var(--space-2) 0 var(--space-0);
       }
       /* The flex row is a div inside the cell, never the cell itself: `display: flex` on a
          `td` of a fixed-layout table left the name with no width to lay out in and the wall
          drew five counts with no feature beside them. A block child takes the cell's width. */
       .ready .feature .heading {
         display: flex;
-        gap: 16px;
+        gap: var(--space-5);
         justify-content: space-between;
       }
       .ready .feature .name {
@@ -957,14 +960,14 @@
       }
       .ready tr.feature:first-child td {
         border-top: 0;
-        padding-top: 1px;
+        padding-top: var(--space-hair);
       }
       /* Right-aligned so the counts stack into a column the eye can compare down, which is
          what makes "42 unattached against 9 anywhere else" legible without reading titles. */
       .ready .feature .count {
-        color: var(--text-dim);
+        color: var(--muted);
         flex: 0 0 auto;
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-weight: 400;
         text-align: right;
         white-space: nowrap;
@@ -975,25 +978,25 @@
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 2px 18px;
+        gap: var(--space-0) var(--space-5);
         grid-area: foot;
       }
       .strip {
         align-items: baseline;
         display: flex;
         flex-wrap: wrap;
-        gap: 2px 14px;
+        gap: var(--space-0) var(--space-4);
         line-height: 1.2;
         min-width: 0;
       }
       .strip .cell {
         align-items: baseline;
         display: flex;
-        gap: 6px;
+        gap: var(--space-2);
         min-width: 0;
       }
       .strip .cell .value {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 16px;
       }
       .foot .agents {
@@ -1010,18 +1013,18 @@
         /* The server's own notes wrap onto their own line when they carry a fault, and ride
            the events line when they do not. Both need this. */
         flex-wrap: wrap;
-        gap: 14px;
+        gap: var(--space-4);
         grid-area: tick;
       }
       .tick .lines {
-        color: var(--text-dim);
+        color: var(--muted);
         /* Takes the row's remaining width instead of its own content's. `min-width: 0` was
            already here for this, but with no basis the box still grew to fit and wrapped the
            notes beside it onto further rows - 18px became 49px the moment an event line
            carried a title instead of an id (basicly-lc2bd3v.8). Its `.clip` child can only
            clip against a bounded parent. */
         flex: 1 1 0;
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 14px;
         min-width: 0;
       }
@@ -1050,12 +1053,12 @@
         align-items: center;
         display: flex;
         flex-wrap: wrap;
-        gap: 2px 12px;
+        gap: var(--space-0) var(--space-4);
         grid-area: inv;
         overflow: hidden;
       }
       .inv .chip {
-        font-family: var(--mono);
+        font-family: var(--font-mono);
         font-size: 13px;
         white-space: nowrap;
       }
@@ -1064,19 +1067,19 @@
          were measured. There is no markup here for a bar without a number. */
       .track {
         background: var(--bg);
-        border: 1px solid var(--border-lit);
+        border: 1px solid var(--edge);
         display: inline-block;
         height: 9px;
         vertical-align: middle;
         width: 84px;
       }
       .fill {
-        background: var(--indigo);
+        background: var(--accent);
         display: block;
         height: 100%;
       }
       .fill.over {
-        background: var(--amber);
+        background: var(--warn);
       }
       /* Three channels per state: a glyph in the markup, a border style here, and colour.
          Generated from board_wall.STATES so the CSS cannot name a state the code does not. */
