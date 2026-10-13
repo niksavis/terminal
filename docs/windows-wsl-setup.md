@@ -105,7 +105,7 @@ Run the install from a normal PowerShell window, not as administrator:
 irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
-Setup asks once for your Linux password from Step 2. To add coding agents, see [Quick install](../README.md#quick-install).
+Setup asks once for your Linux password from Step 2. To add coding agents, see [Quick install](../README.md#install).
 
 ### Step 6: Restart and check
 
@@ -132,7 +132,7 @@ Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu.
 | Setup prints `package-manager: No supported package manager found` | `winget` is missing | Ask IT to install `winget` |
 | Setup prints an `apt-get` command | Setup could not run `sudo` | Run that command in Ubuntu, then run the install again |
 | `python` opens the Microsoft Store | The Store app alias comes first on PATH | Turn off the `python.exe` and `python3.exe` App execution aliases in Settings > Apps > Advanced app settings |
-| A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](../README.md#managed-windows-machines) |
+| A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](user-guide.md#managed-windows-machines) |
 
 The first two rows come from the Microsoft pages above.
 

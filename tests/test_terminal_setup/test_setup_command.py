@@ -96,13 +96,16 @@ def test_no_hint_names_a_command_that_is_not_on_path(module: str) -> None:
 
 def test_the_fallback_setup_source_is_named_only_for_maintainers() -> None:
     assert platform.SETUP_SOURCE in (ROOT / "docs" / "releases.md").read_text(encoding="utf-8")
-    assert platform.SETUP_SOURCE not in (ROOT / "README.md").read_text(encoding="utf-8")
+    for document in ("README.md", "docs/user-guide.md", "docs/what-gets-installed.md"):
+        assert platform.SETUP_SOURCE not in (ROOT / document).read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize(
     "document",
     [
         "README.md",
+        "docs/user-guide.md",
+        "docs/what-gets-installed.md",
         "terminal-cheat-sheet.md",
         "terminal_setup/templates/img-zoom-skill.md",
     ],
@@ -113,8 +116,8 @@ def test_user_documents_need_no_git_to_run_setup(document: str) -> None:
     assert "--from git+" not in text
 
 
-def test_the_readme_shows_the_command_that_a_release_run_prints() -> None:
-    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+def test_the_user_guide_shows_the_command_that_a_release_run_prints() -> None:
+    guide = (ROOT / "docs" / "user-guide.md").read_text(encoding="utf-8")
     release = "https://github.com/niksavis/terminal/archive/v0.12.7.zip"
 
-    assert setup_command("--only report", argv0="terminal-setup", source=release) in readme
+    assert setup_command("--only report", argv0="terminal-setup", source=release) in guide

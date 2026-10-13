@@ -34,6 +34,8 @@ def test_readme_names_both_bootstrap_scripts_of_the_latest_release() -> None:
 USER_DOCS = (
     "README.md",
     "terminal-cheat-sheet.md",
+    "docs/user-guide.md",
+    "docs/contributing.md",
     "docs/what-gets-installed.md",
     "docs/windows-wsl-setup.md",
 )
