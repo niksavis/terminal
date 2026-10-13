@@ -66,9 +66,6 @@
       "Bash(git *commit*--no-gpg-sign*)",
       "Bash(git *-c core.hooksPath*)",
       "Bash(git *-c core.hookspath*)"
-    ],
-    "ask": [
-      "Bash(git push *)"
     ]
   },
   "hooks": {
