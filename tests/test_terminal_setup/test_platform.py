@@ -5,6 +5,7 @@ from unittest import mock
 
 import pytest
 
+from terminal_setup.configs import _windows_img_zoom_stage
 from terminal_setup.platform import (
     OperatingSystem,
     PackageManager,
@@ -17,6 +18,9 @@ from terminal_setup.platform import (
     os_release_ids,
     read_os_release,
 )
+from terminal_setup.windows_tools import _path_backup
+
+from .test_configs import make_platform
 
 UBUNTU_2404_OS_RELEASE = """PRETTY_NAME="Ubuntu 24.04.5 LTS"
 NAME="Ubuntu"
@@ -135,3 +139,21 @@ def test_read_os_release_is_empty_when_the_distro_does_not_answer() -> None:
         assert read_os_release("Gone") == ""
     with mock.patch("terminal_setup.platform.subprocess.run", side_effect=OSError):
         assert read_os_release("Gone") == ""
+
+
+@pytest.mark.parametrize("redirected", [True, False])
+def test_setup_data_lands_in_one_folder_that_follows_localappdata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, redirected: bool
+) -> None:
+    home = tmp_path / "home"
+    if redirected:
+        monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "D" / "LocalAppData"))
+        expected = tmp_path / "D" / "LocalAppData" / "terminal-setup"
+    else:
+        monkeypatch.delenv("LOCALAPPDATA", raising=False)
+        expected = home / "AppData" / "Local" / "terminal-setup"
+    platform = make_platform(OperatingSystem.WINDOWS, home)
+
+    assert platform.setup_data_dir == expected
+    assert _windows_img_zoom_stage(platform).parent == expected
+    assert _path_backup(platform).parent == expected

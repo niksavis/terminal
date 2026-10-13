@@ -53,7 +53,9 @@ class PlatformInfo:
 
     @property
     def setup_data_dir(self) -> Path:
-        return self.home / "AppData" / "Local" / "terminal-setup"
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        base = Path(local_app_data) if local_app_data else self.home / "AppData" / "Local"
+        return base / "terminal-setup"
 
 
 def detect_os() -> OperatingSystem:

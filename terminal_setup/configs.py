@@ -483,9 +483,7 @@ def _img_zoom_install_script(source: str, *, update: bool) -> str:
 
 
 def _windows_img_zoom_stage(platform: PlatformInfo) -> Path:
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    base = Path(local_app_data) if local_app_data else platform.home / "AppData" / "Local"
-    return base / "terminal-setup" / "img_zoom_tool"
+    return platform.setup_data_dir / "img_zoom_tool"
 
 
 def _stage_img_zoom_source(runner: Runner, destination: Path) -> None:
