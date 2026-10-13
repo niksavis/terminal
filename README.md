@@ -40,13 +40,15 @@ Use the same form with `--update` to update every tool, and with `--only report`
 | zsh | Shell | ✗ | ✓ | ✓ |
 | tmux | Sessions that stay alive after the window closes | ✗ | (2) | ✓ |
 | starship | Prompt with the git branch and state | ✓ | ✓ | ✓ |
-| ripgrep (`rg`), fd | Fast search in file contents and file names | ✗ | ✓ | ✓ |
-| bat, tree, fzf | Read files, see folders, find files and commands | ✗ | ✓ | ✓ |
-| ast-grep, sd | Search and replace code safely | ✗ | ✓ | ✓ |
-| jq, yq, xh | JSON, YAML and HTTP from the command line | ✗ | ✓ | ✓ |
-| typos, shellcheck | Find spelling mistakes and shell script bugs | ✗ | ✓ | ✓ |
-| lazygit, delta, git-lfs | Review diffs and stage changes, large files | ✗ | ✓ | ✓ |
-| just, direnv | Project commands, per-folder environment | ✗ | ✓ | ✓ |
+| ripgrep (`rg`), fd | Fast search in file contents and file names | ✓ | ✓ | ✓ |
+| bat, fzf | Read files with line numbers, find files and commands | ✓ | ✓ | ✓ |
+| tree | See a folder as a tree | ✗ | ✓ | ✓ |
+| ast-grep, sd | Search and replace code safely | ✓ | ✓ | ✓ |
+| jq, yq, xh | JSON, YAML and HTTP from the command line | ✓ | ✓ | ✓ |
+| typos, shellcheck | Find spelling mistakes and shell script bugs | ✓ | ✓ | ✓ |
+| lazygit, delta | Review diffs and stage changes | ✓ | ✓ | ✓ |
+| just | Project commands | ✓ | ✓ | ✓ |
+| git-lfs, direnv | Large files in git, per-folder environment | ✗ | ✓ | ✓ |
 | uv, Python 3.14 | Python and Python tools | ✓ | ✓ | ✓ |
 | Node.js 26 | JavaScript runtime and npm | ✓ | ✓ | ✓ |
 | img-zoom | Lets an agent read small text in an image | ✓ | ✓ | ✓ |
@@ -55,6 +57,8 @@ Use the same form with `--update` to update every tool, and with `--only report`
 
 1. Run from Windows, setup does not install WezTerm in WSL: the WezTerm on Windows opens WSL. Run inside WSL, setup installs WezTerm there when it is missing.
 2. Setup does not install tmux in WSL. Ubuntu includes it.
+
+On Windows, the tools go into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with one entry in your user PATH. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
 
 `git`, `curl` and `wget` must be present before you run setup. Setup also writes the config files for these tools. When Claude Code is present, it adds a status line and two skills.
 

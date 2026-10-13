@@ -9,7 +9,7 @@ This page lists each tool and each config file that the terminal setup installs.
 Read these limits before you plan a roll-out:
 
 - **Windows with no WSL gets no tools.** Setup checks its prerequisites first. When WSL is missing, setup stops and installs nothing. See [Windows without WSL](#windows-without-wsl).
-- **The Windows host gets no command-line search tools.** Setup puts `rg`, `fd`, `jq` and the other command-line tools in WSL only. An agent that runs in PowerShell or Git Bash does not get them.
+- **Some tools are WSL-only.** zsh, tmux, tree, git-lfs, direnv, podman, bubblewrap and socat have no Windows build in setup. An agent in PowerShell or Git Bash gets the other command-line tools from `%LOCALAPPDATA%\Programs\terminal-tools\bin`.
 - **Setup needs `git`, `curl` and `wget` before it starts.** It does not install them. When one is missing, setup stops and names it.
 - **Setup needs a package manager.** On Windows it needs `winget`, on macOS Homebrew, and on Linux `apt`, `pacman` or `dnf`. Setup uses `winget` only to find tools that are already installed.
 - **lazygit needs `sudo` on macOS and on Linux outside WSL.** Setup installs lazygit into `/usr/local/bin` there. Add `--no-sudo` to install it into `~/.local/bin`.
@@ -50,10 +50,10 @@ Setup changes the Windows host and the default WSL distro in one run.
 
 | Where | What setup installs | What setup writes |
 | --- | --- | --- |
-| Windows host | uv, Python 3.14, Node.js 26, WezTerm, starship, img-zoom, the agents named with `--agents`, the VS Code Remote - WSL extension when `code` is on PATH | `wezterm.lua`, `starship.toml`, the starship lines in the PowerShell 7 profile and in the Git Bash `.bashrc`, VS Code `settings.json`, and the Claude Code add-ons when `%USERPROFILE%\.claude` exists |
+| Windows host | uv, Python 3.14, Node.js 26, WezTerm, img-zoom, and into `%LOCALAPPDATA%\Programs\terminal-tools\bin`: starship, rg, fd, bat, fzf, jq, yq, xh, ast-grep, sd, typos, shellcheck, lazygit, delta, just. Also the agents named with `--agents`, the VS Code Remote - WSL extension when `code` is on PATH | `wezterm.lua`, `starship.toml`, the starship lines in the PowerShell 7 profile and in the Git Bash `.bashrc`, VS Code `settings.json`, and the Claude Code add-ons when `%USERPROFILE%\.claude` exists |
 | Default WSL distro | zsh, tree, podman, bubblewrap, socat, libatomic1, podman-docker, all the command-line tools, uv, Python 3.14, Node.js 26, starship, img-zoom, the agents named with `--agents` | `.zshrc`, `.tmux.conf`, `starship.toml`, micro `settings.json`, the default shell, and the Claude Code add-ons when `~/.claude` exists |
 
-The Windows host does not get `rg`, `fd`, `jq` or the other command-line tools. Setup does not install WezTerm in WSL on a Windows run. The WezTerm on Windows opens the WSL distro.
+The Windows host does not get zsh, tmux, tree, git-lfs or direnv. Setup does not install WezTerm in WSL on a Windows run. The WezTerm on Windows opens the WSL distro.
 
 The result is the same from each Windows shell. The shell does not change which tools setup installs. Only these parts depend on what is present on Windows:
 
@@ -74,7 +74,7 @@ Setup changes only the WSL distro that runs the shell. It does not change the Wi
 | This WSL distro | the same as the WSL row of a Windows run. When WezTerm is missing in WSL, also the nightly WezTerm AppImage into `~/.local/bin` | the same as the WSL row of a Windows run, and `~/.config/wezterm/wezterm.lua` |
 | Windows host | nothing | nothing |
 
-After a WSL run, an agent that runs in PowerShell, cmd or Git Bash does not get img-zoom or the agents. Run setup from Windows to set up the Windows host.
+After a WSL run, an agent that runs in PowerShell, cmd or Git Bash does not get the Windows tools. At the end of a WSL run, setup prints the PowerShell command that sets up the Windows host.
 
 ### A Linux run
 
@@ -195,14 +195,15 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | Tool | WSL distro | Windows host | Linux host (default) | macOS host |
 | --- | --- | --- | --- | --- |
 | WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin` | release zip into `%LOCALAPPDATA%\Programs\WezTerm` | apt (the WezTerm apt repository), pacman or dnf | Homebrew cask |
-| starship | release into `~/.local/bin` (from Windows), vendor installer into `~/.local/bin` (inside WSL) | release zip into `%LOCALAPPDATA%\Programs\starship` | vendor installer into `~/.local/bin` | Homebrew |
+| starship | release into `~/.local/bin` (from Windows), vendor installer into `~/.local/bin` (inside WSL) | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | vendor installer into `~/.local/bin` | Homebrew |
 | zsh, tree | apt, as root | ✗ | package manager | Homebrew |
 | tmux | must be present: setup warns when it is missing | ✗ | package manager | Homebrew |
 | git, curl, wget | must be present | ✗ | must be present | must be present |
 | podman, bubblewrap, socat, libatomic1, podman-docker | apt, as root | ✗ | ✗ | ✗ |
-| lazygit | release into `~/.local/bin` | ✗ | release into `/usr/local/bin`, with sudo | release into `/usr/local/bin`, with sudo |
-| yq | release into `~/.local/bin` | ✗ | release into `~/.local/bin` | Homebrew |
-| fd, bat, ripgrep, fzf, jq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos | release into `~/.local/bin` | ✗ | package manager. When apt has no package: release for ast-grep, just, typos and xh | Homebrew |
+| lazygit | release into `~/.local/bin` | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | release into `/usr/local/bin`, with sudo | release into `/usr/local/bin`, with sudo |
+| yq | release into `~/.local/bin` | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | release into `~/.local/bin` | Homebrew |
+| fd, bat, ripgrep, fzf, jq, shellcheck, xh, ast-grep, sd, just, delta, typos | release into `~/.local/bin` | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | package manager. When apt has no package: release for ast-grep, just, typos and xh | Homebrew |
+| git-lfs, direnv | release into `~/.local/bin` | ✗ | package manager | Homebrew |
 | uv | vendor installer into `~/.local/bin` | vendor installer (`install.ps1`) into `%USERPROFILE%\.local\bin` | package manager, else vendor installer | Homebrew |
 | Python 3.14 | `uv python install` into `~/.local/bin` | `uv python install` into `%USERPROFILE%\.local\bin` | `uv python install` | `uv python install` |
 | Node.js 26 | nodejs.org archive into `~/.local` | nodejs.org zip into `%LOCALAPPDATA%\Programs\nodejs` | nodejs.org archive into `~/.local` | nodejs.org archive into `~/.local` |
@@ -217,18 +218,38 @@ On Linux outside WSL, add `--no-sudo` to avoid sudo. Then setup skips the packag
 
 ## Tools that are already on Windows
 
-Setup finds a Windows tool with the PATH. It does not ask winget which tool winget installed. Windows puts the machine PATH before the user PATH, so a machine-wide copy wins.
+Setup looks for an existing copy of each tool on the PATH, leaving out its own folder `%LOCALAPPDATA%\Programs\terminal-tools\bin`. It decides by where that copy lives. Windows puts the machine PATH before the user PATH, so a machine-wide copy always runs first.
 
-| Setup finds | WezTerm, starship | Python, Node.js | Claude Code, Copilot CLI, Codex |
+### Command-line tools and starship
+
+| Setup finds | What setup does |
+| --- | --- |
+| No copy, or its own copy in `%LOCALAPPDATA%\Programs\terminal-tools\bin` | installs the latest release there. With `--update`, it updates an older copy |
+| A copy from winget in your user profile (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\...`) | asks per tool. `--winget-versions replace` replaces it without asking. `--winget-versions keep` and `--unattended` keep it and print the replace command |
+| A machine-wide copy, for example in `C:\Program Files` | keeps it and installs no second copy, because removing it needs administrator rights |
+| Any other copy in your user profile, for example from scoop or cargo | keeps it and installs no second copy |
+| starship in `%LOCALAPPDATA%\Programs\starship`, from an earlier setup version | moves it: installs the new copy, checks it, then removes the old folder and its PATH entry |
+
+A replace runs in this order, so a failed step leaves the winget copy in place:
+
+1. Setup installs its copy into `%LOCALAPPDATA%\Programs\terminal-tools\bin`.
+2. It runs `<tool> --version` on its copy. When that fails, it stops and keeps the winget copy.
+3. It runs `winget uninstall --id <id> --exact --scope user --silent`. The id comes from the winget package folder, for example `BurntSushi.ripgrep.MSVC`.
+4. It removes the user PATH entries that pointed into the removed winget folder. Before that, it saves the old user PATH to `%LOCALAPPDATA%\terminal-setup\user-path-<date>-<time>.txt`.
+
+`--scope user` means that setup can never uninstall a machine-wide winget package.
+
+### WezTerm, runtimes and agents
+
+| Setup finds | WezTerm | Python, Node.js | Claude Code, Copilot CLI, Codex |
 | --- | --- | --- | --- |
 | No copy | installs its copy | installs its copy | installs its copy, only with `--agents` |
-| A machine-wide copy, for example in `C:\Program Files` | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update` |
-| A copy in the user profile, for example from winget | keeps it | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy |
-| With `--update`, a user-profile copy that is older than the latest release | installs its own copy into `%LOCALAPPDATA%\Programs\<tool>`. A winget copy stays and can come first on PATH | upgrades Python only when uv manages it. Node.js: see the row above | runs `<agent> update` |
+| A machine-wide copy | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update` |
+| Its own copy in `%LOCALAPPDATA%\Programs\WezTerm` or `nodejs` | `--update` updates it | `--update` updates it | not applicable |
+| A copy from winget in your user profile | asks, like the command-line tools above | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy |
+| Any other user-profile copy | keeps it. `--update` leaves it as it is | as above | as above |
 
-Setup never runs `winget uninstall`. To find which copy runs, use `Get-Command <tool> -All` in PowerShell. The first line is the copy that runs.
-
-Setup does not install `rg`, `fd`, `jq`, `yq` or the other command-line tools on the Windows host. A copy from winget or another source stays as it is, and setup does not report it.
+To find which copy runs, use `Get-Command <tool> -All` in PowerShell. The first line is the copy that runs.
 
 ## Config files
 
@@ -266,7 +287,7 @@ When a config file differs from the template, setup keeps the old file as `<file
 
 - Targets WSL2 Ubuntu as the primary shell environment
 - Accepts any Debian-family default distro: its `/etc/os-release` must name `ubuntu` or `debian` in `ID` or `ID_LIKE`, because setup installs system packages with apt. Setup refuses any other distro before it installs anything, and names the distro. Only Ubuntu is tested.
-- Windows host installs: WezTerm and Starship from portable release archives into `%LOCALAPPDATA%\Programs\` (no admin rights or MSI needed; existing winget installs are detected and kept), plus the VS Code Remote - WSL extension
+- Windows host installs: WezTerm from its portable release archive into `%LOCALAPPDATA%\Programs\WezTerm`, starship and the command-line tools from their release archives into `%LOCALAPPDATA%\Programs\terminal-tools\bin` (no admin rights or MSI needed; winget copies are kept unless you add `--winget-versions replace`), plus the VS Code Remote - WSL extension
 - WSL and native Debian or Ubuntu links: `fd` -> `fdfind`, `bat` -> `batcat`
 - Config destinations: Windows `wezterm.lua` under `%USERPROFILE%\.config\wezterm\`, WSL files under `~`
 
@@ -283,7 +304,7 @@ A fresh Ubuntu WSL lacks some system packages that only apt can install: `zsh` a
 
 After installing, the setup reconciles duplicates: it reports every tool present both in `~/.local/bin` and system-wide, with both versions (for example `lazygit: user-local 0.63.0 vs system 0.60.0`), then asks per tool whether to remove the system copy. `--system-versions uninstall` removes them all without prompting (requires sudo); `--system-versions keep` only reports. Headless runs never prompt or hang; they report and explain instead.
 
-> **Note:** When setup installs WezTerm or starship on Windows, it uses the portable release archives to `%LOCALAPPDATA%\Programs\` and the user PATH is updated (no admin rights or MSI needed). You must restart your terminal for the new PATH to take effect; until then the setup report marks them OK with a restart hint.
+> **Note:** When setup installs WezTerm, starship or the command-line tools on Windows, it uses the portable release archives in `%LOCALAPPDATA%\Programs\` and the user PATH is updated (no admin rights or MSI needed). You must restart your terminal for the new PATH to take effect; until then the setup report marks them OK with a restart hint.
 
 No admin rights are needed on Windows or WSL, apart from installing WSL itself: tools install into `~/.local`. On macOS, tools install through Homebrew, but lazygit goes into `/usr/local/bin` with sudo; add `--no-sudo` to put it into `~/.local/bin`. Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
@@ -302,7 +323,7 @@ irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | 
 3. Setup checks `winget`, WSL, the default distro, and `git`, `curl` and `wget` in that distro. When one is missing, setup stops.
 4. Setup installs the WSL system packages as root: zsh, tree, podman, bubblewrap, socat, libatomic1, and podman-docker when no Docker is present. In an interactive run, setup asks first. With `--unattended`, it uses `wsl -u root` and asks for no password.
 5. Setup installs the command-line tools, uv, Python, Node.js, starship and img-zoom into the WSL home.
-6. Setup installs WezTerm, starship, Python, Node.js and img-zoom on the Windows host, in the user profile.
+6. Setup installs WezTerm, Python, Node.js and img-zoom on the Windows host, in the user profile. It installs starship and the command-line tools into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, and handles winget copies as described in [Tools that are already on Windows](#tools-that-are-already-on-windows).
 7. Setup installs the agents that you name with `--agents`, on both sides.
 8. Setup writes the config files on both sides, and the VS Code settings.
 

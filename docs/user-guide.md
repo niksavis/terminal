@@ -56,7 +56,7 @@ With uv already installed, you can also run one fixed release directly, with no 
 
 ## Unattended install for scripts and agents
 
-`--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tree, podman, bubblewrap, socat, libatomic1) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command.
+`--unattended` never prompts. It answers `no` to every question, keeps the system versions of tools, and gives each command it runs an empty stdin, so a command that asks a question fails at once instead of waiting. The WSL system packages (zsh, tree, podman, bubblewrap, socat, libatomic1) need root: run from Windows, setup installs them with `wsl -u root`, which needs no password; inside WSL, it uses `sudo -n` when sudo needs no password, and otherwise prints the apt command for you to run once. Unattended mode cannot install WSL itself, because `wsl --install` needs administrator rights and asks for a new Linux user; setup stops and names the command. On Windows, unattended mode keeps every copy that winget installed, unless you also pass `--winget-versions replace`.
 
 ## Install with an AI coding agent
 
@@ -71,6 +71,7 @@ Install the terminal setup from https://github.com/niksavis/terminal without adm
    In WSL, Linux or macOS, run:
    curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended
 2. Add --agents all (or a list such as claude,codex) only if I asked for coding agents.
+   Add --winget-versions replace only if I asked to replace the tools that winget installed.
 3. If the output prints an apt command, show it to me: it needs my sudo password.
 4. If the output names a machine-wide tool to update through IT or Software Center, tell me; do not try to change it.
 5. When done, run the same install command again with --only report
@@ -84,7 +85,8 @@ Setup never runs as administrator. On Windows it changes only what is in your us
 | Tool is | Setup does |
 | --- | --- |
 | missing | installs it in your user profile |
-| in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, the starship and WezTerm release zips, `claude update`, `copilot update`, `codex update`. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
+| installed by setup in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, the WezTerm release zip, the tools in `%LOCALAPPDATA%\Programs\terminal-tools\bin`, `claude update`, `copilot update`, `codex update`. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
+| installed by winget in your user profile | asks per tool, or follows `--winget-versions replace` or `keep`. See [Tools that are already on Windows](what-gets-installed.md#tools-that-are-already-on-windows) |
 | machine-wide, new enough | prints one info line and changes nothing |
 | machine-wide, too old | prints one warning with the version and the path: ask IT or use Software Center for a newer version |
 
@@ -289,6 +291,8 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--no-nerd-font` | install the universal (no Nerd Font) status line |
 | `--no-sudo` | never use sudo; print the apt command for missing WSL system packages |
 | `--system-install` | install system-wide through apt or brew (needs sudo or admin) |
+| `--winget-versions replace` | Windows: replace each tool that winget installed in your user profile with the setup copy |
+| `--winget-versions keep` | Windows: keep each winget copy; only report it |
 | `--system-versions uninstall` | remove system tool versions without asking |
 | `--system-versions keep` | keep system tool versions; only warn |
 | `--windows-terminal-cwd PATH` | start directory for the VS Code terminal on Windows |
