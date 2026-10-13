@@ -2,6 +2,29 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.16.0 - 2026-10-13
+
+Delta: v0.15.0..v0.16.0
+
+### Highlights
+
+- **`--update` no longer reinstalls a current Python patch.** Setup asks uv for its newest Python 3.14 patch and skips the upgrade when that patch is installed. Before a real upgrade, setup warns that running Python sessions switch interpreter and can fail, so you can restart them (term-ms2jsq).
+- **Setup data on Windows follows a redirected `%LOCALAPPDATA%`.** The img-zoom stage, the release state and the PATH backups now use one folder, `%LOCALAPPDATA%\terminal-setup` (term-3hhjrx).
+- **Setup installs basicly v0.23.0** instead of v0.20.2 (term-j0l4sb).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-lrskq3) (04467a7)
+- chore(claude): drop the git push ask rule that overrides auto mode (term-m1e1gt) (3019885)
+- build(basicly): update the basicly kit and pins to v0-23-0 (term-j0l4sb) (3716175)
+- fix(platform): derive the setup data folder from one localappdata rule (term-3hhjrx) (202680e)
+- test(readme): gate the readme length and the tool table position (term-4q729o) (410f3d4)
+- fix(setup): skip a current python patch and warn before the upgrade (term-ms2jsq) (0583d71)
+- chore(tracker): defer the non-ubuntu wsl check (term-aeouh) (8316e4f)
+- chore(tracker): file the retro findings (term-p4b5z) (be73b47)
+- chore(tracker): write the session handover (term-p4b5z) (6d1b7da)
+- chore(tracker): close the v0-15-0 release record (term-8vvg1w) (2800a4a)
+
 ## v0.15.0 - 2026-10-13
 
 Delta: v0.14.1..v0.15.0
