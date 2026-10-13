@@ -4,6 +4,8 @@ Cross-platform terminal environment setup for developers using coding agents. In
 
 ## Quick install
 
+> **Windows needs WSL.** On Windows, setup installs the Linux tools into WSL 2 with an Ubuntu or Debian distro. Without WSL, setup stops at its first check and installs nothing. Installing WSL needs administrator rights once. Set up WSL first with [Windows and WSL setup](docs/windows-wsl-setup.md). The Windows host gets WezTerm, starship, Python, Node.js, img-zoom and the coding agents. It does not get `rg`, `fd`, `jq` or the other command-line tools.
+
 On a bare machine, run the bootstrap script. It installs [uv](https://docs.astral.sh/uv/) user-locally when uv is missing, then runs the setup with Python 3.14. It needs no admin rights and no git.
 
 Windows (PowerShell):
@@ -83,6 +85,8 @@ For a reproducible install pinned to a version, put the release tag in the archi
 
 ### New Windows machine
 
+Setup stops and installs nothing on Windows without WSL. [Windows and WSL setup](docs/windows-wsl-setup.md) gives the prerequisites and each step in full.
+
 Run these in PowerShell:
 
 1. Install WSL2 with Ubuntu, then open it once to create your Linux user:
@@ -98,7 +102,7 @@ Run these in PowerShell:
 
 Setup always targets the **default** WSL distro. With more than one distro, check which one is the default with `wsl -l -v` and change it with `wsl --set-default <name>` before you run setup.
 
-No admin rights are needed on Windows, WSL, or macOS, apart from installing WSL itself: tools install into `~/.local` (or via Homebrew on macOS). Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
+No admin rights are needed on Windows or WSL, apart from installing WSL itself: tools install into `~/.local`. On macOS, tools install through Homebrew, but lazygit goes into `/usr/local/bin` with sudo; add `--no-sudo` to put it into `~/.local/bin`. Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
 ## Overview
 
@@ -126,7 +130,8 @@ Copy and paste the prompt below into your coding agent (GitHub Copilot, Claude C
 ```text
 Install the terminal setup from https://github.com/niksavis/terminal without admin rights.
 
-1. On Windows, run in PowerShell:
+1. On Windows, first run `wsl -l -v` in PowerShell. If it lists no Ubuntu or Debian distro as the default, stop and tell me: WSL needs administrator rights, and setup installs nothing without it.
+   Then run in PowerShell:
    $env:TERMINAL_SETUP_ARGS = '--unattended'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
    In WSL, Linux or macOS, run:
    curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended
@@ -292,6 +297,8 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 ## What gets installed
 
+[What gets installed](docs/what-gets-installed.md) lists each tool with its purpose, the benefit for a coding agent, its version rule and its source on each platform.
+
 ### Common baseline (all supported platforms)
 
 - Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
@@ -317,7 +324,7 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 #### Linux / macOS / WSL terminal
 
 - Installs directly on the current host
-- WezTerm install path: `apt` repo / `pacman` / `dnf` / Homebrew cask (platform-dependent)
+- WezTerm install path: `apt` repo / `pacman` / `dnf` / Homebrew cask (platform-dependent). Inside WSL, setup installs the nightly AppImage into `~/.local/bin` when WezTerm is missing; on Windows, use the WezTerm that setup installs on the Windows host
 - Starship install path: Linux install script or Homebrew on macOS
 - Config destinations: all files under `~` on the host
 
@@ -357,7 +364,7 @@ The two directory options are optional and personal, so setup never sets them by
 & ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --windows-terminal-cwd 'D:\Workspace' --wsl-terminal-cwd '/home/<your-linux-user>/workspace'
 ```
 
-By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv, and starship in WSL) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there), except `yq`, which always comes from the mikefarah release so that every Linux host has the same `yq`; macOS uses Homebrew, which needs no admin either way. The deprecated `--user-install` flag is a no-op kept for compatibility.
+By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv, and starship in WSL) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there), except `yq`, which always comes from the mikefarah release so that every Linux host has the same `yq`; macOS uses Homebrew, which needs no admin, except lazygit, which goes into `/usr/local/bin` with sudo unless you add `--no-sudo`. The deprecated `--user-install` flag is a no-op kept for compatibility.
 
 A fresh Ubuntu WSL lacks some system packages that only apt can install: `zsh` and `tree`, `podman` for containers, and `bubblewrap` and `socat`, which the Claude Code sandbox (`/sandbox`) needs on WSL2. When any are missing, setup asks once to run `sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y <missing packages>`; when you decline, when the run cannot prompt, or with `--no-sudo`, it prints that command for you to run. It adds `podman-docker`, which provides a `docker` command backed by podman, only when no Docker is installed, because that package would replace `docker.io` or `docker-ce-cli`. `--system-install` runs the command without asking.
 
