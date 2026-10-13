@@ -36,13 +36,13 @@ The shell that starts setup decides what setup changes. A shell that runs on Win
 
 | Shell | Command |
 | --- | --- |
-| PowerShell 5.1 or 7 | `irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 \| iex` |
-| Command Prompt | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 \| iex"` |
-| Git Bash | `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 \| iex"` |
-| Any Windows shell with uv | `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup` |
-| WSL, Linux, macOS | `curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh \| sh` |
+| PowerShell 5.1 or 7 | `irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex` |
+| Command Prompt | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex"` |
+| Git Bash | `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex"` |
+| Any shell with uv, one fixed release | `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup`, with the tag from the release page |
+| WSL, Linux, macOS | `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh \| sh` |
 
-On 2026-10-13, `--only check` ran on one Windows 11 machine with WSL from Command Prompt, from Git Bash with the PowerShell command, and from Git Bash with `uvx`. Each run printed `All prerequisites are satisfied.` and exited with code 0. `install.sh` is for WSL, Linux and macOS. It is not tested in Git Bash.
+On 2026-10-13, `--only check` ran with the earlier `main` form of these commands on one Windows 11 machine with WSL from Command Prompt, from Git Bash with the PowerShell command, and from Git Bash with `uvx`. Each run printed `All prerequisites are satisfied.` and exited with code 0. `install.sh` is for WSL, Linux and macOS. It is not tested in Git Bash.
 
 ### A Windows run
 
@@ -253,7 +253,7 @@ When a config file differs from the template, setup keeps the old file as `<file
 Run from Windows PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
 1. `install.ps1` installs uv into `%USERPROFILE%\.local\bin` when uv is missing.
@@ -284,6 +284,8 @@ This output came from the setup code, with the platform set to Windows and WSL s
 → Install the missing items named above, then run: uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup
 ```
 
+This run came from `main`. A run from a release prints that release's tag in the last line.
+
 The same stop occurs when the default distro is not Debian or Ubuntu. To continue, set up WSL with [Windows and WSL setup](windows-wsl-setup.md), then run the install again.
 
 The setup has no mode for the Windows host alone. uv stays installed. To remove it, run `uv self uninstall`.
@@ -293,7 +295,7 @@ The setup has no mode for the Windows host alone. uv stays installed. To remove 
 Run in the WSL shell:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh
 ```
 
 Setup installs the same WSL tools as a run from Windows. It does not change the Windows host. When WezTerm is missing inside WSL, setup installs the nightly WezTerm AppImage into `~/.local/bin`. On Windows, start WezTerm from the Windows host.
@@ -314,8 +316,12 @@ Setup installs with Homebrew. Homebrew must be present before you run setup. The
 
 Run the report after each install:
 
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report
+```
+
 ```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
 ```
 
 The report lists each tool with its path, and each config file. On Windows it lists the Windows host and the WSL distro.

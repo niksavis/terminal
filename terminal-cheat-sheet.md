@@ -13,31 +13,36 @@ Click a command to select it, then press Ctrl+C (Cmd+C on a Mac) to copy it. The
 Install on Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
 Install in WSL, Linux or macOS:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh
 ```
 
 Install with no questions, and also the coding agents (Claude Code, Copilot CLI, Codex):
 
 ```powershell
 $env:TERMINAL_SETUP_ARGS = '--unattended --agents all'
-irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all
 ```
 
 Update everything, then check what is installed:
 
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report
+```
+
 ```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
 ```
 
 ## WezTerm Shortcuts (project custom)

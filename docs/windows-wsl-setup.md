@@ -102,7 +102,7 @@ sudo apt-get update && sudo apt-get install -y git curl wget tmux
 Run the install from a normal PowerShell window, not as administrator:
 
 ```powershell
-irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
 Setup asks once for your Linux password from Step 2. To add coding agents, see [Quick install](../README.md#quick-install).
@@ -112,7 +112,7 @@ Setup asks once for your Linux password from Step 2. To add coding agents, see [
 Close all terminal windows, so that the new PATH takes effect. Then run:
 
 ```powershell
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report
 ```
 
 Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu.

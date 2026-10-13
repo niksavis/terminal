@@ -24,11 +24,32 @@ def test_bootstrap_builds_from_an_archive_so_git_is_not_needed(script: str) -> N
     assert "git+" not in text
 
 
-def test_readme_names_both_bootstrap_scripts() -> None:
+def test_readme_names_both_bootstrap_scripts_of_the_latest_release() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
     for script in ("install.sh", "install.ps1"):
-        assert f"https://raw.githubusercontent.com/niksavis/terminal/main/{script}" in readme
+        assert f"https://github.com/niksavis/terminal/releases/latest/download/{script}" in readme
+
+
+USER_DOCS = (
+    "README.md",
+    "terminal-cheat-sheet.md",
+    "docs/what-gets-installed.md",
+    "docs/windows-wsl-setup.md",
+)
+
+
+@pytest.mark.parametrize("doc", USER_DOCS)
+def test_a_user_doc_never_tells_a_user_to_install_from_main(doc: str) -> None:
+    lines = (ROOT / doc).read_text(encoding="utf-8").splitlines()
+
+    commands = [
+        line
+        for line in lines
+        if ("raw.githubusercontent.com/niksavis/terminal/main/install" in line)
+        or ("archive/main.zip" in line and not line.startswith("→ "))
+    ]
+    assert commands == []
 
 
 def test_powershell_bootstrap_updates_uv_before_uvx_runs() -> None:

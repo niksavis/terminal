@@ -6,31 +6,33 @@ Cross-platform terminal environment setup for developers using coding agents. In
 
 > **Windows needs WSL.** On Windows, setup installs the Linux tools into WSL 2 with an Ubuntu or Debian distro. Without WSL, setup stops at its first check and installs nothing. Installing WSL needs administrator rights once. Set up WSL first with [Windows and WSL setup](docs/windows-wsl-setup.md). The Windows host gets WezTerm, starship, Python, Node.js, img-zoom and the coding agents. It does not get `rg`, `fd`, `jq` or the other command-line tools.
 
-On a bare machine, run the bootstrap script. It installs [uv](https://docs.astral.sh/uv/) user-locally when uv is missing, then runs the setup with Python 3.14. It needs no admin rights and no git.
+On a bare machine, run the bootstrap script. It installs the latest release. It installs [uv](https://docs.astral.sh/uv/) user-locally when uv is missing, then runs the setup with Python 3.14. It needs no admin rights and no git.
 
 Windows (PowerShell):
 
 ```powershell
-irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
 WSL, Linux or macOS:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh
 ```
 
 To pass options, use the scriptblock form in PowerShell, or `sh -s --` in a POSIX shell:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --unattended --agents all
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --unattended --agents all
 ```
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended --agents all
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all
 ```
 
-The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options. `TERMINAL_SETUP_REF` selects a branch or a release tag, for example `v0.11.0`; the default is `main`.
+The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options.
+
+Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.12.7`.
 
 The setup installs each of these only when it is missing: uv, Python 3.14 (with `uv python install`), Node.js 26, and the coding agents that you name with `--agents` (Claude Code, GitHub Copilot CLI, OpenAI Codex). Run from Windows, it sets up the Windows host and the default WSL distro together.
 
@@ -51,37 +53,45 @@ Setup never runs as administrator. On Windows it changes only what is in your us
 
 Setup does not install a second copy beside a machine-wide one, because Windows puts the machine PATH before the user PATH, so the machine-wide copy always wins. If an agent update fails on Windows, setup names the command to run by hand, for example `codex update` in Windows PowerShell (`powershell.exe`).
 
-### Install and update with uv
+### Install, update and check
 
-With uv already installed, run the setup directly from `main` — no clone required:
+Add an option to the install command. The commands below use the scriptblock form for PowerShell and `sh -s --` for WSL, Linux and macOS.
 
-```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup
+Re-apply only the configs (fast, no package installs), for example after a config update:
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only config
 ```
 
-Already installed? Re-apply only the configs (fast, no package installs) — for example after a config update:
-
 ```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only config
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only config
 ```
 
 When `~/.zshrc`, `~/.tmux.conf`, `~/.config/starship.toml` or `~/.config/micro/settings.json` differs from the template, setup keeps the old file as `<file>.terminal-setup.bak` and names it in the output. Put your own shell lines in `~/.zshrc.local`, which setup never overwrites.
 
 Update every user-local tool, uv, Python, Node.js and every present coding agent that is older than its latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
 
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
+```
+
 ```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --update
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update
 ```
 
 Check what is installed and configured:
 
-```bash
-uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report
 ```
 
-These commands run unchanged in PowerShell, Git Bash, a WSL shell, Linux and macOS. Run from Windows, they set up the Windows host and the default WSL distro together.
+```bash
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
+```
 
-For a reproducible install pinned to a version, put the release tag in the archive URL, for example `uvx --from https://github.com/niksavis/terminal/archive/v0.11.3.zip terminal-setup`. Each [release](https://github.com/niksavis/terminal/releases/latest) page shows the same command for its tag.
+Run from Windows, these commands set up the Windows host and the default WSL distro together.
+
+With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
 
 ### New Windows machine
 
@@ -132,13 +142,13 @@ Install the terminal setup from https://github.com/niksavis/terminal without adm
 
 1. On Windows, first run `wsl -l -v` in PowerShell. If it lists no Ubuntu or Debian distro as the default, stop and tell me: WSL needs administrator rights, and setup installs nothing without it.
    Then run in PowerShell:
-   $env:TERMINAL_SETUP_ARGS = '--unattended'; irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex
+   $env:TERMINAL_SETUP_ARGS = '--unattended'; irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
    In WSL, Linux or macOS, run:
-   curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --unattended
+   curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended
 2. Add --agents all (or a list such as claude,codex) only if I asked for coding agents.
 3. If the output prints an apt command, show it to me: it needs my sudo password.
 4. If the output names a machine-wide tool to update through IT or Software Center, tell me; do not try to change it.
-5. When done, run: uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --only report
+5. When done, run the same install command again with --only report
    and summarize what was installed, skipped and failed, and any manual next steps.
 ```
 
@@ -165,7 +175,7 @@ Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new t
 If you prefer to work inside an existing WSL terminal, run the setup there too:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh
 ```
 
 This installs the same tools and configs directly on the WSL host. Then start a new zsh shell:
@@ -179,7 +189,7 @@ zsh
 Run the setup directly on the host:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh
 ```
 
 Then start WezTerm from your application launcher or run:
@@ -332,9 +342,9 @@ Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd
 
 Add options to any setup command. Each command below runs as copied, without a clone and without git:
 
-- PowerShell: `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --dry-run`
-- WSL, Linux, macOS: `curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh -s -- --dry-run`
-- Any shell with uv: `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup --dry-run`
+- PowerShell: `& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --dry-run`
+- WSL, Linux, macOS: `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --dry-run`
+- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
 - In a clone: `uv run python setup-terminal.py --dry-run`
 
 | Option | What it does |
@@ -361,7 +371,7 @@ Add options to any setup command. Each command below runs as copied, without a c
 The two directory options are optional and personal, so setup never sets them by itself. Quote a path with single quotes, because single quotes work the same in PowerShell and in bash, and write the WSL path in full. Replace `<your-linux-user>` with your Linux user name, which `whoami` prints in WSL:
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1))) --windows-terminal-cwd 'D:\Workspace' --wsl-terminal-cwd '/home/<your-linux-user>/workspace'
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --windows-terminal-cwd 'D:\Workspace' --wsl-terminal-cwd '/home/<your-linux-user>/workspace'
 ```
 
 By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv, and starship in WSL) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there), except `yq`, which always comes from the mikefarah release so that every Linux host has the same `yq`; macOS uses Homebrew, which needs no admin, except lazygit, which goes into `/usr/local/bin` with sudo unless you add `--no-sudo`. The deprecated `--user-install` flag is a no-op kept for compatibility.

@@ -95,8 +95,26 @@ jobs:
             cat release-section.md
             echo
             echo "## Install"
+            echo
+            echo "Windows PowerShell:"
+            echo
+            echo "\`irm https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag_name}/install.ps1 | iex\`"
+            echo
+            echo "WSL, Linux or macOS:"
+            echo
+            echo "\`curl -LsSf https://github.com/${GITHUB_REPOSITORY}/releases/download/${tag_name}/install.sh | sh\`"
+            echo
+            echo "With uv:"
+            echo
             echo "\`uvx --from https://github.com/${GITHUB_REPOSITORY}/archive/${tag_name}.zip terminal-setup\`"
           } > release-notes.md
+
+      - name: Pin the bootstrap scripts to the tag
+        shell: bash
+        run: |
+          uv run --no-project --python 3.14 .scripts/pin_bootstrap.py \
+            --tag '${{ steps.resolve_tag.outputs.tag_name }}' \
+            --out release-assets
 
       - name: Create or update GitHub release
         uses: softprops/action-gh-release@v2
@@ -104,3 +122,7 @@ jobs:
           tag_name: ${{ steps.resolve_tag.outputs.tag_name }}
           name: ${{ steps.resolve_tag.outputs.tag_name }}
           body_path: release-notes.md
+          fail_on_unmatched_files: true
+          files: |
+            release-assets/install.ps1
+            release-assets/install.sh

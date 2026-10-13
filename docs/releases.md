@@ -4,10 +4,24 @@ Maintainer notes for publishing tagged releases.
 
 ## What users run
 
-- Latest from main:
-  - `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup`
-- Pinned release (from release page):
+- Latest release (README):
+  - `irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex`
+  - `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh`
+- One fixed release (release page):
+  - `irm https://github.com/niksavis/terminal/releases/download/vX.Y.Z/install.ps1 | iex`
   - `uvx --from https://github.com/niksavis/terminal/archive/vX.Y.Z.zip terminal-setup` (no git needed)
+
+`releases/latest` skips drafts and pre-releases. A test (`tests/test_terminal_setup/test_bootstrap.py`) refuses a user doc that points at `main`.
+
+## Test unreleased main
+
+For maintainers only. These commands install code that no release has checked:
+
+- `irm https://raw.githubusercontent.com/niksavis/terminal/main/install.ps1 | iex`
+- `curl -LsSf https://raw.githubusercontent.com/niksavis/terminal/main/install.sh | sh`
+- `uvx --refresh-package terminal --from https://github.com/niksavis/terminal/archive/main.zip terminal-setup`
+
+The scripts in the repository default to `main`, so a clone and the e2e test run the code under test. Only the copies attached to a release default to the tag.
 
 ## Release workflow
 
@@ -15,7 +29,8 @@ Maintainer notes for publishing tagged releases.
 - Triggered on semantic tag push (`v*`).
 - Uses the matching section in `CHANGELOG.md` as release notes source.
 - Requires section heading format: `## vX.Y.Z - YYYY-MM-DD`.
-- Appends a pinned `uvx` install command for that tag.
+- Appends the pinned install commands for that tag: PowerShell, `sh` and `uvx`.
+- Writes `install.ps1` and `install.sh` with the default ref set to the tag (`.scripts/pin_bootstrap.py`), and attaches both to the release. The pin script refuses a tag that is not `vX.Y.Z`, and a script that does not hold exactly one default ref, so the release does not publish without them.
 - Runs the full `quality-gates` suite against the tagged tree and will not publish unless it passes; neither gate workflow triggers on tags, so before this a tag inherited its green from `main` having been pushed first.
 - Runs `.scripts/check_release_consistency.py` and fails the release when the tag disagrees with `pyproject.toml`, `terminal_setup/__init__.py`, `uv.lock` or the changelog heading. The pre-flight step below is the same check run earlier; this one is what makes skipping it harmless, since a tag cut on an unbumped tree cannot publish.
 
