@@ -1,0 +1,82 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: e2e-install
+
+"on":
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or commit to install. Empty means the commit of this run.
+        required: false
+        default: ""
+      agents:
+        description: Value for --agents, for example all or claude,codex.
+        required: false
+        default: all
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-install-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: false
+
+env:
+  TERMINAL_SETUP_REF: ${{ inputs.ref || github.sha }}
+  AGENTS: ${{ inputs.agents || 'all' }}
+  GITHUB_TOKEN: ${{ github.token }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install as a consumer
+        shell: bash
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --report
+
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the documented prerequisites
+        shell: bash
+        run: command -v wget >/dev/null || brew install wget
+      - name: Install as a consumer
+        shell: bash
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --report
+
+  windows-wsl:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Vampire/setup-wsl@v7
+        with:
+          distribution: Ubuntu-24.04
+          additional-packages: git curl wget tmux
+      - name: Install as a consumer
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --report
+
+  windows-without-wsl:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install as a consumer and expect the WSL refusal
+        shell: powershell
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP 'install.log'
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended *>&1 | Tee-Object -FilePath $log
+          $code = $LASTEXITCODE
+          $output = Get-Content -Raw $log
+          if ($code -eq 0) { throw 'Setup succeeded on Windows without a WSL distro; it must stop at the prerequisite check.' }
+          if ($output -notmatch 'Some prerequisites are missing') { throw 'Setup failed, but not at the prerequisite check.' }
+          if ($output -match 'Installing tools') { throw 'Setup started to install tools on Windows without a WSL distro.' }
+          Write-Output "Setup stopped at the prerequisite check with exit code $code, as documented."
+          $global:LASTEXITCODE = 0

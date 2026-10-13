@@ -19,6 +19,23 @@ Maintainer notes for publishing tagged releases.
 - Runs the full `quality-gates` suite against the tagged tree and will not publish unless it passes; neither gate workflow triggers on tags, so before this a tag inherited its green from `main` having been pushed first.
 - Runs `.scripts/check_release_consistency.py` and fails the release when the tag disagrees with `pyproject.toml`, `terminal_setup/__init__.py`, `uv.lock` or the changelog heading. The pre-flight step below is the same check run earlier; this one is what makes skipping it harmless, since a tag cut on an unbumped tree cannot publish.
 
+## End-to-end install test
+
+- File: `.github/workflows/e2e-install.yml`
+- Runs the real install, as a user runs it, on GitHub-hosted runners:
+
+  | Job | Runner | What it checks |
+  | --- | --- | --- |
+  | `linux` | `ubuntu-latest` | `install.sh --unattended --agents all --report` exits with code 0 |
+  | `macos` | `macos-latest` | the same, after `wget` is present |
+  | `windows-wsl` | `windows-latest`, with Ubuntu 24.04 from `Vampire/setup-wsl` | `install.ps1 --unattended --agents all --report` exits with code 0 |
+  | `windows-without-wsl` | `windows-latest`, no distro | setup stops at the prerequisite check and installs nothing |
+
+- Triggers: each tag push (`v*`), and on demand from the Actions tab with **Run workflow**. On demand, you can set the ref to install and the `--agents` value.
+- It does not block a release. `release.yml` does not wait for it, and it runs beside the release. Read its result on the Actions tab after the release.
+- It installs the commit under test: the bootstrap scripts come from the checkout, and `TERMINAL_SETUP_REF` points the archive download at the same commit.
+- Most tools install their latest release, so a run can fail when a tool changes upstream, with no change in this repository.
+
 ## Maintainer steps
 
 1. Ensure `main` is green and all release code changes are committed. File or claim the tracker record the release belongs to; every commit subject below ends with its id, for example `(term-abc12)`.
