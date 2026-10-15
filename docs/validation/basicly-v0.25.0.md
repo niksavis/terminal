@@ -139,6 +139,19 @@ reported an identical personal `cli-tools` skill shadowing the project copy.
 
 ## Limits
 
+The first landing through the base's v0.23.1 engine passed all 662 tests but Git
+merge exited 2: the base lacked the local Lefthook executable needed by the new
+commit-msg launcher. The supported preparation is to run the v0.25.0 wheel's
+`basicly hooks-build --runtime-only` in the base before landing. A v0.25.0 loop
+command against the old base refuses the tracker-kit version mismatch, so the
+old engine must perform the initial landing.
+
+The old engine reported that its aborted merge left the base clean, although
+nine newly added source files remained untracked. Each was compared byte-for-byte
+with the committed lane and preserved in a backup before retrying. No consumer
+files were moved. Both findings were sent to the basicly migration session;
+the upgrade does not modify upstream engine code.
+
 Windows-native and macOS execution, actual coding-agent host callbacks and remote
 CI are not established by these local probes. The agent checks exercise their
 installed launchers with real stdin, not a newly started host process. Optional
