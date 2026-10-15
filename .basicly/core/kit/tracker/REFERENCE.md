@@ -15,7 +15,7 @@ Every tracker setting, with its value, its `source` and its `home`. The source i
 | --- | --- |
 | `prefix`, `stale_days`, `mode`, `sections`, `types` | `template.json` in the ledger, committed with it |
 | `holder` | `git config basicly.holder`; `BASICLY_HOLDER` overrides it for one shell |
-| `fold_on_merge` | the post-merge git hook that `init --fold-on-merge` writes |
+| `fold_on_merge` | the read-only post-merge reminder that `init --fold-on-merge` writes |
 | `pin` | `.kit-version` in the ledger, which `init` and `update` write |
 
 ```sh
@@ -331,7 +331,8 @@ python3 .basicly/kit/tracker/cli.py shards .basicly/ledger
 ### compact
 
 Fold every pending shard into the trunk log. Run it on the default branch as its own
-pull request; `init --fold-on-merge` runs it after a merge where one writer pushes there.
+pull request. `init --fold-on-merge` reports this command after a merge; it never runs
+compaction or creates a commit from a Git hook.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py compact .basicly/ledger

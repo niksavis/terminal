@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import subprocess  # nosec B404
 import sys
@@ -77,6 +78,9 @@ def precommit_exclude(config: str) -> str | None:
 
 
 def excluded_paths() -> re.Pattern[str] | None:
+    if "BASICLY_SECRET_EXCLUDE" in os.environ:
+        source = os.environ["BASICLY_SECRET_EXCLUDE"]
+        return re.compile(source) if source else None
     config = Path(PRECOMMIT_CONFIG)
     if not config.is_file():
         return None

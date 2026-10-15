@@ -18,8 +18,8 @@ git clone https://github.com/niksavis/terminal.git
 cd terminal
 uv sync
 npm install
-uv run pre-commit install --install-hooks --hook-type pre-commit --hook-type commit-msg --hook-type pre-push
-uv run pre-commit run --all-files
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.25.0/basicly-0.25.0-py3-none-any.whl basicly install
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.25.0/basicly-0.25.0-py3-none-any.whl basicly verify --mode full
 uv run pytest tests/
 ```
 

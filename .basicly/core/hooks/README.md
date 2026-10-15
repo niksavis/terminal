@@ -6,10 +6,29 @@ are what actually blocks a bad commit/push regardless of whether the agent read 
 followed the guidance. Both halves are first-class catalog citizens (see
 [`docs/architecture/architecture.md`](../../../docs/architecture/architecture.md) §10, §13).
 
-Scripts are invoked by [pre-commit](https://pre-commit.com/) via
-[`.pre-commit-config.yaml`](../../../.pre-commit-config.yaml). They are kept as
-standalone Python files (no pre-commit-specific API) so they stay reusable by
-lefthook or another hook manager, and so their logic is directly unit-testable.
+Scripts are invoked through the bundled [Lefthook](https://lefthook.dev/) runner.
+`hooks.yaml` projects into shared `.basicly/lefthook.yml`, extended by the
+consumer's `lefthook.yml`. Native Git and agent hooks call `lefthook-runtime.py`.
+One dispatcher per event replays stdin to matched scripts and preserves agent
+stdout, stderr and blocking exit codes through a private result channel.
+Codex uses a separate Windows command and asks you to review new hook definitions
+with `/hooks` before it runs them.
+
+Git launchers verify that the managed dispatcher completed. If Lefthook skips
+it because its native file selection is empty, the launcher runs only the
+managed job once; foreign job filters still apply. Original Git arguments are
+forwarded to consumer-owned Lefthook commands.
+
+Git pre-commit runs against an isolated index snapshot. Successful mechanical
+fixes update the index while preserving partially staged working files. Pre-push
+never stashes ledger writes or ordinary unstaged edits.
+Unchanged dotenv entries stay outside the snapshot; staged dotenv changes are
+refused before materialization.
+When the repository has a prepared `.venv`, snapshot checks reuse it with
+`UV_NO_SYNC=1` to avoid rebuilding the project at every temporary path. When a
+staged `uv.lock` exists, uv first checks lock freshness and installed dependencies
+without installing the temporary project. Run
+`uv sync --group dev` in the repository after changing its Python dependencies.
 
 The table below is generated from [`hooks.yaml`](hooks.yaml) and each script's own
 module docstring, and gated by `.scripts/docs_claims.py`.
@@ -18,6 +37,10 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 
 | Hook | Stage | Manager | Script | Purpose |
 | --- | --- | --- | --- | --- |
+| `tracker-fold` | `post-merge` | `git` | [`tracker-fold.py`](tracker-fold.py) | Report pending tracker shards after a merge without changing the repository. |
+| `tier-injection` | `pretooluse` | `claude` | [`../kit/tier/claude_tier_hook.py`](../kit/tier/claude_tier_hook.py) | Resolve a Claude spawn's declared model tier. |
+| `protect-generated-codex` | `pretooluse` | `codex` | [`protect-generated.py`](protect-generated.py) | Block every generated-file path affected by a Codex patch. |
+| `session-start-codex` | `sessionstart` | `codex` | [`session-start.py`](session-start.py) | Put the ledger's orientation in Codex's context at session open. |
 | `markdownlint` | `pre-commit` | `git` | [`markdownlint.py`](markdownlint.py) | Run markdownlint-cli2 through a node this script resolves itself (basicly-jr0l.14). |
 | `identity-guard` | `pre-commit` | `git` | [`identity-guard.py`](identity-guard.py) | Block commits made with an unconfigured or auto-derived git identity. |
 | `pre-commit-script` | `pre-commit` | `git` | [`pre-commit.py`](pre-commit.py) | Run the configured fast checks before a commit. |
@@ -45,18 +68,17 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 
 <!-- docs-claims:end catalog-hooks -->
 
-Two Python files here are not hooks and so are absent from the table:
-[`check_runner.py`](check_runner.py) is the config-driven runner the `pre-commit` and
-`pre-push` scripts share, and [`markdownlint.py`](markdownlint.py) is wired directly
-by [`.pre-commit-config.yaml`](../../../.pre-commit-config.yaml) as an unmanaged
-(foreign) hook rather than through `hooks.yaml`.
+`check_runner.py` is shared by the pre-commit and pre-push checks.
+`lefthook-runtime.py` and `staged-snapshot.py` provide orchestration and index isolation.
 
-## Status
+## Installation
 
-This directory is the catalog source of truth this repo dogfoods directly
-(`.pre-commit-config.yaml` points straight here). A fresh consumer repo installs
-these hooks with `basicly hooks-build`, which materializes the scripts and merges
-a managed `repo: local` block into `.pre-commit-config.yaml` (foreign repos/hooks
-are preserved); `basicly hooks-check` reports drift. The hooks are described
-tool-agnostically in [`hooks.yaml`](hooks.yaml) so another manager (e.g. lefthook)
-can be projected later. See `docs/architecture/architecture.md` §10.2, §16.
+`basicly hooks-build` projects and activates the hooks. `basicly hooks-check`
+checks the shared configuration, scripts, binary and native projections. Existing
+Git hooks are chained and restored on uninstall. Consumer Lefthook jobs and
+comments remain in the root configuration. Foreign pre-commit configurations
+require migration to Lefthook before basicly removes the old managed wiring.
+
+The immutable release archives, checksums, source archive and MIT license live
+under `../vendor/lefthook/2.2.2`. The selected binary and license materialize in
+`.basicly/bin` without a download. The Python runtime and uv are still required.

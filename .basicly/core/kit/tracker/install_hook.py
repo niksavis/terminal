@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
@@ -55,6 +56,7 @@ def _within(path: Path, root: Path) -> str:
 layout = _load("git_layout.py", "basicly_tracker_kit_git_layout")
 git_dir = layout.git_dir
 hooks_dir = layout.hooks_dir
+managed_by_lefthook = layout.managed_by_lefthook
 
 ON_DEFAULT_BRANCH = (
     'tracker_default="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null)"',
@@ -68,46 +70,23 @@ HAS_WORK_TO_PUSH = "  [ \"$(git rev-list --count '@{u}..HEAD' 2>/dev/null || ech
 
 def body(interpreter: str, script: str, ledger: str, command: str = "", advice: str = "") -> str:
 
-    if command:
-        return "\n".join((
-            BEGIN,
-            *ON_DEFAULT_BRANCH[:-1],
-            f"if {ON_DEFAULT_BRANCH[-1]}",
-            HAS_WORK_TO_PUSH,
-            f'  [ -z "$(git status --porcelain -- . ":(exclude){ledger}")" ]; then',
-            f"  {command} >/dev/null 2>&1 ||",
-            f"    echo 'tracker: the pending shards are not folded; run {advice or command}' >&2",
-            "fi",
-            END,
-        ))
-    manual = f"python {script} compact {ledger}"
-    missing = "no uv or python on PATH, so the pending shards are not folded"
+    manual = f"{interpreter} {shlex.quote(script)} compact {shlex.quote(ledger)}"
+    message = (
+        "tracker: pending shards are unchanged; run "
+        f"{advice or command or manual} outside Git hooks"
+    )
+    available = f"[ -f {shlex.quote(script)} ] &&" if not command else ""
     return "\n".join((
         BEGIN,
         *ON_DEFAULT_BRANCH[:-1],
-        f'if {ON_DEFAULT_BRANCH[-1]} [ -f "{script}" ] &&',
+        f"if {ON_DEFAULT_BRANCH[-1]} {available}",
         HAS_WORK_TO_PUSH,
-        f'  [ -z "$(git status --porcelain -- . ":(exclude){ledger}")" ]',
-        "then",
-        '  tracker_run=""',
-        f'  for tracker_try in "{interpreter}" python3 python; do',
-        '    case "$(command -v "${tracker_try%% *}" 2>/dev/null)" in',
-        '      ""|*WindowsApps*) continue ;;',
-        "    esac",
-        '    tracker_run="$tracker_try"',
+        f'  [ -z "$(git status --porcelain -- . {shlex.quote(":(exclude)" + ledger)})" ]; then',
+        f"  for tracker_shard in {shlex.quote(ledger)}/pending-*.jsonl; do",
+        '    [ -f "$tracker_shard" ] || continue',
+        f"    printf '%s\\n' {shlex.quote(message)} >&2",
         "    break",
         "  done",
-        '  if [ -z "$tracker_run" ]; then',
-        f"    echo 'tracker: {missing}; run {manual}' >&2",
-        f'  elif ! $tracker_run "{script}" compact "{ledger}" >/dev/null 2>&1; then',
-        f"    echo 'tracker: the pending shards are not folded; run {manual}' >&2",
-        f'  elif [ -n "$(git status --porcelain -- "{ledger}")" ]; then',
-        f'    git add "{ledger}" >/dev/null 2>&1',
-        '    git commit -q -m "chore(tracker): fold pending shards into the trunk log" \\',
-        "      >/dev/null 2>&1 ||",
-        '      echo "tracker: folded the shards but could not commit them; the ledger is'
-        ' staged and your tree is not clean" >&2',
-        "  fi",
         "fi",
         END,
     ))
@@ -160,6 +139,14 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     hooks: Path | None = None,
 ) -> int:
 
+    stream.write(
+        "tracker: post-merge hooks now report pending shards without folding or "
+        "committing; run the reported compaction command outside Git hooks\n"
+    )
+    if managed_by_lefthook(root, hooks):
+        uninstall_fold(root, dry_run=dry_run, stream=stream, hooks=hooks)
+        stream.write("tracker: post-merge orchestration is managed by Lefthook\n")
+        return 0
     script = "" if command else (script or _within(_HERE / CLI_FILE, root))
     within = ensure_ledger(root, ledger, dry_run=dry_run, stream=stream)
     directory = hooks_dir(root, hooks)
@@ -173,7 +160,7 @@ def install(  # noqa: PLR0913 — one keyword per seam the host injects; a setti
     current = hook.read_text(encoding="utf-8") if hook.is_file() else ""
     wanted = merged(current, body(interpreter, script, within, command, advice))
     if current == wanted:
-        stream.write(f"tracker: {HOOK_NAME} already folds shards after a merge\n")
+        stream.write(f"tracker: {HOOK_NAME} already reports pending shards after a merge\n")
         return 0
     if dry_run:
         stream.write(f"tracker: would write {HOOK_NAME} in {directory}\n")
@@ -226,9 +213,8 @@ def pin_ledger(ledger: Path, *, dry_run: bool, stream: Any) -> None:
 
 
 NO_FOLD = (
-    "tracker: no post-merge fold is wired, so a pull request never edits the trunk log; "
-    "run `compact` as its own pull request, or pass --fold-on-merge where one writer "
-    "pushes to the default branch\n"
+    "tracker: no post-merge reminder is wired; run `compact` explicitly outside Git hooks, "
+    "or pass --fold-on-merge for a read-only reminder\n"
 )
 
 
@@ -257,6 +243,9 @@ def install_claim(
     layout: tuple[list[str] | None, list[str] | None, Path | None] = (None, None, None),
 ) -> None:
 
+    if managed_by_lefthook(root, layout[2]):
+        stream.write("tracker: commit claim checks are managed by Lefthook\n")
+        return
     places, managed, hooks = layout
     directory = hooks_dir(root, hooks)
     if directory is None:
@@ -303,7 +292,7 @@ def _fold_script(root: Path, args: argparse.Namespace) -> str:
     found = next((one for one in args.tracker_at if (root / one).is_file()), "")
     if not found:
         raise SystemExit(
-            "tracker: --fold-on-merge runs the tracker from a file in the repository, and "
+            "tracker: the compaction reminder names a tracker file in the repository, and "
             f"none of {', '.join(args.tracker_at)} exists; install with --sandbox, or run "
             "`compact` yourself after a merge"
         )
@@ -314,10 +303,7 @@ def main(argv: Any = None) -> int:
 
     offer = _load("import_offer.py", "basicly_tracker_kit_import_offer")
     parser = argparse.ArgumentParser(
-        description=(
-            "Wire a post-merge hook that folds every pending writer shard into the "
-            "trunk log, so a consumer never has to remember `compact`."
-        )
+        description=("Wire claim checks and an optional read-only post-merge compaction reminder.")
     )
     parser.add_argument("--root", default=".", help="the repository to wire")
     parser.add_argument(
@@ -329,7 +315,7 @@ def main(argv: Any = None) -> int:
     parser.add_argument(
         "--ledger",
         default="",
-        help="the ledger directory the hook compacts; defaults beside the vendored kit",
+        help="the ledger directory to monitor; defaults beside the vendored kit",
     )
     parser.add_argument(
         "--uninstall", action="store_true", help="remove only the block this writes"
@@ -340,17 +326,17 @@ def main(argv: Any = None) -> int:
     parser.add_argument(
         "--command",
         default="",
-        help="run this instead of the kit, for a host that folds through its own seam",
+        help="the explicit compaction command to show instead of the kit command",
     )
     parser.add_argument(
         "--advice",
         default="",
-        help="the command a reader should type when --command fails; defaults to --command",
+        help="the explicit compaction command to show; defaults to --command",
     )
     parser.add_argument(
         "--fold-on-merge",
         action="store_true",
-        help="wire the fold; safe only where one writer pushes to the default branch",
+        help="report pending shards after a merge without folding or creating a commit",
     )
     parser.add_argument(
         "--pin",
@@ -360,7 +346,7 @@ def main(argv: Any = None) -> int:
     parser.add_argument(
         "--interpreter",
         default=DEFAULT_INTERPRETER,
-        help="the command that runs the kit; the default needs only uv",
+        help="the interpreter for the explicit kit compaction command; the default uses uv",
     )
     parser.add_argument(
         "--import",

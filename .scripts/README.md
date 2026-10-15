@@ -11,7 +11,7 @@ Cross-platform scripts for this repository.
 
 ## Git hooks
 
-The active local git hooks are the basicly catalog hooks (`.basicly/core/hooks/`), wired through [`.pre-commit-config.yaml`](../.pre-commit-config.yaml) by `basicly hooks-build`. The scripts in `git-hooks/` are the repo's extended check suite; they run in the `quality-gates` CI workflow, which covers checks the basicly gates do not (pyright, bandit, markdownlint, cheat-sheet HTML), and can be run manually.
+The active local git hooks are the basicly catalog hooks (`.basicly/core/hooks/`), run by repository-local Lefthook 2.2.2 through [`lefthook.yml`](../lefthook.yml) and [`.basicly/lefthook.yml`](../.basicly/lefthook.yml) after `basicly hooks-build`. The scripts in `git-hooks/` are the repo's extended check suite; they run in the `quality-gates` CI workflow, which covers checks the basicly gates do not (pyright, bandit, markdownlint, cheat-sheet HTML), and can be run manually.
 
 | Script                                               | Purpose                                                |
 | ---------------------------------------------------- | ------------------------------------------------------ |

@@ -47,8 +47,24 @@ def hooks_dir(root: Path, override: Path | None = None) -> Path | None:
 REDIRECT_FILE = "redirect"
 
 
+def managed_by_lefthook(root: Path, hooks: Path | None) -> bool:
+    directory = hooks_dir(root, hooks)
+    if directory is None:
+        return False
+    path = directory / "post-merge"
+    return path.is_file() and "basicly Lefthook launcher" in path.read_text(encoding="utf-8")
+
+
 class RedirectError(ValueError):
     pass
+
+
+def _is_checkout(root: Path) -> bool:
+
+    marker = root / GIT_DIR_NAME
+    if marker.is_file():
+        return git_dir(root) is not None
+    return marker.is_dir() and (marker / "HEAD").is_file()
 
 
 def _place(ledger: Path, checkout: Path | None) -> Path:
@@ -56,7 +72,7 @@ def _place(ledger: Path, checkout: Path | None) -> Path:
     if checkout is not None:
         return ledger.relative_to(checkout)
     here = ledger.resolve()
-    home = next((one for one in here.parents if (one / GIT_DIR_NAME).exists()), None)
+    home = next((one for one in here.parents if _is_checkout(one)), None)
     if home is None:
         raise RedirectError(
             f"the ledger redirect {ledger / REDIRECT_FILE} sits outside a git checkout, so the "

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import importlib.util
 import json
 import re
@@ -482,15 +483,20 @@ def rebuild(directory: Path | str) -> Snapshot:
     return write_snapshot(snapshot_path(ledger), _snapshot_of(fold_all(ledger), tally))
 
 
-def refresh(directory: Path | str) -> Snapshot:
+def _refreshed_snapshot(ledger: Path) -> Snapshot:
 
-    ledger = Path(directory)
     tally = scan_logs(ledger)
     try:
         taken = fold_resumed(ledger)
     except SnapshotError:
         taken = fold_all(ledger)
-    return write_snapshot(snapshot_path(ledger), _snapshot_of(taken, tally))
+    return _snapshot_of(taken, tally)
+
+
+def refresh(directory: Path | str) -> Snapshot:
+
+    ledger = Path(directory)
+    return write_snapshot(snapshot_path(ledger), _refreshed_snapshot(ledger))
 
 
 def load(directory: Path | str) -> Snapshot:
@@ -503,7 +509,18 @@ def load(directory: Path | str) -> Snapshot:
             current = None
         if current is not None:
             return current
-    return refresh(ledger)
+    current = _refreshed_snapshot(ledger)
+    try:
+        return write_snapshot(snapshot_path(ledger), current)
+    except OSError as exc:
+        if exc.errno not in {errno.EROFS, errno.EACCES, errno.EPERM}:
+            raise
+        print(
+            "tracker: snapshot cache cannot be written; "
+            "reading current events without refreshing it",
+            file=sys.stderr,
+        )
+        return current
 
 
 @dataclass(frozen=True)
