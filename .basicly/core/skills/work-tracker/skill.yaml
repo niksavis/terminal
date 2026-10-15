@@ -216,12 +216,13 @@ instructions: |
   ```
 
   - Run it as its own pull request when `fsck` warns about the shard count, or when the hook
-    printed *the pending shards are not folded*.
+    reports pending shards.
   - It refuses while the tree has a change outside the ledger. Commit your work first.
   - Its commit takes a record id from the events in the shard, so the commit hook admits it.
-  - `basicly install` adds a `post-merge` fold hook only when `[tracker] fold_on_merge =
-    true`. The hook folds only on the default branch. Leave it off where the default branch
-    takes pull requests, because two folds conflict on the forge.
+  - `[tracker] fold_on_merge = true` opts into a read-only post-merge reminder on the
+    default branch. It reports the explicit command without folding, staging or committing.
+    The loop folds shards at its explicit tracker commit boundaries. Run a manual fold
+    outside Git hooks; a hook must never create another commit.
 
   ## Bulk queries with `jq`
 

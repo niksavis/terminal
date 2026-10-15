@@ -96,4 +96,4 @@ The hooks are the gate. The same scripts run as the local hook and in CI:
 
 The profile is stricter than Conventional Commits 1.0.0. A subject that passes plain Conventional Commits can still fail.
 
-`basicly hooks-build` runs `pre-commit install` and then adds the ledger guard to the pre-push hook. A plain `pre-commit install` does not add that guard. `basicly hooks-check` reports a missing hook.
+`basicly hooks-build` installs the pinned repository-local Lefthook binary and activates the Git launchers. Pre-push never stashes shared ledger writes. `basicly hooks-check` reports a missing hook.

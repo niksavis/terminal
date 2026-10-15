@@ -38,9 +38,7 @@ def main() -> int:
     if ledger_write_in_flight(root):
         print(
             "pre-push: a ledger write is in flight, so this push would race it.\n"
-            "`pre-commit` stashes the unstaged tree for this stage and the landing changes it\n"
-            "underneath, which surfaces as `Stashed changes conflicted with hook auto-fixes` —\n"
-            "a message about the stash, not about the contention. Your commits are unaffected.\n"
+            "Your commits and unstaged files are unchanged.\n"
             "Wait for the landing to finish, then push again.",
             file=sys.stderr,
         )

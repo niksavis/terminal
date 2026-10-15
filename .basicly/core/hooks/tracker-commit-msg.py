@@ -52,7 +52,7 @@ UNKNOWN_ID_MESSAGE_TEMPLATE = """ERROR: Commit message references an unknown iss
 None of the referenced id(s) were found in the staged {source}.
 
 If you created the record in this checkout, its ledger change is not staged.
-pre-commit hides unstaged files from this hook, so stage the ledger and commit again:
+this hook reads the staged ledger, so stage the ledger and commit again:
   git add .basicly/ledger
 
 If the record was created in another checkout, it reaches this gate only once that

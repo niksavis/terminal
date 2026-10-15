@@ -45,6 +45,42 @@ def _only_repeats(events: Any, existing: Sequence[Any], drafts: Sequence[Any], r
     return {record for record, ids in stated.items() if newest.get(record) in ids}
 
 
+def _gate_recurrences(events: Any, existing: Sequence[Any], drafts: Sequence[Any], redact) -> list:
+
+    if not any(draft.kind == events.KIND_GATE for draft in drafts):
+        return list(drafts)
+    latest: dict = {}
+    taken = {event.id for event in existing}
+    for event in events.canonical_order(list(existing)):
+        if event.kind == events.KIND_GATE:
+            if not all(isinstance(event.payload.get(name), str) for name in ("gate", "provider")):
+                continue
+            key = (event.record, event.payload.get("gate"), event.payload.get("provider"))
+            latest[key] = events.event_id_for(event.record, event.kind, event.payload, generation=1)
+    resolved = []
+    for draft in drafts:
+        if draft.kind != events.KIND_GATE:
+            resolved.append(draft)
+            continue
+        stored = _stored(events, draft, redact)
+        if not all(isinstance(stored.get(name), str) for name in ("gate", "provider")):
+            raise events.InvalidEventError("a gate recurrence needs a string gate and provider")
+        key = (draft.record, stored.get("gate"), stored.get("provider"))
+        signature = events.event_id_for(draft.record, draft.kind, stored, generation=1)
+        generation = 1
+        event_id = signature
+        if latest.get(key) != signature:
+            while event_id in taken:
+                generation += 1
+                event_id = events.event_id_for(
+                    draft.record, draft.kind, stored, generation=generation
+                )
+        latest[key] = signature
+        taken.add(event_id)
+        resolved.append(replace(draft, generation=generation))
+    return resolved
+
+
 def at_the_generation_this_write_needs(
     events: Any,
     ledger: Path,
@@ -57,6 +93,7 @@ def at_the_generation_this_write_needs(
     if repeat:
         return at_the_generation_a_repeat_needs(events, ledger, drafts, redact)
     existing = events.read_events(ledger)[0] if ledger.is_dir() else []
+    drafts = _gate_recurrences(events, existing, drafts, redact)
     taken = {event.id for event in existing}
     state_kinds = {events.KIND_STATUS, events.KIND_FIELD}
     if not any(

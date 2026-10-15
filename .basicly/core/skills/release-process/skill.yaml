@@ -89,9 +89,9 @@ instructions: |
 
   IMPORTANT: the dry run checks preconditions, not the commit gates. The release commit changes the tree, and only the commit gates see that tree. Before you give the command to anyone, prove the release in a scratch clone:
 
-  1. Clone the repository and run `uv sync --group dev`. Copy any `node_modules` that the hooks need.
+  1. Clone the repository and run `uv sync --group dev`. When this is basicly itself, run `uv run python src/basicly/lefthook_artifacts.py --download`, or use `--from-dir <artifacts>` for supplied archives. Copy any `node_modules` that the hooks need.
   2. Run the release in the clone.
-  3. Run `git add -A`, then `uv run pre-commit run --hook-stage pre-commit`. No file may change, because a hook that edits a file fails even at exit 0.
+  3. Run `git add -A`, then `uv run --no-project --no-python-downloads python .basicly/core/hooks/lefthook-runtime.py git pre-commit`. Inspect the index and working tree for mechanical fixes before tagging.
   4. Run the whole test suite. A test fixed in a later commit never reaches the tag.
 
   ## 5. Cut the release

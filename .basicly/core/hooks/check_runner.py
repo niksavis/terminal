@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import importlib.util
+import json
+import os
 import subprocess  # nosec B404
 import sys
 import time
 import tomllib
 from pathlib import Path, PurePosixPath
+from typing import Any
 
 CONFIG_FILE = "basicly.toml"
 
@@ -57,20 +61,31 @@ def project_root() -> Path:
     return cwd
 
 
+def _documents(repo_root: Path) -> list[tuple[str, dict]]:
+    return [
+        (path.name, tomllib.loads(path.read_text(encoding="utf-8")))
+        for path in (
+            repo_root / CONFIG_FILE,
+            *sorted((repo_root / FRAGMENT_DIR).glob("*.toml")),
+            repo_root / "basicly.local.toml",
+        )
+        if path.exists()
+    ]
+
+
 def _declared_checks(repo_root: Path) -> list[tuple[str, object]]:
 
     found: list[tuple[str, object]] = []
-    for path in (repo_root / CONFIG_FILE, *sorted((repo_root / FRAGMENT_DIR).glob("*.toml"))):
-        if not path.exists():
-            continue
-        section = tomllib.loads(path.read_text(encoding="utf-8")).get("verify", {})
+    for name, document in _documents(repo_root):
+        section = document.get("verify", {})
         checks = section.get("checks") if isinstance(section, dict) else None
         if isinstance(checks, list):
-            found += [(path.name, entry) for entry in checks]
+            additions = [(name, entry) for entry in checks]
+            found = additions if name == "basicly.local.toml" else [*found, *additions]
     return found
 
 
-def _mode_entries(repo_root: Path, mode: str) -> list[dict]:
+def _mode_entries(repo_root: Path, mode: str | None) -> list[dict]:
 
     entries: list[dict] = []
     for source, entry in _declared_checks(repo_root):
@@ -97,7 +112,7 @@ def _mode_entries(repo_root: Path, mode: str) -> list[dict]:
             isinstance(inputs, list) and inputs and all(isinstance(g, str) and g for g in inputs)
         ):
             raise SystemExit(f"{source}: check {name!r} 'inputs' must be a list of glob strings")
-        if mode in modes:
+        if mode is None or mode in modes:
             entries.append(entry)
     return entries
 
@@ -133,6 +148,45 @@ def load_inputs(repo_root: Path, mode: str) -> dict[str, list[str]]:
         if globs:
             declared[str(entry["name"]).strip()] = [str(g) for g in globs]
     return declared
+
+
+def _affected_module() -> Any:
+    source = Path(__file__).with_name("affected_checks.py")
+    spec = importlib.util.spec_from_file_location("basicly_hook_affected_checks", source)
+    if spec is None or spec.loader is None:
+        raise ValueError("affected check runtime is missing; run basicly install")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _selection(repo_root: Path, checks: list[tuple[str, list[str]]]) -> dict | None:
+    section = None
+    for _, document in _documents(repo_root):
+        verify = document.get("verify", {})
+        if isinstance(verify, dict) and "affected" in verify:
+            section = verify["affected"]
+    if section is None:
+        return None
+    module = _affected_module()
+    names = [entry["name"].strip() for entry in _mode_entries(repo_root, None)]
+    provider = module.parse_provider(section, names)
+    return module.select(
+        repo_root,
+        provider,
+        [name for name, _ in checks],
+        snapshot_tree=os.environ.get("BASICLY_SNAPSHOT_TREE"),
+    )
+
+
+def _record_selection(repo_root: Path, plan: dict, outcomes: list[dict]) -> None:
+    path = repo_root / ".basicly/usage/affected-run.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(
+        json.dumps({"selection": plan, "checks": outcomes}, indent=2) + "\n", encoding="utf-8"
+    )
+    temporary.replace(path)
 
 
 def _git_output(repo_root: Path, *args: str) -> str | None:
@@ -229,21 +283,43 @@ def _restage_fixed(
     print(f"auto-fixed and re-staged ({', '.join(applied)}): {', '.join(restage)}")
 
 
+def _planned_skips(
+    repo_root: Path, mode: str, checks: list[tuple[str, list[str]]], scope_to_diff: bool
+) -> tuple[dict | None, dict[str, str]]:
+    selection = _selection(repo_root, checks) if scope_to_diff else None
+    if selection is not None:
+        skips = {
+            name: selection["reasons"][name]
+            for name, _ in checks
+            if name not in selection["selected"]
+        }
+        if selection["fallback"]:
+            print(f"affected checks: {selection['fallback']}")
+    else:
+        skips = scoped_skips(repo_root, mode) if scope_to_diff else {}
+    return selection, skips
+
+
 def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> int:
 
     checks = load_checks(repo_root, mode)
     if not checks:
         print(f"No verify checks configured for mode '{mode}' in {CONFIG_FILE}; nothing to gate.")
         return 0
-
-    skips = scoped_skips(repo_root, mode) if scope_to_diff else {}
+    selection, skips = _planned_skips(repo_root, mode, checks, scope_to_diff)
+    if selection and selection["invalid_snapshot"]:
+        print(f"affected checks failed: {selection['fallback']}", file=sys.stderr)
+        _record_selection(repo_root, selection, [])
+        return 1
     home = interpreter_home(repo_root)
     interpreter_before = interpreter_target(home)
     total_start = time.perf_counter()
     failed: list[str] = []
+    outcomes: list[dict] = []
     for name, command in checks:
         if name in skips:
             print(f"==> {name} SKIPPED: {skips[name]}")
+            outcomes.append({"name": name, "disposition": "not-selected", "reason": skips[name]})
             continue
         print(f"==> {name}")
         start = time.perf_counter()
@@ -264,11 +340,19 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
             )
             code = 126
         elapsed = time.perf_counter() - start
+        outcomes.append({
+            "name": name,
+            "disposition": "executed",
+            "returncode": code,
+            "duration_s": elapsed,
+        })
         if code != 0:
             failed.append(name)
             print(f"FAILED: {name} ({elapsed:.2f}s)", file=sys.stderr)
 
     total_elapsed = time.perf_counter() - total_start
+    if selection is not None:
+        _record_selection(repo_root, selection, outcomes)
     ran = len(checks) - len(skips)
     tail = f" ({len(skips)} skipped: {', '.join(sorted(skips))})" if skips else ""
     if failed:

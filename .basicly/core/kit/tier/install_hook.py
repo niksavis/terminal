@@ -163,12 +163,23 @@ def install_claude(
     root: Path, *, user: bool, dry_run: bool, interpreter: str | None = None
 ) -> tuple[bool, bool, str]:
 
+    path = settings_path(root, user=user)
+    current = load_settings(path)
+    if not user and any(
+        "lefthook-runtime.py" in hook.get("command", "")
+        for group in current.get(HOOKS_KEY, {}).get(HOOK_EVENT, [])
+        for hook in group.get(HOOKS_KEY, [])
+    ):
+        return (
+            True,
+            False,
+            "claude: tier injection is managed by Lefthook; run `basicly hooks-build`",
+        )
+
     hook = Path(__file__).resolve().parent / HOOK_FILENAME
     if not hook.is_file():
         return False, False, f"claude: {hook} is missing, so there is no hook to install"
-    path = settings_path(root, user=user)
     scope = "user" if user else "project"
-    current = load_settings(path)
     updated = merge_hook(current, hook_command(hook, interpreter, root=root, user=user))
     if updated == current:
         return True, False, f"claude: already installed ({scope} scope) in {path}"

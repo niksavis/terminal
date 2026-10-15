@@ -1,11 +1,32 @@
 # Manifest of catalog hook scripts, described independently of any hook
 # manager. `basicly hooks-build` renders these into each manager's native
-# config: `manager: git` (the default) goes to pre-commit's config,
-# `manager: claude` goes to the agent-hook section of .claude/settings.json,
-# and `manager: copilot` goes to a managed .github/hooks/basicly-<id>.json.
-# The fields stay tool-agnostic so another manager (e.g. lefthook) can be
-# projected later. See docs/architecture/architecture.md §10.2, §16.
+# config: every manager runs through the shared .basicly/lefthook.yml.
+# Native Git, Claude, Codex and Copilot entries invoke its protocol launcher.
+# See docs/architecture/architecture.md §16.
 hooks:
+  - id: tracker-fold
+    description: Report pending tracker shards after a merge without changing the repository.
+    script: tracker-fold.py
+    stage: post-merge
+    always_run: true
+  - id: tier-injection
+    description: Resolve a Claude spawn's declared model tier.
+    script: ../kit/tier/claude_tier_hook.py
+    stage: pretooluse
+    manager: claude
+    matcher: Agent
+  - id: protect-generated-codex
+    description: Block every generated-file path affected by a Codex patch.
+    script: protect-generated.py
+    stage: pretooluse
+    manager: codex
+    matcher: apply_patch
+  - id: session-start-codex
+    description: Put the ledger's orientation in Codex's context at session open.
+    script: session-start.py
+    stage: sessionstart
+    manager: codex
+    matcher: '*'
   # Repo-wide run through .markdownlint-cli2.yaml (globs + generated-file ignores)
   # instead of staged filenames, so explicit paths cannot bypass the config's ignore
   # list. Launched through a script that resolves node itself rather than `npx

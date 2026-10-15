@@ -49,8 +49,10 @@ tracker: wrote the skill to .agents/skills/tracker/SKILL.md
   block sits in a marked region. A second run does not duplicate it, and `uninstall` removes
   it byte for byte. Without the flag, the installer only tells where the block is, because
   an installer must not edit an instruction file unasked.
-- `--fold-on-merge` wires a `post-merge` git hook that runs `compact` on the default branch
-  and commits the result (§4.0). Without it, the installer says that no fold is wired.
+- `--fold-on-merge` wires a read-only `post-merge` reminder on the default branch.
+  It reports the explicit compaction command when shards remain and never folds, stages
+  or commits. The installer replaces an older automatic-fold block while keeping foreign
+  hook content. Without the flag, no reminder is wired.
 
 After the install, plain `python3` runs the kit, with no `uvx`, no network and nothing on
 `PATH`. Each subcommand takes the ledger directory as its first argument. The command refuses
@@ -126,6 +128,9 @@ sources of truth: two branches each rebuild it, and git cannot union-merge a rec
 changed on both sides. That breaks requirement 1 in §4.3.
 
 - A reader rebuilds the snapshot when it finds the snapshot stale.
+- If access controls prevent snapshot publication, a reader returns the current fold
+  and reports the unavailable cache on stderr. It never serves a stale snapshot instead.
+  Explicit refresh and rebuild commands still require write access; other I/O errors fail.
 - The first line of the snapshot is a header. It carries the id of the last folded event,
   the event count, the log line count and the snapshot format version, which is 2.
 - A snapshot is stale when its line count, last event or format version differs from the
