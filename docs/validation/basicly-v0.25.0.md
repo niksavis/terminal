@@ -139,14 +139,21 @@ reported an identical personal `cli-tools` skill shadowing the project copy.
 
 ## Limits
 
-The first landing through the base's v0.23.1 engine passed all 662 tests but Git
-merge exited 2: the base lacked the local Lefthook executable needed by the new
-commit-msg launcher. The supported preparation is to run the v0.25.0 wheel's
-`basicly hooks-build --runtime-only` in the base before landing. A v0.25.0 loop
-command against the old base refuses the tracker-kit version mismatch, so the
-old engine must perform the initial landing.
+Two landings through the base's v0.23.1 engine passed all 662 tests but Git merge
+exited 2. A disposable clone with the same hooks and local runtime merged
+successfully. A targeted write probe then established that the active sandbox
+mounts the base checkout's `.codex/` read-only (`Errno 30`), preventing Git from
+creating the managed `.codex/hooks.json`. Landing requires task-scoped execution
+approval, without changing machine-wide permission configuration.
 
-The old engine reported that its aborted merge left the base clean, although
+The base also initially lacked the local Lefthook executable. The v0.25.0 wheel's
+public `basicly hooks-build --runtime-only` installed it. That preparation alone
+did not resolve the merge refusal. A v0.25.0 loop command against the old base
+refuses the tracker-kit version mismatch, so the old engine performs the initial
+landing.
+
+The old engine hid Git's diagnostics and reported that its aborted merge left
+the base clean, although
 nine newly added source files remained untracked. Each was compared byte-for-byte
 with the committed lane and preserved in a backup before retrying. No consumer
 files were moved. Both findings were sent to the basicly migration session;
