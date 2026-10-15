@@ -14,6 +14,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from html.parser import HTMLParser
 from pathlib import Path
 
 ARCH_ALIASES = {
@@ -120,7 +121,8 @@ def install(destination: Path, content: bytes) -> None:
 def fetch(url: str) -> bytes:
     if not url.startswith("https://"):
         raise InstallError(f"refusing a non-https URL: {url}")
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": "terminal-setup"}
+    accept = "application/vnd.github+json" if url.startswith("https://api.github.com/") else "*/*"
+    headers = {"Accept": accept, "User-Agent": "terminal-setup"}
     token = os.environ.get("GITHUB_TOKEN", "")
     if token and url.startswith("https://api.github.com/"):
         headers["Authorization"] = f"Bearer {token}"
@@ -143,15 +145,61 @@ def latest_tag(repo: str) -> str:
     return urllib.parse.unquote(tag)
 
 
+class ReleaseAssets(HTMLParser):
+    def __init__(self, repo: str, tag: str) -> None:
+        super().__init__()
+        self.prefix = (
+            f"https://github.com/{repo}/releases/download/{urllib.parse.quote(tag, safe='')}/"
+        )
+        self.assets: list[dict[str, str]] = []
+        self.asset: dict[str, str] = {}
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attributes = dict(attrs)
+        if tag == "li":
+            self.asset = {}
+        elif tag == "a":
+            url = urllib.parse.urljoin("https://github.com", attributes.get("href") or "")
+            if url.startswith(self.prefix):
+                self.asset.update(
+                    name=urllib.parse.unquote(url.rsplit("/", 1)[-1]), browser_download_url=url
+                )
+        elif tag == "clipboard-copy":
+            value = attributes.get("value") or ""
+            if re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+                self.asset["digest"] = value
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "li":
+            if "name" in self.asset:
+                self.assets.append(self.asset)
+            self.asset = {}
+
+
+def public_release_of(repo: str, tag: str) -> dict:
+    url = f"https://github.com/{repo}/releases/expanded_assets/{urllib.parse.quote(tag, safe='')}"
+    parser = ReleaseAssets(repo, tag)
+    parser.feed(fetch(url).decode("utf-8"))
+    parser.close()
+    if not parser.assets:
+        raise InstallError(f"{repo}: the public release page for {tag!r} holds no download assets")
+    return {"tag_name": tag, "assets": parser.assets}
+
+
 def release_of(repo: str, tag: str) -> dict:
-    url = f"https://api.github.com/repos/{repo}/releases/tags/{urllib.parse.quote(tag)}"
+    url = f"https://api.github.com/repos/{repo}/releases/tags/{urllib.parse.quote(tag, safe='')}"
     try:
         return json.loads(fetch(url))
     except urllib.error.HTTPError as error:
-        if error.code in {403, 429}:
-            raise InstallError(
-                "the GitHub API rate limit is reached; set GITHUB_TOKEN or rerun within the hour"
-            ) from error
+        if error.code == 429 or (
+            error.code == 403
+            and (
+                error.headers.get("x-ratelimit-remaining") == "0"
+                or error.headers.get("retry-after") is not None
+                or b"rate limit" in error.read().lower()
+            )
+        ):
+            return public_release_of(repo, tag)
         raise
 
 

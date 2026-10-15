@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+import io
 import os
 import subprocess
 import sys
+import zipfile
+from email.message import Message
 from pathlib import Path, PureWindowsPath
 from typing import cast
 
@@ -437,3 +441,50 @@ def test_the_command_line_accepts_only_keep_or_replace() -> None:
     assert parser.parse_args([]).winget_versions is None
     with pytest.raises(SystemExit):
         parser.parse_args(["--winget-versions", "remove"])
+
+
+@pytest.mark.parametrize("tool", [*WINDOWS_TOOLS, STARSHIP], ids=lambda tool: tool.command)
+@pytest.mark.parametrize(
+    ("machine", "arch"),
+    [("AMD64", ("x86_64", "amd64", "x86_64")), ("ARM64", ("aarch64", "arm64", "arm64"))],
+)
+def test_each_windows_tool_installs_when_the_api_is_rate_limited(
+    tool: windows_tools.WindowsTool,
+    machine: str,
+    arch: tuple[str, str, str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    name = MEASURED_ASSETS[tool.command].format(a=arch[0], w=arch[1], l=arch[2])
+    binary = f"{tool.command}.exe"
+    content = b"executable"
+    payload = content
+    if name.endswith(".zip"):
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr(f"tool/{binary}", content)
+        payload = buffer.getvalue()
+    checksum = "sha256:" + hashlib.sha256(payload).hexdigest()
+    link = f"/{tool.repo}/releases/download/v2.0.0/{name}"
+    page = (
+        f'<li><a href="{link}"><span>{name}</span></a>'
+        f'<clipboard-copy value="{checksum}"></clipboard-copy></li>'
+    )
+
+    def fetch(url: str) -> bytes:
+        if url.startswith("https://api.github.com/"):
+            raise release_install.urllib.error.HTTPError(url, 429, "limited", Message(), None)
+        if "/expanded_assets/" in url:
+            return page.encode()
+        assert url == f"https://github.com{link}"
+        return payload
+
+    monkeypatch.setattr(release_install, "fetch", fetch)
+    monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "v2.0.0")
+    monkeypatch.setattr(release_install, "installed_version", lambda _path: "")
+    monkeypatch.setattr(release_install.platform, "machine", lambda: machine)
+    message = release_install.run(
+        tool.repo, binary, False, list(tool.patterns), tmp_path, tmp_path / "state"
+    )
+    assert f"installed {binary} 2.0.0" in message
+    assert (tmp_path / binary).read_bytes() == content

@@ -275,16 +275,72 @@ def test_the_record_is_ignored_once_the_binary_changes(
     assert message == "jq 1.5.0 is installed; 2.0.0 is available"
 
 
-def test_a_rate_limited_api_names_github_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    def limited(url: str) -> bytes:
-        raise release_install.urllib.error.HTTPError(
-            url, 403, "rate limit exceeded", Message(), None
+@pytest.mark.parametrize("status", [403, 429])
+@pytest.mark.parametrize("digest", ["valid", "missing", "wrong"])
+def test_rate_limited_install_keeps_checksum_verification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, status: int, digest: str
+) -> None:
+    content = b"downloaded executable"
+    checksum = "sha256:" + hashlib.sha256(content).hexdigest()
+    if digest == "wrong":
+        checksum = "sha256:" + "0" * 64
+    metadata = (
+        f'<clipboard-copy value="{checksum}"></clipboard-copy>' if digest != "missing" else ""
+    )
+    download = "https://github.com/jqlang/jq/releases/download/v2.0.0/jq-linux-amd64"
+    page = (
+        '<ul><li><a href="/other/tool/releases/download/v2.0.0/other">other</a>'
+        '<clipboard-copy value="sha256:' + "1" * 64 + '"></clipboard-copy></li>'
+        '<li><div><a href="/jqlang/jq/releases/download/v2.0.0/jq-linux-amd64">'
+        "<span>jq-linux-amd64</span></a></div>" + metadata + "</li></ul>"
+    )
+    fetched: list[str] = []
+
+    def fetch(url: str) -> bytes:
+        fetched.append(url)
+        if url.startswith("https://api.github.com/"):
+            headers = Message()
+            headers["x-ratelimit-remaining"] = "0"
+            raise release_install.urllib.error.HTTPError(url, status, "limited", headers, None)
+        if url == "https://github.com/jqlang/jq/releases/expanded_assets/v2.0.0":
+            return page.encode()
+        assert url == download
+        return content
+
+    monkeypatch.setattr(release_install, "fetch", fetch)
+    monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "v2.0.0")
+    monkeypatch.setattr(release_install, "installed_version", lambda _path: "")
+    monkeypatch.setattr(release_install.platform, "machine", lambda: "x86_64")
+    if digest == "valid":
+        message = release_install.run(
+            "jqlang/jq", "jq", False, ["jq-linux-{arch}"], tmp_path, tmp_path / "state"
         )
+        assert "installed jq 2.0.0" in message
+        assert (tmp_path / "jq").read_bytes() == content
+    else:
+        with pytest.raises(
+            release_install.InstallError, match=r"no sha256 digest|checksum mismatch"
+        ):
+            release_install.run(
+                "jqlang/jq", "jq", False, ["jq-linux-{arch}"], tmp_path, tmp_path / "state"
+            )
+        assert not (tmp_path / "jq").exists()
+        assert not (tmp_path / "state").exists()
+    assert len(fetched) == 3
 
-    monkeypatch.setattr(release_install, "fetch", limited)
 
-    with pytest.raises(release_install.InstallError, match="GITHUB_TOKEN"):
-        release_install.release_of("jqlang/jq", "jq-1.8.2")
+@pytest.mark.parametrize("status", [401, 403, 404, 500])
+def test_non_rate_limit_errors_do_not_use_the_public_page(
+    monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    def denied(url: str) -> bytes:
+        assert url.startswith("https://api.github.com/")
+        raise release_install.urllib.error.HTTPError(url, status, "denied", Message(), None)
+
+    monkeypatch.setattr(release_install, "fetch", denied)
+    with pytest.raises(release_install.urllib.error.HTTPError) as caught:
+        release_install.release_of("jqlang/jq", "v2.0.0")
+    assert caught.value.code == status
 
 
 def test_run_refuses_a_download_outside_the_repositorys_releases(
@@ -303,3 +359,45 @@ def test_run_refuses_a_download_outside_the_repositorys_releases(
     with pytest.raises(release_install.InstallError, match="outside jqlang/jq's releases"):
         release_install.run("jqlang/jq", "jq", False, ["jq-linux-{arch}"])
     assert not (tmp_path / "jq").exists()
+
+
+@pytest.mark.parametrize(
+    "headers, body", [({"retry-after": "60"}, b""), ({}, b'{"message":"API rate limit exceeded"}')]
+)
+def test_secondary_rate_limits_use_public_metadata(
+    monkeypatch: pytest.MonkeyPatch, headers: dict[str, str], body: bytes
+) -> None:
+    fetched: list[str] = []
+
+    def fetch(url: str) -> bytes:
+        fetched.append(url)
+        if url.startswith("https://api.github.com/"):
+            message = Message()
+            for key, value in headers.items():
+                message[key] = value
+            raise release_install.urllib.error.HTTPError(
+                url, 403, "limited", message, io.BytesIO(body)
+            )
+        return b'<li><a href="/jqlang/jq/releases/download/v2.0.0/jq-linux-amd64">jq</a></li>'
+
+    monkeypatch.setattr(release_install, "fetch", fetch)
+    release = release_install.release_of("jqlang/jq", "v2.0.0")
+    assert release["assets"][0]["name"] == "jq-linux-amd64"
+    assert len(fetched) == 2
+
+
+def test_public_metadata_refuses_an_empty_or_changed_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(release_install, "fetch", lambda _url: b"<html>Unavailable</html>")
+    with pytest.raises(release_install.InstallError, match="holds no download assets"):
+        release_install.public_release_of("jqlang/jq", "v2.0.0")
+
+
+def test_public_page_failure_is_not_reported_as_a_success(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fetch(url: str) -> bytes:
+        status = 429 if url.startswith("https://api.github.com/") else 503
+        raise release_install.urllib.error.HTTPError(url, status, "unavailable", Message(), None)
+
+    monkeypatch.setattr(release_install, "fetch", fetch)
+    with pytest.raises(release_install.urllib.error.HTTPError) as caught:
+        release_install.release_of("jqlang/jq", "v2.0.0")
+    assert caught.value.code == 503
