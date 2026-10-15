@@ -26,6 +26,7 @@ Other skills own the mechanics of each phase: `work-tracker` (records), `worktre
 - **Confirm a landing from the `[merged]` line, not from the exit code.** Every checkpoint stop exits non-zero.
 - **Never signal a supervisor or its lanes.** Use `--max-passes` or `loop stop`, so no lane dies mid-write.
 - **When a required fact is missing, do not guess.** Write `.basicly/usage/needs-input.json` and stop.
+- **Handle a protected-destination refusal through task-scoped execution review.** Follow `worktree-isolation` for the retry. Existing authorization for the upgrade or landing still applies; keep the loop checkpoints in force.
 
 ## Drive one issue
 

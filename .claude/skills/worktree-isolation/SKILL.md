@@ -19,6 +19,17 @@ For tracker records see `work-tracker`. For commits see the git reference of `cl
 - **Do not resolve a merge conflict by hand.** A conflict means the scopes missed a coupling, so the lane applies its intent again on the new base.
 - **Run merge commands from the base checkout.** Git refuses to update a branch that another worktree has checked out.
 
+## Protected destinations
+
+An agent sandbox can allow source edits while protecting `.codex`, `.agents` or the Git hook directory.
+Install and landing preflight planned changes before updating the catalog, committing tracker state or rebasing.
+An access refusal names the destination and the ordinary command to retry; unchanged protected outputs need no write.
+
+For an already-authorized upgrade or landing, request task-scoped execution review for that exact command in the named checkout.
+In Codex, use the execution tool's `require_escalated` permission with the protected destination as the reason.
+The CLI cannot escalate itself. Preserve dotenv denials, normal hooks, signing and loop checkpoints; do not broaden a machine profile.
+Read the retry result and verify the repository state before continuing the loop.
+
 ## Lifecycle
 
 ```sh
