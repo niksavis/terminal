@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.16.1 - 2026-10-15
+
+Delta: v0.16.0..v0.16.1
+
+### Highlights
+
+- **Release tools install when the GitHub API is rate-limited.** Setup falls back to the public release asset page for download links and SHA-256 digests. Windows tool installs and the shared WSL/Linux installer keep checksum verification without requiring a GitHub token (term-87rbae).
+- **Setup installs basicly v0.23.1** instead of v0.23.0 (term-j6firh).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-3tpo8h) (6a99a21)
+- chore(tracker): record the verified fix and patch release claim (term-3tpo8h) (cb86533)
+- fix: install verified release assets when the api is rate limited (term-87rbae) (aa61d66)
+- chore(tracker): record the approved bug fix and release claims (term-87rbae) (0893648)
+- chore(tracker): close the basicly v0-23-1 record and write the handover (term-j6firh) (ec51fa4)
+- build(basicly): update the basicly kit and pins to v0-23-1 (term-j6firh) (a3db6cf)
+- chore(tracker): close the v0-16-0 release records (term-lrskq3) (834b2f5)
+
 ## v0.16.0 - 2026-10-13
 
 Delta: v0.15.0..v0.16.0
