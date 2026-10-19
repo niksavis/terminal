@@ -4,37 +4,27 @@ token_cost:
   listing: 38
 name: root-cause
 invocation: model
-description: "Finds why a failure happened, with evidence for each why, and names the control that refuses it. Use after a failure, before a fix or a gate."
+description: "Finds the demonstrated cause of a defect, using deeper analysis for recurring or unclear failures. Use when a repair needs causal evidence."
 covers:
   work_types: [bug]
   phases: [build, repair]
 instructions: |
   # Root Cause
 
-  Find why a failure happened by asking why until the answer stops changing. Then name the control that would have refused it.
+  Find the demonstrated cause of the observed failure. Stop when the cause and the approved repair are clear.
 
   ## Rules
 
-  - **Analyse a signal, not one occurrence.** A change made in response to normal variation increases the variation.
+  - **A reproducible first defect is enough to act.** Fix its cause and add a focused regression.
   - **Every link cites an observation.** A link that you reasoned to is where the chain becomes a story.
   - **Stop at a cause you control.** A vendor decision or "the model was wrong" gives you nothing to build a control against.
   - **Never stop on a person.** "Someone forgot" means the chain stopped early. Ask what let the mistake reach a commit.
-  - **Record the branch you did not take.** Two analysts reach different causes from the same incident.
-  - **Deliver a control, not advice.** "Be careful" and "add a note" prevent nothing.
+  - **Record competing causes when they change the repair.** Use an observation that distinguishes them.
+  - **Keep the repair within the approved outcome.** Record adjacent improvements separately; implement them when necessary for that outcome or separately authorized.
 
-  ## 1. Check that it is a signal
+  ## 1. Reproduce the defect
 
-  A signal is a point beyond three standard deviations, or a run or a trend inside the limits. The cheaper test is this question: has this shape happened before? Query the ledger before you analyse:
-
-  ```sh
-  jq -r 'select(.kind=="created")|.payload.title // empty' .basicly/ledger/events-*.jsonl \
-    | rg -i '<the shape>'
-  rg -c '<the marker>' .basicly/usage/run-records.json
-  ```
-
-  A record title is only on its `created` event. A query over every event returns nothing, and nothing reads as "no prior". Confirm that the first stage of the pipeline prints titles before you believe a zero.
-
-  One occurrence with no prior: record it and stop.
+  Record the input, observed failure and expected behavior. A first reproducible defect can proceed directly to a focused fix and regression test. For a recurring or unclear failure, inspect relevant prior evidence and continue with the deeper analysis below.
 
   ## 2. Ask why
 
@@ -55,10 +45,10 @@ instructions: |
   | --- | --- |
   | Control | A check, a gate, a schema field or a refusal that would have refused this defect |
   | Tier | `control` (fails a gate), `warning` (reports and continues) or `documentation` (a person must read it). Record a `documentation` tier as a downgrade, with the reason that no stronger control was available |
-  | Covers | The whole class of defects, not this one instance. A control for one incident is a patch |
+  | Covers | The observed defect and related call paths established by evidence |
   | Branch not taken | One line |
 
-  Deliver the control as a diff against catalog YAML: a fragment, a skill, a hook or a schema field. A person approves it before it lands. `basicly catalog lint` and the projection checks limit what they approve.
+  Deliver the smallest effective code fix and regression or control within the approved scope. When a catalog or policy change is necessary for that outcome or separately authorized, edit its YAML source and run the applicable catalog and projection checks. Record other improvements as separate recommendations.
 
   ## Example
 

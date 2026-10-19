@@ -26,6 +26,7 @@ def _load(name: str) -> Any:
 shaping = _load("shaping")
 _PLACEHOLDER = re.compile(r"(?:todo|tbd|tbc|fixme)", re.IGNORECASE)
 _LIST_MARKER = re.compile(r"^(?:[-*]|\d+[.)])\s+(?:\[[ xX]\]\s*)?")
+_REDACTION = re.compile(r"<redacted:[a-z][a-z0-9-]*>")
 
 
 def filled_text(value: object) -> bool:
@@ -65,6 +66,10 @@ def filled_command(value: object) -> bool:
     )
 
 
+def observed_text(value: object) -> bool:
+    return isinstance(value, str) and filled_text(_REDACTION.sub("", value))
+
+
 PLANNED_CHECK_KEYS = ("criterion", "command", "expected")
 COMPLETED_CHECK_KEYS = ("criterion", "command", "result", "exit_code")
 
@@ -85,7 +90,7 @@ def entry_fault(check: object, keys: set[str], completed: bool) -> str | None:
     faults = (
         (not filled_text(check["criterion"]), "has no criterion text"),
         (not filled_command(check["command"]), "command is not a filled argv list of strings"),
-        (completed and not filled_text(check["result"]), "has no observed result text"),
+        (completed and not observed_text(check["result"]), "has no observed result text"),
         (
             completed and (type(check["exit_code"]) is not int or check["exit_code"] != 0),
             "exit_code is not the integer 0",

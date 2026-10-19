@@ -15,4 +15,4 @@ status: active
 title: Session Completion
 body: |
   - Before you end a session, follow the `session-finish` skill. Leave the repository clean, with no partial edits and no stray files. Report what changed, what you verified and what is still open.
-  - After a refused change or a mistake the user corrected, name the root cause. Propose the fragment, skill or hook change that would have refused it. A note to "be careful" changes nothing.
+  - After a refusal or corrected mistake, resolve its cause within the approved scope. Reuse that diagnosis at handover. Record any further recommendation without expanding the task.

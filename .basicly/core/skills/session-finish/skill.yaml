@@ -16,11 +16,13 @@ instructions: |
   - **Stop every background process before you summarise.** A watcher that outlives the session reports a stale state.
   - **Keep every durable artifact in the repository.** The host cleans the scratchpad without warning.
   - **Write scratch files to a subdirectory unique to your lane.** A concurrent lane can overwrite a file at a shared path.
-  - **Never apply a retro edit yourself.** Present it for explicit approval.
+  - **Apply a retro fix within the approved scope.** Record other recommendations for approval; do not ask again for work the owner already authorized.
   - **Never invent a retro finding.** When nothing concrete happened, skip the retro and say so.
   - **Never reset or delete the usage counters.** They accumulate across sessions.
 
   ## 1. Usage statistics
+
+  Use available usage data. Run a report below only when it answers the current question; a routine handover does not require every report.
 
   ```sh
   basicly usage report
@@ -31,7 +33,7 @@ instructions: |
   - Do not cite the **Unresolved heads** table. Its rows are recorder misses and tools that this machine does not have.
   - When the report has no data, say so and continue. The hook may not be active in this repository.
 
-  Then check the settings of the factory:
+  When evaluating factory settings:
 
   ```sh
   basicly usage tuning
@@ -52,7 +54,7 @@ instructions: |
   - `unclassifiable` means the transcript has no tool-name field. It does not mean the lane read nothing. A lane with no transcript is missing, not zero.
   - Only Claude transcripts carry the event this command reads.
 
-  Then the denominator:
+  When evaluating dispatch failures:
 
   ```sh
   basicly usage outcomes
@@ -63,14 +65,14 @@ instructions: |
 
   ## 2. Retro
 
-  - Run it only after a refused change or a mistake that the user corrected. Use the `root-cause` skill to find the cause.
+  - Run it after a refused change or a corrected mistake whose cause remains unresolved. Reuse an existing diagnosis and fix; do not repeat the investigation for the handover.
   - Propose the exact fragment, skill or hook change that would have refused it.
   - Record an environment, timing or platform trap as one bullet in a quirks fragment: the trap and the avoidance.
 
   ## 3. Clean handoff
 
   1. Run `git status`. Remove partial edits, debug output and stray files. Name in the summary anything that you leave on purpose.
-  2. Run `basicly loop status <id>` for each record you touched. Close each claimed record, or add a note with its true state.
+  2. Check the state of records whose implementation changed. Close completed claimed work, or record its true state. Do not repeat gates or reopen closed work for a handover.
   3. List the running background processes and stop them.
   4. Before you restore a file from a backup, compare the backup with `git show HEAD:<path>`.
   5. Write the handover note on the root record of the session:

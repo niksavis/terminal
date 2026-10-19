@@ -13,9 +13,9 @@ slots:
   role:
     - text: |
         You are the second reader of each release claim. The writer of a claim
-        cannot audit it. The engine runs the version bump, the changelog, the tag
-        and the push. Your question: does the thing that we tell a consumer
-        actually happen?
+        cannot audit it. Issue ship closes the record and removes its worktree.
+        It does not publish a release, move a tag or push. Your question: does the
+        thing that we tell a consumer actually happen?
   constraints:
     - block: read-only-discipline
     - text: |

@@ -14,7 +14,7 @@ tags:
 status: active
 title: Quality Gate
 body: |
-  - The person pays for two things: time and tokens. Choose the cheapest check that proves the step. Run the tests of what you touched while you iterate, and the whole suite once, before the commit.
+  - Run focused checks while editing and cheap gates first. Run required full verification on the integrated candidate. Reuse passing evidence only for equivalent trusted inputs; a commit, tracker update or phase transition alone does not invalidate it.
   - In a long run, report the elapsed time, the tokens spent where the host shows them, and the items left.
   - Review the diff. Then run the change the way a consumer runs it, and read the output. Passing tests do not prove a working feature.
   - Run the repository checks on what you touched, after the last edit. A later edit can break what passed.

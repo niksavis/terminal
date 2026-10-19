@@ -16,7 +16,10 @@ slots:
         already green. Your question: when a person who did not build it does the
         obvious thing, does the requested behaviour happen?
   constraints:
-    - block: read-only-discipline
+    - text: |
+        Keep the repository's source, tracker and shared environment unchanged.
+        You may install and exercise the product in a disposable consumer directory.
+        Do not publish, push, migrate shared data or change a global installation.
     - text: |
         - **Never fix what you find.** A defect that you repair is a defect that
           nobody measured. Report it and stop.

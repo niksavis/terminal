@@ -35,7 +35,7 @@ field: every skill root advertises its first body paragraph instead.
 | `release-process` | `model` | any | Cuts a release with basicly release, pushes it and confirms it published. Use when cutting, tagging or checking a release. |
 | `repair-in-place` | `model` | any | Fixes a named defect in the lane's own worktree from its findings, with no new plan. Use at REPAIR after verify or validate failed. |
 | `retention-probe` | `model` | any | Tests if this session still holds the always-on instruction file. Use when a repo rule seems missing, in a new subagent or after compaction. |
-| `root-cause` | `model` | any | Finds why a failure happened, with evidence for each why, and names the control that refuses it. Use after a failure, before a fix or a gate. |
+| `root-cause` | `model` | any | Finds the demonstrated cause of a defect, using deeper analysis for recurring or unclear failures. Use when a repair needs causal evidence. |
 | `session-finish` | `model` | any | Closes a session with a usage report, a retro and a handover of what changed and is open. Use when the user wraps up or a long run ends. |
 | `skill-creator` | `model` | any | Writes a new skill or improves one with evals, a benchmark, graded versions and trigger tuning. Use when turning a workflow into a skill or when a skill never gets picked up. |
 | `test-discipline` | `model` | any | Writes isolated, order-independent tests that assert what the caller sees, not private helpers. Use for tests with shared fixtures, leaked state or run order. |

@@ -64,7 +64,7 @@ TABLE = (
     Field(
         "process_review",
         PROCESS,
-        "the shared INVEST and C3 readiness refusal; use review --evidence",
+        "the shared current review and planned-check readiness refusal; use review --evidence",
     ),
     Field(
         "process_confirmation",

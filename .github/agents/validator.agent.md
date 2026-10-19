@@ -11,9 +11,9 @@ You are the consumer, not the gate suite. The deterministic checks are
 already green. Your question: when a person who did not build it does the
 obvious thing, does the requested behaviour happen?
 
-You are read-only. Do not edit a file. Do not run a command that changes state: no
-install, push, migration or delete. When something must change, describe the change. The
-caller makes it.
+Keep the repository's source, tracker and shared environment unchanged.
+You may install and exercise the product in a disposable consumer directory.
+Do not publish, push, migrate shared data or change a global installation.
 
 - **Never fix what you find.** A defect that you repair is a defect that
   nobody measured. Report it and stop.

@@ -163,6 +163,10 @@ def _checks(fields: Mapping[str, object], checks: object, *, completed: bool = F
     return _check_fault(fields, checks, completed=completed) is None
 
 
+def _compact_type(fields: Mapping[str, object]) -> bool:
+    return fields.get("issue_type") in ("task", "bug", "chore")
+
+
 def review_note(
     found: Sequence[Any],
     record: str,
@@ -196,6 +200,8 @@ def readiness(
     current = bool(saved) and saved.get("revision") == revision(
         found, record, held, drafts, template=template
     )
+    if _compact_type(held) and (not current or set(saved) == {"checks", "revision", "writer"}):
+        return () if current and _checks(held, saved.get("checks")) else (PLAN_HEADING,)
     rationales = saved.get("invest") if current else {}
     rationales = rationales if isinstance(rationales, Mapping) else {}
     missing = [
@@ -235,10 +241,29 @@ def review_draft(
     state = events.fold(found).records.get(record)
     if state is None or state.tombstoned:
         raise ProcessEvidenceError("the ledger holds no record " + record)
-    if not isinstance(payload, dict) or set(payload) != {"invest", "conversation", "checks"}:
+    if not isinstance(payload, dict):
+        raise ProcessEvidenceError("review requires a JSON object")
+    compact = _compact_type(state.fields) and set(payload) == {"checks"}
+    if not compact and set(payload) != {"invest", "conversation", "checks"}:
         raise ProcessEvidenceError(
-            "review requires invest, conversation and checks; revision and writer are computed"
+            "review requires invest, conversation and checks; task, bug and chore may use "
+            "checks only; revision and writer are computed"
         )
+    if not compact:
+        _full_review(found, record, payload)
+    if fault := _check_fault(state.fields, payload["checks"]):
+        raise ProcessEvidenceError(f"Confirmation Plan refused: {fault}")
+    if (criterion := _machine_path(payload["checks"])) is not None:
+        raise ProcessEvidenceError(
+            f"Confirmation Plan command for {criterion!r} holds a machine path that the ledger "
+            "redacts, which would void the review; name the program on PATH, such as python3 "
+            "or uv run, or a path relative to the repository"
+        )
+    value = {**payload, "revision": revision(found, record, template=template)}
+    return _draft(record, REVIEW_FIELD, value, writer)
+
+
+def _full_review(found: Sequence[Any], record: str, payload: Mapping[str, Any]) -> None:
     rationales = payload["invest"]
     if (
         not isinstance(rationales, dict)
@@ -252,16 +277,6 @@ def review_draft(
         raise ProcessEvidenceError(
             "Conversation requires same-card comment seqs without forks; read show comment_log"
         )
-    if fault := _check_fault(state.fields, payload["checks"]):
-        raise ProcessEvidenceError(f"Confirmation Plan refused: {fault}")
-    if (criterion := _machine_path(payload["checks"])) is not None:
-        raise ProcessEvidenceError(
-            f"Confirmation Plan command for {criterion!r} holds a machine path that the ledger "
-            "redacts, which would void the review; name the program on PATH, such as python3 "
-            "or uv run, or a path relative to the repository"
-        )
-    value = {**payload, "revision": revision(found, record, template=template)}
-    return _draft(record, REVIEW_FIELD, value, writer)
 
 
 def confirmation_report(found: Sequence[Any], record: str, *, template=None) -> dict[str, Any]:

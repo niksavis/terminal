@@ -353,10 +353,12 @@ python3 .basicly/kit/tracker/cli.py board .basicly/ledger --out tracker-board.ht
 
 ### review
 
-`review <ledger> <id> --evidence '<JSON>'` records the six INVEST rationales, actual
-same-card comment `seq` references, and one planned command argv and expected result per
-criterion. `confirm <ledger> <id> --evidence '<JSON>'` records exact matching argv,
-observed results and exit code 0 for every criterion. `GUIDANCE.md` gives both JSON shapes.
+`review <ledger> <id> --evidence '<JSON>'` records one planned command argv and expected
+result per criterion. Explicit tasks, bugs and chores may submit `checks` only. The full
+review also records six INVEST rationales and actual same-card comment `seq` references;
+other or missing types require that form. `confirm <ledger> <id> --evidence '<JSON>'`
+records exact matching argv, observed results and exit code 0 for every criterion.
+`GUIDANCE.md` gives both review forms and the completion shape.
 The tracker computes revisions and writer identities; these keys cannot be supplied.
 
 ### confirm

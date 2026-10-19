@@ -244,7 +244,7 @@ def apply_fixes(repo_root: Path, mode: str) -> None:
 
     applied = _run_fixers(repo_root, fixes, staged)
     if applied:
-        _restage_fixed(repo_root, staged, dirty_before, applied)
+        _restage_fixed(repo_root, dirty_before, applied)
 
 
 def _run_fixers(
@@ -267,14 +267,12 @@ def _run_fixers(
     return applied
 
 
-def _restage_fixed(
-    repo_root: Path, staged: list[str], dirty_before: list[str], applied: list[str]
-) -> None:
+def _restage_fixed(repo_root: Path, dirty_before: list[str], applied: list[str]) -> None:
     dirty_after = _git_lines(repo_root, "diff", "--name-only")
     if dirty_after is None:
         print("skipping re-stage: cannot read the git working tree", file=sys.stderr)
         return
-    restage = sorted((set(dirty_after) - set(dirty_before)) & set(staged))
+    restage = sorted(set(dirty_after) - set(dirty_before))
     if not restage:
         return
     if _git_lines(repo_root, "add", "--", *restage) is None:
@@ -302,6 +300,7 @@ def _planned_skips(
 
 def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> int:
 
+    fail_fast = load_fail_fast(repo_root)
     checks = load_checks(repo_root, mode)
     if not checks:
         print(f"No verify checks configured for mode '{mode}' in {CONFIG_FILE}; nothing to gate.")
@@ -318,10 +317,13 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
     outcomes: list[dict] = []
     for name, command in checks:
         if name in skips:
-            print(f"==> {name} SKIPPED: {skips[name]}")
+            print(f"==> {name} SKIPPED: {skips[name]}", flush=True)
             outcomes.append({"name": name, "disposition": "not-selected", "reason": skips[name]})
             continue
-        print(f"==> {name}")
+        if fail_fast and failed:
+            outcomes.append(_blocked_outcome(name, failed[0]))
+            continue
+        print(f"==> {name}", flush=True)
         start = time.perf_counter()
         try:
             result = subprocess.run(command, cwd=repo_root, check=False)  # nosec B603
@@ -353,8 +355,10 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
     total_elapsed = time.perf_counter() - total_start
     if selection is not None:
         _record_selection(repo_root, selection, outcomes)
-    ran = len(checks) - len(skips)
+    blocked = [r["name"] for r in outcomes if r["disposition"] == "not-run"]
+    ran = len(checks) - len(skips) - len(blocked)
     tail = f" ({len(skips)} skipped: {', '.join(sorted(skips))})" if skips else ""
+    tail += f" ({len(blocked)} not run: {', '.join(blocked)})" if blocked else ""
     if failed:
         print(
             f"checks failed: {ran - len(failed)}/{ran} passed in {total_elapsed:.2f}s "
@@ -367,3 +371,28 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
         return 1
     print(f"checks passed: {ran}/{ran} in {total_elapsed:.2f}s{tail}")
     return 0
+
+
+def load_fail_fast(repo_root: Path) -> bool:
+    return _boolean_option(repo_root, "fail_fast")
+
+
+def load_cache(repo_root: Path) -> bool:
+    return _boolean_option(repo_root, "cache")
+
+
+def _boolean_option(repo_root: Path, name: str) -> bool:
+    enabled = False
+    for _, document in _documents(repo_root):
+        section = document.get("verify", {})
+        if isinstance(section, dict) and name in section:
+            enabled = section[name]
+    if not isinstance(enabled, bool):
+        raise SystemExit(f"verify.{name} must be true or false")
+    return enabled
+
+
+def _blocked_outcome(name: str, failed: str) -> dict:
+    reason = f"not run after failed check {failed}"
+    print(f"==> {name} NOT RUN: {reason}", flush=True)
+    return {"name": name, "disposition": "not-run", "reason": reason}

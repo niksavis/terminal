@@ -138,10 +138,11 @@ a section that `[policy.type_sections]` requires for its type.
 
 ## Refine a record
 
-Before refinement, read the **INVEST** and **Card, Conversation, Confirmation** sections
-in `.basicly/core/kit/tracker/GUIDANCE.md`. They define the shared review and evidence
-workflow. Use this skill's engine commands to record the same card, conversation and
-confirmation. `dor` enforces recorded evidence; the agent judges semantic quality.
+Before refinement, read the review forms in `.basicly/core/kit/tracker/GUIDANCE.md`.
+Explicit tasks, bugs and chores accept a compact checks-only review. Other types require
+the full review; existing full reviews stay valid. Keep intent, criteria, ownership and
+actual outcomes. Record real questions and decisions when needed. `dor` enforces recorded
+evidence; the agent judges semantic quality.
 Use `basicly tracker write -- review <id> --evidence '<JSON>'` before claim and
 `basicly tracker write -- confirm <id> --evidence '<JSON>'` after the agreed checks.
 The shared guidance defines both JSON shapes. Completed close needs current evidence;

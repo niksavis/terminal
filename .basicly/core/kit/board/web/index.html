@@ -256,7 +256,7 @@ function doneBlock(shown) {
     const confirmation = process.confirmation || {};
     const reviewed = Boolean(process.revision && review.revision === process.revision && !(process.owed || []).length);
     const confirmed = reviewed && confirmation.revision === process.revision;
-    const details = el("details", {}, el("summary", {}, "Review and confirmation · INVEST review: " + (reviewed ? "recorded for this card" : "required") + ". Confirmation: " + (confirmed ? "recorded for this card" : "required") + "."));
+    const details = el("details", {}, el("summary", {}, "Review and confirmation · Review: " + (reviewed ? "recorded for this card" : "required") + ". Confirmation: " + (confirmed ? "recorded for this card" : "required") + "."));
     if (review.revision && !reviewed) details.append(el("p", {}, "The saved review does not cover the current card. Refine it with an agent."));
     if (review.invest) details.append(el("ul", {}, Object.entries(review.invest).map(([name, reason]) => el("li", {}, el("b", {}, name), ": " + reason))));
     if (review.conversation && review.conversation.length) details.append(el("p", {}, "Conversation references: " + review.conversation.join(", ")));
@@ -808,7 +808,7 @@ function actionsBar(shown, waiting) {
     const judge = () => {
       const cancelled = resolution.value === "cancelled";
       reason.placeholder = cancelled ? "Why is this work no longer needed?" : "What shipped and what evidence confirms it?";
-      explanation.textContent = cancelled ? "Cancellation preserves the idea and its history. It does not satisfy dependencies." : "Completion requires the current INVEST review and recorded results for every planned check.";
+      explanation.textContent = cancelled ? "Cancellation preserves the idea and its history. It does not satisfy dependencies." : "Completion requires the current review and recorded results for every planned check.";
       submit.textContent = cancelled ? "Cancel work" : "Close as completed";
       submit.disabled = !reason.value.trim();
     };
@@ -938,9 +938,9 @@ function commentsBlock(shown) {
 
 function refinementBlock(shown, dor) {
   const missing = (dor.blocking || []).map((name) => sectionOf(name)[0]);
-  const prompt = "Refine tracker record " + shown.record + ". Read its card and conversation using the installed tracker CLI. Preserve the person's raw context. Ask about missing facts instead of inventing them. Check INVEST: independent, negotiable, valuable, estimable, small, testable. Shape its trigger, requirements and acceptance criteria into the typed fields. "
+  const prompt = "Refine tracker record " + shown.record + ". Read its card and conversation using the installed tracker CLI. Preserve the person's raw context. Ask about missing facts instead of inventing them. Use the review form allowed by the current tracker guidance. Shape its trigger, requirements and acceptance criteria into the typed fields. "
     + (missing.length ? "The tracker currently requires: " + missing.join(", ") + ". " : "")
-    + "Keep Card, Conversation and Confirmation linked: discuss decisions on the record, and make each acceptance criterion a check. Re-read authoritative readiness after updating; clear the refine label only after agent review.";
+    + "Keep the card and confirmation linked: record questions and decisions when needed, and make each acceptance criterion a planned check. Re-read authoritative readiness after updating; clear the refine label only after agent review.";
   const text = grow(el("textarea", { readonly: true, "aria-label": "Agent refinement handoff" }, prompt));
   const copy = el("button", { class: "btn plain", type: "button", onclick: async () => {
     text.select();

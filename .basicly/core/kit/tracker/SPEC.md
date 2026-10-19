@@ -86,13 +86,15 @@ unready card. Under the default template, `ready`, `dor`, `claim`, and a move to
 A trigger sentence includes three filled parts: situation or persona, motivation or goal,
 and outcome or benefit. The parser retains the complete sentence, including its outcome.
 It refuses empty parts, punctuation alone, and named placeholders. A filled trigger does
-not prove value, independence, or testability. The agent reviews INVEST and records Card,
-Conversation, Confirmation as described in `GUIDANCE.md`. Acceptance criteria and
+not prove value, independence, or testability. The agent records a current review and
+criterion checks as described in `GUIDANCE.md`. Acceptance criteria and
 requirements are typed fields. Every entry in a list must be filled.
 
-New claims require six filled INVEST rationales, actual same-card comment sequence
-references, and one planned argv and expected result per criterion. `review --evidence`
-records these with an internally computed semantic revision and generic writer identity.
+New claims require one planned argv and expected result per criterion. Explicit `task`,
+`bug` and `chore` types may use checks-only review evidence. The full review requires six
+filled INVEST rationales and actual same-card comment sequence references; it remains
+valid for every type and required for other or missing types. `review --evidence` records
+either form with an internally computed semantic revision and generic writer identity.
 Card, dependency edge or direct dependency contract edits invalidate the evidence; holder and status changes do not.
 These checks establish recorded evidence, not automated proof of semantic INVEST quality.
 

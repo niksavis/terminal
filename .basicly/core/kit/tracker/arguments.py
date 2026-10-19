@@ -270,7 +270,7 @@ def _add_commit_check(sub: Any) -> None:
 
 def _add_process_parsers(sub: Any) -> None:
     for action in ("review", "confirm"):
-        process = sub.add_parser(action, help="record current INVEST/C3 process evidence")
+        process = sub.add_parser(action, help="record current review or completion evidence")
         process.add_argument("directory", help=DIRECTORY_HELP)
         process.add_argument("record", help="the card id")
         process.add_argument("--evidence", required=True, help="the structured evidence as JSON")

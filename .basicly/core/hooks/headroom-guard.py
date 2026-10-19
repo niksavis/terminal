@@ -48,6 +48,8 @@ def _load_headroom(root: Path):
 
 def room_for(root: Path, path: str) -> str | None:
 
+    if not (root / ".scripts" / "headroom.py").is_file():
+        return None
     headroom = _load_headroom(root)
     for measured in headroom.measure(root):
         if measured.path == path and headroom.is_tight(measured):

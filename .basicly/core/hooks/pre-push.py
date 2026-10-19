@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess  # nosec B404
 import sys
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from check_runner import project_root, run_checks
+from check_runner import load_cache, project_root, run_checks
+from engine_verify import cache_savings
 
 _EVENTS_SOURCE = Path(__file__).resolve().parent.parent / "kit" / "tracker" / "events.py"
 
@@ -43,6 +45,22 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    if load_cache(root) and cache_savings(root) > 0:
+        result = subprocess.run(  # nosec B603, B607 # fixed project interpreter argv, no shell
+            [
+                "uv",
+                "run",
+                "--no-sync",
+                "--no-python-downloads",
+                "python",
+                str(Path(__file__).with_name("engine_verify.py")),
+            ],
+            cwd=root,
+            check=False,
+        )
+        if result.returncode != 125:
+            return result.returncode
+        print("pre-push: compatible engine unavailable; running fresh native full checks.")
     return run_checks(root, "full")
 
 
