@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.16.3 - 2026-10-20
+
+Delta: v0.16.2..v0.16.3
+
+### Highlights
+
+- **Full setup installs the shared cli-tools skill without a source build.** It uses the published Basicly v0.26.11 wheel on native hosts and in WSL. The Git source used by v0.16.2 lacks required runtime archives and could fail this step (term-qok9vm).
+- **Includes the responsiveness fixes from v0.16.2.** WezTerm keeps native tab titles and Software rendering on Windows and WSL. Starship skips per-prompt line metrics, and zsh initializes fzf once (term-71hhgg, term-w53b6v).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-qok9vm)
+- fix(setup): install shared skills from the published basicly wheel (term-qok9vm)
+- chore(tracker): record the claim before provisioning (term-qok9vm) (bb28a9a)
+- chore(tracker): close the shipped track (term-kkqcfe) (d1b1439)
+
 ## v0.16.2 - 2026-10-20
 
 Delta: v0.16.1..v0.16.2
