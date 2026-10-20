@@ -222,7 +222,7 @@ The prompt is intentionally single-line and context-rich. It is configured in [`
 A typical prompt looks like:
 
 ```text
-~/projects/terminal  main !? +12-3 py:v3.14.0 took 30s >
+~/projects/terminal  main !? py:v3.14.0 took 30s >
 ```
 
 | Segment               | Meaning                                               |
@@ -230,7 +230,6 @@ A typical prompt looks like:
 | `~/projects/terminal` | Current directory (truncated to repo root)            |
 | ` main`              | Git branch                                            |
 | `!?`                  | Git status (`!` modified, `?` untracked, etc.)        |
-| `+12-3`               | Git line metrics for staged/unstaged changes          |
 | `py:v3.14.0`          | Runtime context for active project tools              |
 | `took 30s`            | Duration of the last command (shown when over 500 ms) |
 | `>`                   | Prompt character (red if the last command failed)     |
