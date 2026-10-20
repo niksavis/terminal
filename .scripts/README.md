@@ -46,3 +46,19 @@ after a configuration error and use default settings. This check loads the actua
 template, rejects a custom tab title callback and checks that tabs, the status footer
 and the retained performance settings remain. It requires Software rendering on Windows
 and WSL. It does not open a window or change an active terminal's settings.
+
+The checker also evaluates Windows, WSL, native Linux and native macOS inputs.
+It exercises the footer 1,200 times while blocking five named process and file
+APIs. It rejects custom tab and window title callbacks, requires Kitty graphics
+to stay disabled and leaves the native renderer default to WezTerm.
+
+Run the regression controls with:
+
+```sh
+uv run pytest -q tests/test_terminal_setup/test_responsiveness.py
+```
+
+The CLI-dependent tests skip when WezTerm or zsh is absent. They include unsafe
+template mutations as negative controls. Each external test has a 30-second
+timeout. The [investigation report](../docs/validation/terminal-responsiveness.md)
+records the upstream evidence, local measurements and platform limits.

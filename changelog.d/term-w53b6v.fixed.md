@@ -1,0 +1,1 @@
+Keep Software rendering on Windows and WSL, and let native Linux and macOS use WezTerm's renderer default. Disable Kitty graphics by default to avoid image-handling crash paths in older builds. Generate fzf shell integration once per zsh startup. Add platform-input checks and negative controls for expensive callbacks, process launches and file operations in the status footer.
