@@ -299,21 +299,6 @@ else
   open_config_action = act.SpawnCommandInNewTab(open_config_command)
 end
 
-wezterm.on("format-tab-title", function(tab, _, _, _, _, max_width)
-  local pane = tab.active_pane
-  local cwd = ""
-  if pane and pane.current_working_dir then
-    local cwd_path = pane.current_working_dir.file_path or tostring(pane.current_working_dir)
-    cwd = basename(cwd_path)
-  end
-
-  local title = tab.tab_title
-  if not title or title == "" then
-    title = cwd ~= "" and cwd or (pane and pane.title or "shell")
-  end
-  return wezterm.truncate_right(" " .. title .. " ", max_width)
-end)
-
 wezterm.on("update-right-status", function(window, pane)
   local workspace = window:active_workspace()
   local cwd = pane_cwd_basename(pane)
