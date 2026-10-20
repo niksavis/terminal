@@ -9,8 +9,6 @@ $username$hostname$directory$git_branch$git_status$git_state$git_metrics$docker_
 # directory scanning is slow (WSL drvfs /mnt/c, large repos, cold cache): starship
 # aborts the scan and prints "Scanning current directory timed out" on startup.
 scan_timeout = 500
-# git_metrics runs a git diff per prompt; 500ms produced per-prompt
-# "command timed out" warnings on large repositories.
 command_timeout = 1000
 
 palette = "tokyonight_night"
@@ -69,7 +67,7 @@ format = " [$state( $progress_current/$progress_total)]($style)"
 style = "fg:yellow"
 
 [git_metrics]
-disabled = false
+disabled = true
 added_style = "fg:green"
 deleted_style = "fg:red"
 format = " [+$added]($added_style)[-$deleted]($deleted_style)"
