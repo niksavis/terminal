@@ -1,0 +1,1 @@
+Disable Starship diff metrics on each prompt while retaining Git branch and status information. Use WezTerm's native tab titles to avoid synchronous Lua formatting work during frequent title updates. Preserve Software rendering on Windows and WSL and the existing tab, status footer and performance settings.
