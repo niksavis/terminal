@@ -2,6 +2,55 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.16.2 - 2026-10-20
+
+Delta: v0.16.1..v0.16.2
+
+### Highlights
+
+- **WezTerm uses native tab titles.** Removing the custom Lua formatter avoids repeated conversion of the full configuration on the GUI thread. Windows and WSL retain Software rendering; native Linux and macOS use WezTerm's renderer default. Kitty graphics are disabled to avoid known image-handling crash paths in older builds, so applications using that protocol lose those images (term-71hhgg, term-w53b6v).
+- **Starship avoids a diff on every prompt.** Git line metrics are disabled, which avoids invoking content clean filters for those metrics. Branch and status information remain available (term-71hhgg).
+- **zsh initializes fzf once.** The configuration reuses the generated integration instead of starting fzf twice, and keeps the fallback for older versions (term-w53b6v).
+- **The repository harness and shared skill pin use basicly v0.26.11.** The upgrade keeps Codex shell repair reachable when the hook runtime is missing and documents the recovery commands (term-21t2uw, term-56sb6g).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-kkqcfe) (85f2220)
+- chore(tracker): record the claim before provisioning (term-kkqcfe) (d6ef197)
+- chore(tracker): record the upgrade handover (term-56sb6g) (f3ae108)
+- chore(tracker): close the shipped track (term-56sb6g) (d3ea6c8)
+- chore(harness): upgrade basicly for codex hook recovery (term-56sb6g) (41710ef)
+- chore(tracker): sync tracker state for the harness loop (term-56sb6g) (0a5d59f)
+- chore(tracker): close the shipped track (term-w53b6v) (29271c6)
+- fix(terminal): reduce terminal startup work and avoid known crash paths (term-w53b6v) (c39b6ac)
+- chore(tracker): sync tracker state for the harness loop (term-w53b6v) (c7488e2)
+- chore(tracker): record the claim before provisioning (term-56sb6g) (70a83fc)
+- chore(tracker): record the claim before provisioning (term-w53b6v) (4d6d03d)
+- docs(starship): align the prompt example with disabled metrics (term-e54g8k) (cc3c97f)
+- chore(tracker): close the shipped track (term-71hhgg) (c793574)
+- fix(config): avoid per-prompt diff metrics and custom tab title conversion (term-71hhgg) (3037e46)
+- chore(tracker): sync tracker state for the harness loop (term-71hhgg) (d81d3a5)
+- chore(tracker): record the claim before provisioning (term-71hhgg) (f7cbf1d)
+- chore(harness): update basicly and remove generated codex permissions (term-21t2uw) (1aa5443)
+- chore(tracker): fold pending writer shards into the trunk log (term-bzfgkl) (328bbad)
+- chore(harness): upgrade basicly patch and validate protected writes (term-bzfgkl) (6bf2067)
+- chore(tracker): sync tracker state for the harness loop (term-bzfgkl) (0be2966)
+- chore(tracker): record the claim before provisioning (term-bzfgkl) (f4e05f4)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (00c435d)
+- chore(tracker): close the shipped track (term-qe8sm3) (610d950)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (1485961)
+- docs(harness): identify sandbox landing refusal (term-qe8sm3) (3d66c8e)
+- docs(harness): record upgrade landing findings (term-qe8sm3) (fae9205)
+- chore(harness): upgrade basicly and validate live hooks (term-qe8sm3) (40d8204)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (496dec8)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (dbc7956)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (b29230f)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (949412a)
+- chore(tracker): fold pending writer shards into the trunk log (term-p4b5z) (935be5e)
+- chore(tracker): record the terminal session handover (term-p4b5z) (4e3e593)
+- chore(tracker): close the patch release and record the handover (term-3tpo8h) (9258e63)
+- chore(tracker): close the verified release installer bug (term-87rbae) (8ad99f3)
+
 ## v0.16.1 - 2026-10-15
 
 Delta: v0.16.0..v0.16.1
