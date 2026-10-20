@@ -579,7 +579,10 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
 
 
 BASICLY_REF = "v0.26.11"
-BASICLY_SPEC = f"git+https://github.com/niksavis/basicly@{BASICLY_REF}"
+BASICLY_SPEC = (
+    "https://github.com/niksavis/basicly/releases/download/"
+    f"{BASICLY_REF}/basicly-{BASICLY_REF.removeprefix('v')}-py3-none-any.whl"
+)
 CLI_TOOLS_SKILL = "cli-tools"
 _CLI_TOOLS_LABEL = "install the basicly cli-tools skills"
 _SKILLS_USER = ["tool", "run", "--from", BASICLY_SPEC, "basicly", "skills-user"]
