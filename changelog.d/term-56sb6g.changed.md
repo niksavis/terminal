@@ -1,0 +1,1 @@
+- Upgrade basicly to v0.26.11 so Codex shell tools can repair a missing hook runtime and agent instructions include the recovery commands.

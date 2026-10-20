@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 83
-  codex: 82
-  copilot: 83
+  claude: 146
+  codex: 147
+  copilot: 146
 id: harness-loop
 description: Session start, session end and the harness loop.
 category: project
@@ -15,6 +15,7 @@ tags:
 status: active
 title: Harness Loop
 body: |
+  - If an agent hook reports a missing Lefthook runtime after a clone, run the repository's pinned basicly command with `hooks-build --runtime-only`, then `hooks-check`, and retry. In a basicly source checkout, use `uv run basicly`. Keep the hooks enabled.
   - Start a session with `basicly session start`. End it with a note tagged `[session handover <date>]` on the root record.
   - The tracker ledger is the source of truth for the work.
   - Drive non-trivial work through the harness loop. The `harness-loop` skill describes the phases, the commands and the checkpoints.

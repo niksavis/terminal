@@ -18,8 +18,8 @@ git clone https://github.com/niksavis/terminal.git
 cd terminal
 uv sync
 npm install
-uvx --from https://github.com/niksavis/basicly/releases/download/v0.26.10/basicly-0.26.10-py3-none-any.whl basicly install
-uvx --from https://github.com/niksavis/basicly/releases/download/v0.26.10/basicly-0.26.10-py3-none-any.whl basicly verify --mode full
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl basicly install
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl basicly verify --mode full
 uv run pytest tests/
 ```
 

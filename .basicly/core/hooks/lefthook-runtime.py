@@ -11,6 +11,10 @@ import tempfile
 from pathlib import Path
 
 
+class MissingRuntimeError(ValueError):
+    pass
+
+
 def project_root() -> Path:
     for root in Path(__file__).resolve().parents:
         if (root / ".git").exists():
@@ -139,7 +143,12 @@ def launch(manager: str, stage: str, arguments: list[str]) -> int:
     suffix = ".exe" if os.name == "nt" else ""
     binary = root / ".basicly/bin" / f"lefthook{suffix}"
     if not binary.is_file():
-        raise ValueError("repository-local Lefthook is missing; run `basicly hooks-build`")
+        raise MissingRuntimeError(
+            "repository-local Lefthook runtime is missing. "
+            "Run the repository's pinned basicly command with `hooks-build --runtime-only`, "
+            "then `hooks-check`, and retry. In a basicly source checkout, use "
+            "`uv run basicly hooks-build --runtime-only` and `uv run basicly hooks-check`."
+        )
     env = {**os.environ, "BASICLY_HOOK_ARGS": json.dumps(arguments)}
     agent = manager != "git"
     name = stage if not agent else f"basicly-{manager}-{stage}"
@@ -215,6 +224,9 @@ def main() -> int:
             print("use lefthook-runtime.py <git|claude|codex|copilot> <event>", file=sys.stderr)
             return 2
         return launch(sys.argv[1], sys.argv[2], sys.argv[3:])
+    except MissingRuntimeError as exc:
+        print(f"basicly hook failed: {exc}", file=sys.stderr)
+        return 2
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
         print(f"basicly hook failed: {type(exc).__name__}", file=sys.stderr)
         return 2
