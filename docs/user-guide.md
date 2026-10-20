@@ -217,6 +217,9 @@ The zsh configuration uses Emacs-style readline shortcuts. These work in any ter
 
 ## Starship prompt
 
+Git line metrics are disabled to avoid a diff on each prompt. Git branch and
+status information remain available.
+
 The prompt is intentionally single-line and context-rich. It is configured in [`terminal_setup/templates/starship.toml`](../terminal_setup/templates/starship.toml) and deployed to `~/.config/starship.toml`.
 
 A typical prompt looks like:
@@ -306,6 +309,21 @@ The two directory options are optional and personal, so setup never sets them by
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
 ## Troubleshooting
+
+### WezTerm performance and stability defaults
+
+Windows and WSL use the Software setting to retain the GPU-driver workaround.
+Native Linux and macOS inherit WezTerm's renderer default. The template keeps
+native tab titles, a small status footer and a scrollback limit of 10,000 lines.
+
+The Kitty image protocol is disabled by default because older builds have known
+image-parser crashes. Applications that require this protocol will not show those
+images. The separate iTerm image protocol stays enabled.
+
+The [investigation report](validation/terminal-responsiveness.md) records the
+upstream reports, measured results, regression controls and remaining limits.
+Confirm the runtime renderer in WezTerm's debug overlay before a renderer change.
+A large Windows WSL working set alone does not establish memory exhaustion.
 
 ### `xdg-desktop-portal` warning when starting WezTerm in WSL
 

@@ -160,16 +160,16 @@ config.scrollback_lines = 10000
 config.max_fps = 30
 config.animation_fps = 10
 config.cursor_blink_rate = 0
+config.enable_kitty_graphics = false
 config.enable_scroll_bar = true
 config.check_for_updates = false
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
 
--- Display stability: prefer X11 over Wayland.
--- Windows and WSL use software rendering to bypass GPU driver rendering paths.
--- Limit redraws above to keep CPU use bounded during long coding sessions.
 config.enable_wayland = false
-config.front_end = (is_windows or is_wsl) and "Software" or "WebGpu"
+if is_windows or is_wsl then
+  config.front_end = "Software"
+end
 
 -- Always use the dark color scheme; do not query the desktop environment
 -- for the system theme. This avoids xdg-desktop-portal warnings under WSLg
