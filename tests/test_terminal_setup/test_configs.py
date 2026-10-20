@@ -1152,7 +1152,10 @@ def test_basicly_pin_matches_the_installed_harness() -> None:
     )
 
     assert f"v{install['basicly_version']}" == BASICLY_REF
-    assert BASICLY_SPEC.endswith(f"@{BASICLY_REF}")
+    assert (
+        "https://github.com/niksavis/basicly/releases/download/"
+        f"{BASICLY_REF}/basicly-{install['basicly_version']}-py3-none-any.whl"
+    ) == BASICLY_SPEC
 
 
 def test_the_pinned_harness_carries_no_tool_skills() -> None:
