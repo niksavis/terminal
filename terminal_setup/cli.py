@@ -186,6 +186,31 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
 
 
 WINDOWS_RUNTIMES = ("uv", "python", "node")
+VERSION_FLAGS = {"tmux": "-V"}
+NO_VERSION = frozenset({"img-zoom"})
+RUNTIME_TARGETS = {
+    "python": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
+    "python3": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
+    "node": (prerequisites.node_meets_target, f"v{prerequisites.TARGET_NODE_MAJOR}"),
+}
+
+
+def _target_status(command: str, version: str, detail: str) -> tuple[bool, str]:
+    target = RUNTIME_TARGETS.get(command)
+    if target is None:
+        return True, detail
+    meets, minimum = target
+    if meets(version):
+        return True, detail
+    return False, f"{detail}, below the target {minimum}"
+
+
+def _report_tool(runner: Runner, label: str, command: str, path: str, version: str) -> None:
+    if not path:
+        _report_status(runner, label, False, "")
+        return
+    ok, detail = _target_status(command, version, f"{path}, {version}" if version else path)
+    _report_status(runner, label, ok, detail)
 
 
 def _first_line(text: str) -> str:
@@ -193,9 +218,9 @@ def _first_line(text: str) -> str:
     return lines[0].strip() if lines else ""
 
 
-def _windows_tool_detail(
+def _windows_tool_info(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
-) -> str | None:
+) -> tuple[str, str, str] | None:
     path = runner.which(command)
     note = ""
     if path is None:
@@ -207,7 +232,14 @@ def _windows_tool_detail(
     result = runner.run([path, "--version"], check=False, dry_run_safe=True)
     version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
     scope = "user profile" if prerequisites.is_user_scope(path, platform_info) else "machine-wide"
-    return f"{path}, {version}, {scope}{note}"
+    return path, version, f"{scope}{note}"
+
+
+def _windows_tool_detail(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> str | None:
+    info = _windows_tool_info(runner, platform_info, command)
+    return None if info is None else ", ".join(info)
 
 
 def _report_optional_agent(runner: Runner, label: str, detail: str | None) -> None:
@@ -234,13 +266,18 @@ def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> 
     return found if result.returncode == 0 and found else None
 
 
-def _wsl_command_present(
+def _wsl_command_info(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
-) -> tuple[bool, str]:
-
+) -> tuple[str, str]:
+    version_step = (
+        ""
+        if command in NO_VERSION
+        else f'; "$p" {VERSION_FLAGS.get(command, "--version")} </dev/null 2>&1 | head -n 1'
+    )
     script = (
-        f"if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
-        f"else command -v {command} || true; fi"
+        f"p=$(if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
+        f"else command -v {command} || true; fi); "
+        f'test -n "$p" || exit 0; echo "$p"{version_step}'
     )
     if is_running_in_wsl():
         result = runner.run(
@@ -255,8 +292,17 @@ def _wsl_command_present(
             check=False,
             dry_run_safe=True,
         )
-    output = result.stdout.strip()
-    return bool(output), output
+    lines = result.stdout.strip().splitlines()
+    path = lines[0].strip() if lines else ""
+    version = lines[1].strip() if len(lines) > 1 else ""
+    return path, version
+
+
+def _wsl_command_present(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> tuple[bool, str]:
+    path, version = _wsl_command_info(runner, platform_info, command)
+    return bool(path), f"{path}, {version}" if path and version else path
 
 
 def _wsl_file_exists(
@@ -301,8 +347,12 @@ def _print_windows_report(
         _report_windows_tool(runner, platform_info, tool)
 
     for command in WINDOWS_RUNTIMES:
-        detail = _windows_tool_detail(runner, platform_info, command)
-        _report_status(runner, f"windows:{command}", detail is not None, detail or "not found")
+        info = _windows_tool_info(runner, platform_info, command)
+        if info is None:
+            _report_status(runner, f"windows:{command}", False, "not found")
+            continue
+        ok, detail = _target_status(command, info[1], ", ".join(info))
+        _report_status(runner, f"windows:{command}", ok, detail)
     for agent in agents.AGENTS:
         _report_optional_agent(
             runner, f"windows:{agent}", _windows_tool_detail(runner, platform_info, agent)
@@ -384,11 +434,11 @@ def _print_wsl_report(
         "python3",
         "node",
     ]:
-        ok, detail = _wsl_command_present(runner, platform_info, command)
-        _report_status(runner, f"wsl:{command}", ok, detail)
+        path, version = _wsl_command_info(runner, platform_info, command)
+        _report_tool(runner, f"wsl:{command}", command, path, version)
     if include_starship:
-        ok, detail = _wsl_command_present(runner, platform_info, "starship")
-        _report_status(runner, "wsl:starship", ok, detail)
+        path, version = _wsl_command_info(runner, platform_info, "starship")
+        _report_tool(runner, "wsl:starship", "starship", path, version)
     for path in [
         "~/.local/bin/fd",
         "~/.local/bin/bat",
@@ -416,6 +466,14 @@ def _host_command_path(runner: Runner, command: str) -> str | None:
     if local.is_file() and os.access(local, os.X_OK):
         return str(local)
     return runner.which(command)
+
+
+def _host_version(runner: Runner, command: str, path: str) -> str:
+    if command in NO_VERSION:
+        return ""
+    flag = VERSION_FLAGS.get(command, "--version")
+    result = runner.run([path, flag], check=False, dry_run_safe=True)
+    return _first_line(result.stdout or result.stderr or "")
 
 
 def _print_host_report(
@@ -451,10 +509,12 @@ def _print_host_report(
         "node",
     ]:
         path = _host_command_path(runner, command)
-        _report_status(runner, f"host:{command}", path is not None, path or "")
+        version = _host_version(runner, command, path) if path else ""
+        _report_tool(runner, f"host:{command}", command, path or "", version)
     if include_starship:
         path = _host_command_path(runner, "starship")
-        _report_status(runner, "host:starship", path is not None, path or "")
+        version = _host_version(runner, "starship", path) if path else ""
+        _report_tool(runner, "host:starship", "starship", path or "", version)
     for agent in agents.AGENTS:
         _report_optional_agent(
             runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)

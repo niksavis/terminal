@@ -1,0 +1,1 @@
+- The verification report shows the version of each tool in WSL, on Linux and on macOS.

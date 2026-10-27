@@ -992,7 +992,7 @@ def _windows_node_version(runner: Runner) -> tuple[str | None, str | None]:
     return result.stdout.strip() or None, path
 
 
-def _node_meets_target(version: str | None) -> bool:
+def node_meets_target(version: str | None) -> bool:
     return version is not None and _parse_version_tuple(version)[:1] >= (int(TARGET_NODE_MAJOR),)
 
 
@@ -1000,11 +1000,11 @@ def _ensure_node_windows(runner: Runner, platform: PlatformInfo, *, update: bool
     target = platform.user_programs_dir / "nodejs"
     installed, path = _windows_node_version(runner)
     if path is not None and not is_user_scope(path, platform):
-        minimum = None if _node_meets_target(installed) else f"v{TARGET_NODE_MAJOR}"
+        minimum = None if node_meets_target(installed) else f"v{TARGET_NODE_MAJOR}"
         report_machine_scope(runner, "Node.js", installed, path, minimum=minimum)
         return
     managed = path is not None and Path(path).parent == target
-    if _node_meets_target(installed) and not (update and managed):
+    if node_meets_target(installed) and not (update and managed):
         runner.reporter.success(f"Node.js {installed} is present on Windows ({path})")
         return
     try:

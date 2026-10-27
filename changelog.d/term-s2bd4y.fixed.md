@@ -1,0 +1,1 @@
+- The verification report warns about Python older than 3.14 and Node.js older than v26.

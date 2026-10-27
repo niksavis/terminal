@@ -400,4 +400,4 @@ Run the report after each install:
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
 ```
 
-The report lists each tool with its path, and each config file. On Windows it lists the Windows host and the WSL distro. For each Windows command-line tool it also shows the version and the origin: `terminal-tools`, `winget`, `machine-wide` or `user profile`. It warns about a winget copy that never runs, because another copy comes first on PATH.
+The report lists each tool with its path and its version, and each config file. On Windows it lists the Windows host and the WSL distro. It warns about Python older than 3.14 and Node.js older than v26, the versions that setup installs. For each Windows command-line tool it also shows the origin: `terminal-tools`, `winget`, `machine-wide` or `user profile`. It warns about a winget copy that never runs, because another copy comes first on PATH.
