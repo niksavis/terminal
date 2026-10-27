@@ -1,1 +1,0 @@
-Install the shared cli-tools skill from the published Basicly v0.26.11 wheel on native hosts and in WSL. Building the same version from Git failed because the source checkout lacks the bundled runtime archives. Keep the existing version pin and use its ready-built release artifact.

@@ -1,1 +1,0 @@
-- Update the installed basicly harness and command pins to v0.26.10. The upgrade removes the generated basicly Codex permission profile and selection while preserving consumer settings and local overlays. (term-21t2uw)

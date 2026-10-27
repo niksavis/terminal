@@ -8,6 +8,11 @@ from datetime import date
 from pathlib import Path
 
 TAG_PATTERN = re.compile(r"^v\d+\.\d+\.\d+$")
+FRAGMENT_CATEGORIES = ("added", "changed", "deprecated", "removed", "fixed", "security")
+FRAGMENT_NAME = re.compile(
+    r"^[a-z]+-[a-z0-9]+(?:\.\d+)?\.(?P<category>" + "|".join(FRAGMENT_CATEGORIES) + r")\.md$"
+)
+HIGHLIGHTS_HEADING = "### Highlights"
 
 CHANGELOG_INTRO = (
     "# Changelog\n\nAll notable user-facing changes are documented in this file by release tag.\n"
@@ -55,11 +60,46 @@ def _collect_commit_subjects(previous_tag: str | None) -> list[str]:
     return [line.strip() for line in output.splitlines() if line.strip()]
 
 
+def _read_fragments(directory: Path) -> list[tuple[Path, list[str]]]:
+    if not directory.is_dir():
+        return []
+    found: list[tuple[int, str, Path, list[str]]] = []
+    for path in directory.glob("*.md"):
+        match = FRAGMENT_NAME.fullmatch(path.name)
+        if match is None:
+            message = (
+                f"{path} is not named <record-id>.<category>.md with a category from "
+                f"{', '.join(FRAGMENT_CATEGORIES)}"
+            )
+            raise ValueError(message)
+        lines = [line.rstrip() for line in path.read_text(encoding="utf-8").splitlines()]
+        body = [line for line in lines if line.strip()]
+        if not body:
+            message = f"{path} is empty"
+            raise ValueError(message)
+        found.append((FRAGMENT_CATEGORIES.index(match["category"]), path.name, path, body))
+    found.sort(key=lambda fragment: fragment[:2])
+    return [(path, body) for _, _, path, body in found]
+
+
+def _existing_highlights(lines: list[str], tag: str) -> list[str]:
+    start, end = _find_section_bounds(lines, tag)
+    if start is None or end is None or HIGHLIGHTS_HEADING not in lines[start:end]:
+        return []
+    first = lines.index(HIGHLIGHTS_HEADING, start) + 1
+    last = next(
+        (idx for idx in range(first, end) if lines[idx].startswith("### ")),
+        end,
+    )
+    return [line for line in lines[first:last] if line.strip()]
+
+
 def _build_section(
     tag: str,
     release_date: str,
     previous_tag: str | None,
     commits: list[str],
+    highlights: list[str] | None = None,
 ) -> list[str]:
     delta_start = previous_tag or "initial"
     section = [
@@ -67,9 +107,10 @@ def _build_section(
         "",
         f"Delta: {delta_start}..{tag}",
         "",
-        "### Commit delta (auto-generated)",
-        "",
     ]
+    if highlights:
+        section.extend([HIGHLIGHTS_HEADING, "", *highlights, ""])
+    section.extend(["### Commit delta (auto-generated)", ""])
     if commits:
         section.extend([f"- {commit}" for commit in commits])
     else:
@@ -136,6 +177,11 @@ def _parse_args() -> argparse.Namespace:
         default="CHANGELOG.md",
         help="Path to changelog file (default: CHANGELOG.md)",
     )
+    parser.add_argument(
+        "--fragments",
+        default="changelog.d",
+        help="Folder of <record-id>.<category>.md fragments to fold in (default: changelog.d)",
+    )
     return parser.parse_args()
 
 
@@ -155,14 +201,28 @@ def main() -> int:
     changelog_path = Path(args.changelog)
     existing_text = changelog_path.read_text(encoding="utf-8") if changelog_path.exists() else ""
 
+    try:
+        fragments = _read_fragments(Path(args.fragments))
+    except ValueError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
+
     previous_tag = _nearest_previous_tag(args.tag)
     commits = _collect_commit_subjects(previous_tag)
-    section_lines = _build_section(args.tag, args.date, previous_tag, commits)
+    highlights = _existing_highlights(
+        _ensure_changelog_header(existing_text.splitlines()), args.tag
+    )
+    for _, body in fragments:
+        highlights.extend(body)
+    section_lines = _build_section(args.tag, args.date, previous_tag, commits, highlights)
     new_text = _upsert_section(existing_text, args.tag, section_lines)
 
     changelog_path.write_text(new_text, encoding="utf-8")
+    for path, _ in fragments:
+        path.unlink()
     print(f"Updated {changelog_path} for {args.tag} ({args.date})")
     print(f"Commit count in release delta: {len(commits)}")
+    print(f"Folded {len(fragments)} changelog fragments into {HIGHLIGHTS_HEADING}")
     return 0
 
 

@@ -55,9 +55,9 @@ The scripts in the repository default to `main`, so a clone and the e2e test run
 
 1. Ensure `main` is green and all release code changes are committed. File or claim the tracker record the release belongs to; every commit subject below ends with its id, for example `(term-abc12)`.
 1. Bump `version` in `pyproject.toml` **and** `__version__` in `terminal_setup/__init__.py` to match the target tag, refresh `uv.lock` (`uv lock`), and commit them together, for example `git commit -m "chore(release): bump package version for next release (term-abc12)"`. The two must agree: `tests/test_version.py` fails when they drift, which is how `__version__` was caught sitting at 0.1.0 through every release up to v0.5.0.
-1. Generate/update changelog for the target semantic tag and date with `uv run python .scripts/generate_release_changelog.py --tag vX.Y.Z --date YYYY-MM-DD`.
-1. Review `CHANGELOG.md`: keep a concise user-facing `### Highlights` section above the auto-generated commit delta.
-1. Stage the changelog with `git add CHANGELOG.md`, then commit it on its own with `git commit -m "docs(release): update changelog for vX-Y-Z (term-abc12)"`.
+1. Generate/update changelog for the target semantic tag and date with `uv run python .scripts/generate_release_changelog.py --tag vX.Y.Z --date YYYY-MM-DD`. It puts the body of each `changelog.d/<record-id>.<category>.md` fragment under `### Highlights`, in the order added, changed, deprecated, removed, fixed, security, and deletes the fragment. It refuses a fragment with another name or an empty body, and names the file. A second run keeps the Highlights already in the section.
+1. Review `CHANGELOG.md`: rewrite the `### Highlights` section as concise user-facing bullets above the auto-generated commit delta.
+1. Stage the changelog and the deleted fragments with `git add CHANGELOG.md changelog.d`, then commit it on its own with `git commit -m "docs(release): update changelog for vX-Y-Z (term-abc12)"`.
 1. Push `main` with `git push origin main`.
 1. Check the release is internally consistent with `uv run python .scripts/check_release_consistency.py --tag vX.Y.Z`. It compares the tag against `pyproject.toml`, `terminal_setup/__init__.py`, `uv.lock` and the `CHANGELOG.md` heading, and names every disagreement at once. Run it here so a mismatch is fixed before a tag exists to retract.
 1. Create an annotated semantic version tag with the release date in the message using `git tag -a vX.Y.Z -m "vX.Y.Z (YYYY-MM-DD)"`.

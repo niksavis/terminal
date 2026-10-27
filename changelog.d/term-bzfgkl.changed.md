@@ -1,1 +1,0 @@
-Upgrade the repository harness and terminal skill pin to basicly v0.25.1. Validate native protected-write refusals before mutation, unchanged Git launchers and foreign backups, agent protocols and the existing repository checks.

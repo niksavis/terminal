@@ -1,1 +1,0 @@
-- Stop Windows setup from hanging at the add to user PATH step: the environment change broadcast now runs in the background, and the PATH and WezTerm steps no longer load the user PowerShell profile.

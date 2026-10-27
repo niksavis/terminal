@@ -1,1 +1,0 @@
-- Make --no-sudo run no sudo command on a Linux host: setup now skips the shell tools and prints their install command, and installs WezTerm as the AppImage on pacman and dnf too.

@@ -1,1 +1,0 @@
-Upgrade the repository harness to basicly v0.25.0 through the v0.24.0 and v0.24.1 release wheels. Git and agent hooks use bundled Lefthook 2.2.2, preserve staged contents and retain existing checks. Update the terminal skill pin and contributor commands, and record live consumer validation.
