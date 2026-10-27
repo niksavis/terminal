@@ -2,6 +2,29 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.17.1 - 2026-10-27
+
+Delta: v0.17.0..v0.17.1
+
+### Highlights
+
+- **`--no-sudo` runs no sudo command on a Linux host.** Setup skips zsh, tmux, git, curl and wget and prints the command that installs them. On pacman and dnf, WezTerm installs as the AppImage (term-hfmqvp).
+- **The docs say what goes where on each platform.** The README and the docs name the install folders on Windows, WSL, Linux and macOS, the user PATH entries, the WezTerm Start menu entry and the folder of each coding agent (term-dbhru2, term-z0jvce, term-da37zj).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-k6rm0e) (d5617db)
+- chore(tracker): close the validation record cleanup (term-3la8jo) (70783e4)
+- docs(validation): delete the old basicly validation records (term-3la8jo) (90b5a34)
+- chore(tracker): close the docs alignment (term-da37zj) (97d8eec)
+- docs(install): bring the docs up to date with the readme and the code (term-da37zj) (e2cd1df)
+- chore(tracker): close the agent docs record (term-z0jvce) (c50cb18)
+- docs(install): name where each coding agent installs (term-z0jvce) (9af4d19)
+- fix(setup): make no-sudo skip every sudo step on a linux host (term-hfmqvp) (034f33e)
+- chore(tracker): confirm and close the session records (term-dbhru2) (3cefa46)
+- docs(install): correct where setup installs each tool (term-dbhru2) (d64a47f)
+- chore(tracker): close the shipped release (term-vbemoo) (f532f0a)
+
 ## v0.17.0 - 2026-10-27
 
 Delta: v0.16.3..v0.17.0
