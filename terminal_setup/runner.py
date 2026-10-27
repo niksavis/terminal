@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from .platform import is_wsl_exec_command
+
 
 class Reporter(Protocol):
     def info(self, message: str) -> None: ...
@@ -148,6 +150,7 @@ class Runner:
                 stderr=None,
                 text=True,
             )
+        wsl_output = is_wsl_exec_command(command)
         return subprocess.run(  # nosec B603
             command,
             check=check,
@@ -156,6 +159,8 @@ class Runner:
             stdin=subprocess.DEVNULL if self.unattended else None,
             capture_output=True,
             text=True,
+            encoding="utf-8" if wsl_output else None,
+            errors="replace" if wsl_output else None,
         )
 
     def which(self, command: str) -> str | None:

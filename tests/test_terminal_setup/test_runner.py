@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import platform as platform_module
+import subprocess
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
+from terminal_setup.platform import wsl_exec_command
 from terminal_setup.runner import ConsoleReporter, Runner
 
 
@@ -140,3 +143,24 @@ def test_console_reporter_cuts_a_powershell_script_at_command(
     out = capsys.readouterr().out
     assert "pwsh -NoProfile: greet" in out
     assert "hidden" not in out
+
+
+def _captured_text(command: list[str], output: bytes) -> str:
+    def fake_run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        encoding = kwargs["encoding"] or "cp1252"
+        errors = kwargs["errors"] or "strict"
+        return subprocess.CompletedProcess(argv, 0, output.decode(str(encoding), str(errors)), "")
+
+    with mock.patch("terminal_setup.runner.subprocess.run", side_effect=fake_run):
+        return Runner(dry_run=False).run(command, dry_run_safe=True).stdout
+
+
+def test_wsl_command_output_is_decoded_as_utf8() -> None:
+    command = wsl_exec_command("Ubuntu", ["tree", "--version"])
+
+    assert _captured_text(command, "tree v2.3.1 © 1996\n".encode()) == "tree v2.3.1 © 1996\n"
+    assert _captured_text(command, b"bad \xff byte\n") == "bad � byte\n"
+
+
+def test_other_command_output_keeps_the_locale_decoding() -> None:
+    assert _captured_text(["tree", "--version"], b"\xa9\n") == "©\n"

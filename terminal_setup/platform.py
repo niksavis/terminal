@@ -99,6 +99,10 @@ def wsl_exec_command(distro: str, command: list[str]) -> list[str]:
     return ["wsl", "-d", distro, "--exec", *command]
 
 
+def is_wsl_exec_command(command: list[str]) -> bool:
+    return len(command) > 3 and command[0] == "wsl" and command[3] == "--exec"
+
+
 SETUP_ARCHIVES = "https://github.com/niksavis/terminal/archive/"
 SETUP_SOURCE = f"{SETUP_ARCHIVES}main.zip"
 WINDOWS_BOOTSTRAP = (

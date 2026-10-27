@@ -1,0 +1,1 @@
+- On Windows, the report shows characters such as the copyright sign from WSL tools correctly.
