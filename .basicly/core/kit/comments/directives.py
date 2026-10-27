@@ -75,3 +75,16 @@ def is_directive(text: str) -> bool:
     if lead.startswith(("#!", "/*!", "//!")):
         return True
     return bool(_DIRECTIVE.match(body(text)))
+
+
+def retained_suffix(text: str, openers: tuple[str, ...]) -> str:
+    for opener in openers:
+        if not text.startswith(opener):
+            continue
+        index = text.find(opener, len(opener))
+        while index != -1:
+            suffix = text[index:]
+            if is_directive(suffix):
+                return suffix
+            index = text.find(opener, index + len(opener))
+    return ""

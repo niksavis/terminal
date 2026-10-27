@@ -1,13 +1,14 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 160
-  codex: 159
-  copilot: 160
+  claude: 107
+  codex: 107
+  copilot: 107
 id: mistake-proofing
 description: Design every interface so a wrong use cannot happen or stops at once, instead of documenting how to avoid it.
 category: design
 priority: high
+phase: build
 applies_to: [all]
 tags:
 - design
@@ -15,9 +16,7 @@ tags:
 status: active
 title: Mistake Proofing
 body: |
-  Make a wrong use impossible, or stop it at once with the fix (poka-yoke). A refusal in the code acts before the damage. A warning in a document acts after it.
-
-  - Refuse a wrong input by name. Never answer it with a default or an empty result, because both read as success. Say what is wrong and give the correct command.
-  - Make the safe behaviour the default. A mode that can damage shared state needs an explicit flag.
-  - Keep each rule in one place, and call it from every side. Two copies drift and give two answers.
-  - When a mistake can happen again, add a gate or a test that refuses it. A note does not stop it.
+  - Make wrong use impossible, or refuse wrong input by name before damage and give the correct command. Never return a default or empty success.
+  - Default to safe behaviour. A mode that can damage shared state needs an explicit flag.
+  - Keep each rule in one place and call it from every side.
+  - Prevent recurrence with a gate or test. A document warning alone does not stop it.

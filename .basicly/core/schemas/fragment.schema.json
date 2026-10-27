@@ -31,6 +31,10 @@
       ]
     },
     "priority": {"enum": ["critical", "high", "medium", "low"]},
+    "phase": {
+      "enum": ["start", "plan", "build", "verify", "ship", "finish"],
+      "description": "Workflow phase that orders the fragment inside Always do: start, plan, build, verify, ship, finish. A fragment without a phase renders before the phased fragments, so a repository's own facts come first."
+    },
     "applies_to": {
       "type": "array",
       "items": {"type": "string"},

@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 42
+  listing: 55
 name: falsify-first
 invocation: model
-description: "Tries to break a claim, invariant or measurement with a concrete counterexample. Use before it enters a plan, a design or a gate."
+description: "Tries to break a claim, invariant or measurement with a concrete counterexample. Use before it enters a plan, a design or a gate, or before a high-risk number, root cause or coverage claim enters a report."
 covers:
   work_types: [feature, epic]
   phases: [decompose]
@@ -22,6 +22,10 @@ instructions: |
   - **Exclude the instrument from its own population.** A probe that counts its own definition agrees with itself and proves nothing.
   - **State what measured a number and where it ran.** A swapped instrument or a wrong tree gives a wrong number with no symptom.
   - **Never report a manual search as a proof.** Write "attacked this way, did not break" and name the way.
+  - **Derive a high-risk number by two paths that share no calculation step.** When they disagree, investigate the instrument first.
+  - **When two causes predict the same result, change the probe until they differ.** One fact against a cause does not prove another.
+  - **For a claim of complete coverage, name the list that the code reads.** A general mechanism does not prove which items it covers.
+  - **Before you retire a source system, account for every original file.** A check of what the import carried cannot see a file that the import never read.
 
   ## Runbook
 
@@ -72,3 +76,14 @@ instructions: |
   - Not `test-discipline`, which structures a test after the behaviour is settled.
   - Not `root-cause`, which runs after a failure to find why it happened.
   - Not the `reviewer` role, which attacks a diff that already exists.
+
+  ## Before recommending a third-party project
+
+  Before a research or design document recommends a third-party project:
+
+  - Treat its README as a claim. Find the call sites and cite `file:line`. A symbol with no non-test caller does not ship.
+  - Test an absolute claim by trying to break it. A feature can exist and still be described too strongly.
+  - Read every licence file first, `NOTICE` included, and check each directory. A licence restricts copying the code, not learning a fact from it.
+  - Ask what the author sells. A recommended control that is the author's own product needs independent evidence.
+  - Check whether the argument assumes away a control this repository already runs.
+  - Say whether you established the mechanism or only a correlation.

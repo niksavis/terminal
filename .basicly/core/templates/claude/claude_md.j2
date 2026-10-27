@@ -1,5 +1,1 @@
-{{ header }}{% for fragment in fragments %}## {{ fragment.title }}
-
-{{ fragment.body }}
-
-{% endfor %}
+{% from "common/baseline.j2" import render %}{{ render(header, fragments) }}

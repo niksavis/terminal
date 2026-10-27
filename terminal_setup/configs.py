@@ -578,7 +578,7 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
     _deploy_img_zoom_skill_native(runner, platform, source)
 
 
-BASICLY_REF = "v0.26.11"
+BASICLY_REF = "v0.29.0"
 BASICLY_SPEC = (
     "https://github.com/niksavis/basicly/releases/download/"
     f"{BASICLY_REF}/basicly-{BASICLY_REF.removeprefix('v')}-py3-none-any.whl"

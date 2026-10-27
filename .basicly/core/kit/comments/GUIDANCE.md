@@ -58,3 +58,14 @@ python3 .basicly/core/kit/comments/cli.py languages         # each file extensio
 YAML, TOML, JSON and Markdown keep their comments, because no code beside them is the
 source of truth. The kit skips vendored directories such as `vendor` and `node_modules`.
 Run `languages` for the current list.
+
+## Transition existing code
+
+Strict `no-comments` is the default and goal. When a repository explicitly selects
+`[hooks.comments] policy = "no-comment-ratchet"`, leave unrelated legacy prose alone.
+Add no new prose. The hook compares complete parsed comments and docstrings in HEAD
+and the staged index. Rewritten or duplicated prose is new prose.
+
+Run `basicly-comments ratchet` for the standalone Git-backed check. The existing
+`check` command stays strict. Remove the transition setting once the repository has
+no prose comments.

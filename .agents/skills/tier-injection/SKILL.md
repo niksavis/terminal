@@ -64,3 +64,10 @@ It exits 0 with a `model` and an `alias`, or exits 1 with the `reason` that noth
 
 - The hook writes an alias such as `opus`, not a model id. The `model` field of the Agent tool takes an alias. The frontmatter of a definition takes a full model id.
 - A tier that the map marks `unavailable` resolves to nothing, never to the model of another tier.
+
+## When the repository requires tier-only dispatch
+
+- A dispatch declares a tier: `low`, `medium`, `high` or `maximum`. It never names a provider model id; the tier kit's model map resolves the tier.
+- Choose the tier by the cost per landed correct change: tokens, time and human interventions. A weak model's mistakes return as rework on the same change.
+- Use `low` only for work whose wrong answer a check catches and a rerun fixes cheaply. Start implementation from prose, decomposition, design and costly judgements at `high`.
+- A dispatch with no tier is a bug. It inherits the session's own model.

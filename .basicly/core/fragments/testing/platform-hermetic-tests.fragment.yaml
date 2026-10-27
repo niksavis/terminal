@@ -2,27 +2,19 @@
 schema_version: 1
 token_cost:
   claude: 0
-  codex: 160
+  codex: 0
   copilot: 0
 id: platform-hermetic-tests
 description: Make a platform difference an input to a test, so every OS is tested locally.
 category: testing
 priority: high
+phase: build
 applies_to: [all]
 technologies: [python]
 tags:
 - testing
 - portability
-status: active
-scope:
-  paths:
-  - tests/**
+status: deprecated
 title: Platform-Hermetic Tests
 body: |
-  The local gate runs on one OS, and CI runs the others only after the push. So make the platform an input to the test:
-
-  - Test a path rule with both `PureWindowsPath` and `PurePosixPath`. `Path` takes the form of the host.
-  - Compare paths as `Path` objects, or render both sides with the same `as_posix()`.
-  - Do not use `select` or `selectors` on a pipe, because on Windows they accept only sockets. Read in a thread and bound the read with `join(timeout=...)`.
-  - Wait for a condition, not a duration. Measure time with a monotonic clock.
-  - Use `skipif` only when the behaviour cannot exist on the other platform.
+  - For platform-dependent tests, exercise both platform forms, not only the host. Read `.agents/skills/test-discipline/SKILL.md` first.

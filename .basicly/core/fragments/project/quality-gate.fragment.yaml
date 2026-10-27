@@ -1,25 +1,23 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 305
-  codex: 304
-  copilot: 305
+  claude: 206
+  codex: 206
+  copilot: 206
 id: quality-gate
 description: How to verify a change before you report it done.
 category: project
 priority: high
+phase: verify
 applies_to: [all]
 tags:
 - verification
 status: active
 title: Quality Gate
 body: |
-  - Run focused checks while editing and cheap gates first. Run required full verification on the integrated candidate. Reuse passing evidence only for equivalent trusted inputs; a commit, tracker update or phase transition alone does not invalidate it.
-  - In a long run, report the elapsed time, the tokens spent where the host shows them, and the items left.
+  - Run focused checks while editing and cheap gates first. Run required full verification on the integrated candidate.
+  - If source or environment inputs change, or a check fails, fix its cause and rerun affected checks. Keep all required gates enabled.
+  - For tracker-only or phase-only changes, rerun affected checks unless the existing engine establishes equivalent trusted inputs. A commit or phase transition alone does not invalidate equivalent evidence.
   - Review the diff. Then run the change the way a consumer runs it, and read the output. Passing tests do not prove a working feature.
-  - Run the repository checks on what you touched, after the last edit. A later edit can break what passed.
-  - Read the pass or fail summary line. Truncated output hides failures.
-  - Report only what you ran, and say what you did not run. Do not turn "expected to work" into "works".
-  - When you claim that a check covers every item, name the list that the code reads. A general mechanism does not prove which items it covers.
-  - Check a claim against the code before it goes into a plan, a design document, a README or a release note. Mark a part that rests on code you did not read as an assumption.
-  - Before you retire a source system, list its files one by one and account for each. A check of what the import carried cannot see a file that the import never read.
+  - After the last edit, run the repository checks for what you touched. Read the pass or fail summary, because truncated output hides failures.
+  - Report what ran and what did not. Expectation is not verification.

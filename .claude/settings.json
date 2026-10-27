@@ -75,7 +75,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude pretooluse"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude pretooluse"
           }
         ]
       }
@@ -86,7 +86,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude posttooluse"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude posttooluse"
           }
         ]
       }
@@ -97,7 +97,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude sessionstart"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude sessionstart"
           }
         ]
       }

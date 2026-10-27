@@ -1,0 +1,22 @@
+{% macro render(header, fragments) -%}
+{{ header }}{% set groups = namespace(commands=[], always=[], ask=[], never=[], grouped=false) %}{% for fragment in fragments %}{% if 'ask-first' in fragment.tags or 'never-do' in fragment.tags %}{% set groups.grouped = true %}{% endif %}{% endfor %}{% if groups.grouped %}{% for fragment in fragments %}{% if fragment.id == 'commands' %}{% set groups.commands = groups.commands + [fragment] %}{% elif 'ask-first' in fragment.tags %}{% set groups.ask = groups.ask + [fragment] %}{% elif 'never-do' in fragment.tags %}{% set groups.never = groups.never + [fragment] %}{% else %}{% set groups.always = groups.always + [fragment] %}{% endif %}{% endfor %}{% for title, items in [('Never do', groups.never), ('Ask first', groups.ask)] %}{% if items %}## {{ title }}
+
+{% for fragment in items %}### {{ fragment.title }}
+
+{{ fragment.body }}
+
+{% endfor %}{% endif %}{% endfor %}{% for fragment in groups.commands %}## {{ fragment.title }}
+
+{{ fragment.body }}
+
+{% endfor %}{% if groups.always %}## Always do
+
+{% for fragment in groups.always %}### {{ fragment.title }}
+
+{{ fragment.body }}
+
+{% endfor %}{% endif %}{% else %}{% for fragment in fragments %}## {{ fragment.title }}
+
+{{ fragment.body }}
+
+{% endfor %}{% endif %}{%- endmacro %}

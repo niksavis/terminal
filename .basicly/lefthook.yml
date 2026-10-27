@@ -3,23 +3,29 @@ min_version: 2.2.2
 post-merge:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: false
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "tracker-fold", "script": ".basicly/core/hooks/tracker-fold.py",
           "stage": "post-merge", "pass_filenames": false, "always_run": true, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 basicly-claude-pretooluse:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "tier-injection", "script": ".basicly/core/hooks/../kit/tier/claude_tier_hook.py",
           "stage": "pretooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "Agent"}, {"id":
@@ -40,39 +46,48 @@ basicly-claude-pretooluse:
           "headroom-guard", "script": ".basicly/core/hooks/headroom-guard.py", "stage":
           "pretooluse", "pass_filenames": false, "always_run": false, "files": "",
           "manager": "claude", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-codex-pretooluse:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "protect-generated-codex", "script": ".basicly/core/hooks/protect-generated.py",
           "stage": "pretooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "codex", "technologies": [], "matcher": "apply_patch"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-codex-sessionstart:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "session-start-codex", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "codex", "technologies": [], "matcher": "*"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 pre-commit:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: false
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "markdownlint", "script": ".basicly/core/hooks/markdownlint.py",
           "stage": "pre-commit", "pass_filenames": false, "always_run": false, "files":
           "\\.md$", "manager": "git", "technologies": ["node"], "matcher": ""}, {"id":
@@ -102,16 +117,19 @@ pre-commit:
           ".basicly/core/hooks/protect-generated-commit.py", "stage": "pre-commit",
           "pass_filenames": false, "always_run": true, "files": "", "manager": "git",
           "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 commit-msg:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: false
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "commit-msg-script", "script": ".basicly/core/hooks/commit-msg.py",
           "stage": "commit-msg", "pass_filenames": true, "always_run": false, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}, {"id": "tracker-commit-msg-script",
@@ -121,67 +139,82 @@ commit-msg:
           ".basicly/core/hooks/tracker-claim.py", "stage": "commit-msg", "pass_filenames":
           true, "always_run": false, "files": "", "manager": "git", "technologies":
           [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 pre-push:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: false
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "pre-push-script", "script": ".basicly/core/hooks/pre-push.py",
           "stage": "pre-push", "pass_filenames": false, "always_run": true, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 basicly-claude-posttooluse:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "tool-usage", "script": ".basicly/core/hooks/tool-usage.py",
           "stage": "posttooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "Bash|Skill"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-copilot-posttooluse:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "tool-usage-copilot", "script": ".basicly/core/hooks/tool-usage.py",
           "stage": "posttooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "copilot", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-claude-sessionstart:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "session-start", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "*"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-copilot-sessionstart:
   commands:
     basicly-dispatch:
-      run: uv run --no-project --no-python-downloads python ".basicly/core/hooks/lefthook-runtime.py"
+      run: uv run --no-project --no-python-downloads python -X utf8 ".basicly/core/hooks/lefthook-runtime.py"
         dispatch
       use_stdin: true
       env:
+        UV_PYTHON: '>=3.14'
+        PYTHONUTF8: '1'
+        PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "session-start-copilot", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "copilot", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.26.11/basicly-0.26.11-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.29.0/basicly-0.29.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'

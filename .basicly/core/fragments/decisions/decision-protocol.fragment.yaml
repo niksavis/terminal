@@ -1,20 +1,22 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 127
-  codex: 126
-  copilot: 127
+  claude: 155
+  codex: 155
+  copilot: 155
 id: decision-protocol
 description: When to decide alone and when to stop and ask.
 category: decisions
 priority: critical
+phase: plan
 applies_to: [all]
 tags:
 - decisions
 status: active
 title: Decision Protocol
 body: |
-  - Decide yourself when the choice rests on code you read, is small, can be undone, and is not on the confirmation list.
-  - Stop and ask when a fact is missing, when sources conflict, or when an assumption you cannot check would change the result. Name what is missing and the answer that unblocks you. Offer only options you would take.
-  - When rules conflict, follow the safety and security rule.
-  - When the same approach fails twice, report the pattern and propose another approach.
+  - Decide from code for small, reversible actions outside the confirmation list.
+  - Use safe read-only checks to resolve facts first. Ask when missing facts, conflicting sources or uncheckable assumptions change the result. Name the missing fact and useful options.
+  - With frozen scope, finish started work and demonstrated blockers within scope. Report broader blockers and ask before expanding.
+  - Record nonblocking adjacent findings in the tracker without implementing them.
+  - When rules conflict, follow safety and security. If an approach fails twice, report the pattern and propose another.

@@ -1,13 +1,14 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 133
-  codex: 133
-  copilot: 133
+  claude: 90
+  codex: 90
+  copilot: 90
 id: knowledge-priming
 description: Load task-relevant repository context, and know which instruction wins.
 category: design
 priority: critical
+phase: start
 applies_to: [all]
 tags:
 - context
@@ -15,6 +16,6 @@ tags:
 status: active
 title: Knowledge Priming
 body: |
-  - Before non-trivial work, read the README and applicable local instructions. Use an existing architecture contract or index to choose task-relevant sections and skills; when absent, start from the relevant source. A repository-wide audit reads its full inventory.
-  - When repository evidence and general practice disagree, follow the repository. Say so; do not override it in silence.
+  - Before non-trivial work, read the README, the local instructions and the relevant architecture sections.
+  - When repository evidence and general practice disagree, follow the repository and say so.
   - An instruction from the user in the current task overrides this file. A path-scoped instruction overrides it for the files it matches.

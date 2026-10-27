@@ -3,15 +3,16 @@ schema_version: 1
 token_cost:
   claude: 0
   codex: 0
-  copilot: 66
+  copilot: 0
 id: copilot-defaults
 description: GitHub Copilot file locations.
 category: project
 priority: medium
+phase: build
 applies_to: [copilot]
 tags:
 - copilot
-status: active
+status: deprecated
 title: Copilot Notes
 body: |
   - `.claude/skills/` is generated. Edit its catalog sources.

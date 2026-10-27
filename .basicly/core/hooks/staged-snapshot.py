@@ -7,6 +7,9 @@ import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 
+if os.name == "nt":
+    import _winapi
+
 
 @dataclass(frozen=True)
 class Snapshot:
@@ -37,7 +40,17 @@ def link_directory(source: Path, destination: Path) -> None:
     try:
         destination.symlink_to(source, target_is_directory=True)
     except OSError:
-        shutil.copytree(source, destination)
+        if os.name != "nt":
+            raise ValueError(
+                "cannot share a snapshot directory; enable directory symlinks"
+            ) from None
+        try:
+            _winapi.CreateJunction(str(source.resolve()), str(destination))
+        except OSError as err:
+            raise ValueError(
+                "cannot share a snapshot directory; enable symlinks or use a volume "
+                "supporting junctions"
+            ) from err
 
 
 def reuse_prepared_environment(snapshot: Path, env: dict[str, str]) -> None:
@@ -50,6 +63,25 @@ def reuse_prepared_environment(snapshot: Path, env: dict[str, str]) -> None:
             cwd=snapshot,
             env=env,
             check=True,
+        )
+
+
+def normalize_checkout(root: Path, paths: list[bytes], env: dict, original_tree: bytes) -> None:
+    if os.name != "nt":
+        return
+    git(
+        root,
+        "add",
+        "--renormalize",
+        "--pathspec-from-file=-",
+        "--pathspec-file-nul",
+        env=env,
+        data=b"\0".join(paths) + b"\0",
+    )
+    if git(root, "write-tree", env=env).strip() != original_tree:
+        raise ValueError(
+            "snapshot normalization changed staged content; "
+            "check line-ending attributes and restage"
         )
 
 
@@ -85,6 +117,7 @@ def prepare(root: Path, directory: Path) -> Snapshot:
         env=env,
         data=b"\0".join(paths) + b"\0",
     )
+    normalize_checkout(root, paths, env, original_tree)
     (snapshot / ".git").write_text(f"gitdir: {common}\n", encoding="utf-8")
     untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
     for name in untracked:

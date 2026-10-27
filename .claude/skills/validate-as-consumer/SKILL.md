@@ -29,3 +29,23 @@ VERIFY already ran the deterministic checks, so a transcript that runs them agai
 A consumer has no worktree, no fixtures and no knowledge of the implementation.
 When the change ships to a consumer, run it there: a new directory, an install, and the documented command.
 Some defects are visible only there, for example a file over a budget that the local config raised.
+
+## Rendered pages
+
+A rendered page is an image. A page can pass every check and still be unreadable, so look at the picture:
+
+- Render the page and open the screenshot before you call it done. On WSL, drive Windows Chrome over a UNC path:
+
+```sh
+chrome.exe --headless=new --disable-gpu --window-size=1920,1080 --screenshot=<win-path> "file://\\\\wsl.localhost\\<distro>\\<path>"
+```
+
+- Check each acceptance criterion against the picture.
+- Render from real data as well as the fixture. A fixture with fewer rows hides an overflow.
+- When the repository supplies an overflow checker, run it and read both of its signals, `render-overflow` and `render-overlap`. A clipped box shows no scrollbar.
+
+```sh
+uv run python .scripts/check_render_overflow.py <page.html>
+```
+
+- Shoot every viewport width the layout claims.

@@ -102,7 +102,11 @@ def _ids_from_text(text: str, key: str) -> set[str]:
 def _git(root: Path, *args: str) -> str | None:
 
     completed = subprocess.run(  # nosec B603 B607
-        ["git", "-C", str(root), *args], capture_output=True, text=True, check=False
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
     return completed.stdout if completed.returncode == 0 else None
 

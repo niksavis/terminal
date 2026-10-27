@@ -12,6 +12,7 @@ subprocess.
 | `lexer.py` | finds comment spans in a file that is not Python, without entering a string |
 | `python_source.py` | finds comments and docstrings in Python exactly, with `tokenize` and `ast` |
 | `scan.py` | selects the lexer for a file and removes directives from the findings |
+| `ratchet.py` | compares parsed prose before and after a staged change |
 | `strip.py` | the edit, and the three proofs that it changed only prose |
 | `cli.py` | the `check`, `fix` and `languages` subcommands |
 | `GUIDANCE.md` | the kit skill, which `init` writes into each agent skill root |
@@ -96,6 +97,45 @@ arguments to the kit.
 
 You can copy the files by hand, because the kit imports only the standard library. Use this
 when another harness drives the kit. The kit behaves the same for each install method.
+
+## Transition with no-comment-ratchet
+
+Strict `no-comments` remains the default and the goal. A repository with legacy prose can
+select the transition policy explicitly:
+
+```toml
+[hooks.comments]
+policy = "no-comment-ratchet"
+```
+
+The managed hook reads this setting from `basicly.toml`, drop-ins and `basicly.local.toml`.
+An upgrade preserves the repository's choice. An absent setting keeps strict enforcement.
+An unknown policy is refused.
+
+The transition policy compares parsed comments and docstrings in HEAD with staged content.
+Unchanged prose can remain. New text, rewritten prose and extra copies are refused. A
+removed comment receives no allowance in later commits. Git-recognized renames retain
+legacy prose. A data file renamed into code receives no allowance.
+
+The comparison reads complete spans. It detects a changed docstring body and a docstring
+created by deleting the preceding statement. Unstaged working bytes do not hide staged
+prose. Initial commits compare against an empty tree. Missing or unreadable Git state,
+invalid encoding and scanner failures refuse the operation.
+
+The standalone package provides the same Git-backed check:
+
+```sh
+basicly-comments ratchet
+basicly-comments ratchet src/
+```
+
+This command requires Git. Its host adapter reads Git objects and calls `ratchet.py`.
+The vendored kit still imports only the standard library and spawns no process.
+`check`, `fix` and `languages` keep their existing behavior. Ratchet checks do not edit
+code or the index. Git may create derived tree objects for the comparison.
+
+Remove the transition setting after the repository has no prose comments. Strict
+`no-comments` then checks every selected file again.
 
 ## What is a comment, and what is not
 

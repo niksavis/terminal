@@ -1,20 +1,20 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 157
-  codex: 156
-  copilot: 157
+  claude: 127
+  codex: 126
+  copilot: 127
 id: non-interactive-shell
 description: Shell rules for a non-interactive agent.
 category: tools
 priority: medium
+phase: build
 applies_to: [all]
 tags:
 - shell
 status: active
 title: Non-Interactive Shell
 body: |
-  - Prefer a cross-platform command to shell-specific behaviour.
-  - Pass a non-interactive flag to a command that can wait for an answer: `cp -f`, `mv -f`, `rm -f`, `-y`, `ssh -o BatchMode=yes`. Some shells alias these commands to interactive mode.
-  - Never loop over an unquoted variable (`for x in $LIST`). zsh does not split it, so the loop runs once and looks like success. Use an array (`"${arr[@]}"`), an inline list or one batch command, and check that the count changed.
-  - Before a scripted replace across many sites, state the expected count, and compare it after. A different count is a stop.
+  - Prefer a cross-platform command. Pass a non-interactive flag to a command that can wait for an answer: `cp -f`, `mv -f`, `rm -f`, `-y`, `ssh -o BatchMode=yes`.
+  - Never loop over an unquoted variable (`for x in $LIST`). zsh does not split it, so the loop runs once and looks like success. Use an array or an inline list, and check that the count changed.
+  - Before a scripted replace across many sites, state the expected count and compare it after. A different count is a stop.

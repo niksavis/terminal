@@ -17,6 +17,7 @@ Close a session in three steps: report what the session used, run the retro, and
 - **Apply a retro fix within the approved scope.** Record other recommendations for approval; do not ask again for work the owner already authorized.
 - **Never invent a retro finding.** When nothing concrete happened, skip the retro and say so.
 - **Never reset or delete the usage counters.** They accumulate across sessions.
+- **In a long run, report the elapsed time, the tokens spent where the host shows them, and the items left.** Report at each milestone, not only at the end.
 
 ## 1. Usage statistics
 

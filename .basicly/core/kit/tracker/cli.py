@@ -157,6 +157,12 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
     "claim": lambda a, r: commands.claim(a.directory, a.record, _holder(a), take=a.take, redact=r),
     "unassign": lambda a, r: commands.unassign(a.directory, a.record, redact=r),
     "resolve": lambda a, r: commands.resolve(a.directory, a.record, redact=r),
+    "acknowledge-loss": lambda a, r: fsck.recovery.acknowledge(
+        a.directory,
+        a.record,
+        fsck.recovery.Request(tuple(a.sequence), a.reason, tuple(a.evidence)),
+        redact=r,
+    ),
 }
 
 

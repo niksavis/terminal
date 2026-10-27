@@ -22,7 +22,8 @@ instructions: |
   - **Commit your work on the harness branch before you advance.** The loop never commits the agent's work.
   - **Never stage or commit tracker state yourself for loop work.** The engine makes every tracker commit.
   - **Never record the verify gate by hand during build.** Only the build-to-verify `loop advance` merges the branch.
-  - **Get an explicit yes before you relay a confirm code.** Each approval covers one checkpoint only.
+  - **Treat the user task request as authorization for its scope.** Do not request an L-level grant or mandatory token budget.
+  - **Keep required gates and genuine safety approvals enabled.** A task request does not authorize unrelated destructive actions.
   - **Treat the base checkout as read-only while a pass runs.** Your uncommitted files fail the lanes' landings.
   - **Never clear another session's files to unblock a landing.** Hold the branch until that session commits.
   - **Confirm a landing from the `[merged]` line, not from the exit code.** Every checkpoint stop exits non-zero.
@@ -48,33 +49,20 @@ instructions: |
   Other flags on both: `--runner <agent>` (`manual` gives a handoff), `--autonomy`, `--tier`.
   `loop run` also takes `--confirm <code>`, `--root <epic>` and `--detach`.
 
-  ## Checkpoints and confirm codes
+  ## Task authorization and safety
 
-  There are three ways past a checkpoint: an interactive terminal, a covering grant, or a relayed confirm code.
-  Without a terminal, `loop run` stops at each checkpoint.
-  It prints a one-time code and the full command to run again.
+  The user task request authorizes classification, decomposition and completion within that task's scope.
+  Phase transitions need no second approval, grant or mandatory token budget.
+  Do not create a synthetic grant to make an authorized task run.
 
-  1. Show the exact command, with the code.
-  2. Say in one line what approval does. Read it from the challenge, not from the phase name.
-     A classify approval provisions a worktree.
-     A ship approval tears the worktree down and closes the issue.
-     Ship does not merge and does not publish.
-  3. Get an explicit yes. Silence, or a yes to a different checkpoint, is not approval.
-  4. Run the command yourself.
+  Required readiness, verification, consumer and integration gates still apply.
+  Internal risk classification selects those checks automatically; the user does not choose a permission level.
+  Ask only for missing facts, an action outside the task, or a genuine safety decision that lacks approval.
+  Keep host permission restrictions and destructive-action confirmations in force.
 
-  Ask when the challenge appears, because the code expires after 15 minutes.
-  If it expired, run the command again without `--confirm` to get a new code.
-
-  Relay the code on the reprinted `basicly loop run <issue> --confirm <code>`.
-  `basicly policy checkpoint <issue> <classify|decompose|ship>` only shows the status.
-  If you approve there, the checkpoint is approved but the loop stays parked.
-
-  A grant resolves checkpoints with no relay:
-
-  ```sh
-  basicly policy grant <epic> --level L2 --token-budget <tokens>   # L2 and L3 need a budget
-  basicly loop run <issue> --root <epic>
-  ```
+  If the user explicitly sets a spending limit, honor it and report observed usage.
+  Without such a limit, keep cost telemetry without inventing a budget or asking for one.
+  Historical grants and checkpoints remain readable; do not rewrite tracker events to resume old work.
 
   ## Phases
 
@@ -83,12 +71,12 @@ instructions: |
   | Phase | What advances it | Commands and notes |
   | --- | --- | --- |
   | intake | the agent proposes the work type | `--work-type {bug,chore,task,feature,epic}`. See "Classify by shape". |
-  | classify (checkpoint) | approval, then the Definition-of-Ready (DoR) gate | Relay the code on the reprinted `basicly loop run <id> --confirm <code>`. `basicly policy dor <id>` checks readiness. `basicly policy scaffold --type <type>` prints every required heading. See "Write a ready body". |
+  | classify | the Definition-of-Ready (DoR) gate | Continue with `basicly loop run <id>`. `basicly policy dor <id>` checks readiness. `basicly policy scaffold --type <type>` prints required headings. |
   | decompose | a feature needs a child plan. A leaf goes to build. | `basicly decompose <feature> --plan plan.toml [--dry-run]`, or `--children` on advance. See `decompose-plan`. |
-  | decompose (checkpoint) | approval before fan-out | Relay the code on the reprinted `basicly loop run <id> --confirm <code>`. |
+  | decompose | the accepted plan and its readiness checks | Continue with `basicly loop run <id>` within the requested scope. |
   | build | the agent commits the work on the harness branch | `basicly worktree list`. Write the code, add fragments, `git commit`, then `basicly loop advance <id>` lands it through the serial merge queue. |
-  | verify | the landing ran verify and recorded the required gate; inspect it, then approve ship | `basicly policy gate <id>` to inspect. Relay the ship code on the reprinted `basicly loop run <id> --confirm <code>`, not on a bare `basicly policy checkpoint <id> ship --approve`, which leaves the loop parked. |
-  | validate | an L3 unit needs a consumer verdict on the merged checkout | Refused first when the record states no `requirements`. Blocks with `needs input: validation`. Repair a FAIL in the lane's worktree and land again. |
+  | verify | the landing ran verify and recorded the required gate | Inspect with `basicly policy gate <id>`, then continue with `basicly loop run <id>`. |
+  | validate | a consumer-surface change needs a verdict on the merged checkout | Refused first when the record states no `requirements`. Blocks with `needs input: validation`. Repair a FAIL in the lane's worktree and land again. |
   | ship | teardown and the closing write | `basicly loop advance <id>`. It blocks with no side effect on `needs input: demonstration` or on an unmerged branch. |
 
   ### Classify by shape
@@ -139,7 +127,8 @@ instructions: |
   The build-to-verify `loop advance` rebases, runs verify, records the required gate and merges.
   If you record the gate first (`basicly verify --issue`), the phase jumps to verify without the merge.
   Ship refuses to close an issue whose branch has not landed.
-  After the landing merged, re-run the gate from the base checkout only:
+  After landing, reuse passing evidence only when the existing engine establishes equivalent trusted inputs.
+  If inputs changed or a check failed, rerun affected checks from the base checkout only:
 
   ```sh
   basicly verify --mode full --issue <id>
@@ -178,7 +167,7 @@ instructions: |
 
   The command prints what it did, so an answer that changed nothing is visible.
 
-  To drop a requirement, kill the lane. A human must confirm, and a grant cannot replace the code:
+  To drop a requirement, kill the lane. This destructive action still needs explicit confirmation:
 
   ```sh
   basicly loop kill <id> --reason "<why this work is not done>"            # refuses and prints a code
@@ -208,7 +197,7 @@ instructions: |
   2. At landing, `loop advance` puts the `.basicly/ledger/**` changes in one `chore(tracker)` commit, then merges.
   3. At ship, it commits the closing state.
 
-  Never commit the ledger on a harness branch. Grants, checkpoints and answers also write the ledger.
+  Never commit the ledger on a harness branch. Phase results and answers also write the ledger.
   Commit the ledger between those steps and the next landing.
 
   The landing checks that the base checkout is clean, and it counts untracked files.
@@ -224,6 +213,36 @@ instructions: |
   - **Team repository:** push each engine tracker commit at once, most of all the claim, so nobody takes claimed work.
     A claimed record with no live worktree shows a race. Compare `basicly loop status <id>` with `basicly worktree list`.
 
+  ## Bounded specialist work
+
+  Give each specialist one task. Its brief names relevant instructions, requirements,
+  acceptance criteria, source locations and a completion condition. Preview the recorded
+  task facts and valid durable artifacts with:
+
+  ```sh
+  basicly brief <issue>
+  ```
+
+  Start a fresh context for unrelated work. Pass the brief and required facts instead of
+  the parent conversation. Resume a saved context only for the same task; do not replay
+  another task's conversation. Each writer uses its own worktree.
+  Keep review and integration with the main orchestrator. Integrate reviewed commits on
+  a linear branch and preserve the specialist's source branch.
+
+  Queue completed implementation before assigning optional work. The supervisor records
+  completion and queue admission when a runner returns successfully. It waits for the
+  active batch before serial landing. Previously committed lanes land before optional
+  decisions, new lanes or another dispatch batch. Required gates still apply.
+
+  Record integration completion or a concrete wait reason. The engine appends UTC progress
+  facts as `[harness-policy] integration` comments. For delegation outside the engine,
+  record actual implementation completion and integration start times on the task too.
+  Read the record without reconstructing a conversation:
+
+  ```sh
+  basicly tracker show <issue>
+  ```
+
   ## Many lanes
 
   Use `preflight` and `supervise` over an epic for parallel work.
@@ -238,15 +257,14 @@ instructions: |
 
   - **Run `preflight` first, from the base checkout.** A worktree cannot see the run records in `.basicly/usage/`.
   - **Read the whole `VERDICT: not ready - ...` line.** It lists every blocker, separated by semicolons.
-  - **Approve the epic's `decompose` checkpoint once.** Without it, the pass ends `seed-blocked`, even with a grant:
-    `basicly policy checkpoint <epic> decompose --approve --root <epic>`.
+  - **Keep fan-out within the requested scope.** The supervisor checks readiness and the plan before provisioning lanes.
   - **Start a supervisor with `--detach`.** A round can outlast the timeout of the agent's shell tool.
     Read the log file it prints. Commit the ledger before you start it again.
   - **Do not push while a pass holds the lock.** Read in the base. Write in your own worktree until `loop stop` returns.
   - `loop stop` refuses when nothing supervises that root. A stale lock is taken only from a holder with a stale heartbeat.
   - `--label <label>` fans out over the issues with that label instead of the epic's children.
 
-  Size the grant budget, read the band table, and watch lanes with
+  Read optional spending limits, the band table, and lane observations in
   [references/many-lanes.md](references/many-lanes.md).
 
   ## Ship and retro

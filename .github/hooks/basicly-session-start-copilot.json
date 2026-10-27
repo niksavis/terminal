@@ -4,8 +4,8 @@
     "sessionStart": [
       {
         "type": "command",
-        "bash": "uv run --no-project --no-python-downloads python .basicly/core/hooks/lefthook-runtime.py copilot sessionstart",
-        "powershell": "uv run --no-project --no-python-downloads python '.basicly/core/hooks/lefthook-runtime.py' copilot sessionstart"
+        "bash": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 .basicly/core/hooks/lefthook-runtime.py copilot sessionstart",
+        "powershell": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 '.basicly/core/hooks/lefthook-runtime.py' copilot sessionstart"
       }
     ]
   }

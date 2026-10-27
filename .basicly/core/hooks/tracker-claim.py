@@ -33,7 +33,7 @@ def _project_root() -> Path:
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # nosec B603 B607
-        ["git", *args], cwd=root, capture_output=True, text=True, check=False
+        ["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8", check=False
     )
 
 
@@ -77,6 +77,7 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
             cwd=root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
         if exported.returncode != 0:
@@ -98,6 +99,7 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
             cwd=root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
 

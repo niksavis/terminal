@@ -44,17 +44,30 @@ class Field(NamedTuple):
     role: str
     reader: str
     remedy: str = ""
+    prose: bool = False
 
 
 TABLE = (
-    Field("title", REQUIRED, "the ready list, the board and every record view"),
-    Field("description", REQUIRED, "the trigger check of the definition of ready, and a brief"),
+    Field("title", REQUIRED, "the ready list, the board and every record view", prose=True),
+    Field(
+        "description",
+        REQUIRED,
+        "the trigger check of the definition of ready, and a brief",
+        prose=True,
+    ),
     Field("issue_type", REQUIRED, "the scaffold, the template types and the loop classification"),
     Field("priority", REQUIRED, "the ready ranking"),
-    Field("acceptance_criteria", READY, "the definition of ready, and the check at verify"),
-    Field("requirements", READY, "the definition of ready, and the judgement at validate"),
     Field(
-        "close_reason", CLOSING, "the close refusal; it records the delivered or cancelled outcome"
+        "acceptance_criteria", READY, "the definition of ready, and the check at verify", prose=True
+    ),
+    Field(
+        "requirements", READY, "the definition of ready, and the judgement at validate", prose=True
+    ),
+    Field(
+        "close_reason",
+        CLOSING,
+        "the close refusal; it records the delivered or cancelled outcome",
+        prose=True,
     ),
     Field(
         "close_resolution",
@@ -87,8 +100,14 @@ TABLE = (
     Field("source_repo", IMPORTED, "none; import history only"),
     Field("source_repo_path", IMPORTED, "none; import history only"),
     Field("order", IMPORTED, "none; the sort key of a beans import"),
-    Field("design", IMPORTED, "none; import history only", "put the design in the description"),
-    Field("notes", IMPORTED, "none; import history only", "add a comment instead"),
+    Field(
+        "design",
+        IMPORTED,
+        "none; import history only",
+        "put the design in the description",
+        prose=True,
+    ),
+    Field("notes", IMPORTED, "none; import history only", "add a comment instead", prose=True),
     Field("owner", IMPORTED, "none; import history only", "set assignee instead"),
     Field(f"{DATES_KEY}.created", DERIVED, "every record view; the first event time"),
     Field(f"{DATES_KEY}.updated", DERIVED, "every record view; the last event time"),
@@ -110,9 +129,18 @@ def declared_by(template: Any) -> frozenset:
     return frozenset(shaping.field_of(heading) for heading in headings)
 
 
+def known_field(name: str) -> Field | None:
+    return BY_NAME.get(f"{DATES_KEY}.created" if name == DATES_KEY else name)
+
+
+def permits_text_withdrawal(name: str, template: Any = None) -> bool:
+    known = known_field(name)
+    return known.prose if known is not None else name in declared_by(template)
+
+
 def refuse(name: str, template: Any = None) -> None:
 
-    known = BY_NAME.get(f"{DATES_KEY}.created" if name == DATES_KEY else name)
+    known = known_field(name)
     if name in declared_by(template) and (known is None or known.role != PROCESS):
         return
     if known is not None and known.role in WRITABLE_ROLES:

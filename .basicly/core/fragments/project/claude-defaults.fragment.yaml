@@ -1,17 +1,18 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 43
+  claude: 0
   codex: 0
   copilot: 0
 id: claude-defaults
 description: Claude Code file locations.
 category: project
 priority: medium
+phase: build
 applies_to: [claude]
 tags:
 - claude
-status: active
+status: deprecated
 title: Claude Notes
 body: |
   - `.claude/skills/` and `.claude/rules/*.md` are generated. Edit their catalog sources.

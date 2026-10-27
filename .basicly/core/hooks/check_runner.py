@@ -117,6 +117,16 @@ def _mode_entries(repo_root: Path, mode: str | None) -> list[dict]:
     return entries
 
 
+def resolve_command(command: list[str], repo_root: Path) -> list[str]:
+    source = Path(__file__).with_name("command_paths.py")
+    spec = importlib.util.spec_from_file_location("basicly_hook_command_paths", source)
+    if spec is None or spec.loader is None:
+        raise ValueError("check command path runtime is missing; run basicly install")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.resolve_command(command, repo_root)
+
+
 def load_checks(repo_root: Path, mode: str) -> list[tuple[str, list[str]]]:
     return [
         (str(entry["name"]).strip(), list(entry["command"]))
@@ -196,6 +206,7 @@ def _git_output(repo_root: Path, *args: str) -> str | None:
             cwd=repo_root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
     except OSError:
@@ -256,7 +267,9 @@ def _run_fixers(
         if suffix and not targets:
             continue
         try:
-            result = subprocess.run(command + targets, cwd=repo_root, check=False)  # nosec B603
+            result = subprocess.run(
+                resolve_command(command, repo_root) + targets, cwd=repo_root, check=False
+            )  # nosec B603
         except OSError as exc:
             print(f"auto-fix {name} could not run: {exc.strerror or exc}", file=sys.stderr)
             continue
@@ -326,7 +339,7 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
         print(f"==> {name}", flush=True)
         start = time.perf_counter()
         try:
-            result = subprocess.run(command, cwd=repo_root, check=False)  # nosec B603
+            result = subprocess.run(resolve_command(command, repo_root), cwd=repo_root, check=False)  # nosec B603
             code = result.returncode
         except FileNotFoundError:
             print(

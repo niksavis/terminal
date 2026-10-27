@@ -109,7 +109,7 @@ hooks:
   # kit claims code files only - config and markdown keep their comments, which are the one
   # place a why can live once the code cannot hold it.
   - id: no-comments
-    description: "Refuse a commit that adds a prose comment to a code file."
+    description: "Enforce the selected comment policy; strict no-comments is the default."
     script: no-comments.py
     stage: pre-commit
     files: \.(py|pyi|js|jsx|mjs|cjs|ts|tsx|mts|cts|java|kt|kts|cs|c|cc|cpp|cxx|h|hpp|go|rs|swift|scala|php|m|mm|css|scss|sass|less|html|htm|xhtml|vue|svelte|cshtml|razor|sh|bash|zsh|ksh|ps1|psm1|psd1|sql|vb|vbs)$

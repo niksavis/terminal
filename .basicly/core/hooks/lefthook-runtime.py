@@ -138,6 +138,17 @@ def run_foreign_hook(root: Path, arguments: list[str], raw: bytes | None) -> int
     ).returncode
 
 
+def runtime_module(name: str):
+    source = Path(__file__).with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"basicly_{name}", source)
+    if spec is None or spec.loader is None:
+        raise ValueError("hook runtime is missing; run basicly hooks-build")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def launch(manager: str, stage: str, arguments: list[str]) -> int:
     root = project_root()
     suffix = ".exe" if os.name == "nt" else ""
@@ -161,13 +172,7 @@ def launch(manager: str, stage: str, arguments: list[str]) -> int:
         snapshot_state = None
         run_root = root
         if manager == "git" and stage == "pre-commit":
-            source = Path(__file__).with_name("staged-snapshot.py")
-            spec = importlib.util.spec_from_file_location("basicly_staged_snapshot", source)
-            if spec is None or spec.loader is None:
-                raise ValueError("staged snapshot runtime is missing; run `basicly hooks-build`")
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
+            module = runtime_module("staged-snapshot")
             state = module.prepare(root, Path(directory))
             snapshot_state = (module, state)
             run_root = state.tree

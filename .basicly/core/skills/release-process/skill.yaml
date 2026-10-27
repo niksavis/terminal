@@ -17,7 +17,7 @@ instructions: |
   - **Write the notes before the cut.** The release commit and the tag are one step, so a later commit never reaches the tagged notes.
   - **Never clear a refusal by a manual run of the named tool.** That records a witness for a check that the gate did not see pass.
   - **Never delete a changelog fragment to clear a refusal.** A release note must not disappear without notice.
-  - **The command never pushes.** Publication cannot be undone, so a person pushes.
+  - **The command never pushes.** Push only when the user release request includes publication.
 
   ## 1. Check that the repository uses it
 
@@ -102,7 +102,9 @@ instructions: |
 
   It bumps `__version__`, regenerates the projections, rewrites the `vX.Y.Z` install pins in `README.md` and the other pin files, assembles the changelog, commits and creates the annotated tag. Add `--date YYYY-MM-DD` to set the changelog date. The default is today.
 
-  For a delegated run, add `--autonomous --root <root-id>`. It needs a green L3 grant on the root. Add `--shipping <node>` to name the node whose gates must be green, because the verify gate of an open epic is never green.
+  The user release request authorizes the requested cut and publication. No L-level grant or mandatory budget is needed.
+  Required release gates must still pass. Use `--shipping <node>` when the verified shipping node differs from the root.
+  Keep publication inside the version and scope the user requested.
 
   ## 6. Push and confirm
 

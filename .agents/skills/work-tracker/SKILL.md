@@ -80,9 +80,18 @@ The loop views answer about one unit:
 
 ```sh
 basicly loop status <id>                  # phase, worktree, gates, checkpoints, rework
-basicly policy grant <id>                 # the integrity level and budget of the session
+basicly policy gate <id>                  # required gates and their recorded results
 basicly policy dor <id>                   # Definition of Ready
 ```
+
+For an older run, inspect compatibility state only when needed. These reads are not authorization prerequisites:
+
+```sh
+basicly policy grant <id>
+basicly policy checkpoint <id> classify
+```
+
+The user task request authorizes normal work; do not issue another grant to resume it.
 
 The kit CLI does the same with no engine. Its first positional is always the ledger
 directory:

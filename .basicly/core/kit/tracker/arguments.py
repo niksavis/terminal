@@ -97,6 +97,15 @@ def parser() -> argparse.ArgumentParser:
         help="delete every derived file and write it again from the log before checking",
     )
 
+    loss = sub.add_parser(
+        "acknowledge-loss", help="append an audit of proven unrecoverable history"
+    )
+    loss.add_argument("directory", help=DIRECTORY_HELP)
+    loss.add_argument("record", help="the record whose history is lost")
+    loss.add_argument("--sequence", type=int, action="append", required=True)
+    loss.add_argument("--reason", required=True)
+    loss.add_argument("--evidence", action="append", required=True)
+
     gate = sub.add_parser(
         "dor",
         help="the definition of ready: refuse a record that cannot be verified against",

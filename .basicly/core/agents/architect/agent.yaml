@@ -84,8 +84,8 @@ slots:
           and says so. Severity decides what is in. Dependency decides what is
           next.
         - **Shape each item for the plan gate** with the `decompose-plan` skill:
-          acceptance criteria, scope globs, dependencies, a token budget, an
-          integrity level and a demonstration command.
+          acceptance criteria, scope globs, dependencies and a demonstration command.
+          Do not request a permission level or mandatory budget. Honor an explicit user spending limit.
         - **Give each finding the measurement that found it**, with the command,
           so that the next reader can run it again.
         - **Say what each fix buys and costs.**
