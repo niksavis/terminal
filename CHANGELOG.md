@@ -2,6 +2,24 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.19.1 - 2026-10-27
+
+Delta: v0.19.0..v0.19.1
+
+### Highlights
+
+- **A fresh install with `--herdr --agents all` ends with no failed step.** In v0.19.0, herdr refused the Copilot CLI integration on a new machine, because `~/.copilot` did not exist yet. Setup now creates the folder of each agent before it installs the integration (term-0u4brb).
+- **The user guide shows how to check Nerd Font icons.** WezTerm draws each icon in one column with its built-in Symbols Nerd Font Mono. Troubleshooting > Nerd Font icons has the check command for bash and PowerShell (term-uy9muk).
+
+### Commit delta (auto-generated)
+
+- docs(install): use the new release tag in the examples (term-yu3cgd) (6a54a3c)
+- chore(release): bump package version for next release (term-yu3cgd) (88ed0a7)
+- chore(tracker): close the release and the copilot and nerd font records (term-rez6ip) (f8aaf5b)
+- test(wezterm): lock nerd font icons to one cell and document the check (term-uy9muk) (6eeb101)
+- fix(herdr): create the agent folder before the integration (term-0u4brb) (b046394)
+- docs(install): describe the herdr integrations and the report versions (term-rez6ip) (6caf99c)
+
 ## v0.19.0 - 2026-10-27
 
 Delta: v0.18.0..v0.19.0

@@ -1,1 +1,0 @@
-- With `--herdr --agents copilot` on a fresh machine, setup creates `~/.copilot` before the herdr integration, so the step no longer fails.
