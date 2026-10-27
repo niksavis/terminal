@@ -55,6 +55,16 @@ Setup changes the Windows host and the default WSL distro in one run.
 
 The Windows host does not get zsh, tmux, tree, git-lfs or direnv. Setup does not install WezTerm in WSL on a Windows run. The WezTerm on Windows opens the WSL distro.
 
+Setup adds these folders to your Windows user PATH:
+
+- `%LOCALAPPDATA%\Programs\terminal-tools\bin`, for starship and the command-line tools
+- `%LOCALAPPDATA%\Programs\WezTerm`, when setup installs WezTerm there
+- `%LOCALAPPDATA%\Programs\nodejs`, for Node.js
+- `%USERPROFILE%\.local\bin`, for uv, Python and Claude Code
+- the folder that `uv tool dir --bin` prints, for img-zoom
+
+WezTerm gets an entry in the Start menu when setup installs it in `%LOCALAPPDATA%\Programs\WezTerm`. At the end of the run, setup prints where WezTerm is installed.
+
 The result is the same from each Windows shell. The shell does not change which tools setup installs. Only these parts depend on what is present on Windows:
 
 | Present on Windows | Then setup also |
@@ -86,7 +96,7 @@ After a WSL run, an agent that runs in PowerShell, cmd or Git Bash does not get 
 
 | What setup installs | What setup writes |
 | --- | --- |
-| The same tools as a Linux run, through Homebrew | the same files as a Linux run |
+| The same tools as a Linux run. Most come from Homebrew. Node.js comes from the nodejs.org archive into `~/.local`. lazygit comes from its release into `/usr/local/bin`, with sudo. uv and Python go into `~/.local/bin` | the same files as a Linux run |
 
 Setup does not change VS Code settings on Linux or macOS.
 
@@ -155,7 +165,7 @@ A rerun installs a missing tool and skips a current tool. For a tool that is old
 | --- | --- | --- | --- |
 | uv | `uv`, `uvx` | Installs Python, Python packages and Python tools. | The agent runs a Python tool with `uvx` and changes no global state. |
 | Python 3.14 | `python`, `python3` | The Python interpreter, installed by uv. | The agent runs Python scripts and tests. |
-| Node.js 26 | `node`, `npm` | The JavaScript runtime and its package manager. | The agent runs JavaScript tools. Setup installs Copilot CLI and Codex with npm. |
+| Node.js 26 | `node`, `npm` | The JavaScript runtime and its package manager. | The agent runs JavaScript tools. On Windows, setup installs Copilot CLI with npm. |
 | just | `just` | Runs project commands from a `justfile`. | The agent runs a named project command and does not guess a command line. |
 | direnv | `direnv` | Loads environment variables when you enter a directory. | The agent gets the correct environment for each project. |
 
@@ -184,7 +194,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 | Add-on | Where | What it is for |
 | --- | --- | --- |
-| Status line | `~/.claude/statusline.sh`, and the `statusLine` key in `~/.claude/settings.json` | Shows the model, the git state, the context use, the rate limits and the cost. On Windows it needs Git for Windows. |
+| Status line | `~/.claude/statusline.sh`, and the `statusLine` key in `~/.claude/settings.json` | Shows the model, the git state, the context use, the rate limits and the cost. On Windows it needs Git for Windows. In WSL, Linux and macOS, setup needs `jq` to write the `statusLine` key. It finds the `jq` that it installs in `~/.local/bin`. Without `jq`, setup copies only the script and prints a warning. |
 | `img-zoom` skill | `~/.claude/skills/img-zoom/SKILL.md` | Tells Claude Code that `img-zoom` exists. |
 | `cli-tools` skill | `~/.claude/skills/cli-tools/` | One reference file for each of 25 tools. Claude Code picks `rg`, `fd`, `jq` and the other tools in any repository. |
 
@@ -194,7 +204,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 | Tool | WSL distro | Windows host | Linux host (default) | macOS host |
 | --- | --- | --- | --- | --- |
-| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin` | release zip into `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu | apt (the WezTerm apt repository), pacman or dnf | Homebrew cask |
+| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin`. With `--system-install`: the WezTerm apt repository | release zip into `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Skipped when `wezterm` is on PATH, in `C:\Program Files\WezTerm`, or installed by winget | apt (the WezTerm apt repository). With `--no-sudo`, or when the repository fails: the nightly AppImage into `~/.local/bin`. Also pacman or dnf | Homebrew cask |
 | starship | release into `~/.local/bin` (from Windows), vendor installer into `~/.local/bin` (inside WSL) | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | vendor installer into `~/.local/bin` | Homebrew |
 | zsh, tmux, tree | apt, as root | ✗ | package manager | Homebrew |
 | git, curl, wget | must be present | ✗ | must be present | must be present |
@@ -207,14 +217,16 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | Python 3.14 | `uv python install` into `~/.local/bin` | `uv python install` into `%USERPROFILE%\.local\bin` | `uv python install` | `uv python install` |
 | Node.js 26 | nodejs.org archive into `~/.local` | nodejs.org zip into `%LOCALAPPDATA%\Programs\nodejs` | nodejs.org archive into `~/.local` | nodejs.org archive into `~/.local` |
 | img-zoom | `uv tool install` | `uv tool install` | `uv tool install` | `uv tool install` |
-| Claude Code | vendor installer | vendor installer | vendor installer | vendor installer |
+| Claude Code | vendor installer into `~/.local/bin` | vendor installer into `%USERPROFILE%\.local\bin` | vendor installer | vendor installer |
 | Codex | vendor installer (`chatgpt.com/codex/install.sh`) | vendor installer (`chatgpt.com/codex/install.ps1`) | vendor installer | vendor installer |
 | Copilot CLI | vendor installer (`gh.io/copilot-install`) | `npm install -g @github/copilot` | vendor installer | vendor installer |
 | VS Code Remote - WSL extension | | when `code` is on PATH | ✗ | ✗ |
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
 
-On Linux outside WSL, add `--no-sudo` to avoid sudo. Then setup skips the package-manager tools and installs only the tools that have a user installer.
+On Linux outside WSL, `--no-sudo` puts lazygit into `~/.local/bin`, installs WezTerm as the AppImage on apt, and skips the default shell change. Setup still uses sudo for the package manager: it installs zsh, tmux, git, curl and wget, and WezTerm on pacman or dnf.
+
+To see where each tool and agent is, run setup with `--only report`. It prints the path of each one.
 
 ## Tools that are already on Windows
 
@@ -247,7 +259,7 @@ A replace runs in this order, so a failed step leaves the winget copy in place:
 | No copy | installs its copy | installs its copy | installs its copy, only with `--agents` |
 | A machine-wide copy | changes nothing. With `--update`, it prints an info line | prints an info line. When the version is too old, it prints a warning | prints an info line with `--update`, only for an agent named in `--agents` |
 | Its own copy in `%LOCALAPPDATA%\Programs\WezTerm` or `nodejs` | `--update` updates it | `--update` updates it | not applicable |
-| A copy from winget in your user profile | asks, like the command-line tools above | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy, only for an agent named in `--agents` |
+| A copy from winget in your user profile | asks, like the command-line tools above, when that copy is on PATH. When it is not on PATH, setup installs nothing | keeps it. When the version is too old, setup installs its own copy and warns that the old copy can come first on PATH | keeps it. With `--update`, it runs `<agent> update` on that copy, only for an agent named in `--agents` |
 | Any other user-profile copy | keeps it. `--update` leaves it as it is | as above | as above |
 
 To find which copy runs, use `Get-Command <tool> -All` in PowerShell. The first line is the copy that runs.
@@ -266,7 +278,7 @@ When a config file differs from the template, setup keeps the old file as `<file
 | PowerShell 7 profile | `$PROFILE.CurrentUserAllHosts`, only when `pwsh` is present | Starts starship in PowerShell 7 |
 | `.bashrc`, `.bash_profile` | `%USERPROFILE%`, only when Git for Windows is present | Starts starship in Git Bash |
 | VS Code `settings.json` | Windows only | Makes the WSL distro the default terminal in VS Code |
-| Default shell | WSL, Linux, macOS | Setup runs `chsh` to make zsh the login shell. It needs your password, or root in unattended mode |
+| Default shell | WSL, Linux, macOS | Setup runs `chsh` to make zsh the login shell. It needs your password, or root in unattended mode. `--no-sudo` skips it |
 
 ## How setup installs
 
@@ -276,8 +288,8 @@ When a config file differs from the template, setup keeps the old file as `<file
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Agent image tool: `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Run from Windows, setup installs it both in WSL and natively on Windows (its folder goes on the user PATH); run inside WSL or on Linux/macOS, it installs it there. uv installs it from a copy setup keeps in `~/.local/share/terminal-setup/img_zoom_tool` (Windows: `%LOCALAPPDATA%\terminal-setup\img_zoom_tool`), so `uv tool upgrade` keeps working after `uv cache clean`. `img-zoom --python` prints its Python, which has Pillow and OpenCV for measuring scripts (Pillow only on Windows on ARM, where OpenCV publishes no build)
 - Runtimes: Python 3.14 from `uv python install 3.14 --default`, which puts `python` and `python3` in `~/.local/bin`; `--update` upgrades a uv-managed 3.14 to the latest patch. `node` (latest v26): user-local in `~/.local` on WSL, Linux and macOS, and on Windows from the official zip into `%LOCALAPPDATA%\Programs\nodejs`, checked against `SHASUMS256.txt` and added to the user PATH. npm installs global packages into that folder, so they stay when Node.js is updated. Setup warns when an older Node.js elsewhere may come first on PATH
-- Coding agents (only with `--agents`): each agent comes from the method that its vendor puts first. Claude Code from its native installer (`claude.ai/install.sh`, `claude.ai/install.ps1`). OpenAI Codex from its installer (`chatgpt.com/codex/install.sh`, `install.ps1`); with `--unattended`, setup sets `CODEX_NON_INTERACTIVE=1`, so the installer asks nothing and keeps an existing npm copy. GitHub Copilot CLI from its installer `gh.io/copilot-install` in WSL, Linux and macOS, and with `npm install -g @github/copilot` on Windows, because that installer only calls winget on Windows. Run from Windows, setup installs them in WSL and natively on Windows. An agent that is already on PATH is skipped. Setup never installs or updates an agent that you did not name: `--update` runs `<agent> update` only for the agents in `--agents`
-- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when Claude Code is installed and not skipped with `--skip-claude`. The skill goes to each side where `img-zoom` is installed: the WSL home and, when setup runs from Windows, `%USERPROFILE%\.claude`
+- Coding agents (only with `--agents`): each agent comes from the method that its vendor puts first. Claude Code from its native installer (`claude.ai/install.sh`, `claude.ai/install.ps1`). OpenAI Codex from its installer (`chatgpt.com/codex/install.sh`, `install.ps1`); with `--unattended`, setup sets `CODEX_NON_INTERACTIVE=1`, so the installer asks nothing and keeps an existing npm copy. GitHub Copilot CLI from its installer `gh.io/copilot-install` in WSL, Linux and macOS, and with `npm install -g @github/copilot` on Windows, because that installer only calls winget on Windows. Run from Windows, setup installs them in WSL and natively on Windows. An agent that is already on PATH is skipped. In WSL, a Windows copy under `/mnt` does not count. Setup never installs or updates an agent that you did not name: `--update` runs `<agent> update` only for the agents in `--agents`
+- Config files: `wezterm.lua`, `.tmux.conf`, `.zshrc`, `starship.toml`, micro `settings.json`, `~/.claude/statusline.sh` (Claude Code status line) and `~/.claude/skills/img-zoom/SKILL.md` (tells Claude Code that `img-zoom` exists), both only when the `~/.claude` folder exists and `--skip-claude` is not set. The skill goes to each side where `img-zoom` is installed: the WSL home and, when setup runs from Windows, `%USERPROFILE%\.claude`
 - Claude Code skills from [basicly](https://github.com/niksavis/basicly): `~/.claude/skills/cli-tools`, with one reference file for each of 25 tools in `cli-tools/references/`, written by `basicly skills-user` at the basicly version this repository pins. Run from Windows, setup writes it in the WSL home and in `%USERPROFILE%\.claude`. A rerun removes the separate `tool-<name>` skills that older versions of setup wrote, and leaves every skill that you wrote yourself alone. It needs network access to fetch basicly with `uv`, is skipped when `~/.claude` is missing, and `--skip-claude` skips it
 
 `lazygit` and `node` are installed from the latest upstream release archives (not distro/Homebrew package versions) and their downloads are sha256-verified against the published checksum files.
@@ -299,7 +311,7 @@ When a config file differs from the template, setup keeps the old file as `<file
 - Starship install path: Linux install script or Homebrew on macOS
 - Config destinations: all files under `~` on the host
 
-By default the setup installs user-locally: on Windows and inside WSL every managed tool goes under `~/.local` without sudo, even when a system copy already exists, so re-running updates everything from one place. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv, and starship in WSL) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there), except `yq`, which always comes from the mikefarah release so that every Linux host has the same `yq`; macOS uses Homebrew, which needs no admin, except lazygit, which goes into `/usr/local/bin` with sudo unless you add `--no-sudo`. The deprecated `--user-install` flag is a no-op kept for compatibility.
+By default the setup installs user-locally. Inside WSL, every managed tool goes into `~/.local` without sudo, so re-running updates everything from one place. The exceptions are the apt system packages, and starship when a system copy exists. On Windows, the tools go into `%LOCALAPPDATA%\Programs\` and `%USERPROFILE%\.local\bin`, and setup keeps a machine-wide copy. Tools published on GitHub (fd, bat, ripgrep, xh, ast-grep, sd, just, delta, typos, fzf, jq, yq, shellcheck, git-lfs, direnv, and starship in WSL) come from the project's latest release binary, checked against the sha256 digest GitHub records for the file; nothing is compiled, so a fresh WSL needs no compiler. A re-run skips a tool that is at the latest release, and names `--update` for one that is older. The latest release is read without the GitHub API, which is used only to download; if the API rate limit is reached, set `GITHUB_TOKEN`. `--system-install` opts into the system-wide package-manager path (apt/brew, needs sudo/admin). On a native Linux host the default stays on apt (a user-local host install is not yet implemented there), except `yq`, which always comes from the mikefarah release so that every Linux host has the same `yq`; macOS uses Homebrew, which needs no admin, except lazygit, which goes into `/usr/local/bin` with sudo unless you add `--no-sudo`. The deprecated `--user-install` flag is a no-op kept for compatibility.
 
 A fresh Ubuntu WSL lacks some system packages that only apt can install: `zsh`, `tmux` and `tree`, `podman` for containers, and `bubblewrap` and `socat`, which the Claude Code sandbox (`/sandbox`) needs on WSL2, and `libatomic1`, which Node.js 26 needs. When any are missing, setup asks once to run `sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y <missing packages>`; when you decline, when the run cannot prompt, or with `--no-sudo`, it prints that command for you to run. It adds `podman-docker`, which provides a `docker` command backed by podman, only when no Docker is installed, because that package would replace `docker.io` or `docker-ce-cli`. `--system-install` runs the command without asking.
 
@@ -307,7 +319,7 @@ After installing, the setup reconciles duplicates: it reports every tool present
 
 > **Note:** When setup installs WezTerm, starship or the command-line tools on Windows, it uses the portable release archives in `%LOCALAPPDATA%\Programs\` and the user PATH is updated (no admin rights or MSI needed). You must restart your terminal for the new PATH to take effect; until then the setup report marks them OK with a restart hint.
 
-No admin rights are needed on Windows or WSL, apart from installing WSL itself: tools install into `~/.local`. On macOS, tools install through Homebrew, but lazygit goes into `/usr/local/bin` with sudo; add `--no-sudo` to put it into `~/.local/bin`. Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
+No admin rights are needed on Windows, apart from installing WSL itself: tools install into your user profile. In WSL, the apt system packages and the default shell change need root once. Setup asks, or prints the command. On macOS, tools install through Homebrew, but lazygit goes into `/usr/local/bin` with sudo; add `--no-sudo` to put it into `~/.local/bin`. Add `--system-install` for a system-wide install through apt/brew. On a native Linux host the default installs via apt and uses sudo.
 
 ## Platform behaviour
 

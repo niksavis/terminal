@@ -57,9 +57,20 @@ Use the same form with `--update` to update every tool, and with `--only report`
 
 1. Run from Windows, setup does not install WezTerm in WSL: the WezTerm on Windows opens WSL. Run inside WSL, setup installs WezTerm there when it is missing.
 
-On Windows, the tools go into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with one entry in your user PATH. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
+Where setup puts the tools:
 
-`git`, `curl` and `wget` must be present before you run setup. Setup also writes the config files for these tools. When Claude Code is present, it adds a status line and two skills.
+| Platform | Folder |
+| --- | --- |
+| Windows host | command-line tools and starship: `%LOCALAPPDATA%\Programs\terminal-tools\bin`. WezTerm: `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Node.js: `%LOCALAPPDATA%\Programs\nodejs`. uv, Python and Claude Code: `%USERPROFILE%\.local\bin` |
+| WSL | `~/.local/bin`. zsh, tmux, tree and the container packages come from apt |
+| Linux | the package manager. uv, Python, yq and the tools that the package manager does not have: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
+| macOS | Homebrew. uv and Python: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
+
+On Windows, setup adds each of these folders to your user PATH. It installs no second WezTerm when one is already on PATH or in `C:\Program Files`. At the end, setup prints where WezTerm is installed. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
+
+`git`, `curl` and `wget` must be present before you run setup. Setup also writes the config files for these tools. When the `~/.claude` folder exists, it adds a status line and two skills for Claude Code.
+
+To see the path of each installed tool, run setup with `--only report`.
 
 [What gets installed](docs/what-gets-installed.md) gives each tool's version, its source on each platform, and how a coding agent benefits from it.
 
