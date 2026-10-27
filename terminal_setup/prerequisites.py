@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import platform as host_platform
@@ -1932,7 +1933,7 @@ _USER_PATH_READ = (
     "[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
     "$parts = @($path -split ';' | Where-Object { $_ -ne '' }); "
 )
-_USER_PATH_BROADCAST = (
+_USER_PATH_BROADCAST_SCRIPT = (
     '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
     "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
     "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
@@ -1940,7 +1941,12 @@ _USER_PATH_BROADCAST = (
     "-Namespace 'Win32Broadcast' -PassThru; "
     "[UIntPtr]$out = [UIntPtr]::Zero; "
     "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "
-    "2, 5000, [ref]$out) | Out-Null "
+    "2, 5000, [ref]$out) | Out-Null"
+)
+_USER_PATH_BROADCAST = (
+    "Start-Process powershell -NoNewWindow -ArgumentList "
+    "'-NoProfile', '-NonInteractive', '-EncodedCommand', "
+    f"'{base64.b64encode(_USER_PATH_BROADCAST_SCRIPT.encode('utf-16-le')).decode('ascii')}' "
 )
 
 
@@ -1994,7 +2000,7 @@ def _add_to_user_path(runner: Runner, directory: Path) -> None:
         "$key.Close()"
     )
     runner.run(
-        ["powershell", "-Command", script],
+        ["powershell", "-NoProfile", "-Command", script],
         interactive=True,
         label=f"add {directory} to the user PATH",
     )
@@ -2030,7 +2036,9 @@ def _ensure_wezterm_user_install(
         f"Remove-Item $zip; "
         f"Remove-Item $extract -Recurse -Force"
     )
-    runner.run(["powershell", "-Command", script], interactive=True, label="install WezTerm")
+    runner.run(
+        ["powershell", "-NoProfile", "-Command", script], interactive=True, label="install WezTerm"
+    )
     _add_to_user_path(runner, install_dir)
 
 

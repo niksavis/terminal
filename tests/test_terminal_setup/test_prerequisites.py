@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import subprocess
 import sys
 from dataclasses import replace
@@ -1501,31 +1502,50 @@ def test_a_first_install_skips_the_version_check(installer: object, tmp_path: Pa
     with mock.patch("terminal_setup.prerequisites._add_to_user_path"):
         installer(cast(Runner, runner), platform)  # type: ignore[operator]
 
-    script = next(command[-1] for command in runner.commands if command[:1] == ["powershell"])
+    command = next(command for command in runner.commands if command[:1] == ["powershell"])
+    script = command[-1]
+    assert command[:2] == ["powershell", "-NoProfile"]
     assert "--version" not in script
     assert ".terminal-setup-old" in script
 
 
-def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
-
+def _add_to_user_path_command() -> list[str]:
     runner = SpyRunner()
     with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
         _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
+    return runner.commands[-1]
 
-    script = runner.commands[-1][-1]
+
+def _broadcast_script(script: str) -> str:
+    encoded = script.split("'-EncodedCommand', '", 1)[1].split("'", 1)[0]
+    return base64.b64decode(encoded).decode("utf-16-le")
+
+
+def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
+    script = _add_to_user_path_command()[-1]
+
     assert "DoNotExpandEnvironmentNames" in script
     assert "ExpandString" in script
     assert "-ieq" in script
     assert "$dir = 'C:\\Users\\test\\tool'" in script
-    assert "SendMessageTimeout" in script
+    assert "SendMessageTimeout" in _broadcast_script(script)
+
+
+def test_add_to_user_path_does_not_wait_for_the_environment_broadcast() -> None:
+    script = _add_to_user_path_command()[-1]
+
+    assert "SendMessageTimeout" not in script
+    assert "Start-Process powershell -NoNewWindow" in script
+    assert "-Wait" not in script
+    assert "'-NoProfile', '-NonInteractive'" in script
+
+
+def test_add_to_user_path_skips_the_user_profile() -> None:
+    assert _add_to_user_path_command()[:2] == ["powershell", "-NoProfile"]
 
 
 def test_the_path_broadcast_type_is_not_named_after_its_method() -> None:
-    runner = SpyRunner()
-    with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
-        _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
-
-    script = runner.commands[-1][-1]
+    script = _broadcast_script(_add_to_user_path_command()[-1])
     type_name = script.split("-MemberDefinition $sig -Name '", 1)[1].split("'", 1)[0]
     method = script.split("public static extern IntPtr ", 1)[1].split("(", 1)[0]
     assert method == "SendMessageTimeout"
