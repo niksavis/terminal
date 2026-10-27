@@ -2,6 +2,43 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.19.0 - 2026-10-27
+
+Delta: v0.18.0..v0.19.0
+
+### Highlights
+
+- **Setup links herdr to your coding agents.** With `--herdr` and `--agents`, setup installs the herdr integration for each named agent, so herdr shows whether the agent is working, blocked or idle. The report lists each integration (term-uf9jj5).
+- **zsh completes herdr commands with Tab.** The completion file is written once and again only after herdr changes, so a new shell does not slow down (term-yphpem).
+- **WezTerm opens your default WSL distro.** Before, WezTerm preferred Ubuntu even when another distro was the default. The launch menu now names the distro (term-kxpm5r).
+- **The report shows more.** Each tool in WSL, on Linux and on macOS shows its version. The report warns about Python older than 3.14 and Node.js older than v26. On Windows, characters such as the copyright sign from WSL tools show correctly (term-9ye8ib, term-s2bd4y, term-sxem98).
+- **The cheat sheet shows herdr,** with its install command, its tool row and its integrations (term-fvuajc).
+
+### Commit delta (auto-generated)
+
+- docs(install): use the new release tag in the examples (term-rez6ip) (ad98e57)
+- chore(release): bump package version for next release (term-rez6ip) (f076e0b)
+- chore(tracker): close the herdr integration record (term-uf9jj5) (ae668e4)
+- chore(tracker): close the wsl decoding record (term-sxem98) (5ab10ae)
+- fix(runner): decode wsl command output as utf-8 (term-sxem98) (fda80b0)
+- chore(tracker): record the integration check still open (term-uf9jj5) (f58392e)
+- feat(herdr): install the integration for each named agent (term-uf9jj5) (dcb026f)
+- chore(tracker): file the single-width nerd font icon request (term-uy9muk) (a776d70)
+- chore(tracker): close the fragments record (term-xor5z3) (27b4afd)
+- feat(release): fold changelog fragments into the release highlights (term-xor5z3) (b0db873)
+- chore(tracker): close the herdr completion record (term-yphpem) (6944fd5)
+- feat(zsh): complete herdr commands from a cached file (term-yphpem) (bcaed1c)
+- chore(tracker): close the report records (term-s2bd4y) (b83c039)
+- fix(report): show versions and warn below the runtime target (term-s2bd4y) (f8430f7)
+- chore(tracker): note the wezterm part of the distro check as fixed (term-aeouh) (3d80998)
+- chore(tracker): close the wezterm distro and herdr records (term-kxpm5r) (fdb62c4)
+- docs(wezterm): name the default distro in the launch menu (term-kxpm5r) (7870114)
+- fix(wezterm): open the default wsl distro (term-kxpm5r) (05d937f)
+- ci(e2e): install herdr in the consumer install test (term-cupi7f) (8a99363)
+- docs(cheat-sheet): show the herdr install command and tool (term-fvuajc) (6689971)
+- chore(tracker): close the shipped release (term-pj2cil) (af1122e)
+- docs(readme): list the common setup options (term-pj2cil) (3893295)
+
 ## v0.18.0 - 2026-10-27
 
 Delta: v0.17.1..v0.18.0

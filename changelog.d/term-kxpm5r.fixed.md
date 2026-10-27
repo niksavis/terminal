@@ -1,1 +1,0 @@
-- WezTerm opens the default WSL distro that setup found, and the launch menu names it.
