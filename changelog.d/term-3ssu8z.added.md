@@ -1,0 +1,1 @@
+- Add the per-user WezTerm install to the Start menu, and name the WezTerm location at the end of setup.

@@ -1689,3 +1689,42 @@ def test_system_install_runs_the_packages_without_asking() -> None:
     runner = _run_system_packages(allow_sudo=True, assume_yes=True, answer=False, tty=False)
 
     assert len(runner.commands) == 1
+
+
+def _wezterm_user_install(home: Path) -> Path:
+    gui = home / "AppData" / "Local" / "Programs" / "WezTerm" / "wezterm-gui.exe"
+    gui.parent.mkdir(parents=True)
+    gui.write_text("")
+    return gui
+
+
+def test_ensure_wezterm_adds_the_user_install_to_the_start_menu(tmp_path: Path) -> None:
+    gui = _wezterm_user_install(tmp_path)
+    runner = SpyRunner()
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    with mock.patch.object(runner, "which", create=True, return_value=str(gui)):
+        prerequisites_module.ensure_wezterm(cast(Runner, runner), platform)
+
+    command = runner.commands[-1]
+    assert command[:2] == ["powershell", "-NoProfile"]
+    assert "GetFolderPath('Programs')" in command[-1]
+    assert "'WezTerm.lnk'" in command[-1]
+    assert f"$shortcut.TargetPath = '{gui}'" in command[-1]
+
+
+def test_ensure_wezterm_writes_no_shortcut_without_the_user_install(tmp_path: Path) -> None:
+    runner = SpyRunner()
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    with mock.patch.object(runner, "which", create=True, return_value="wezterm"):
+        prerequisites_module.ensure_wezterm(cast(Runner, runner), platform)
+
+    assert runner.commands == []
+
+
+def test_wezterm_location_names_the_user_install(tmp_path: Path) -> None:
+    gui = _wezterm_user_install(tmp_path)
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    assert prerequisites_module.wezterm_location(cast(Runner, SpyRunner()), platform) == str(gui)

@@ -2042,6 +2042,39 @@ def _ensure_wezterm_user_install(
     _add_to_user_path(runner, install_dir)
 
 
+def _wezterm_user_gui(platform: PlatformInfo) -> Path:
+    return platform.user_programs_dir / "WezTerm" / "wezterm-gui.exe"
+
+
+def wezterm_location(runner: Runner, platform: PlatformInfo) -> str | None:
+    gui = _wezterm_user_gui(platform)
+    if platform.os == OperatingSystem.WINDOWS and gui.is_file():
+        return str(gui)
+    return runner.which("wezterm-gui") or runner.which("wezterm")
+
+
+def _ensure_wezterm_start_menu_entry(runner: Runner, platform: PlatformInfo) -> None:
+    gui = _wezterm_user_gui(platform)
+    if not gui.is_file():
+        return
+    script = (
+        "$lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'WezTerm.lnk'; "
+        "$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk); "
+        f"$shortcut.TargetPath = {_powershell_literal(str(gui))}; "
+        "$shortcut.Save()"
+    )
+    result = runner.run(
+        ["powershell", "-NoProfile", "-Command", script],
+        check=False,
+        label="add WezTerm to the Start menu",
+    )
+    if result.returncode != 0:
+        runner.reporter.warn(
+            f"Could not add WezTerm to the Start menu (exit code {result.returncode}). "
+            f"Start it from {gui}."
+        )
+
+
 def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
 
     _ensure_windows_command_in_path(
@@ -2067,10 +2100,12 @@ def ensure_wezterm(
             platform.user_programs_dir / "WezTerm",
             _ensure_wezterm_user_install,
         )
-    if runner.which("wezterm"):
-        return
     if platform.os == OperatingSystem.WINDOWS:
-        _ensure_wezterm_windows(runner, platform)
+        if not runner.which("wezterm"):
+            _ensure_wezterm_windows(runner, platform)
+        _ensure_wezterm_start_menu_entry(runner, platform)
+        return
+    if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         runner.run(["brew", "install", "--cask", "wezterm"])

@@ -194,7 +194,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 | Tool | WSL distro | Windows host | Linux host (default) | macOS host |
 | --- | --- | --- | --- | --- |
-| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin` | release zip into `%LOCALAPPDATA%\Programs\WezTerm` | apt (the WezTerm apt repository), pacman or dnf | Homebrew cask |
+| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin` | release zip into `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu | apt (the WezTerm apt repository), pacman or dnf | Homebrew cask |
 | starship | release into `~/.local/bin` (from Windows), vendor installer into `~/.local/bin` (inside WSL) | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | vendor installer into `~/.local/bin` | Homebrew |
 | zsh, tmux, tree | apt, as root | ✗ | package manager | Homebrew |
 | git, curl, wget | must be present | ✗ | must be present | must be present |

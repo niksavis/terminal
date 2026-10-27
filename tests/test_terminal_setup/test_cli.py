@@ -354,6 +354,35 @@ def test_run_setup_passes_update_to_starship_and_wezterm(update: bool) -> None:
     assert mock_starship.call_args.kwargs["update"] is update
 
 
+def test_run_setup_reports_where_wezterm_is_installed() -> None:
+    runner = mock.Mock(failures=[])
+    location = "C:\\Users\\test\\AppData\\Local\\Programs\\WezTerm\\wezterm-gui.exe"
+    with (
+        mock.patch("terminal_setup.cli.prerequisites.wezterm_location", return_value=location),
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
+    ):
+        result = run_setup(
+            _windows_platform(),
+            runner,
+            skip_vscode=True,
+            skip_starship=True,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=True,
+            system_install=False,
+            user_install=False,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+
+    assert result == 0
+    assert mock.call(f"WezTerm is installed at {location}") in runner.reporter.step.call_args_list
+
+
 def _windows_platform() -> PlatformInfo:
     return PlatformInfo(
         os=OperatingSystem.WINDOWS,
