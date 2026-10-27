@@ -61,8 +61,8 @@ Where setup puts the tools:
 
 | Platform | Folder |
 | --- | --- |
-| Windows host | command-line tools and starship: `%LOCALAPPDATA%\Programs\terminal-tools\bin`. WezTerm: `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Node.js: `%LOCALAPPDATA%\Programs\nodejs`. uv, Python and Claude Code: `%USERPROFILE%\.local\bin` |
-| WSL | `~/.local/bin`. zsh, tmux, tree and the container packages come from apt |
+| Windows host | command-line tools and starship: `%LOCALAPPDATA%\Programs\terminal-tools\bin`. WezTerm: `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Node.js: `%LOCALAPPDATA%\Programs\nodejs`. uv, Python and Claude Code: `%USERPROFILE%\.local\bin`. Codex: `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`. Copilot CLI: the Node.js folder |
+| WSL | `~/.local/bin`, also for the coding agents. zsh, tmux, tree and the container packages come from apt |
 | Linux | the package manager. uv, Python, yq and the tools that the package manager does not have: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
 | macOS | Homebrew. uv and Python: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
 

@@ -217,9 +217,9 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | Python 3.14 | `uv python install` into `~/.local/bin` | `uv python install` into `%USERPROFILE%\.local\bin` | `uv python install` | `uv python install` |
 | Node.js 26 | nodejs.org archive into `~/.local` | nodejs.org zip into `%LOCALAPPDATA%\Programs\nodejs` | nodejs.org archive into `~/.local` | nodejs.org archive into `~/.local` |
 | img-zoom | `uv tool install` | `uv tool install` | `uv tool install` | `uv tool install` |
-| Claude Code | vendor installer into `~/.local/bin` | vendor installer into `%USERPROFILE%\.local\bin` | vendor installer | vendor installer |
-| Codex | vendor installer (`chatgpt.com/codex/install.sh`) | vendor installer (`chatgpt.com/codex/install.ps1`) | vendor installer | vendor installer |
-| Copilot CLI | vendor installer (`gh.io/copilot-install`) | `npm install -g @github/copilot` | vendor installer | vendor installer |
+| Claude Code | vendor installer into `~/.local/bin` | vendor installer into `%USERPROFILE%\.local\bin` | vendor installer into `~/.local/bin` | vendor installer into `~/.local/bin` |
+| Codex | vendor installer (`chatgpt.com/codex/install.sh`) into `~/.local/bin` | vendor installer (`chatgpt.com/codex/install.ps1`) into `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` | vendor installer into `~/.local/bin` | vendor installer into `~/.local/bin` |
+| Copilot CLI | vendor installer (`gh.io/copilot-install`) into `~/.local/bin` | `npm install -g @github/copilot` into the Node.js folder, `%LOCALAPPDATA%\Programs\nodejs` when setup installed Node.js | vendor installer into `~/.local/bin` | vendor installer into `~/.local/bin` |
 | VS Code Remote - WSL extension | | when `code` is on PATH | ✗ | ✗ |
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
