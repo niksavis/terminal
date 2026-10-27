@@ -54,6 +54,7 @@ Use the same form with `--update` to update every tool, and with `--only report`
 | img-zoom | Lets an agent read small text in an image | ✓ | ✓ | ✓ |
 | podman, bubblewrap, socat | Containers, and the Claude Code sandbox | ✗ | ✓ | ✗ |
 | Claude Code, Copilot CLI, Codex | Coding agents, only with `--agents` | ✓ | ✓ | ✓ |
+| herdr | Keeps coding agents running and shows their state, only with `--herdr` | ✗ | ✓ | ✓ |
 
 1. Run from Windows, setup does not install WezTerm in WSL: the WezTerm on Windows opens WSL. Run inside WSL, setup installs WezTerm there when it is missing.
 

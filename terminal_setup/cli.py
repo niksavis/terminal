@@ -135,6 +135,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     install.add_argument(
+        "--herdr",
+        action="store_true",
+        help=(
+            "Install herdr, the runtime that keeps coding agents running, in WSL, on Linux "
+            "and on macOS. With --update, setup updates herdr only with this option."
+        ),
+    )
+    install.add_argument(
         "--winget-versions",
         choices=("keep", "replace"),
         dest="winget_versions",
@@ -203,13 +211,16 @@ def _windows_tool_detail(
 
 
 def _report_optional_agent(runner: Runner, label: str, detail: str | None) -> None:
+    agent = label.rsplit(":", 1)[-1]
+    _report_optional(runner, label, detail, f"--agents {agent}")
+
+
+def _report_optional(runner: Runner, label: str, detail: str | None, option: str) -> None:
     if detail:
         runner.reporter.success(f"{label} ({detail})")
         return
-    agent = label.rsplit(":", 1)[-1]
     runner.reporter.info(
-        f"{label}: not installed (optional; to install it, run: "
-        f"{setup_command('--agents ' + agent)})"
+        f"{label}: not installed (optional; to install it, run: {setup_command(option)})"
     )
 
 
@@ -395,6 +406,8 @@ def _print_wsl_report(
         _report_optional_agent(
             runner, f"wsl:{agent}", _shell_agent_path(runner, agent, wsl_distro=distro)
         )
+    ok, detail = _wsl_command_present(runner, platform_info, "herdr")
+    _report_optional(runner, "wsl:herdr", detail if ok else None, "--herdr")
 
 
 def _host_command_path(runner: Runner, command: str) -> str | None:
@@ -446,6 +459,7 @@ def _print_host_report(
         _report_optional_agent(
             runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)
         )
+    _report_optional(runner, "host:herdr", _host_command_path(runner, "herdr"), "--herdr")
 
 
 def print_setup_report(
@@ -508,6 +522,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     update: bool = False,
     no_sudo: bool = False,
     selected_agents: tuple[str, ...] = (),
+    herdr: bool = False,
     winget_versions: str | None = None,
     uninstall_system_versions: bool,
     keep_system_versions: bool,
@@ -623,6 +638,13 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
         agents.ensure_agents(runner, platform_info, selected_agents, update=update)
 
+        if herdr:
+            prerequisites.attempt(
+                runner,
+                "install herdr",
+                partial(prerequisites.ensure_herdr, runner, platform_info, update=update),
+            )
+
         if not skip_starship:
             prerequisites.attempt(
                 runner,
@@ -639,6 +661,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         claude_nerdfont=not no_nerd_font,
         no_sudo=no_sudo,
         wsl_start_dir=wsl_terminal_cwd,
+        herdr=herdr or prerequisites.herdr_installed(runner, platform_info),
     )
 
     if not skip_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:
@@ -759,6 +782,7 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         update=args.update,
         no_sudo=args.no_sudo,
         selected_agents=args.agents,
+        herdr=args.herdr,
         winget_versions=args.winget_versions,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",

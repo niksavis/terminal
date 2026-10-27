@@ -1,0 +1,1 @@
+- Add herdr as an opt-in tool: `--herdr` installs it in WSL, on Linux and on macOS, and the WezTerm launch menu offers it when it is installed.

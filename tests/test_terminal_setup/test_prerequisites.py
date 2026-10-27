@@ -1785,3 +1785,57 @@ def test_no_sudo_installs_wezterm_as_the_appimage_on_pacman_and_dnf(
 
     appimage.assert_called_once()
     assert runner.commands == []
+
+
+def _herdr_commands(runner: SpyRunner) -> list[list[str]]:
+    return [command for command in runner.commands if "herdrdev/herdr" in command]
+
+
+def test_ensure_herdr_installs_the_linux_release_in_wsl_from_windows() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module.ensure_herdr(
+            cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+        )
+
+    [command] = _herdr_commands(runner)
+    assert command[:5] == ["wsl", "-d", "Ubuntu", "--exec", "python3"]
+    assert command[-1] == "herdr-linux-{arch}"
+
+
+def test_ensure_herdr_installs_the_release_on_a_linux_host() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module.ensure_herdr(
+            cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT)
+        )
+
+    [command] = _herdr_commands(runner)
+    assert command[0] == sys.executable
+    assert "herdr" in command
+
+
+def test_ensure_herdr_uses_homebrew_on_macos() -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_herdr(
+        cast(Runner, runner), make_platform(OperatingSystem.MACOS, PackageManager.HOMEBREW)
+    )
+
+    assert _installed_packages(runner.commands, PackageManager.HOMEBREW) == ["herdr"]
+    assert _herdr_commands(runner) == []
+
+
+def test_herdr_installed_asks_wsl_on_a_windows_run() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        found = prerequisites_module.herdr_installed(
+            cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+        )
+
+    assert found is True
+    assert runner.commands[-1][:4] == ["wsl", "-d", "Ubuntu", "--exec"]
+    assert ".local/bin/herdr" in runner.commands[-1][-1]

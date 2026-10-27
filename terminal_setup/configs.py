@@ -16,6 +16,7 @@ TEMPLATE_DIR = _REPO_ROOT / "terminal_setup" / "templates"
 CHEAT_SHEET_PATH = _REPO_ROOT / "terminal-cheat-sheet.html"
 IMG_ZOOM_SOURCE = _REPO_ROOT / "terminal_setup" / "img_zoom_tool"
 _WSL_START_DIR_PLACEHOLDER = "__WSL_START_DIR__"
+_HERDR_PLACEHOLDER = "__HERDR_INSTALLED__"
 
 
 def template_path(name: str) -> Path:
@@ -56,15 +57,21 @@ def deploy_wezterm_config(
     platform: PlatformInfo,
     *,
     wsl_start_dir: str | None = None,
+    herdr: bool = False,
 ) -> None:
     if platform.wezterm_config_dir is None:
         return
     runner.ensure_dir(platform.wezterm_config_dir)
     source = template_path("wezterm.lua")
     destination = platform.wezterm_config_dir / "wezterm.lua"
-    rendered = source.read_text(encoding="utf-8").replace(
-        _WSL_START_DIR_PLACEHOLDER,
-        _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
+    rendered = (
+        source
+        .read_text(encoding="utf-8")
+        .replace(
+            _WSL_START_DIR_PLACEHOLDER,
+            _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
+        )
+        .replace(_HERDR_PLACEHOLDER, "true" if herdr else "false")
     )
     runner.write_text(destination, rendered)
 
@@ -294,8 +301,9 @@ def deploy_all(  # noqa: PLR0913
     claude_nerdfont: bool = True,
     no_sudo: bool = False,
     wsl_start_dir: str | None = None,
+    herdr: bool = False,
 ) -> None:
-    deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
+    deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir, herdr=herdr)
     if _is_wsl_target(platform):
         deploy_wsl_configs(runner, platform, include_starship=include_starship)
         if include_starship and platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():

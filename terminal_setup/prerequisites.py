@@ -479,6 +479,8 @@ RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "direnv": ("direnv/direnv", "direnv", (r"direnv\.linux-{arch}",)),
 }
 STARSHIP_RELEASE = ("starship/starship", "starship", _RUST_ASSETS)
+HERDR_RELEASE = ("herdrdev/herdr", "herdr", (r"herdr-linux-{arch}",))
+_HERDR_PRESENT = 'test -x "$HOME/.local/bin/herdr" || command -v herdr >/dev/null 2>&1'
 
 
 def _install_release_tool(
@@ -1931,6 +1933,26 @@ def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = Fa
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         install_package(runner, PackageManager.HOMEBREW, "starship")
+
+
+def ensure_herdr(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
+    if platform.os == OperatingSystem.WINDOWS:
+        _install_release_tool(
+            runner, "herdr", update=update, wsl_distro=_wsl_distro(platform), spec=HERDR_RELEASE
+        )
+        return
+    if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
+        install_package(runner, PackageManager.HOMEBREW, "herdr")
+        return
+    if platform.os == OperatingSystem.LINUX:
+        _install_release_tool(runner, "herdr", update=update, spec=HERDR_RELEASE)
+
+
+def herdr_installed(runner: Runner, platform: PlatformInfo) -> bool:
+    command = ["sh", "-c", _HERDR_PRESENT]
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        command = wsl_exec_command(_wsl_distro(platform), command)
+    return runner.run(command, check=False, dry_run_safe=True).returncode == 0
 
 
 _USER_PATH_READ = (

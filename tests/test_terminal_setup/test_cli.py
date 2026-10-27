@@ -383,6 +383,50 @@ def test_run_setup_reports_where_wezterm_is_installed() -> None:
     assert mock.call(f"WezTerm is installed at {location}") in runner.reporter.step.call_args_list
 
 
+@pytest.mark.parametrize("herdr", [False, True])
+def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.windows_tools.ensure_windows_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
+        mock.patch("terminal_setup.cli.agents.ensure_agents"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_herdr") as mock_herdr,
+        mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
+        mock.patch("terminal_setup.cli.configs.deploy_all") as mock_deploy,
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
+    ):
+        result = run_setup(
+            _windows_platform(),
+            mock.Mock(failures=[]),
+            skip_vscode=True,
+            skip_starship=True,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=False,
+            system_install=False,
+            user_install=False,
+            no_sudo=False,
+            herdr=herdr,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+
+    assert result == 0
+    assert mock_herdr.called is herdr
+    assert mock_deploy.call_args.kwargs["herdr"] is herdr
+
+
 def _windows_platform() -> PlatformInfo:
     return PlatformInfo(
         os=OperatingSystem.WINDOWS,

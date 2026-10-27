@@ -134,6 +134,27 @@ def test_deploy_wezterm_config(tmp_path: Path) -> None:
     assert "__WSL_START_DIR__" not in content
 
 
+@pytest.mark.parametrize(
+    ("os", "label"), [(OperatingSystem.WINDOWS, "herdr (WSL)"), (OperatingSystem.LINUX, "herdr")]
+)
+def test_the_wezterm_launch_menu_offers_herdr_only_when_it_is_installed(
+    tmp_path: Path, os: OperatingSystem, label: str
+) -> None:
+    platform = make_platform(os, tmp_path)
+    assert platform.wezterm_config_dir is not None
+    destination = platform.wezterm_config_dir / "wezterm.lua"
+
+    deploy_wezterm_config(Runner(dry_run=False), platform, herdr=True)
+    with_herdr = destination.read_text(encoding="utf-8")
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+    without_herdr = destination.read_text(encoding="utf-8")
+
+    assert "local herdr_installed = true" in with_herdr
+    assert f'label = "{label}"' in with_herdr
+    assert "local herdr_installed = false" in without_herdr
+    assert "__HERDR_INSTALLED__" not in with_herdr + without_herdr
+
+
 def test_deploy_wezterm_config_supports_optional_wsl_start_dir(tmp_path: Path) -> None:
     platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
     runner = Runner(dry_run=False)

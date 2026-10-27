@@ -16,6 +16,7 @@ local wsl_default_domain = nil
 -- namespace, while pwsh and cmd only limp along through WSL interop, in a WSL
 -- pane with WSL cwd semantics.
 local local_domain = { DomainName = "local" }
+local herdr_installed = __HERDR_INSTALLED__
 local wsl_startup_args = {
   "zsh",
   "-lc",
@@ -103,6 +104,13 @@ if is_windows then
       domain = { DomainName = wsl_default_domain },
       args = wsl_startup_args,
     })
+    if herdr_installed then
+      table.insert(config.launch_menu, {
+        label = "herdr (WSL)",
+        domain = { DomainName = wsl_default_domain },
+        args = { "zsh", "-lic", 'cd "__WSL_START_DIR__" 2>/dev/null || cd "$HOME"; exec herdr' },
+      })
+    end
   end
   table.insert(config.launch_menu, {
     label = "PowerShell",
@@ -145,6 +153,12 @@ if is_windows then
     args = { "cmd.exe" },
   })
 else
+  if herdr_installed then
+    table.insert(config.launch_menu, {
+      label = "herdr",
+      args = { "zsh", "-lic", "exec herdr" },
+    })
+  end
   table.insert(config.launch_menu, {
     label = "zsh",
     args = { "zsh", "-l" },

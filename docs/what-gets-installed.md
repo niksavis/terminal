@@ -104,7 +104,7 @@ Setup does not change VS Code settings on Linux or macOS.
 
 | Rule | Tools |
 | --- | --- |
-| Latest GitHub release on the day of the install, checked against its sha256 digest | WezTerm (Windows), starship, lazygit, fd, bat, ripgrep, fzf, jq, yq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos |
+| Latest GitHub release on the day of the install, checked against its sha256 digest | WezTerm (Windows), herdr (WSL, Linux), starship, lazygit, fd, bat, ripgrep, fzf, jq, yq, shellcheck, git-lfs, direnv, xh, ast-grep, sd, just, delta, typos |
 | Latest release from the vendor installer | uv, Claude Code, OpenAI Codex, GitHub Copilot CLI (WSL, Linux, macOS) |
 | Latest release from the npm registry | GitHub Copilot CLI on Windows |
 | Python 3.14, the newest 3.14 patch that uv knows | Python |
@@ -187,6 +187,7 @@ A rerun installs a missing tool and skips a current tool. For a tool that is old
 | Claude Code | `claude` | Anthropic's coding agent. Only with `--agents claude` or `--agents all`. | The coding agent. |
 | GitHub Copilot CLI | `copilot` | GitHub's coding agent. Only with `--agents copilot` or `--agents all`. | The coding agent. |
 | OpenAI Codex | `codex` | OpenAI's coding agent. Only with `--agents codex` or `--agents all`. | The coding agent. |
+| herdr | `herdr` | Keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Only with `--herdr`. | The person starts several agents, closes the window, and finds them again with their state. |
 
 ### Claude Code add-ons
 
@@ -221,6 +222,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 | Codex | vendor installer (`chatgpt.com/codex/install.sh`) into `~/.local/bin` | vendor installer (`chatgpt.com/codex/install.ps1`) into `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` | vendor installer into `~/.local/bin` | vendor installer into `~/.local/bin` |
 | Copilot CLI | vendor installer (`gh.io/copilot-install`) into `~/.local/bin` | `npm install -g @github/copilot` into the Node.js folder, `%LOCALAPPDATA%\Programs\nodejs` when setup installed Node.js | vendor installer into `~/.local/bin` | vendor installer into `~/.local/bin` |
 | VS Code Remote - WSL extension | | when `code` is on PATH | ✗ | ✗ |
+| herdr, only with `--herdr` | release into `~/.local/bin` | ✗ | release into `~/.local/bin` | Homebrew |
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
 
