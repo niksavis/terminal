@@ -398,6 +398,7 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_herdr") as mock_herdr,
+        mock.patch("terminal_setup.cli.agents.ensure_herdr_integrations") as mock_integrations,
         mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
         mock.patch("terminal_setup.cli.configs.deploy_all") as mock_deploy,
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
@@ -420,10 +421,14 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
             report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
+            selected_agents=("claude",),
         )
 
     assert result == 0
     assert mock_herdr.called is herdr
+    assert mock_integrations.called is herdr
+    if herdr:
+        assert mock_integrations.call_args.args[2] == ("claude",)
     assert mock_deploy.call_args.kwargs["herdr"] is herdr
 
 

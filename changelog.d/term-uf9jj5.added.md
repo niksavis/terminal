@@ -1,0 +1,1 @@
+- With `--herdr` and `--agents`, setup installs the herdr integration for each named agent, and the report shows each integration.

@@ -256,6 +256,24 @@ def _report_optional(runner: Runner, label: str, detail: str | None, option: str
     )
 
 
+def _report_herdr_integrations(
+    runner: Runner, platform_info: platform.PlatformInfo, side: str
+) -> None:
+    states = agents.herdr_integration_states(runner, platform_info)
+    for agent in agents.AGENTS:
+        label = f"{side}:herdr-{agent}"
+        state = states.get(agent, "not installed")
+        if state.startswith("current"):
+            runner.reporter.success(f"{label} ({state})")
+        elif state.startswith("not installed"):
+            _report_optional(runner, label, None, f"--herdr --agents {agent}")
+        else:
+            runner.reporter.warn(
+                f"{label} ({state}; to update it, run: "
+                f"{setup_command(f'--update --herdr --agents {agent}')})"
+            )
+
+
 def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> str | None:
     script = agents.present_query(agent) + '; echo "$found"'
     command = ["sh", "-c", script]
@@ -458,6 +476,8 @@ def _print_wsl_report(
         )
     ok, detail = _wsl_command_present(runner, platform_info, "herdr")
     _report_optional(runner, "wsl:herdr", detail if ok else None, "--herdr")
+    if ok:
+        _report_herdr_integrations(runner, platform_info, "wsl")
 
 
 def _host_command_path(runner: Runner, command: str) -> str | None:
@@ -478,6 +498,7 @@ def _host_version(runner: Runner, command: str, path: str) -> str:
 
 def _print_host_report(
     runner: Runner,
+    platform_info: platform.PlatformInfo,
     *,
     include_starship: bool,
 ) -> None:
@@ -519,7 +540,10 @@ def _print_host_report(
         _report_optional_agent(
             runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)
         )
-    _report_optional(runner, "host:herdr", _host_command_path(runner, "herdr"), "--herdr")
+    herdr = _host_command_path(runner, "herdr")
+    _report_optional(runner, "host:herdr", herdr, "--herdr")
+    if herdr:
+        _report_herdr_integrations(runner, platform_info, "host")
 
 
 def print_setup_report(
@@ -538,7 +562,7 @@ def print_setup_report(
     if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
         _print_wsl_report(runner, platform_info, include_starship=include_starship)
     else:
-        _print_host_report(runner, include_starship=include_starship)
+        _print_host_report(runner, platform_info, include_starship=include_starship)
 
     if include_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:
         vscode_path = platform_info.vscode_settings_path
@@ -704,6 +728,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 "install herdr",
                 partial(prerequisites.ensure_herdr, runner, platform_info, update=update),
             )
+            agents.ensure_herdr_integrations(runner, platform_info, selected_agents)
 
         if not skip_starship:
             prerequisites.attempt(

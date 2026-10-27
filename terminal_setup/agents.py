@@ -4,7 +4,13 @@ import argparse
 import subprocess  # nosec B404
 from functools import partial
 
-from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, rerun_command
+from .platform import (
+    OperatingSystem,
+    PlatformInfo,
+    is_running_in_wsl,
+    rerun_command,
+    wsl_exec_command,
+)
 from .prerequisites import (
     _add_to_user_path,
     _run_shell_command,
@@ -27,6 +33,7 @@ CLAUDE_INSTALL_PS1 = "irm https://claude.ai/install.ps1 | iex"
 CODEX_INSTALL_PS1 = "irm https://chatgpt.com/codex/install.ps1 | iex"
 CODEX_NON_INTERACTIVE = "CODEX_NON_INTERACTIVE=1"
 _LOCAL_PATH = 'PATH="$HOME/.local/bin:$PATH"; '
+_HERDR_RUN = 'PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; exec herdr "$@"'
 
 
 def parse_agents(value: str) -> tuple[str, ...]:
@@ -171,3 +178,38 @@ def ensure_agents(
                 f"{verb} {agent} on Windows",
                 partial(_ensure_windows_agent, runner, platform, agent, update=update),
             )
+
+
+def _herdr_command(platform: PlatformInfo, *arguments: str) -> list[str]:
+    command = ["sh", "-c", _HERDR_RUN, "herdr", *arguments]
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        command = wsl_exec_command(_wsl_distro(platform), command)
+    return command
+
+
+def ensure_herdr_integrations(
+    runner: Runner, platform: PlatformInfo, selected: tuple[str, ...]
+) -> None:
+    for agent in AGENTS:
+        if agent not in selected:
+            continue
+        label = f"install the herdr integration for {agent}"
+        attempt(
+            runner,
+            label,
+            partial(
+                runner.run, _herdr_command(platform, "integration", "install", agent), label=label
+            ),
+        )
+
+
+def herdr_integration_states(runner: Runner, platform: PlatformInfo) -> dict[str, str]:
+    result = runner.run(
+        _herdr_command(platform, "integration", "status"), check=False, dry_run_safe=True
+    )
+    states: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        agent, separator, rest = line.partition(": ")
+        if separator and agent in AGENTS:
+            states[agent] = rest.split(" (/", 1)[0].strip()
+    return states

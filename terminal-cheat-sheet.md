@@ -151,7 +151,7 @@ Faster, friendlier replacements for classic commands. All are installed by `term
 | `img-zoom`   | image zoom         | `img-zoom shot.png 0 0 400 300 -o z.png` - zoom a box |
 | `herdr`      | agent sessions     | `herdr` - agents keep running; only with `--herdr`    |
 
-herdr shows the state of an agent after you run `herdr integration install claude` once. Do the same for `copilot` and `codex`. Its prefix key is `Ctrl + b`.
+herdr shows the state of an agent through its integration. Setup installs it when you add both `--herdr` and `--agents`. Otherwise run `herdr integration install claude` once, and the same for `copilot` and `codex`. Its prefix key is `Ctrl + b`.
 
 Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the uv-installed CPython 3.14 (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js 26 is installed user-locally in `~/.local`. On Windows, setup installs Python 3.14 and Node.js 26 in your user profile only when they are missing, and leaves a machine-wide copy from your IT department as it is.
 

@@ -200,7 +200,7 @@ WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`
 
 Start it from the WezTerm launch menu, **herdr (WSL)** on Windows, or run `herdr` in a shell. herdr runs inside WezTerm and does not replace it. Your zsh and the starship prompt run in each herdr pane. herdr does the job of tmux for agent sessions, so use one of the two in a window, not both. The herdr prefix key is `Ctrl + b`. It does not clash with the tmux prefix `Ctrl + Space` or the WezTerm leader `Ctrl + Shift + Space`.
 
-To show the state of an agent, herdr needs its integration. Setup does not install it. Run this once for each agent that you use, in the shell where herdr runs:
+To show the state of an agent, herdr needs its integration. Setup installs it for each agent that you name with `--agents`, when you also add `--herdr`. The integration adds hooks to the agent config in `~/.claude`, `~/.codex` or `~/.copilot`. For an agent that you installed another way, run this once in the shell where herdr runs:
 
 ```bash
 herdr integration install claude
@@ -208,7 +208,7 @@ herdr integration install copilot
 herdr integration install codex
 ```
 
-`herdr integration status` shows which integrations are installed.
+`herdr integration status` shows which integrations are installed. The setup report shows them too, as `herdr-claude`, `herdr-copilot` and `herdr-codex`.
 
 zsh completes herdr commands with Tab. The first shell after a herdr install or update writes the completion file to `~/.cache/zsh/completions`.
 
