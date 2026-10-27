@@ -60,6 +60,7 @@ The scripts in the repository default to `main`, so a clone and the e2e test run
 1. Stage the changelog and the deleted fragments with `git add CHANGELOG.md changelog.d`, then commit it on its own with `git commit -m "docs(release): update changelog for vX-Y-Z (term-abc12)"`.
 1. Push `main` with `git push origin main`.
 1. Check the release is internally consistent with `uv run python .scripts/check_release_consistency.py --tag vX.Y.Z`. It compares the tag against `pyproject.toml`, `terminal_setup/__init__.py`, `uv.lock` and the `CHANGELOG.md` heading, and names every disagreement at once. Run it here so a mismatch is fixed before a tag exists to retract.
+1. When the release adds or changes a setup step, run the end-to-end install test on `main` with `gh workflow run e2e-install.yml --ref main`, and wait until all four jobs pass. It installs on fresh machines, where a first-install gap shows. v0.19.0 shipped a herdr step that failed on every fresh runner, because the test ran only on the tag. Skip it for a release with only docs or tracker changes.
 1. Create an annotated semantic version tag with the release date in the message using `git tag -a vX.Y.Z -m "vX.Y.Z (YYYY-MM-DD)"`.
 1. Push the tag with `git push origin vX.Y.Z`.
 1. Review the generated GitHub release page and verify notes were copied from `CHANGELOG.md`.

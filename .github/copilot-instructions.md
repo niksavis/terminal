@@ -69,6 +69,7 @@ Tool access does not grant approval. Apply this list even when commands run unbl
 - GitHub Pages sends `max-age=600`, so a browser can show the old page for 10 minutes. Reload with Ctrl+F5.
 - Read a new record id with `jq -r .record`. A `tail` on the `create` output can hide it, and a second `create` makes a duplicate.
 - A metadata probe must not put the repo root on `sys.path`: `terminal.egg-info` there hides the installed metadata. Copy the package to a scratch directory.
+- `uv run terminal-setup` fails in a clone, because `pyproject.toml` sets `package = false`. Run `uv run python setup-terminal.py`.
 
 ### Knowledge Priming
 
