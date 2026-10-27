@@ -36,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install as a consumer
         shell: bash
-        run: sh ./install.sh --unattended --agents "${AGENTS}" --report
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
 
   macos:
     runs-on: macos-latest
@@ -48,7 +48,7 @@ jobs:
         run: command -v wget >/dev/null || brew install wget
       - name: Install as a consumer
         shell: bash
-        run: sh ./install.sh --unattended --agents "${AGENTS}" --report
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
 
   windows-wsl:
     runs-on: windows-latest
@@ -68,7 +68,7 @@ jobs:
         shell: powershell
         run: |
           $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --winget-versions replace --report
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --herdr --winget-versions replace --report
       - name: Check that the setup copy replaced the winget ripgrep
         if: steps.winget.outcome == 'success'
         shell: powershell
