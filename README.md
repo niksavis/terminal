@@ -35,8 +35,8 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 | `--update` | update each tool that is out of date |
 | `--unattended` | never ask a question and take the safe answer |
 | `--agents all` | also install Claude Code, Copilot CLI and Codex, or name some: `--agents claude,codex` |
-| `--herdr` | also install herdr in WSL, on Linux and on macOS |
-| `--only report` | show what is installed, then stop |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS. With `--agents`, also link herdr to each named agent |
+| `--only report` | show what is installed, with versions, then stop |
 | `--dry-run` | show each step and change nothing |
 
 All options are in the [User guide](docs/user-guide.md#cli-options).

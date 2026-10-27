@@ -196,7 +196,7 @@ WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`
 
 ### herdr
 
-[herdr](https://herdr.dev/) keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Install it with `--herdr`. Setup installs it in WSL, on Linux and on macOS, and not on the Windows host, because herdr on Windows has more limits.
+[herdr](https://herdr.dev/) keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Install it with `--herdr`. To install herdr with all three coding agents and link them, add `--herdr --agents all` to the install command. Setup installs it in WSL, on Linux and on macOS, and not on the Windows host, because herdr on Windows has more limits.
 
 Start it from the WezTerm launch menu, **herdr (WSL)** on Windows, or run `herdr` in a shell. herdr runs inside WezTerm and does not replace it. Your zsh and the starship prompt run in each herdr pane. herdr does the job of tmux for agent sessions, so use one of the two in a window, not both. The herdr prefix key is `Ctrl + b`. It does not clash with the tmux prefix `Ctrl + Space` or the WezTerm leader `Ctrl + Shift + Space`.
 
@@ -300,11 +300,11 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--only check` | check the prerequisites, then exit |
 | `--dry-run` | print each step and change nothing |
 | `--only config` | re-apply all configs (also the Claude status line); install no packages |
-| `--only report` | print the verification report, then exit |
+| `--only report` | print the verification report, then exit. It shows each tool with its path and version, warns about Python older than 3.14 and Node.js older than v26, and lists the herdr integrations |
 | `--report` | run setup, then print the verification report |
 | `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
 | `--agents claude,codex` | also install these coding agents when missing; `all` installs all three. Setup never installs or updates an agent that you do not name |
-| `--herdr` | also install herdr in WSL, on Linux and on macOS. With `--update`, setup updates herdr only with this option |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS, and its integration for each agent named in `--agents`. With `--update`, setup updates herdr only with this option |
 | `--update` | update every user-local tool, Python and Node.js that is out of date, and the agents named in `--agents` |
 | `--skip-vscode` | skip the VS Code settings and extensions |
 | `--skip-starship` | skip the starship prompt |
