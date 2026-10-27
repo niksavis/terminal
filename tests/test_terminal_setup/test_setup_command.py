@@ -118,6 +118,6 @@ def test_user_documents_need_no_git_to_run_setup(document: str) -> None:
 
 def test_the_user_guide_shows_the_command_that_a_release_run_prints() -> None:
     guide = (ROOT / "docs" / "user-guide.md").read_text(encoding="utf-8")
-    release = "https://github.com/niksavis/terminal/archive/v0.18.0.zip"
+    release = "https://github.com/niksavis/terminal/archive/v0.19.0.zip"
 
     assert setup_command("--only report", argv0="terminal-setup", source=release) in guide

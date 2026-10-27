@@ -39,7 +39,7 @@ The shell that starts setup decides what setup changes. A shell that runs on Win
 | PowerShell 5.1 or 7 | `irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex` |
 | Command Prompt | `powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex"` |
 | Git Bash | `powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 \| iex"` |
-| Any shell with uv, one fixed release | `uvx --from https://github.com/niksavis/terminal/archive/v0.18.0.zip terminal-setup`, with the tag from the release page |
+| Any shell with uv, one fixed release | `uvx --from https://github.com/niksavis/terminal/archive/v0.19.0.zip terminal-setup`, with the tag from the release page |
 | WSL, Linux, macOS | `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh \| sh` |
 
 On 2026-10-13, `--only check` ran with the earlier `main` form of these commands on one Windows 11 machine with WSL from Command Prompt, from Git Bash with the PowerShell command, and from Git Bash with `uvx`. Each run printed `All prerequisites are satisfied.` and exited with code 0. `install.sh` is for WSL, Linux and macOS. It is not tested in Git Bash.
@@ -112,7 +112,7 @@ Setup does not change VS Code settings on Linux or macOS.
 | The version that the distro or Homebrew publishes | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1 (WSL), and the CLI tools on Linux outside WSL |
 | Fixed in this repository | img-zoom 0.1.0, the basicly `cli-tools` skill from the published basicly v0.29.0 wheel |
 
-A rerun installs a missing tool and skips a current tool. For a tool that is older than its latest release, setup prints a line and changes nothing. Add `--update` to install the latest release. To see what is installed, run `--only report`. For a fixed version, pin the setup itself with a release tag, for example `TERMINAL_SETUP_REF=v0.18.0`. A pinned setup still installs the latest release of each tool.
+A rerun installs a missing tool and skips a current tool. For a tool that is older than its latest release, setup prints a line and changes nothing. Add `--update` to install the latest release. To see what is installed, run `--only report`. For a fixed version, pin the setup itself with a release tag, for example `TERMINAL_SETUP_REF=v0.19.0`. A pinned setup still installs the latest release of each tool.
 
 ## Tool inventory
 
