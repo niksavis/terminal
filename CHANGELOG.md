@@ -2,6 +2,28 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.17.0 - 2026-10-27
+
+Delta: v0.16.3..v0.17.0
+
+### Highlights
+
+- **Windows setup no longer stops at the "add to the user PATH" step.** The step told every open window that the environment changed and waited up to 5 seconds for each window that did not answer. That message now goes out in the background, and the step skips the user PowerShell profile (term-n9i7ur).
+- **The Claude Code status line works in WSL right after a fresh install.** Setup installs jq into `~/.local/bin`, and the WSL status line step now finds it there, so it writes the `statusLine` setting (term-ktjvv2).
+- **WezTerm has a Start menu entry.** When setup installs WezTerm for one user from the release zip, it adds WezTerm to the Start menu. At the end, setup prints where WezTerm is installed (term-3ssu8z).
+- **The agent harness uses basicly v0.29.0** (term-xxvycv).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-vbemoo) (563ed75)
+- fix(configs): find the local jq when setting the wsl statusline (term-ktjvv2) (da827f8)
+- chore(tracker): file the missing statusline report (term-ktjvv2) (be335f3)
+- feat(windows): add the user wezterm install to the start menu (term-3ssu8z) (559960c)
+- fix(windows): stop the user path step from waiting on the environment broadcast (term-n9i7ur) (35d7d90)
+- feat(kit): upgrade basicly to the current release (term-xxvycv) (91a73c1)
+- chore(tracker): fold pending writer shards into the trunk log (term-shwsbp) (718ca50)
+- chore(tracker): close the shipped track (term-qok9vm) (094765f)
+
 ## v0.16.3 - 2026-10-20
 
 Delta: v0.16.2..v0.16.3
