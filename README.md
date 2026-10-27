@@ -20,7 +20,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 These commands install the latest release. Run from Windows, setup sets up the Windows host and the default WSL distro together. Run inside WSL, it sets up only that distro. For cmd and Git Bash, see [Start commands](docs/what-gets-installed.md#start-commands).
 
-To add options, for example no questions and all coding agents (Claude Code, Copilot CLI, Codex):
+To add options, put them at the end of the command. This example asks no questions and installs all coding agents (Claude Code, Copilot CLI, Codex):
 
 ```powershell
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --unattended --agents all
@@ -30,7 +30,16 @@ To add options, for example no questions and all coding agents (Claude Code, Cop
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all
 ```
 
-Use the same form with `--update` to update every tool, and with `--only report` to see what is installed. All options are in the [User guide](docs/user-guide.md#cli-options).
+| Option | What it does |
+| --- | --- |
+| `--update` | update each tool that is out of date |
+| `--unattended` | never ask a question and take the safe answer |
+| `--agents all` | also install Claude Code, Copilot CLI and Codex, or name some: `--agents claude,codex` |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS |
+| `--only report` | show what is installed, then stop |
+| `--dry-run` | show each step and change nothing |
+
+All options are in the [User guide](docs/user-guide.md#cli-options).
 
 ## What you get
 
