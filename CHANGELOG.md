@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.18.0 - 2026-10-27
+
+Delta: v0.17.1..v0.18.0
+
+### Highlights
+
+- **Setup can install herdr.** herdr keeps coding agents running in terminals that stay alive after the window closes, and it shows whether each agent is working, blocked or idle. Add `--herdr` to install it in WSL, on Linux and on macOS. Setup does not install it on the Windows host. When herdr is installed, the WezTerm launch menu has a **herdr (WSL)** entry on Windows and a **herdr** entry on Linux and macOS (term-ffbqpz).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-pj2cil) (150f68b)
+- chore(tracker): record the session handover (term-vbemoo) (84772fa)
+- chore(tracker): close the herdr feature (term-ffbqpz) (c85fd9f)
+- feat(setup): add herdr as an opt-in tool (term-ffbqpz) (c36e83c)
+- chore(tracker): close the shipped release (term-k6rm0e) (6f46551)
+
 ## v0.17.1 - 2026-10-27
 
 Delta: v0.17.0..v0.17.1
