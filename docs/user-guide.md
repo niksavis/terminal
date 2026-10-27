@@ -12,7 +12,7 @@ A rerun is safe. A missing tool installs, and a tool at its latest release is sk
 
 The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options.
 
-Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.12.7`.
+Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.17.0`.
 
 ## Install, update and check
 
@@ -52,7 +52,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 Run from Windows, these commands set up the Windows host and the default WSL distro together.
 
-With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
+With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.17.0.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
 
 ## Unattended install for scripts and agents
 
@@ -96,17 +96,17 @@ Setup does not install a second copy beside a machine-wide one, because Windows 
 
 ### Windows
 
-After installation, start WezTerm from the Start menu or run:
+After installation, start WezTerm from the Start menu or run the command below. At the end of the install, setup prints where WezTerm is installed:
 
 ```powershell
 wezterm
 ```
 
-WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, lazygit, direnv, just, fzf, and the extra CLI tools ready.
+WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you are in a zsh shell with starship, lazygit, direnv, just, fzf and the other command-line tools ready. Run `tmux` to start a session that stays alive after the window closes.
 
 Press `Ctrl + Shift + l` — or right-click the `+` button in the tab bar, WezTerm's equivalent of the Windows Terminal new-tab dropdown — for the launch menu to switch shells: **Ubuntu (WSL)** (default), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. Each entry opens as its own tab, so WSL, PowerShell, and Git Bash can run side by side; the three Windows-native profiles are pinned to WezTerm's `local` domain so they start on Windows rather than inside the WSL tab you launched them from. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
 
-The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
+The default Starship prompt is single-line for readability. It shows the git branch and state, the common runtimes and the container context before the prompt symbol.
 
 Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Shift + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Shift + Space` then `x`.
 
@@ -192,7 +192,7 @@ wezterm
 
 See [`terminal-cheat-sheet.md`](../terminal-cheat-sheet.md) for the full command reference.
 
-WezTerm and tmux shortcuts in this README are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
+WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
 
 ## Command-line editing
 
@@ -274,7 +274,7 @@ Add options to any setup command. Each command below runs as copied, without a c
 
 - PowerShell: `& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --dry-run`
 - WSL, Linux, macOS: `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --dry-run`
-- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
+- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.17.0.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
 - In a clone: `uv run python setup-terminal.py --dry-run`
 
 | Option | What it does |
@@ -289,9 +289,9 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--update` | update every user-local tool, Python and Node.js that is out of date, and the agents named in `--agents` |
 | `--skip-vscode` | skip the VS Code settings and extensions |
 | `--skip-starship` | skip the starship prompt |
-| `--skip-claude` | skip the Claude Code status line |
+| `--skip-claude` | skip the Claude Code status line and skills |
 | `--no-nerd-font` | install the universal (no Nerd Font) status line |
-| `--no-sudo` | never use sudo; print the apt command for missing WSL system packages |
+| `--no-sudo` | never use sudo; print the command for the packages that need it, in WSL and on a Linux host |
 | `--system-install` | install system-wide through apt or brew (needs sudo or admin) |
 | `--winget-versions replace` | Windows: replace each tool that winget installed in your user profile with the setup copy |
 | `--winget-versions keep` | Windows: keep each winget copy; only report it |
