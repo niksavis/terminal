@@ -440,6 +440,9 @@ footer svg {
 <pre class="code-block" data-language="powershell"><code>$env:TERMINAL_SETUP_ARGS = &#x27;--unattended --agents all&#x27;
 irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex</code></pre>
 <pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all</code></pre>
+<p>Install herdr too, in WSL, on Linux and on macOS (from Windows, setup installs it in WSL):</p>
+<pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --herdr</code></pre>
+<pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --herdr</code></pre>
 <p>Update everything, then check what is installed:</p>
 <pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
 &amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report</code></pre>
@@ -749,7 +752,13 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 <td>image zoom</td>
 <td><code>img-zoom shot.png 0 0 400 300 -o z.png</code> - zoom a box</td>
 </tr>
+<tr>
+<td><code>herdr</code></td>
+<td>agent sessions</td>
+<td><code>herdr</code> - agents keep running; only with <code>--herdr</code></td>
+</tr>
 </tbody></table>
+<p>herdr shows the state of an agent after you run <code>herdr integration install claude</code> once. Do the same for <code>copilot</code> and <code>codex</code>. Its prefix key is <code>Ctrl + b</code>.</p>
 <p>Python in WSL is uv-managed: <code>python</code> and <code>python3</code> in <code>~/.local/bin</code> point to the uv-installed CPython 3.14 (the system <code>/usr/bin/python3</code> stays untouched for OS scripts). Node.js 26 is installed user-locally in <code>~/.local</code>. On Windows, setup installs Python 3.14 and Node.js 26 in your user profile only when they are missing, and leaves a machine-wide copy from your IT department as it is.</p>
 </div></section>
 <section class="collapsed" id="navigation">

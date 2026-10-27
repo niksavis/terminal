@@ -33,6 +33,16 @@ irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | 
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all
 ```
 
+Install herdr too, in WSL, on Linux and on macOS (from Windows, setup installs it in WSL):
+
+```powershell
+& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --herdr
+```
+
+```bash
+curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --herdr
+```
+
 Update everything, then check what is installed:
 
 ```powershell
@@ -139,6 +149,9 @@ Faster, friendlier replacements for classic commands. All are installed by `term
 | `node`       | JavaScript runtime | `node script.js` - run JS; `npm install` for packages |
 | `shellcheck` | shell linter       | `shellcheck deploy.sh` - catch script bugs            |
 | `img-zoom`   | image zoom         | `img-zoom shot.png 0 0 400 300 -o z.png` - zoom a box |
+| `herdr`      | agent sessions     | `herdr` - agents keep running; only with `--herdr`    |
+
+herdr shows the state of an agent after you run `herdr integration install claude` once. Do the same for `copilot` and `codex`. Its prefix key is `Ctrl + b`.
 
 Python in WSL is uv-managed: `python` and `python3` in `~/.local/bin` point to the uv-installed CPython 3.14 (the system `/usr/bin/python3` stays untouched for OS scripts). Node.js 26 is installed user-locally in `~/.local`. On Windows, setup installs Python 3.14 and Node.js 26 in your user profile only when they are missing, and leaves a machine-wide copy from your IT department as it is.
 
