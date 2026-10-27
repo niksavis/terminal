@@ -67,6 +67,73 @@ print -r -- "completion=${FZF_PROBE_COMPLETION:-no}"
     assert f"completion={'no' if supported else 'yes'}" in result.stdout
 
 
+HERDR_PROBE = """
+source "$ZSH_TEMPLATE"
+print -r -- "completion=${_comps[herdr]:-none}"
+print -r -- "first_fpath=${fpath[1]}"
+print -r -- "temporary_variable=${_terminal_completions-unset}"
+"""
+FAKE_HERDR = """#!/bin/sh
+echo "$*" >> "$HERDR_PROBE_CALLS"
+printf '#compdef herdr\\n_herdr() { compadd probe }\\n'
+"""
+
+
+def _start_zsh(home: Path) -> str:
+    result = subprocess.run(
+        ["zsh", "-f", "-c", HERDR_PROBE],
+        env={
+            **os.environ,
+            "HOME": str(home),
+            "ZDOTDIR": str(home),
+            "PATH": "/usr/bin:/bin",
+            "HERDR_PROBE_CALLS": str(home / "calls.txt"),
+            "ZSH_TEMPLATE": str(template_path("zshrc")),
+        },
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    return result.stdout
+
+
+def _herdr_calls(home: Path) -> list[str]:
+    calls = home / "calls.txt"
+    return calls.read_text().splitlines() if calls.exists() else []
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="requires zsh")
+def test_zsh_caches_herdr_completion_until_herdr_changes(tmp_path: Path) -> None:
+    herdr = tmp_path / ".local" / "bin" / "herdr"
+    herdr.parent.mkdir(parents=True)
+    herdr.write_text(FAKE_HERDR, encoding="utf-8")
+    herdr.chmod(0o755)
+    cache = tmp_path / ".cache" / "zsh" / "completions"
+
+    first = _start_zsh(tmp_path)
+    second = _start_zsh(tmp_path)
+    assert _herdr_calls(tmp_path) == ["completion zsh"]
+    later = (cache / "_herdr").stat().st_mtime + 60
+    os.utime(herdr, (later, later))
+    _start_zsh(tmp_path)
+
+    assert _herdr_calls(tmp_path) == ["completion zsh", "completion zsh"]
+    for output in (first, second):
+        assert "completion=_herdr" in output
+        assert f"first_fpath={cache}" in output
+        assert "temporary_variable=unset" in output
+
+
+@pytest.mark.skipif(shutil.which("zsh") is None, reason="requires zsh")
+def test_zsh_adds_no_completion_folder_without_herdr(tmp_path: Path) -> None:
+    output = _start_zsh(tmp_path)
+
+    assert "completion=none" in output
+    assert ".cache/zsh/completions" not in output
+    assert not (tmp_path / ".cache" / "zsh" / "completions").exists()
+
+
 @pytest.mark.skipif(shutil.which("wezterm") is None, reason="requires the WezTerm CLI")
 def test_wezterm_platform_and_callback_consumer_check() -> None:
     result = subprocess.run(

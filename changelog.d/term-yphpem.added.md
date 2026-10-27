@@ -1,0 +1,1 @@
+- zsh completes herdr commands with Tab when herdr is installed.

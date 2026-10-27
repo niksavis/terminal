@@ -210,6 +210,8 @@ herdr integration install codex
 
 `herdr integration status` shows which integrations are installed.
 
+zsh completes herdr commands with Tab. The first shell after a herdr install or update writes the completion file to `~/.cache/zsh/completions`.
+
 ## Command-line editing
 
 The zsh configuration uses Emacs-style readline shortcuts. These work in any terminal and are the fastest way to edit long commands without reaching for the mouse:

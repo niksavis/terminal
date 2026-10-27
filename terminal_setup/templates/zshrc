@@ -24,6 +24,15 @@ setopt EXTENDED_GLOB
 # Ensure user-local binaries are available (starship, fd, bat shims).
 export PATH="$HOME/.local/bin:$PATH"
 
+_terminal_completions="$HOME/.cache/zsh/completions"
+if command -v herdr >/dev/null 2>&1; then
+  if [[ ! -s "$_terminal_completions/_herdr" || "${commands[herdr]}" -nt "$_terminal_completions/_herdr" ]]; then
+    mkdir -p "$_terminal_completions" && herdr completion zsh >| "$_terminal_completions/_herdr"
+  fi
+  fpath=("$_terminal_completions" $fpath)
+fi
+unset _terminal_completions
+
 # Completion
 autoload -Uz compinit
 compinit -d ~/.zcompdump
