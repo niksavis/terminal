@@ -344,6 +344,22 @@ upstream reports, measured results, regression controls and remaining limits.
 Confirm the runtime renderer in WezTerm's debug overlay before a renderer change.
 A large Windows WSL working set alone does not establish memory exhaustion.
 
+### Nerd Font icons
+
+WezTerm draws Nerd Font icons with its built-in Symbols Nerd Font Mono, so you install no font. Each icon takes one column. To check it, run this in a WSL, Linux or macOS shell:
+
+```bash
+wezterm ls-fonts --text "$(printf '|\uf07b|')"
+```
+
+On Windows, run it in PowerShell:
+
+```powershell
+wezterm ls-fonts --text "|$([char]0xf07b)|"
+```
+
+The `\u{f07b}` line must show `cells=1` and `Symbols Nerd Font Mono`. Other terminals, such as the VS Code terminal or Windows Terminal, use their own font, and they can show the icon as an empty box.
+
 ### `xdg-desktop-portal` warning when starting WezTerm in WSL
 
 You may see a warning like this on WSL2 Ubuntu:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -8,7 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from terminal_setup.configs import template_path
+from terminal_setup.configs import deploy_wezterm_config, template_path
+from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo
+from terminal_setup.runner import Runner
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -132,6 +135,47 @@ def test_zsh_adds_no_completion_folder_without_herdr(tmp_path: Path) -> None:
     assert "completion=none" in output
     assert ".cache/zsh/completions" not in output
     assert not (tmp_path / ".cache" / "zsh" / "completions").exists()
+
+
+@pytest.mark.skipif(shutil.which("wezterm") is None, reason="requires the WezTerm CLI")
+def test_wezterm_draws_a_nerd_font_icon_in_one_cell(tmp_path: Path) -> None:
+    platform = PlatformInfo(
+        os=OperatingSystem.LINUX,
+        package_manager=PackageManager.UNKNOWN,
+        is_wsl_available=False,
+        is_wsl_default_debian_family=False,
+        wsl_distribution=None,
+        shell="/bin/zsh",
+        home=tmp_path,
+        wezterm_config_dir=tmp_path,
+        vscode_settings_path=None,
+    )
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+
+    result = subprocess.run(
+        [
+            "wezterm",
+            "--config-file",
+            str(tmp_path / "wezterm.lua"),
+            "ls-fonts",
+            "--text",
+            "|\uf07b|",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=60,
+    )
+
+    icon = next(line for line in result.stdout.splitlines() if "\\u{f07b}" in line)
+    assert " cells=1 " in icon
+    assert 'wezterm.font("Symbols Nerd Font Mono"' in icon
+
+
+def test_wezterm_names_only_the_mono_variant_of_a_nerd_font() -> None:
+    families = re.findall(r'"([^"\n]*Nerd Font[^"\n]*)"', template_path("wezterm.lua").read_text())
+
+    assert [family for family in families if not family.endswith("Mono")] == []
 
 
 @pytest.mark.skipif(shutil.which("wezterm") is None, reason="requires the WezTerm CLI")
