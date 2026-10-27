@@ -17,6 +17,7 @@ local wsl_default_domain = nil
 -- pane with WSL cwd semantics.
 local local_domain = { DomainName = "local" }
 local herdr_installed = __HERDR_INSTALLED__
+local wsl_default_distro = "__WSL_DEFAULT_DISTRO__"
 local wsl_startup_args = {
   "zsh",
   "-lc",
@@ -50,10 +51,12 @@ if is_windows then
     end
     config.wsl_domains = domains
 
-    local preferred = {
-      "WSL:Ubuntu-24.04",
-      "WSL:Ubuntu",
-    }
+    local preferred = {}
+    if wsl_default_distro ~= "" then
+      table.insert(preferred, "WSL:" .. wsl_default_distro)
+    end
+    table.insert(preferred, "WSL:Ubuntu-24.04")
+    table.insert(preferred, "WSL:Ubuntu")
     for _, candidate in ipairs(preferred) do
       for _, domain in ipairs(domains) do
         if domain.name == candidate then
@@ -100,7 +103,7 @@ config.launch_menu = {}
 if is_windows then
   if wsl_default_domain then
     table.insert(config.launch_menu, {
-      label = "Ubuntu (WSL)",
+      label = (wsl_default_domain:gsub("^WSL:", "")) .. " (WSL)",
       domain = { DomainName = wsl_default_domain },
       args = wsl_startup_args,
     })

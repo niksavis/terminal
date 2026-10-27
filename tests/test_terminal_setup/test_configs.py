@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 import shutil
@@ -153,6 +154,31 @@ def test_the_wezterm_launch_menu_offers_herdr_only_when_it_is_installed(
     assert f'label = "{label}"' in with_herdr
     assert "local herdr_installed = false" in without_herdr
     assert "__HERDR_INSTALLED__" not in with_herdr + without_herdr
+
+
+@pytest.mark.parametrize(
+    ("distro", "rendered"),
+    [
+        ("Debian", 'local wsl_default_distro = "Debian"'),
+        ("Ubuntu-24.04", 'local wsl_default_distro = "Ubuntu-24.04"'),
+        ('Deb"ian', 'local wsl_default_distro = ""'),
+        ("Deb\\ian", 'local wsl_default_distro = ""'),
+        (None, 'local wsl_default_distro = ""'),
+    ],
+)
+def test_wezterm_prefers_the_default_wsl_distro_that_setup_found(
+    tmp_path: Path, distro: str | None, rendered: str
+) -> None:
+    platform = dataclasses.replace(
+        make_platform(OperatingSystem.WINDOWS, tmp_path), wsl_distribution=distro
+    )
+    assert platform.wezterm_config_dir is not None
+
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+
+    content = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
+    assert rendered in content
+    assert "__WSL_DEFAULT_DISTRO__" not in content
 
 
 def test_deploy_wezterm_config_supports_optional_wsl_start_dir(tmp_path: Path) -> None:
@@ -480,7 +506,8 @@ def test_wezterm_open_config_pins_local_domain() -> None:
 def test_wezterm_wsl_launch_entry_pins_wsl_domain() -> None:
     content = template_path("wezterm.lua").read_text(encoding="utf-8")
     entry = re.search(
-        r'label = "Ubuntu \(WSL\)",\s*\n\s*domain = \{ DomainName = wsl_default_domain \},',
+        r'label = \(wsl_default_domain:gsub\("\^WSL:", ""\)\) \.\. " \(WSL\)",\s*\n'
+        r"\s*domain = \{ DomainName = wsl_default_domain \},",
         content,
     )
     assert entry is not None, "WSL launch entry does not pin the WSL domain"

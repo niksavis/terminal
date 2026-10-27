@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import sys
@@ -17,6 +18,8 @@ CHEAT_SHEET_PATH = _REPO_ROOT / "terminal-cheat-sheet.html"
 IMG_ZOOM_SOURCE = _REPO_ROOT / "terminal_setup" / "img_zoom_tool"
 _WSL_START_DIR_PLACEHOLDER = "__WSL_START_DIR__"
 _HERDR_PLACEHOLDER = "__HERDR_INSTALLED__"
+_WSL_DEFAULT_DISTRO_PLACEHOLDER = "__WSL_DEFAULT_DISTRO__"
+_WSL_DISTRO_NAME = re.compile(r"[A-Za-z0-9._-]+")
 
 
 def template_path(name: str) -> Path:
@@ -25,6 +28,12 @@ def template_path(name: str) -> Path:
 
 def _escape_for_lua_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _lua_wsl_distro(name: str | None) -> str:
+    if name is None or _WSL_DISTRO_NAME.fullmatch(name) is None:
+        return ""
+    return name
 
 
 _WSL_START_DIR_FORBIDDEN = ('"', "`", "$(", "\\", "\n")
@@ -72,6 +81,7 @@ def deploy_wezterm_config(
             _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
         )
         .replace(_HERDR_PLACEHOLDER, "true" if herdr else "false")
+        .replace(_WSL_DEFAULT_DISTRO_PLACEHOLDER, _lua_wsl_distro(platform.wsl_distribution))
     )
     runner.write_text(destination, rendered)
 
