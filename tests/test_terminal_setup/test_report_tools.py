@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
+
+import pytest
 
 from terminal_setup import cli
 from terminal_setup.agents import present_query
@@ -191,10 +194,32 @@ def test_setup_installs_a_herdr_integration_only_for_each_named_agent() -> None:
     with mock.patch.object(cli.agents, "is_running_in_wsl", return_value=False):
         cli.agents.ensure_herdr_integrations(runner, _windows_platform(), ("codex", "claude"))
 
+    install = (
+        'mkdir -p "$HOME/.$1" && PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH" '
+        'exec herdr integration install "$1"'
+    )
     assert runner.commands == [
-        _herdr_argv("integration", "install", "claude"),
-        _herdr_argv("integration", "install", "codex"),
+        wsl_exec_command("Ubuntu", ["sh", "-c", install, "herdr", "claude"]),
+        wsl_exec_command("Ubuntu", ["sh", "-c", install, "herdr", "codex"]),
     ]
+
+
+@pytest.mark.skipif(shutil.which("sh") is None, reason="requires sh")
+def test_the_herdr_integration_step_creates_a_missing_agent_folder(tmp_path: Path) -> None:
+    bin_dir = tmp_path / ".local" / "bin"
+    bin_dir.mkdir(parents=True)
+    fake = bin_dir / "herdr"
+    fake.write_text('#!/bin/sh\ntest -d "$HOME/.copilot" && echo "$*" > "$HOME/calls.txt"\n')
+    fake.chmod(0o755)
+    command = cli.agents._herdr_command(
+        replace(_windows_platform(), os=cli.platform.OperatingSystem.LINUX),
+        "copilot",
+        script=cli.agents._HERDR_INTEGRATION_INSTALL,
+    )
+
+    subprocess.run(command, env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"}, check=True)
+
+    assert (tmp_path / "calls.txt").read_text() == "integration install copilot\n"
 
 
 def test_the_report_shows_each_herdr_integration_state() -> None:

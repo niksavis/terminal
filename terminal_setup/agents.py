@@ -34,6 +34,10 @@ CODEX_INSTALL_PS1 = "irm https://chatgpt.com/codex/install.ps1 | iex"
 CODEX_NON_INTERACTIVE = "CODEX_NON_INTERACTIVE=1"
 _LOCAL_PATH = 'PATH="$HOME/.local/bin:$PATH"; '
 _HERDR_RUN = 'PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; exec herdr "$@"'
+_HERDR_INTEGRATION_INSTALL = (
+    'mkdir -p "$HOME/.$1" && PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH" '
+    'exec herdr integration install "$1"'
+)
 
 
 def parse_agents(value: str) -> tuple[str, ...]:
@@ -180,8 +184,8 @@ def ensure_agents(
             )
 
 
-def _herdr_command(platform: PlatformInfo, *arguments: str) -> list[str]:
-    command = ["sh", "-c", _HERDR_RUN, "herdr", *arguments]
+def _herdr_command(platform: PlatformInfo, *arguments: str, script: str = _HERDR_RUN) -> list[str]:
+    command = ["sh", "-c", script, "herdr", *arguments]
     if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
         command = wsl_exec_command(_wsl_distro(platform), command)
     return command
@@ -198,7 +202,9 @@ def ensure_herdr_integrations(
             runner,
             label,
             partial(
-                runner.run, _herdr_command(platform, "integration", "install", agent), label=label
+                runner.run,
+                _herdr_command(platform, agent, script=_HERDR_INTEGRATION_INSTALL),
+                label=label,
             ),
         )
 
