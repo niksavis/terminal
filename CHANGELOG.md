@@ -8,7 +8,8 @@ Delta: v0.17.1..v0.18.0
 
 ### Highlights
 
-- **Setup can install herdr.** herdr keeps coding agents running in terminals that stay alive after the window closes, and it shows whether each agent is working, blocked or idle. Add `--herdr` to install it in WSL, on Linux and on macOS. Setup does not install it on the Windows host. When herdr is installed, the WezTerm launch menu has a **herdr (WSL)** entry on Windows and a **herdr** entry on Linux and macOS (term-ffbqpz).
+- **Setup can install herdr.** herdr keeps coding agents running in terminals that stay alive after the window closes, and it shows whether each agent is working, blocked or idle. Add `--herdr` to install it in WSL, on Linux and on macOS. Setup does not install it on the Windows host. When herdr is installed, the WezTerm launch menu has a **herdr (WSL)** entry on Windows and a **herdr** entry on Linux and macOS. To show the agent state, run `herdr integration install claude` once for each agent, as the user guide shows (term-ffbqpz).
+- **The docs use v0.18.0 in the fixed-release examples** (term-pj2cil).
 
 ### Commit delta (auto-generated)
 

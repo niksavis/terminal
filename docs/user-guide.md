@@ -12,7 +12,7 @@ A rerun is safe. A missing tool installs, and a tool at its latest release is sk
 
 The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options.
 
-Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.17.0`.
+Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.18.0`.
 
 ## Install, update and check
 
@@ -52,7 +52,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 Run from Windows, these commands set up the Windows host and the default WSL distro together.
 
-With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.17.0.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
+With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.18.0.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
 
 ## Unattended install for scripts and agents
 
@@ -200,6 +200,16 @@ WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`
 
 Start it from the WezTerm launch menu, **herdr (WSL)** on Windows, or run `herdr` in a shell. herdr runs inside WezTerm and does not replace it. Your zsh and the starship prompt run in each herdr pane. herdr does the job of tmux for agent sessions, so use one of the two in a window, not both. The herdr prefix key is `Ctrl + b`. It does not clash with the tmux prefix `Ctrl + Space` or the WezTerm leader `Ctrl + Shift + Space`.
 
+To show the state of an agent, herdr needs its integration. Setup does not install it. Run this once for each agent that you use, in the shell where herdr runs:
+
+```bash
+herdr integration install claude
+herdr integration install copilot
+herdr integration install codex
+```
+
+`herdr integration status` shows which integrations are installed.
+
 ## Command-line editing
 
 The zsh configuration uses Emacs-style readline shortcuts. These work in any terminal and are the fastest way to edit long commands without reaching for the mouse:
@@ -280,7 +290,7 @@ Add options to any setup command. Each command below runs as copied, without a c
 
 - PowerShell: `& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --dry-run`
 - WSL, Linux, macOS: `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --dry-run`
-- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.17.0.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
+- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.18.0.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
 - In a clone: `uv run python setup-terminal.py --dry-run`
 
 | Option | What it does |
