@@ -1,0 +1,1 @@
+- Set the Claude Code statusline in WSL on a fresh install: the WSL step now finds the jq that setup installs in ~/.local/bin.

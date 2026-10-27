@@ -382,6 +382,7 @@ def _claude_wsl_install_script(source: str, *, nerdfont: bool) -> str:
 
     command = _claude_statusline_command(nerdfont=nerdfont)
     return (
+        'PATH="$HOME/.local/bin:$PATH"; '
         'claude="$HOME/.claude"; '
         '[ -d "$claude" ] || { echo "Claude Code not detected ($claude missing); '
         'skipping status line."; exit 0; }; '

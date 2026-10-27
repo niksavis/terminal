@@ -1258,3 +1258,35 @@ def test_scripted_claude_steps_print_labels_not_scripts(
     assert "wsl -d Ubuntu --exec sh: install the Claude Code status line" in out
     assert "wsl -d Ubuntu --exec sh: install the img-zoom skill" in out
     assert "wsl -d Ubuntu --exec sh: install the basicly cli-tools skills" in out
+
+
+@_posix_only
+def test_wsl_status_line_uses_the_jq_that_setup_installs_in_local_bin(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    local_bin = home / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    fake_jq = local_bin / "jq"
+    fake_jq.write_text('#!/bin/sh\nprintf \'{"statusLine": "set"}\'\n')
+    fake_jq.chmod(0o755)
+    system_bin = tmp_path / "bin"
+    system_bin.mkdir()
+    for tool in ("cp", "mv", "rm", "mktemp", "cat"):
+        found = shutil.which(tool)
+        assert found is not None
+        (system_bin / tool).symlink_to(found)
+    script = configs_module._claude_wsl_install_script(
+        str(template_path("statusline.sh")), nerdfont=True
+    )
+
+    result = subprocess.run(
+        [shutil.which("sh") or "sh", "-c", script],
+        env={"HOME": str(home), "PATH": str(system_bin)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "jq not found" not in result.stdout
+    assert json.loads((home / ".claude" / "settings.json").read_text()) == {"statusLine": "set"}
