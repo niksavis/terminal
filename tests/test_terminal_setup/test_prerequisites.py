@@ -1728,3 +1728,60 @@ def test_wezterm_location_names_the_user_install(tmp_path: Path) -> None:
     platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
 
     assert prerequisites_module.wezterm_location(cast(Runner, SpyRunner()), platform) == str(gui)
+
+
+@pytest.mark.parametrize(
+    ("manager", "command"),
+    [
+        (PackageManager.APT, "sudo apt-get install -y zsh tmux git curl wget"),
+        (PackageManager.PACMAN, "sudo pacman -S --noconfirm zsh tmux git curl wget"),
+        (PackageManager.DNF, "sudo dnf install -y zsh tmux git curl wget"),
+    ],
+)
+def test_no_sudo_skips_the_shell_tools_and_prints_their_install_command(
+    manager: PackageManager, command: str
+) -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager), no_sudo=True
+    )
+
+    assert runner.commands == []
+    assert any(command in message for _, message in runner.reporter.messages)
+
+
+def test_no_sudo_still_installs_the_shell_tools_with_homebrew() -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner),
+        make_platform(OperatingSystem.MACOS, PackageManager.HOMEBREW),
+        no_sudo=True,
+    )
+
+    assert _installed_packages(runner.commands, PackageManager.HOMEBREW) == [
+        "zsh",
+        "tmux",
+        "git",
+        "curl",
+        "wget",
+    ]
+
+
+@pytest.mark.parametrize("manager", [PackageManager.PACMAN, PackageManager.DNF])
+def test_no_sudo_installs_wezterm_as_the_appimage_on_pacman_and_dnf(
+    manager: PackageManager,
+) -> None:
+    runner = SpyRunner()
+
+    with (
+        mock.patch.object(runner, "which", create=True, return_value=None),
+        mock.patch("terminal_setup.prerequisites._ensure_wezterm_appimage") as appimage,
+    ):
+        prerequisites_module.ensure_wezterm(
+            cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager), no_sudo=True
+        )
+
+    appimage.assert_called_once()
+    assert runner.commands == []

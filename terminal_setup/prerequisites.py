@@ -180,6 +180,9 @@ def check_all(platform: PlatformInfo, runner: Runner) -> list[PrerequisiteStatus
     return statuses
 
 
+SUDO_PACKAGE_MANAGERS = frozenset({PackageManager.APT, PackageManager.PACMAN, PackageManager.DNF})
+
+
 def install_package(
     runner: Runner,
     package_manager: PackageManager,
@@ -216,12 +219,7 @@ def install_package(
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
 
-    interactive = package_manager in {
-        PackageManager.APT,
-        PackageManager.PACMAN,
-        PackageManager.DNF,
-    }
-    runner.run(command, interactive=interactive)
+    runner.run(command, interactive=package_manager in SUDO_PACKAGE_MANAGERS)
 
 
 def _package_install_command(package_manager: PackageManager, package: str) -> list[str]:
@@ -1712,7 +1710,7 @@ def _ensure_windows_command_in_path(
     return False
 
 
-def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_shell_tools(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
     if platform.os == OperatingSystem.WINDOWS:
         return
     packages = {
@@ -1721,6 +1719,14 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
         PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget"],
         PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget"],
     }
+    if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
+        names = packages[platform.package_manager]
+        command = [*_package_install_command(platform.package_manager, names[0])[:-1], *names]
+        runner.reporter.warn(
+            "--no-sudo requested: skipping the shell tools. To install them, run: "
+            + shlex.join(command)
+        )
+        return
     if platform.package_manager == PackageManager.APT:
         update_packages(runner, PackageManager.APT)
     for package in packages.get(platform.package_manager, []):
@@ -2112,14 +2118,13 @@ def ensure_wezterm(
         return
     if platform.os != OperatingSystem.LINUX:
         return
-    if platform.package_manager == PackageManager.APT:
-        if no_sudo:
-            runner.reporter.info(
-                "--no-sudo requested: skipping WezTerm apt repo and using AppImage fallback."
-            )
-            _ensure_wezterm_appimage(runner)
-        else:
-            _ensure_wezterm_apt(runner)
+    if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
+        runner.reporter.info(
+            "--no-sudo requested: skipping the package manager and using the WezTerm AppImage."
+        )
+        _ensure_wezterm_appimage(runner)
+    elif platform.package_manager == PackageManager.APT:
+        _ensure_wezterm_apt(runner)
     elif platform.package_manager == PackageManager.PACMAN:
         install_package(runner, PackageManager.PACMAN, "wezterm")
     elif platform.package_manager == PackageManager.DNF:

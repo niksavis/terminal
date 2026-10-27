@@ -568,7 +568,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 partial(prerequisites.ensure_wsl_cli_extras, runner, platform_info),
             )
         else:
-            prerequisites.ensure_shell_tools(runner, platform_info)
+            prerequisites.ensure_shell_tools(runner, platform_info, no_sudo=effective_no_sudo)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
         if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:

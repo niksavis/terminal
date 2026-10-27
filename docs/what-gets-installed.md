@@ -204,7 +204,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 | Tool | WSL distro | Windows host | Linux host (default) | macOS host |
 | --- | --- | --- | --- | --- |
-| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin`. With `--system-install`: the WezTerm apt repository | release zip into `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Skipped when `wezterm` is on PATH, in `C:\Program Files\WezTerm`, or installed by winget | apt (the WezTerm apt repository). With `--no-sudo`, or when the repository fails: the nightly AppImage into `~/.local/bin`. Also pacman or dnf | Homebrew cask |
+| WezTerm | ✗ from Windows. Inside WSL, when it is missing: the nightly AppImage into `~/.local/bin`. With `--system-install`: the WezTerm apt repository | release zip into `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Skipped when `wezterm` is on PATH, in `C:\Program Files\WezTerm`, or installed by winget | apt (the WezTerm apt repository), pacman or dnf. With `--no-sudo`, or when the apt repository fails: the nightly AppImage into `~/.local/bin` | Homebrew cask |
 | starship | release into `~/.local/bin` (from Windows), vendor installer into `~/.local/bin` (inside WSL) | release into `%LOCALAPPDATA%\Programs\terminal-tools\bin` | vendor installer into `~/.local/bin` | Homebrew |
 | zsh, tmux, tree | apt, as root | ✗ | package manager | Homebrew |
 | git, curl, wget | must be present | ✗ | must be present | must be present |
@@ -224,7 +224,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
 
-On Linux outside WSL, `--no-sudo` puts lazygit into `~/.local/bin`, installs WezTerm as the AppImage on apt, and skips the default shell change. Setup still uses sudo for the package manager: it installs zsh, tmux, git, curl and wget, and WezTerm on pacman or dnf.
+On Linux outside WSL, `--no-sudo` makes setup run no sudo command. It skips the package-manager tools and prints the command that installs zsh, tmux, git, curl and wget. It puts lazygit into `~/.local/bin`, installs WezTerm as the nightly AppImage into `~/.local/bin`, and skips the default shell change.
 
 To see where each tool and agent is, run setup with `--only report`. It prints the path of each one.
 
