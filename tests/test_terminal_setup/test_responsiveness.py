@@ -235,6 +235,11 @@ def test_wezterm_platform_and_callback_consumer_check() -> None:
             'wezterm.background_child_process({"git", "status"}) end)',
             "blocking callback operation: background_child_process",
         ),
+        (
+            "if not is_windows then "
+            'wezterm.on("new-tab-button-click", function() return false end) end',
+            "native builds must keep the default new tab button",
+        ),
     ],
 )
 def test_wezterm_check_rejects_unsafe_template_changes(

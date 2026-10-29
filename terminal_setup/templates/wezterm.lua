@@ -28,7 +28,7 @@ local function basename(path)
   if not path or path == "" then
     return ""
   end
-  return path:gsub("^.*[\\/]", "")
+  return (path:gsub("[\\/]+$", ""):gsub("^.*[\\/]", ""))
 end
 
 local function pane_cwd_basename(pane)
@@ -291,6 +291,13 @@ if is_windows and wsl_default_domain then
     cwd = home_dir,
     args = wsl_startup_args,
   })
+  wezterm.on("new-tab-button-click", function(window, pane, button)
+    if button ~= "Left" then
+      return
+    end
+    window:perform_action(new_tab_action, pane)
+    return false
+  end)
 end
 
 local workspace_launcher_action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" })
