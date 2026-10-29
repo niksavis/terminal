@@ -1,1 +1,0 @@
-- In WezTerm on Windows, the tab-bar `+` button opens a WSL tab in your home folder, the same as Ctrl+Shift+T. Before, it failed with a WSL `chdir` error when the active WSL pane reported its folder as `//wsl.localhost/...`. The status bar now also shows the folder name when the path ends with a slash.

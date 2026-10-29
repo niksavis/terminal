@@ -1,1 +1,0 @@
-- Upgrade basicly to v0.32.0, the harness that the repo and the `cli-tools` skill install use.

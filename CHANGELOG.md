@@ -2,6 +2,26 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.20.0 - 2026-10-29
+
+Delta: v0.19.1..v0.20.0
+
+### Highlights
+
+- **The WezTerm `+` button opens a WSL tab on Windows.** It opens a WSL tab in your home folder, the same as Ctrl+Shift+T. Before, it failed with a WSL `chdir` error when the active WSL pane reported its folder as `//wsl.localhost/...`. The status bar now shows the folder name also when the path ends with a slash (term-nuzi5i).
+- **The `cli-tools` skill comes from basicly v0.32.0.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.32.0 release (term-jxrndt).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-fqdvf6) (3bd001d)
+- test(zsh): keep the parent fpath out of the herdr completion probe (term-2e6fb3) (59b1dab)
+- feat(kit): upgrade basicly to the current release (term-jxrndt) (a8ba671)
+- fix(wezterm): open the wsl home tab from the new tab button on windows (term-nuzi5i) (02c1e31)
+- chore(tracker): add the retro to the session handover (term-p4b5z) (a07f3fa)
+- chore(tracker): close the session retro record (term-mt5eqv) (8b41283)
+- docs(release): run the e2e test before the tag and name the clone run command (term-mt5eqv) (eed2ae4)
+- chore(tracker): close the release and record the session handover (term-yu3cgd) (ab974b4)
+
 ## v0.19.1 - 2026-10-27
 
 Delta: v0.19.0..v0.19.1
