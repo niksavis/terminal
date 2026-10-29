@@ -1,0 +1,47 @@
+# Worktree lifecycle
+
+## Steps
+
+1. **Create.** The worktree gets the branch `harness/<name>`, from `[worktree].base_branch` in `basicly.toml` or the current branch.
+   It gets its own `.venv` (`uv sync`) and its own `node_modules`.
+   The `node_modules` tree is copied from a checkout with an identical `package-lock.json`, else it comes from `npm install`.
+   Neither tree is a symlink to the main checkout, so cleanup is safe.
+   The command installs the repository's git hooks for every stage and refuses success when provisioning fails.
+   It never reads or copies dotenv files. Names must be one portable path component.
+   Failed provisioning retains the checkout, branch and session: inspect them, preserve any work, then use `cleanup` before recreating the lane.
+   It refuses when `[worktree].concurrency` is reached. Read the configured value.
+2. **Work.** Do the change in the worktree. Its hooks gate each commit as on the main checkout.
+3. **Merge.** Under `basicly loop`, the build-to-verify advance merges for you.
+   Use `merge` or `merge-queue` only for a worktree that the loop does not drive.
+4. **Clean up.** `cleanup` removes the worktree, prunes the registry, and deletes `harness/<name>` when it is merged.
+   It keeps an unmerged branch unless you pass `--force`. It never touches the base branch.
+   It refuses locked checkouts even with `--force`; finish the active session and explicitly unlock the checkout first.
+   Unknown ignored files and tracked changes under dependency paths stop ordinary cleanup. Only untracked or ignored dependency directories, the tracker redirect, and the named verify counters, run artifact and their ignore marker are disposable generated output.
+   It can reclaim a worktree whose directory is gone.
+
+## Hooks
+
+A linked worktree's `.git` is a file. Git resolves its hooks to the shared common directory.
+Provisioning installs the hooks there, so a plain `git commit` in the worktree runs every gate.
+
+A relative override such as `git -c core.hooksPath=.git/hooks commit` resolves inside the worktree.
+There `.git/hooks` does not exist, so git skips pre-commit, commit-msg and the record id check.
+The commit looks clean, and the defect shows only on a later commit.
+To see where hooks resolve, read the path:
+
+```sh
+git rev-parse --git-path hooks
+```
+
+## Claude Code
+
+The Claude Code setting `worktree.bgIsolation` (on by default) moves a background agent into `.claude/worktrees/`.
+That conflicts with sibling worktrees. Run this once per repository to set it to `none`:
+
+```sh
+basicly worktree bg-isolation
+```
+
+The command writes the committed `.claude/settings.json`, so it asks for consent. `--yes` gives that consent.
+
+Codex and Copilot have no equivalent setting.

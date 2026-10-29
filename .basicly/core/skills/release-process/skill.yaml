@@ -27,14 +27,6 @@ instructions: |
 
   If either is missing, stop and follow the repository's own release document.
 
-  The command also needs a single-sourced `__version__ = "X.Y.Z"` line and the release scripts. The dry run refuses without them, with one of these messages:
-
-  - `no __version__ = "X.Y.Z" line found in ...`
-  - `changelog generator missing: ...`
-  - `release-note gate missing: ...`
-
-  On any of these, stop and follow the repository's own release document.
-
   ## 2. Write the notes
 
   - Each change leaves its entry in `changelog.d/<record-id>.<category>.md`. The categories are `added`, `changed`, `deprecated`, `removed`, `fixed` and `security`. One file per change means that two lanes never collide on one anchor.
@@ -43,25 +35,9 @@ instructions: |
 
   The release folds each fragment into `## [Unreleased]` under its Keep a Changelog heading, sorted by category and then by file name. It moves that body into the dated `## vX.Y.Z - <date>` section, deletes the fragments in the same commit, and leaves `[Unreleased]` empty.
 
-  The command refuses before the first write, and names the file, when it finds:
+  ## 3. Wait for green CI
 
-  - an empty fragment;
-  - a file name that is not `<record-id>.<category>.md`;
-  - fragments and no `## [Unreleased]` heading;
-  - an `[Unreleased]` section that `carries no summary above its first ### heading`.
-
-  ## 3. Exercise every declared check
-
-  The command refuses a tag while a `[[verify.checks]]` entry in `basicly.toml` has no recorded run. Only `basicly verify` records a run. A fresh clone has no records, so it refuses the tag until the gates have run.
-
-  A check gets its record only from a mode that declares it. One mode is not enough:
-
-  ```sh
-  uv run basicly verify --mode full
-  uv run basicly verify --mode fast
-  ```
-
-  Read `[[verify.checks]]` for a check that only the `staged` mode declares.
+  Cut only from a commit whose CI run on the release branch passed. A red or still running build is a stop.
 
   ## 4. Choose the version and run the dry run
 
@@ -71,28 +47,11 @@ instructions: |
   uv run basicly release <version> --issue <record-id> --dry-run
   ```
 
-  The dry run writes nothing and reports every refusal at once. It lists the fragments in the order they assemble. It refuses on:
+  The dry run writes nothing and reports every refusal at once, each with the file or value it names. [refusals](references/refusals.md) lists them.
 
-  - a dirty tree;
-  - a version that does not move forward;
-  - a tag that already exists;
-  - a `--date` that is not `YYYY-MM-DD`;
-  - an `--issue` id that the committed ledger does not hold;
-  - a linked worktree, because tags are shared with the primary checkout.
+  A page under `docs/tutorial/` that names the current version as the one it was recorded against is rewritten to the new version by the release. A page that names any other version refuses: walk it against a build of this checkout and fix it first.
 
-  **When the repository has a recorded tutorial, keep this order.** The dry run refuses a page under `docs/tutorial/` that names the old version as the one it was recorded against:
-
-  1. Run `basicly verify` in each mode first. Its tests require the page to name the released version.
-  2. Walk the page against a build of this checkout, and fix every quoted output that differs.
-  3. Edit the recorded version on the page, and leave that edit uncommitted. The commit gate refuses it, and the release lets a dirty `docs/tutorial/` path into the release commit.
-  4. In the scratch clone below, run `verify` before you copy the edit in, and do not set a local `user.name`: a holder test fails when the checkout sets one.
-
-  IMPORTANT: the dry run checks preconditions, not the commit gates. The release commit changes the tree, and only the commit gates see that tree. Before you give the command to anyone, prove the release in a scratch clone:
-
-  1. Clone the repository and run `uv sync --group dev`. When this is basicly itself, run `uv run python src/basicly/lefthook_artifacts.py --download`, or use `--from-dir <artifacts>` for supplied archives. Copy any `node_modules` that the hooks need.
-  2. Run the release in the clone.
-  3. Run `git add -A`, then `uv run --no-project --no-python-downloads python .basicly/core/hooks/lefthook-runtime.py git pre-commit`. Inspect the index and working tree for mechanical fixes before tagging.
-  4. Run the whole test suite. A test fixed in a later commit never reaches the tag.
+  The dry run checks preconditions, not the commit gates on the release tree. Find out whether the tag workflow runs the full checks before it publishes; in basicly it does, and a failed tag stays unpublished until the next patch. When the tag workflow does not, run the full checks on the release commit before you push the tag.
 
   ## 5. Cut the release
 
@@ -116,3 +75,5 @@ instructions: |
   ```
 
   When a workflow publishes from the tag push, it reads `CHANGELOG.md` from the tagged commit. Confirm that the workflow run is green and that the release page matches the summary. Never edit the release page after publication. A page that disagrees with its changelog section is a defect.
+
+  When a tag push is blocked by the Claude auto-mode classifier, read [auto-mode](references/auto-mode.md).

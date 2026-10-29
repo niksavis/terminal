@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 107
-  codex: 106
-  copilot: 107
+  claude: 163
+  codex: 163
+  copilot: 163
 id: code-is-authoritative
 description: Keep prose out of code files, because the code is the only source of truth.
 category: design
@@ -16,6 +16,8 @@ tags:
 status: active
 title: Code Is Authoritative
 body: |
-  IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a lint or a type check, and do not bypass a hook (`--no-verify`, `--no-gpg-sign`). Fix the cause.
+  IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a lint or a type check, and do not bypass a hook (`--no-verify`, `--no-gpg-sign`) unless the user explicitly requests observer repair. Fix the cause.
 
-  - Never add prose to code: no comment and no docstring. Keep tool directives (example: `noqa`) and licence headers. The `no-comments` hook enforces the ban. Before a code edit, read `.agents/skills/no-comments/SKILL.md`.
+  - For observer repair, work outside the harness controller; run affected checks directly and report bypasses and unfinished verification. Describe bypassed checks as bypassed, never as passing.
+
+  - Never add prose to code: no comment and no docstring. Keep tool directives (example: `noqa`) and licence headers. The `no-comments` hook enforces the ban. Use `no-comments` for enforcement details.

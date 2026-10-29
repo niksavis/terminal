@@ -10,7 +10,8 @@ covers:
 instructions: |
   # Worktree Isolation
 
-  This skill runs a unit of work in a sibling git worktree with `basicly worktree`.
+  Isolate a unit of work in a sibling Git worktree. Ordinary Git is sufficient;
+  `basicly worktree` is an optional provisioning and landing convenience.
   It covers placement, provisioning, merge and cleanup.
   For tracker records see `work-tracker`. For commits see the git reference of `cli-tools` and `conventional-commits`.
 
@@ -19,8 +20,8 @@ instructions: |
   - **Isolate every non-trivial change.** This includes multi-file work, work that runs the gates, and work parallel to another track.
   - **Skip isolation for a trivial edit, such as a typo.** A worktree has a real setup cost.
   - **Put the worktree at the sibling path `<repo>.worktrees/<name>`.** The sibling checkout stays outside repository scans. Git hooks share the common Git directory regardless of checkout placement.
-  - **Never pass `-c core.hooksPath=...` in a worktree.** A relative path skips every hook with no message.
-  - **Do not resolve a merge conflict by hand.** A conflict means the scopes missed a coupling, so the lane applies its intent again on the new base.
+  - **Avoid accidental hook bypasses.** A relative `core.hooksPath` can silently skip hooks. For explicit user-requested observer repair, use a command-scoped bypass, run affected checks directly and disclose what did not run. Never disable hooks permanently.
+  - **Resolve conflicts against the whole task intent.** Inspect both changes, preserve unrelated work and rerun affected checks; do not restart the plan merely because branches coupled.
   - **Run merge commands from the base checkout.** Git refuses to update a branch that another worktree has checked out.
 
   ## Protected destinations
@@ -34,7 +35,7 @@ instructions: |
   The CLI cannot escalate itself. Preserve dotenv denials, normal hooks, signing and loop checkpoints; do not broaden a machine profile.
   Read the retry result and verify the repository state before continuing the loop.
 
-  ## Lifecycle
+  ## Create and finish a worktree
 
   ```sh
   basicly worktree create <name> [--base <branch>]           # add and provision
@@ -44,46 +45,8 @@ instructions: |
   basicly worktree cleanup <name> [--force]                   # remove the worktree and its merged branch
   ```
 
-  1. **Create.** The worktree gets the branch `harness/<name>`, from `[worktree].base_branch` in `basicly.toml` or the current branch.
-     It gets its own `.venv` (`uv sync`) and its own `node_modules`.
-     The `node_modules` tree is copied from a checkout with an identical `package-lock.json`, else it comes from `npm install`.
-     Neither tree is a symlink to the main checkout, so cleanup is safe.
-     The command installs the repository's git hooks for every stage and refuses success when provisioning fails.
-     It never reads or copies dotenv files. Names must be one portable path component.
-     Failed provisioning retains the checkout, branch and session: inspect them, preserve any work, then use `cleanup` before recreating the lane.
-     It refuses when `[worktree].concurrency` is reached. Read the configured value.
-  2. **Work.** Do the change in the worktree. Its hooks gate each commit as on the main checkout.
-  3. **Merge.** Under `basicly loop`, the build-to-verify advance merges for you.
-     Use `merge` or `merge-queue` only for a worktree that the loop does not drive.
-  4. **Clean up.** `cleanup` removes the worktree, prunes the registry, and deletes `harness/<name>` when it is merged.
-     It keeps an unmerged branch unless you pass `--force`. It never touches the base branch.
-     It refuses locked checkouts even with `--force`; finish the active session and explicitly unlock the checkout first.
-     Unknown ignored files and tracked changes under dependency paths stop ordinary cleanup. Only untracked or ignored dependency directories, the tracker redirect, and the named verify counters, run artifact and their ignore marker are disposable generated output.
-     It can reclaim a worktree whose directory is gone.
+  Use `create` when the work commits: it provisions `.venv`, `node_modules` and the hooks, and a plain `git worktree add` leaves them missing, so the first commit fails. A plain `git worktree add ../<repo>.worktrees/<name> -b <branch>` suits read-only work.
 
-  ## Hooks
+  Inspect existing branches and worktrees first; do not replace or discard another session's work. Integrate from the base checkout and preserve shared tracker history.
 
-  A linked worktree's `.git` is a file. Git resolves its hooks to the shared common directory.
-  Provisioning installs the hooks there, so a plain `git commit` in the worktree runs every gate.
-
-  A relative override such as `git -c core.hooksPath=.git/hooks commit` resolves inside the worktree.
-  There `.git/hooks` does not exist, so git skips pre-commit, commit-msg and the record id check.
-  The commit looks clean, and the defect shows only on a later commit.
-  To see where hooks resolve, read the path:
-
-  ```sh
-  git rev-parse --git-path hooks
-  ```
-
-  ## Claude Code
-
-  The Claude Code setting `worktree.bgIsolation` (on by default) moves a background agent into `.claude/worktrees/`.
-  That conflicts with sibling worktrees. Run this once per repository to set it to `none`:
-
-  ```sh
-  basicly worktree bg-isolation
-  ```
-
-  The command writes the committed `.claude/settings.json`, so it asks for consent. `--yes` gives that consent.
-
-  Codex and Copilot have no equivalent setting.
+  For each lifecycle step, cleanup refusals, how hooks resolve in a linked worktree and the Claude Code background isolation setting, read [lifecycle](references/lifecycle.md).

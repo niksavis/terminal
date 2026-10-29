@@ -110,7 +110,7 @@ Setup does not change VS Code settings on Linux or macOS.
 | Python 3.14, the newest 3.14 patch that uv knows | Python |
 | Node.js 26, the newest 26.x release on nodejs.org, checked against `SHASUMS256.txt` | Node.js |
 | The version that the distro or Homebrew publishes | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1 (WSL), and the CLI tools on Linux outside WSL |
-| Fixed in this repository | img-zoom 0.1.0, the basicly `cli-tools` skill from the published basicly v0.29.0 wheel |
+| Fixed in this repository | img-zoom 0.1.0, the basicly `cli-tools` skill from the published basicly v0.32.0 wheel |
 
 A rerun installs a missing tool and skips a current tool. For a tool that is older than its latest release, setup prints a line and changes nothing. Add `--update` to install the latest release. To see what is installed, run `--only report`. For a fixed version, pin the setup itself with a release tag, for example `TERMINAL_SETUP_REF=v0.19.1`. A pinned setup still installs the latest release of each tool.
 

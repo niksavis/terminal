@@ -9,6 +9,7 @@ import subprocess  # nosec B404
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 
 class MissingRuntimeError(ValueError):
@@ -149,6 +150,20 @@ def runtime_module(name: str):
     return module
 
 
+def _snapshot(
+    manager: str, stage: str, root: Path, directory: Path, env: dict[str, str]
+) -> tuple[Any, Path]:
+    if manager != "git" or stage not in ("pre-commit", "pre-push"):
+        return None, root
+    module = runtime_module("staged-snapshot")
+    pushed = module.pushed_commit(env.get("BASICLY_PUSH_REFS", "")) if stage == "pre-push" else None
+    if stage == "pre-push" and not pushed:
+        return None, root
+    state = module.prepare(root, directory, pushed)
+    env.update(state.env)
+    return ((module, state) if stage == "pre-commit" else None), state.tree
+
+
 def launch(manager: str, stage: str, arguments: list[str]) -> int:
     root = project_root()
     suffix = ".exe" if os.name == "nt" else ""
@@ -164,19 +179,14 @@ def launch(manager: str, stage: str, arguments: list[str]) -> int:
     agent = manager != "git"
     name = stage if not agent else f"basicly-{manager}-{stage}"
     raw = sys.stdin.buffer.read() if agent or stage == "pre-push" else None
+    if stage == "pre-push" and raw is not None:
+        env["BASICLY_PUSH_REFS"] = raw.decode("utf-8", "replace")
     if not agent:
         foreign_code = run_foreign_hook(root, arguments, raw)
         if foreign_code:
             return foreign_code
     with tempfile.TemporaryDirectory(prefix="basicly-hook-") as directory:
-        snapshot_state = None
-        run_root = root
-        if manager == "git" and stage == "pre-commit":
-            module = runtime_module("staged-snapshot")
-            state = module.prepare(root, Path(directory))
-            snapshot_state = (module, state)
-            run_root = state.tree
-            env.update(state.env)
+        snapshot_state, run_root = _snapshot(manager, stage, root, Path(directory), env)
         result_path = Path(directory) / "result.json"
         env["BASICLY_HOOK_RESULT"] = str(result_path)
         command = [str(binary), "run", name, "--no-auto-install", "--no-tty"]

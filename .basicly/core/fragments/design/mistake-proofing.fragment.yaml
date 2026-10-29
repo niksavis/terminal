@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 107
-  codex: 107
-  copilot: 107
+  claude: 86
+  codex: 86
+  copilot: 86
 id: mistake-proofing
 description: Design every interface so a wrong use cannot happen or stops at once, instead of documenting how to avoid it.
 category: design
@@ -16,7 +16,6 @@ tags:
 status: active
 title: Mistake Proofing
 body: |
-  - Make wrong use impossible, or refuse wrong input by name before damage and give the correct command. Never return a default or empty success.
-  - Default to safe behaviour. A mode that can damage shared state needs an explicit flag.
-  - Keep each rule in one place and call it from every side.
-  - Prevent recurrence with a gate or test. A document warning alone does not stop it.
+  - Prevent wrong use or refuse wrong input by name before damage; give the correct command, never a default or empty success.
+  - Default to safety; shared-state damage needs an explicit flag.
+  - Keep each rule in one place, call it from every side, and prevent recurrence with a test or gate. A warning alone is insufficient.

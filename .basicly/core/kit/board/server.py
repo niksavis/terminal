@@ -62,7 +62,7 @@ ENDPOINTS = (
     "GET  /api/v1/fields",
     "GET  /api/v1/refine",
     "GET  /api/v1/scaffold?type=T",
-    "GET  /api/v1/records?status=S&limit=N",
+    "GET  /api/v1/records?status=S&limit=N&query=TEXT&summary=1",
     "GET  /api/v1/records/<id>",
     "GET  /api/v1/records/<id>/dor",
     "POST /api/v1/records  {title, description, acceptance, requirements, fields, parent, prefix}",
@@ -87,6 +87,7 @@ def api_index(ledger: Path) -> dict:
         "schema": SCHEMA,
         "endpoints": list(ENDPOINTS),
         "holder": commands.holders.default_holder(ledger),
+        "repository": commands.git_layout.checkout_name(ledger),
         "edge_types": sorted(commands.differential.DEFAULT_VOCABULARY.edge_types),
         "record_types": list(commands.values.record_types.RECORD_TYPES),
         "child_types": {

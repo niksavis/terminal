@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 57
-  codex: 57
-  copilot: 57
+  claude: 48
+  codex: 48
+  copilot: 48
 id: catalog-authoring
 description: Where and how to author catalog sources.
 category: project
@@ -15,4 +15,4 @@ tags:
 status: active
 title: Catalog Authoring
 body: |
-  - A generated file comes from a catalog source, and `basicly install` overwrites `.basicly/core/`. Before you edit a generated file or a catalog source, read `.agents/skills/catalog-authoring/SKILL.md`.
+  - Edit generated files through catalog sources using `catalog-authoring`. `basicly install` overwrites `.basicly/core/`; consumer overrides belong in `.basicly-local/`.

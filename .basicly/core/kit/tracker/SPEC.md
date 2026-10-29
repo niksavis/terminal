@@ -299,14 +299,19 @@ Two controls run inside the validation of each write:
 - **Redaction.** Each write passes its values through the redactor that the caller supplies,
   for secret patterns and absolute paths. The kit's command line runs no redactor unless its
   caller passes one to `main`.
-- **A per-event size cap.** Each free-text value is cut at 4,096 bytes
+- **A per-event size cap.** New note and comment text above 4,096 bytes is refused after
+  redaction, before any event in the batch is appended. Shorten the note or link an artifact.
+  Historical snapshot imports preserve full source prose through an explicit migration
+  write; they do not silently clip imported history. Ordinary note writes retain refusal.
+  Diagnostic free-text values are cut at 4,096 bytes
   (`events.MAX_TEXT_BYTES`). The event records `<key>_truncated` and
   `<key>_original_length_bytes`, so the cut is visible (§9.1). On a kind with no declared
   bound, a value above the cap is refused, not stored unbounded. The cap also bounds
   interleaving (§4.4).
 
 Comments are the largest share of tracker traffic (45% in one measured ledger), so agent
-verbosity drives growth, and the cap is its only bound. `events.py` holds and tests the
+verbosity drives growth; prose refusal prevents new silent source loss. Legacy clipped
+notes remain readable with their truncation metadata. `events.py` holds and tests the
 cap's exact rules.
 
 `events.withdraw` removes the free text of one event from the log. It rewrites that line

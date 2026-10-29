@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 206
-  codex: 206
-  copilot: 206
+  claude: 86
+  codex: 86
+  copilot: 86
 id: quality-gate
 description: How to verify a change before you report it done.
 category: project
@@ -15,9 +15,6 @@ tags:
 status: active
 title: Quality Gate
 body: |
-  - Run focused checks while editing and cheap gates first. Run required full verification on the integrated candidate.
-  - If source or environment inputs change, or a check fails, fix its cause and rerun affected checks. Keep all required gates enabled.
-  - For tracker-only or phase-only changes, rerun affected checks unless the existing engine establishes equivalent trusted inputs. A commit or phase transition alone does not invalidate equivalent evidence.
-  - Review the diff. Then run the change the way a consumer runs it, and read the output. Passing tests do not prove a working feature.
-  - After the last edit, run the repository checks for what you touched. Read the pass or fail summary, because truncated output hides failures.
-  - Report what ran and what did not. Expectation is not verification.
+  - While editing, run the tests affected by the change. Continuous integration runs the full suite.
+  - Keep all required gates enabled. Report what ran, what failed and what did not run.
+  - For a failed check, changed inputs, a tracker-only change or a release candidate, read the `harness-loop` skill's verification reference.

@@ -32,6 +32,8 @@ WRITABLE_STATUSES = ("open", "in_progress", "blocked", "deferred", "closed")
 CLOSED = "closed"
 PRIORITY_FIELD = "priority"
 PRIORITIES = range(5)
+SIZE_FIELD = "size"
+SIZES = ("small", "")
 CLOSE_REASON_FIELD = "close_reason"
 EXTERNAL_REF_FIELD = "external_ref"
 
@@ -63,6 +65,15 @@ def _priority(value: object) -> None:
     raise RefusedValueError(
         f"priority {value!r} is not a whole number from 0 (critical) to 4 (backlog); "
         f"the ready ranking reads it as a number"
+    )
+
+
+def _size(value: object) -> None:
+
+    if value in SIZES:
+        return
+    raise RefusedValueError(
+        f"size {value!r} is not small; set size=small for a small task, or size= to clear it"
     )
 
 
@@ -172,3 +183,7 @@ def refuse(
             _priority(draft.payload.get("value"))
         elif draft.kind == events.KIND_CREATED and PRIORITY_FIELD in draft.payload:
             _priority(draft.payload[PRIORITY_FIELD])
+        if _named(events, draft, SIZE_FIELD):
+            _size(draft.payload.get("value"))
+        elif draft.kind == events.KIND_CREATED and SIZE_FIELD in draft.payload:
+            _size(draft.payload[SIZE_FIELD])

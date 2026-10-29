@@ -6,12 +6,14 @@ description: Closes a session with a usage report, a retro and a handover of wha
 
 # Session Finish
 
-Close a session in three steps: report what the session used, run the retro, and leave the repository clean for the next session. Run it after the work has landed. For commits, gates and record closure, use `harness-loop`, `work-tracker` and `conventional-commits`.
+Finish landed work with current tracker facts, necessary recovery state and a clean repository. Usage reports and retrospectives are conditional, not phases that require new agents or commits. Use `work-tracker` for history and record closure and `conventional-commits` for commits. Use `harness-loop` only for explicitly loop-managed work.
 
 ## Rules
 
-- **Write the handover as a ledger note, never as a file.** `basicly session start` prints the newest note first, and nothing reads a `HANDOVER.md`.
-- **Stop every background process before you summarise.** A watcher that outlives the session reports a stale state.
+- **Keep recovery facts in the existing ledger.** Start with `basicly tracker show <id> --view current`. It preserves current fields, clarifications and latest attributed handoffs. Retrieve omitted history with `--view history --snapshot <snapshot_identity>` for unresolved or conflicting facts. The view is recovery guidance, not a complete contract.
+- **Write only new recovery facts.** Preserve decisions, changed assumptions, uncertainty, blockers, evidence references, owned process handles and the next action when they cannot be derived. Do not repeat current card fields, Git history or unchanged handoffs on routine transitions.
+- **Verify a recorded process handle before replacing it.** A polling timeout is not proof that a process stopped. Resume or inspect the same handle; do not launch a duplicate.
+- **Stop task-owned temporary processes before handover.** Preserve services the user explicitly asked to keep running; record their URLs and ownership. Never stop another session's process.
 - **Keep every durable artifact in the repository.** The host cleans the scratchpad without warning.
 - **Write scratch files to a subdirectory unique to your lane.** A concurrent lane can overwrite a file at a shared path.
 - **Apply a retro fix within the approved scope.** Record other recommendations for approval; do not ask again for work the owner already authorized.
@@ -21,46 +23,7 @@ Close a session in three steps: report what the session used, run the retro, and
 
 ## 1. Usage statistics
 
-Use available usage data. Run a report below only when it answers the current question; a routine handover does not require every report.
-
-```sh
-basicly usage report
-```
-
-- The `tool-usage` hook counts shell commands and `Skill` calls into `.basicly/usage/tool-usage.json`.
-- The report lists tools and skills by count with the date of last use. It names the catalog skills that nothing used, which are the candidates for removal.
-- Do not cite the **Unresolved heads** table. Its rows are recorder misses and tools that this machine does not have.
-- When the report has no data, say so and continue. The hook may not be active in this repository.
-
-When evaluating factory settings:
-
-```sh
-basicly usage tuning
-```
-
-- Each row is one governed parameter: the value in force, the outcomes under it, and a recommendation with its sample size.
-- The command changes nothing. Report a recommendation worth an action. Never edit `basicly.toml` from it without the owner's approval.
-- A `seeded` row has too few samples, so the declared prior stands. Do not cite it as a measurement.
-- A row with zero samples names a limit that nothing records. That is a finding.
-
-When a supervised pass kept lane transcripts, split the spend:
-
-```sh
-basicly usage lane-split
-```
-
-- Each lane shows the share of spend on context acquisition and the share on implementation. Read the shares, never the token counts. The counts use a different unit from the run record.
-- `unclassifiable` means the transcript has no tool-name field. It does not mean the lane read nothing. A lane with no transcript is missing, not zero.
-- Only Claude transcripts carry the event this command reads.
-
-When evaluating dispatch failures:
-
-```sh
-basicly usage outcomes
-```
-
-- It shows how every recorded dispatch ended and the failure rate. Judge a run against this rate, not against your memory of it.
-- These are dispatch outcomes: did the agent process finish. They do not show whether a lane found a result.
+Use usage data only when it answers the current question. For the report commands and how to read them, read [usage reports](references/usage-reports.md).
 
 ## 2. Retro
 
@@ -72,12 +35,12 @@ basicly usage outcomes
 
 1. Run `git status`. Remove partial edits, debug output and stray files. Name in the summary anything that you leave on purpose.
 2. Check the state of records whose implementation changed. Close completed claimed work, or record its true state. Do not repeat gates or reopen closed work for a handover.
-3. List the running background processes and stop them.
+3. List task-owned background processes; stop temporary ones and identify user-requested services left running.
 4. Before you restore a file from a backup, compare the backup with `git show HEAD:<path>`.
-5. Write the handover note on the root record of the session:
+5. If new recovery facts remain, write one concise handover note on the existing root record. Keep closed work explicitly closed; preserve facts needed after interruption and link full evidence rather than pasting it:
 
    ```sh
    basicly tracker write -- comments add <root-id> "[session handover $(date +%F)] STATE: ... NEXT: ..."
    ```
 
-6. End with a summary: what changed (with record ids), what you verified (the gates and their results), what is still open, and the main usage figures from step 1.
+6. End with changed outcomes, actual checks and open work. Include usage figures only when available and useful. Reuse an existing equivalent handoff; no extra report commit is needed solely because a phase changed.

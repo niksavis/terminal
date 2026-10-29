@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -63,3 +64,22 @@ def split_labels(ordered: Any) -> tuple:
         (record, tuple(sorted(labels)), tuple(sorted(ids)))
         for record, (labels, ids) in sorted(found.items())
     )
+
+
+def resolved_labels(state: Any, add: Iterable[str], remove: Iterable[str]) -> str:
+
+    labels = list(labels_of(state.fields.get(LABELS_FIELD)))
+    for name in _split_all(add):
+        if name not in labels:
+            labels.append(name)
+    for name in _split_all(remove):
+        if name in labels:
+            labels.remove(name)
+    return LABEL_SEPARATOR.join(labels)
+
+
+def _split_all(values: Iterable[str]) -> list[str]:
+    found: list[str] = []
+    for value in values:
+        found.extend(part.strip() for part in value.split(LABEL_SEPARATOR) if part.strip())
+    return found

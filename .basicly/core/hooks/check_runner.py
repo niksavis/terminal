@@ -112,19 +112,25 @@ def _mode_entries(repo_root: Path, mode: str | None) -> list[dict]:
             isinstance(inputs, list) and inputs and all(isinstance(g, str) and g for g in inputs)
         ):
             raise SystemExit(f"{source}: check {name!r} 'inputs' must be a list of glob strings")
+        if not isinstance(entry.get("exclusive", False), bool):
+            raise SystemExit(f"{source}: check {name!r} 'exclusive' must be true or false")
         if mode is None or mode in modes:
             entries.append(entry)
     return entries
 
 
-def resolve_command(command: list[str], repo_root: Path) -> list[str]:
-    source = Path(__file__).with_name("command_paths.py")
-    spec = importlib.util.spec_from_file_location("basicly_hook_command_paths", source)
+def _hook_module(name: str) -> Any:
+    source = Path(__file__).with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"basicly_hook_{name}", source)
     if spec is None or spec.loader is None:
-        raise ValueError("check command path runtime is missing; run basicly install")
+        raise ValueError(f"hook runtime {name}.py is missing; run basicly install")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.resolve_command(command, repo_root)
+    return module
+
+
+def resolve_command(command: list[str], repo_root: Path) -> list[str]:
+    return _hook_module("command_paths").resolve_command(command, repo_root)
 
 
 def load_checks(repo_root: Path, mode: str) -> list[tuple[str, list[str]]]:
@@ -132,6 +138,14 @@ def load_checks(repo_root: Path, mode: str) -> list[tuple[str, list[str]]]:
         (str(entry["name"]).strip(), list(entry["command"]))
         for entry in _mode_entries(repo_root, mode)
     ]
+
+
+def load_exclusive(repo_root: Path, mode: str) -> frozenset[str]:
+    return frozenset(
+        str(entry["name"]).strip()
+        for entry in _mode_entries(repo_root, mode)
+        if entry.get("exclusive", False)
+    )
 
 
 def load_fixes(repo_root: Path, mode: str) -> list[tuple[str, list[str], str | None]]:
@@ -225,17 +239,17 @@ def diff_paths(repo_root: Path) -> list[str] | None:
     return None if out is None else [path for path in out.split("\0") if path]
 
 
-def scoped_skips(repo_root: Path, mode: str) -> dict[str, str]:
+def scoped_skips(repo_root: Path, mode: str, changed: list[str] | None = None) -> dict[str, str]:
 
     if not (declared := load_inputs(repo_root, mode)):
         return {}
-    changed = diff_paths(repo_root)
+    changed = diff_paths(repo_root) if changed is None else changed
     if not changed:
         return {}
     skips: dict[str, str] = {}
     for name, globs in declared.items():
         if not any(PurePosixPath(path).full_match(glob) for path in changed for glob in globs):
-            skips[name] = f"no staged path matches its inputs ({' '.join(globs)})"
+            skips[name] = f"no changed path matches its inputs ({' '.join(globs)})"
     return skips
 
 
@@ -295,8 +309,14 @@ def _restage_fixed(repo_root: Path, dirty_before: list[str], applied: list[str])
 
 
 def _planned_skips(
-    repo_root: Path, mode: str, checks: list[tuple[str, list[str]]], scope_to_diff: bool
+    repo_root: Path,
+    mode: str,
+    checks: list[tuple[str, list[str]]],
+    scope: tuple[bool, list[str] | None],
 ) -> tuple[dict | None, dict[str, str]]:
+    scope_to_diff, changed = scope
+    if changed is not None:
+        return None, scoped_skips(repo_root, mode, changed)
     selection = _selection(repo_root, checks) if scope_to_diff else None
     if selection is not None:
         skips = {
@@ -311,14 +331,16 @@ def _planned_skips(
     return selection, skips
 
 
-def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> int:
+def run_checks(
+    repo_root: Path, mode: str, *, scope_to_diff: bool = False, changed: list[str] | None = None
+) -> int:
 
     fail_fast = load_fail_fast(repo_root)
     checks = load_checks(repo_root, mode)
     if not checks:
         print(f"No verify checks configured for mode '{mode}' in {CONFIG_FILE}; nothing to gate.")
         return 0
-    selection, skips = _planned_skips(repo_root, mode, checks, scope_to_diff)
+    selection, skips = _planned_skips(repo_root, mode, checks, (scope_to_diff, changed))
     if selection and selection["invalid_snapshot"]:
         print(f"affected checks failed: {selection['fallback']}", file=sys.stderr)
         _record_selection(repo_root, selection, [])
@@ -326,45 +348,14 @@ def run_checks(repo_root: Path, mode: str, *, scope_to_diff: bool = False) -> in
     home = interpreter_home(repo_root)
     interpreter_before = interpreter_target(home)
     total_start = time.perf_counter()
-    failed: list[str] = []
-    outcomes: list[dict] = []
-    for name, command in checks:
-        if name in skips:
-            print(f"==> {name} SKIPPED: {skips[name]}", flush=True)
-            outcomes.append({"name": name, "disposition": "not-selected", "reason": skips[name]})
-            continue
-        if fail_fast and failed:
-            outcomes.append(_blocked_outcome(name, failed[0]))
-            continue
-        print(f"==> {name}", flush=True)
-        start = time.perf_counter()
-        try:
-            result = subprocess.run(resolve_command(command, repo_root), cwd=repo_root, check=False)  # nosec B603
-            code = result.returncode
-        except FileNotFoundError:
-            print(
-                f"FAILED: {name} — command not found: {command[0]} "
-                f"(install it or edit [[verify.checks]] in {CONFIG_FILE})",
-                file=sys.stderr,
-            )
-            code = 127
-        except OSError as exc:
-            print(
-                f"FAILED: {name} — cannot run {command[0]} ({exc.strerror or exc})",
-                file=sys.stderr,
-            )
-            code = 126
-        elapsed = time.perf_counter() - start
-        outcomes.append({
-            "name": name,
-            "disposition": "executed",
-            "returncode": code,
-            "duration_s": elapsed,
-        })
-        if code != 0:
-            failed.append(name)
-            print(f"FAILED: {name} ({elapsed:.2f}s)", file=sys.stderr)
-
+    execution = _hook_module("check_execution")
+    share = _hook_module("cpu_share")
+    jobs = load_jobs(repo_root)
+    outcomes, failed = execution.run(
+        repo_root,
+        execution.Plan(checks, skips, fail_fast, jobs, load_exclusive(repo_root, mode)),
+        lambda command, root: share.expand(resolve_command(command, root), jobs),
+    )
     total_elapsed = time.perf_counter() - total_start
     if selection is not None:
         _record_selection(repo_root, selection, outcomes)
@@ -390,6 +381,18 @@ def load_fail_fast(repo_root: Path) -> bool:
     return _boolean_option(repo_root, "fail_fast")
 
 
+def load_jobs(repo_root: Path) -> int:
+    jobs: object = 1
+    for _, document in _documents(repo_root):
+        section = document.get("verify", {})
+        if isinstance(section, dict) and "jobs" in section:
+            jobs = section["jobs"]
+    try:
+        return _hook_module("cpu_share").resolve_jobs(jobs)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+
 def load_cache(repo_root: Path) -> bool:
     return _boolean_option(repo_root, "cache")
 
@@ -403,9 +406,3 @@ def _boolean_option(repo_root: Path, name: str) -> bool:
     if not isinstance(enabled, bool):
         raise SystemExit(f"verify.{name} must be true or false")
     return enabled
-
-
-def _blocked_outcome(name: str, failed: str) -> dict:
-    reason = f"not run after failed check {failed}"
-    print(f"==> {name} NOT RUN: {reason}", flush=True)
-    return {"name": name, "disposition": "not-run", "reason": reason}

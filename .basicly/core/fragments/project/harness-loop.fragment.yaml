@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 107
-  codex: 106
-  copilot: 107
+  claude: 178
+  codex: 178
+  copilot: 178
 id: harness-loop
 description: Session start, session end and the harness loop.
 category: project
@@ -16,8 +16,8 @@ tags:
 status: active
 title: Harness Loop
 body: |
-  - Start with `basicly session start`. The tracker ledger is the source of truth for the work.
-  - Use `basicly loop` for non-trivial work. The `harness-loop` skill describes its phases and gates.
+  - Keep one responsible owner from task to completion; the tracker ledger and latest handover preserve shared history.
+  - Delegate only for independent work, context pressure, independent review or specialist capabilities.
+  - Use `basicly session start` when useful for orientation. Direct work needs no phase controller; `basicly loop` supports owner handoffs, and explicit `--execution worker` selects headless orchestration. Read the `harness-loop` skill when using that orchestration.
   - The user task request authorizes its scope. Do not request a grant or a mandatory token budget.
   - Keep verification gates and destructive-action protections enabled. Honor limits the user explicitly sets.
-  

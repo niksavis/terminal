@@ -52,7 +52,7 @@ TABLE = (
     Field(
         "description",
         REQUIRED,
-        "the trigger check of the definition of ready, and a brief",
+        "the context check of the definition of ready, and a brief",
         prose=True,
     ),
     Field("issue_type", REQUIRED, "the scaffold, the template types and the loop classification"),
@@ -61,7 +61,10 @@ TABLE = (
         "acceptance_criteria", READY, "the definition of ready, and the check at verify", prose=True
     ),
     Field(
-        "requirements", READY, "the definition of ready, and the judgement at validate", prose=True
+        "requirements",
+        OPTIONAL,
+        "distinct constraints checked at review and validation",
+        prose=True,
     ),
     Field(
         "close_reason",
@@ -83,6 +86,12 @@ TABLE = (
         "process_confirmation",
         PROCESS,
         "the shared completed close refusal; use confirm --evidence",
+    ),
+    Field(
+        "size",
+        OPTIONAL,
+        "the definition of ready: size=small lets a task, bug or chore with one acceptance "
+        "criterion start without a review",
     ),
     Field("labels", OPTIONAL, "label queries and the label shape check"),
     Field("assignee", OPTIONAL, "a person who asks who holds the record"),

@@ -21,7 +21,7 @@ def _add_shape_arguments(parser: Any) -> None:
         "--requirements",
         default="",
         metavar="TEXT",
-        help="the requirements validation judges the built thing against",
+        help="optional distinct constraints; validation checks the whole task",
     )
     parser.add_argument(
         "--description",
@@ -29,6 +29,22 @@ def _add_shape_arguments(parser: Any) -> None:
         metavar="TEXT",
         help="the record's body, which may carry the sections as headings instead",
     )
+
+
+def _listing_filters(parser: Any) -> None:
+    parser.add_argument(
+        "--status", action="append", default=None, help="only records at this status; repeat it"
+    )
+    parser.add_argument("--limit", type=int, default=None, help="at most this many records")
+    parser.add_argument("--query", default="", help="search current fields and comment history")
+    parser.add_argument(
+        "--summary", action="store_true", help="omit prose and history; fetch detail with show"
+    )
+
+
+def record_view_arguments(parser: Any) -> None:
+    parser.add_argument("--view", choices=("full", "current", "history"), default="full")
+    parser.add_argument("--snapshot", help="refuse retrieval from a changed record snapshot")
 
 
 def parser() -> argparse.ArgumentParser:
@@ -58,13 +74,11 @@ def parser() -> argparse.ArgumentParser:
     show = sub.add_parser("show", help="read one record's folded state and both edge directions")
     show.add_argument("directory", help=DIRECTORY_HELP)
     show.add_argument("record", help="the record id")
+    record_view_arguments(show)
 
     listing = sub.add_parser("list", help="query the records the ledger holds")
     listing.add_argument("directory", help=DIRECTORY_HELP)
-    listing.add_argument(
-        "--status", action="append", default=None, help="only records at this status; repeat it"
-    )
-    listing.add_argument("--limit", type=int, default=None, help="at most this many records")
+    _listing_filters(listing)
 
     compaction = sub.add_parser(
         "compact", help="fold every pending writer shard into the trunk log and unlink it"

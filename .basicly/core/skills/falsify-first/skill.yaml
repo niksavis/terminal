@@ -46,44 +46,7 @@ instructions: |
 
   When no cheap oracle exists, name the input that would falsify the claim and look for it by hand. Say in the deliverable that the search was manual and what it covered.
 
-  ## A difference needs its baseline
+  ## Measurements and third-party projects
 
-  A finding of the form "X is present where it should not be" is two claims. The second claim is that X is not already present by another route. Attack the second claim first. It is the cheaper kill, and it decides the severity.
-
-  Example: an e-mail address in a tracker file is not a new exposure when `git log --format='%ae' | sort -u` already shows it as a commit author.
-
-  ## Exclude the instrument
-
-  When a probe counts the file that defines its vocabulary, the probe and the thing it checks share a step. Their agreement is then not a second derivation.
-
-  1. **Name the population and what defines it.** Exclude the definition: the gate's own module, the schema, the fixture, the test that lists the set.
-  2. **Run the probe again without the definition.** If the number moves, the agreement was the instrument that read itself.
-  3. **Split the hits by population before you report one total.** One number over two populations reads as evidence and is not.
-
-  ## Pin the instrument and the tree
-
-  Two substitutions keep the population correct and make the number wrong:
-
-  - **The instrument was swapped.** Another lane can overwrite a script at a shared path between the write and the run. Keep an instrument where only you can write it.
-  - **The tree was wrong.** `uv run --project <worktree> pytest` from another directory selects the environment, not the tree. It collects the tests of the other tree. Run from inside the tree. Prove the tree with a control that only it can satisfy, such as a symbol, a file or a string that exists nowhere else.
-
-  Take the measurement again when it came from a shared path or an unpinned tree.
-
-  ## Limits
-
-  - This method changes what you believe. It is not a gate and refuses nothing.
-  - It makes a wrong belief cheap to drop. It does not prove that a surviving claim is correct.
-  - Not `test-discipline`, which structures a test after the behaviour is settled.
-  - Not `root-cause`, which runs after a failure to find why it happened.
-  - Not the `reviewer` role, which attacks a diff that already exists.
-
-  ## Before recommending a third-party project
-
-  Before a research or design document recommends a third-party project:
-
-  - Treat its README as a claim. Find the call sites and cite `file:line`. A symbol with no non-test caller does not ship.
-  - Test an absolute claim by trying to break it. A feature can exist and still be described too strongly.
-  - Read every licence file first, `NOTICE` included, and check each directory. A licence restricts copying the code, not learning a fact from it.
-  - Ask what the author sells. A recommended control that is the author's own product needs independent evidence.
-  - Check whether the argument assumes away a control this repository already runs.
-  - Say whether you established the mechanism or only a correlation.
+  - Before a number, a difference or a coverage figure enters a decision, read [measurement](references/measurement.md): baselines, excluding the instrument, pinning the tree, and the limits of this method.
+  - Before a document recommends a third-party project, read [third-party](references/third-party.md).

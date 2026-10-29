@@ -138,6 +138,17 @@ def read_argv(ledger: Path, path: str, query: dict) -> list:
         return [parts[0], *limit, *kind, "--", where]
     if parts == ["records"]:
         filters = _query(query, "status", "--status") + _query(query, "limit", "--limit")
+        if "query" in query:
+            values = query["query"]
+            if len(values) != 1:
+                raise refuse("query must be provided once")
+            filters += ["--query=" + values[0]]
+        if "summary" in query:
+            value = query["summary"]
+            if value not in (["1"], ["true"], ["0"], ["false"]):
+                raise refuse("summary must be 1, true, 0 or false")
+            if value[0] in ("1", "true"):
+                filters += ["--summary"]
         return ["list", *filters, "--", where]
     if len(parts) == 2 and parts[0] == "records":
         return ["show", "--", where, _record(parts[1])]

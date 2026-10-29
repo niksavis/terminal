@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 148
-  codex: 149
-  copilot: 148
+  claude: 58
+  codex: 58
+  copilot: 58
 id: core-rules
 description: The engineering rules every change follows.
 category: design
@@ -15,9 +15,5 @@ tags:
 status: active
 title: Core Rules
 body: |
-  - Make the smallest diff that meets the requirement. Build only the requested capability.
-  - Reuse before building. Establish absence from the code that would use the capability, not from documentation or `--help`.
-  - Fix the root cause and check every call site. Match the edited file's style and names.
-  - Leave no dead code or debug output. Never swallow errors.
-  - Keep tests deterministic. A bug fix ships with a regression test. Before writing or changing tests, read `.agents/skills/test-discipline/SKILL.md`.
-  - Back every claim with evidence: the file, command or passing test. Mark a claim from unread code as an assumption.
+  - Before building, search the code that would call the capability; documentation or `--help` alone does not establish absence.
+  - Read the `test-discipline` skill for isolation, ordering or platform-sensitive tests.

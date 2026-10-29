@@ -8,275 +8,33 @@ description: "Drives tracked work through the basicly loop, intake to ship. Use 
 instructions: |
   # Harness Loop
 
-  This skill drives one tracked issue, or many lanes under an epic, through the loop with `basicly loop`.
-  The agent supplies the phase inputs and writes the code. The engine records state, runs gates and advances.
-  The same commands work under Claude, Codex and Copilot.
+  Ordinary work stays with one owner using the tracker, direct implementation and checks.
+  This skill does not require a loop or a new refinement pass. For user-requested observer
+  repair, work outside the controller and report any authorized hook bypasses honestly.
 
-  Other skills own the mechanics of each phase: `work-tracker` (records), `worktree-isolation`
-  (worktrees), `decompose-plan` (child plans), `repair-in-place` (rework), `validate-as-consumer`
-  (validate), `conventional-commits` (commit messages).
-
-  ## Rules
-
-  - **Read the state first with `basicly loop status <issue>`.** The tracker ledger is the only state, so any agent can resume.
-  - **Commit your work on the harness branch before you advance.** The loop never commits the agent's work.
-  - **Never stage or commit tracker state yourself for loop work.** The engine makes every tracker commit.
-  - **Never record the verify gate by hand during build.** Only the build-to-verify `loop advance` merges the branch.
-  - **Treat the user task request as authorization for its scope.** Do not request an L-level grant or mandatory token budget.
-  - **Keep required gates and genuine safety approvals enabled.** A task request does not authorize unrelated destructive actions.
-  - **Treat the base checkout as read-only while a pass runs.** Your uncommitted files fail the lanes' landings.
-  - **Never clear another session's files to unblock a landing.** Hold the branch until that session commits.
-  - **Confirm a landing from the `[merged]` line, not from the exit code.** Every checkpoint stop exits non-zero.
-  - **Never signal a supervisor or its lanes.** Use `--max-passes` or `loop stop`, so no lane dies mid-write.
-  - **When a required fact is missing, do not guess.** Write `.basicly/usage/needs-input.json` and stop.
-  - **Handle a protected-destination refusal through task-scoped execution review.** Follow `worktree-isolation` for the retry. Existing authorization for the upgrade or landing still applies; keep the loop checkpoints in force.
-
-  ## Drive one issue
-
-  `basicly loop run` advances to the next boundary where it needs an agent or a human.
-  A leaf issue takes two runs:
+  Read loop state only when starting, advancing or recovering work explicitly managed
+  by `basicly loop`:
 
   ```sh
-  basicly loop status <issue>                   # phase, worktree, gates, checkpoints, rework, ready and blocked sets
-  basicly loop run <issue> --work-type task     # intake -> worktree ready for the agent
-  #   ... write the code in the worktree, then git commit it on the harness branch ...
-  basicly loop run <issue>                      # land, verify, validate, ship, close
+  basicly loop status <issue>
   ```
 
-  `basicly loop advance <issue> [--work-type T] [--children plan.toml] [--mode M]` does one step.
-  Use it to inspect one transition. Both commands exit non-zero when the track stops short.
-  Pass the input that `loop status` or `loop advance` names as `needs input`.
-  Other flags on both: `--runner <agent>` (`manual` gives a handoff), `--autonomy`, `--tier`.
-  `loop run` also takes `--confirm <code>`, `--root <epic>` and `--detach`.
+  The tracker is authoritative. Continue the existing task and worktree; do not restart
+  completed steps or create another owner merely because the session changed.
 
-  ## Task authorization and safety
+  ## Boundaries
 
-  The user task request authorizes classification, decomposition and completion within that task's scope.
-  Phase transitions need no second approval, grant or mandatory token budget.
-  Do not create a synthetic grant to make an authorized task run.
+  - The user task request authorizes classification, decomposition and completion within its scope. Do not create a synthetic grant or require a token budget. Honor explicit spending limits.
+  - Keep verification honest, host permissions and destructive-action confirmations intact. A bypass is not a passing check.
+  - For loop-managed work, commit code on its branch before advancing; the engine commits loop tracker state. Direct observer work commits its own tracker evidence.
+  - The build-to-verify transition performs landing and records verification. Do not record that gate early; it can skip the landing. Confirm landing from the `[merged]` output.
+  - Keep the base checkout read-only while another pass runs. Never clear another session's files to unblock landing.
+  - Reuse verification only when the engine establishes equivalent trusted inputs. Changed inputs or failed checks require the affected checks again.
+  - Observe a recorded pending process before launching another. A polling timeout does not prove it stopped.
 
-  Required readiness, verification, consumer and integration gates still apply.
-  Internal risk classification selects those checks automatically; the user does not choose a permission level.
-  Ask only for missing facts, an action outside the task, or a genuine safety decision that lacks approval.
-  Keep host permission restrictions and destructive-action confirmations in force.
+  ## Read only the procedure needed now
 
-  If the user explicitly sets a spending limit, honor it and report observed usage.
-  Without such a limit, keep cost telemetry without inventing a budget or asking for one.
-  Historical grants and checkpoints remain readable; do not rewrite tracker events to resume old work.
-
-  ## Phases
-
-  `loop run` does every engine step. The agent proposes the work type, writes the child plan, writes the code and commits it.
-
-  | Phase | What advances it | Commands and notes |
-  | --- | --- | --- |
-  | intake | the agent proposes the work type | `--work-type {bug,chore,task,feature,epic}`. See "Classify by shape". |
-  | classify | the Definition-of-Ready (DoR) gate | Continue with `basicly loop run <id>`. `basicly policy dor <id>` checks readiness. `basicly policy scaffold --type <type>` prints required headings. |
-  | decompose | a feature needs a child plan. A leaf goes to build. | `basicly decompose <feature> --plan plan.toml [--dry-run]`, or `--children` on advance. See `decompose-plan`. |
-  | decompose | the accepted plan and its readiness checks | Continue with `basicly loop run <id>` within the requested scope. |
-  | build | the agent commits the work on the harness branch | `basicly worktree list`. Write the code, add fragments, `git commit`, then `basicly loop advance <id>` lands it through the serial merge queue. |
-  | verify | the landing ran verify and recorded the required gate | Inspect with `basicly policy gate <id>`, then continue with `basicly loop run <id>`. |
-  | validate | a consumer-surface change needs a verdict on the merged checkout | Refused first when the record states no `requirements`. Blocks with `needs input: validation`. Repair a FAIL in the lane's worktree and land again. |
-  | ship | teardown and the closing write | `basicly loop advance <id>`. It blocks with no side effect on `needs input: demonstration` or on an unmerged branch. |
-
-  ### Classify by shape
-
-  The work type decides if the loop asks for children.
-  One coherent change is a `task`, `bug` or `chore`.
-  Use `feature` only when the work fans out into children that land separately.
-  A `feature` blocks at decompose and provisions no worktree.
-  To fix a wrong type, run `basicly tracker write -- update <id> -t task` and run the loop again.
-
-  ### Write a ready body
-
-  Do not guess the DoR sections. Fill the `TODO`s that `policy scaffold` prints.
-  A `bug` also needs `## Steps to Reproduce`. An `epic` also needs `## Success Criteria`.
-  Pass the body with `basicly tracker write -- create ... -d` or `basicly tracker write -- update <id> -d`.
-
-  Every later phase reads `## Scope`. Write each entry as one backticked glob on its own line:
-
-  ```text
-  - `src/app/cli.py`
-  ```
-
-  A bare path, or a path with a note after it, parses to no glob.
-  `basicly policy dor <id>` warns when `## Scope` parses to zero globs.
-
-  ### Add fragments, never edit shared files
-
-  Two lanes that edit one shared file collide at the merge.
-  A file named with the issue id cannot collide.
-
-  | Change | Write | Never edit |
-  | --- | --- | --- |
-  | user-facing change | `changelog.d/<issue-id>.<category>.md`, body only, no `###` heading | `CHANGELOG.md` |
-  | new verify check | a `[[verify.checks]]` entry in `basicly.d/<issue-id>.toml` | `[[verify.checks]]` in `basicly.toml` |
-  | ratchet number moved | `[ratchet.<gate>] count_delta` or `[ratchet.<gate>.frozen]` in `basicly.d/<issue-id>.toml` | the ratchet table in `pyproject.toml` |
-
-  The category is one of `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
-  `basicly release` assembles the changelog fragments.
-  A ratchet fragment is a delta, never a new total.
-  Two lanes that each record a total both write the same number, and the merged tree then fails the gate.
-
-  For a path that every lane appends to by convention, add it to `[worktree] append_only_paths`.
-  The engine then serializes the lanes that touch it, and `loop preflight` warns with `contend:`.
-  Split the shared file where you can, because serial lanes are slower.
-
-  ### Verify gate
-
-  The build-to-verify `loop advance` rebases, runs verify, records the required gate and merges.
-  If you record the gate first (`basicly verify --issue`), the phase jumps to verify without the merge.
-  Ship refuses to close an issue whose branch has not landed.
-  After landing, reuse passing evidence only when the existing engine establishes equivalent trusted inputs.
-  If inputs changed or a check failed, rerun affected checks from the base checkout only:
-
-  ```sh
-  basicly verify --mode full --issue <id>
-  ```
-
-  A dirty worktree, or a branch with no commit, blocks the landing with "commit the work on `<branch>` before landing".
-
-  ## Gates and rework
-
-  Deterministic checks (tests, lint, types, build) record a required gate. A failed required gate blocks.
-  Semantic AI checks record an advisory gate. It never blocks.
-  A loop-provisioned worktree records gates in the base ledger through the redirect file.
-  `basicly verify --issue` refuses in a linked worktree that has no redirect.
-
-  A failed node gets a bounded rework loop (`[policy] max_rework`, default 2).
-  Rework is gate results and comments, not a status. At the cap, the node escalates to a human.
-
-  ```sh
-  basicly policy rework <id> --gate verify [--record] [--allow-retry]
-  ```
-
-  ### Answer an escalation
-
-  The engine reads the first word of the answer. A reason can follow it.
-
-  ```sh
-  basicly loop answer <decision-id> "park - the upstream fix is not released"
-  ```
-
-  | Answer | What the engine does |
-  | --- | --- |
-  | `retry` | Gives one more attempt on that gate. A delegated answer does not give it. |
-  | `re-dispatch` | Nothing now. The supervisor runs the lane again on the next pass. |
-  | `park` or `hold` | Sets the lane `deferred` with the reason. It stops holding its parent open. Human only. |
-  | `land anyway` | Only for an unreliable-gate escalation. The next landing skips that gate once. Human only. |
-
-  The command prints what it did, so an answer that changed nothing is visible.
-
-  To drop a requirement, kill the lane. This destructive action still needs explicit confirmation:
-
-  ```sh
-  basicly loop kill <id> --reason "<why this work is not done>"            # refuses and prints a code
-  basicly loop kill <id> --reason "<why>" --confirm <code> [--discard]
-  ```
-
-  The kill tears the worktree down and closes the issue.
-  The committed work stays on the `harness/` branch unless you pass `--discard`. There is no undo.
-
-  ## Before you build
-
-  - **Check a third-party claim in the issue against the real tool.** The DoR gate checks structure, not facts.
-    Record the result with `basicly tracker write -- comments add <id> "verified: ..."`.
-  - **Check a follow-up issue against the merged code.** An issue filed after a lane overran records the lane's last position.
-    Check each clause. Revert the mechanism that you think delivers it and watch named tests fail.
-    Then run the real command. Close the issue with no diff when the work is done, and record the evidence.
-  - **Read the brief when a lane built the wrong thing.** `basicly brief <issue>` prints what the loop dispatches, with no dispatch.
-
-  ## Tracker commits
-
-  The ledger is append-only. Its location follows `.basicly/ledger/redirect`, so every worktree writes the same log.
-  If `git diff --cached --stat` shows deletions under `.basicly/ledger/`, stop and find what rewrote it.
-
-  The engine commits tracker state at three points:
-
-  1. At provisioning, it commits the claim before it creates the worktree.
-  2. At landing, `loop advance` puts the `.basicly/ledger/**` changes in one `chore(tracker)` commit, then merges.
-  3. At ship, it commits the closing state.
-
-  Never commit the ledger on a harness branch. Phase results and answers also write the ledger.
-  Commit the ledger between those steps and the next landing.
-
-  The landing checks that the base checkout is clean, and it counts untracked files.
-  Other dirt outside the ledger blocks the landing. Check the base before every landing:
-
-  ```sh
-  git -C <base-checkout> status --short
-  ```
-
-  Push cadence:
-
-  - **Solo repository:** push once per track, after ship.
-  - **Team repository:** push each engine tracker commit at once, most of all the claim, so nobody takes claimed work.
-    A claimed record with no live worktree shows a race. Compare `basicly loop status <id>` with `basicly worktree list`.
-
-  ## Bounded specialist work
-
-  Give each specialist one task. Its brief names relevant instructions, requirements,
-  acceptance criteria, source locations and a completion condition. Preview the recorded
-  task facts and valid durable artifacts with:
-
-  ```sh
-  basicly brief <issue>
-  ```
-
-  Start a fresh context for unrelated work. Pass the brief and required facts instead of
-  the parent conversation. Resume a saved context only for the same task; do not replay
-  another task's conversation. Each writer uses its own worktree.
-  Keep review and integration with the main orchestrator. Integrate reviewed commits on
-  a linear branch and preserve the specialist's source branch.
-
-  Queue completed implementation before assigning optional work. The supervisor records
-  completion and queue admission when a runner returns successfully. It waits for the
-  active batch before serial landing. Previously committed lanes land before optional
-  decisions, new lanes or another dispatch batch. Required gates still apply.
-
-  Record integration completion or a concrete wait reason. The engine appends UTC progress
-  facts as `[harness-policy] integration` comments. For delegation outside the engine,
-  record actual implementation completion and integration start times on the task too.
-  Read the record without reconstructing a conversation:
-
-  ```sh
-  basicly tracker show <issue>
-  ```
-
-  ## Many lanes
-
-  Use `preflight` and `supervise` over an epic for parallel work.
-  Only a human sets a limit on lanes. Control cost by the size of the work.
-  Keep two or fewer agents in the base checkout. Put every other agent in its own worktree.
-
-  ```sh
-  basicly loop preflight <epic>                                   # read-only: can a pass start, and what does it cost
-  basicly loop supervise <epic> --max-passes 3 --detach           # provision, dispatch, land through the merge queue
-  basicly loop stop <epic> --reason "<why>" --by <name>           # finish the current round, then return
-  ```
-
-  - **Run `preflight` first, from the base checkout.** A worktree cannot see the run records in `.basicly/usage/`.
-  - **Read the whole `VERDICT: not ready - ...` line.** It lists every blocker, separated by semicolons.
-  - **Keep fan-out within the requested scope.** The supervisor checks readiness and the plan before provisioning lanes.
-  - **Start a supervisor with `--detach`.** A round can outlast the timeout of the agent's shell tool.
-    Read the log file it prints. Commit the ledger before you start it again.
-  - **Do not push while a pass holds the lock.** Read in the base. Write in your own worktree until `loop stop` returns.
-  - `loop stop` refuses when nothing supervises that root. A stale lock is taken only from a holder with a stale heartbeat.
-  - `--label <label>` fans out over the issues with that label instead of the epic's children.
-
-  Read optional spending limits, the band table, and lane observations in
-  [references/many-lanes.md](references/many-lanes.md).
-
-  ## Ship and retro
-
-  Ship tears down the worktree and closes the issue. The merge already happened at the landing.
-  After an epic slice lands, write a retro comment and file a record for each finding the user keeps:
-
-  ```sh
-  basicly tracker write -- comments add <epic-id> "Retro: <finding>"
-  ```
-
-  ## Resume
-
-  To resume after a crash or an agent switch, run `basicly loop status <issue>`.
-  Compare the result with `basicly worktree list`, and continue.
+  - When using loop transitions to start a leaf, classify/decompose, land, validate, ship or recover a refusal, read [operations](references/operations.md). It includes exact commands, phase inputs, ledger handling and escalation rules.
+  - Before deciding which checks to run or rerun, read [verification](references/verification.md).
+  - Before running parallel lanes, read the **Many lanes** section of operations. For lane limits and spending observations, also read [many-lanes](references/many-lanes.md).
+  - For ordinary implementation inside an existing lane, use the task facts and relevant implementation skills. Load the operational reference when a transition or failure requires it.

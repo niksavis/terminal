@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 90
-  codex: 90
-  copilot: 90
+  claude: 34
+  codex: 34
+  copilot: 34
 id: knowledge-priming
 description: Load task-relevant repository context, and know which instruction wins.
 category: design
@@ -16,6 +16,4 @@ tags:
 status: active
 title: Knowledge Priming
 body: |
-  - Before non-trivial work, read the README, the local instructions and the relevant architecture sections.
-  - When repository evidence and general practice disagree, follow the repository and say so.
-  - An instruction from the user in the current task overrides this file. A path-scoped instruction overrides it for the files it matches.
+  - The current user's instruction overrides this file; path-scoped instructions override it for matching files.

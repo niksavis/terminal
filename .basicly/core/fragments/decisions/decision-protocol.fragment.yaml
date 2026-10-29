@@ -15,8 +15,6 @@ tags:
 status: active
 title: Decision Protocol
 body: |
-  - Decide from code for small, reversible actions outside the confirmation list.
-  - Use safe read-only checks to resolve facts first. Ask when missing facts, conflicting sources or uncheckable assumptions change the result. Name the missing fact and useful options.
-  - With frozen scope, finish started work and demonstrated blockers within scope. Report broader blockers and ask before expanding.
-  - Record nonblocking adjacent findings in the tracker without implementing them.
-  - When rules conflict, follow safety and security. If an approach fails twice, report the pattern and propose another.
+  - Decide small, reversible actions outside the confirmation list from code. Use safe read-only checks to resolve facts first. Ask when missing facts, conflicting sources or uncheckable assumptions change the result. Name the missing fact and useful options.
+  - With frozen scope, finish started work and demonstrated blockers within scope. Report broader blockers and ask before expanding. Record nonblocking adjacent findings in the tracker without implementing them.
+  - Resolve conflicting rules in favor of safety and security. After two failed approaches, report the pattern and propose another.

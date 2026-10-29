@@ -11,14 +11,14 @@ instructions: |
   # Validate as a consumer
 
   This skill checks a verified change as a consumer uses it.
-  VERIFY already ran the deterministic checks, so a transcript that runs them again proves nothing new.
+  Read existing verification evidence; repeating deterministic checks alone is not consumer validation.
 
   ## Rules
 
   - **Ask: could this transcript exist without the change?** If yes, you ran the suite again and validated nothing.
-  - **Check against the requirement, not the change summary.** The summary is the builder's account, and it drifts from the request.
+  - **Check the whole task contract.** Assess Context, every Acceptance criterion and any distinct Requirements together; the builder's summary alone can drift from the user need.
   - **Paste the output, never describe it.** A description is a claim about a result.
-  - **Do not fix what you find.** Report the defect and stop, so the rework ledger records where the harness fails.
+  - **Preserve findings and responsibility.** An independent validator reports defects to the owner before repair. An owner doing consumer checks fixes demonstrated in-scope causes and retains the failing evidence; no new refinement pass is needed.
 
   ## Three questions, in order
 

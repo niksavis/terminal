@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 140
-  codex: 140
-  copilot: 140
+  claude: 102
+  codex: 102
+  copilot: 102
 id: external-facts
 description: Establish external facts and numbers from evidence, never from recall.
 category: decisions
@@ -16,6 +16,6 @@ tags:
 status: active
 title: External Facts
 body: |
-  - For a third-party interface, never rely on memory. Read our adapter, then the current vendor documentation, and follow `.agents/skills/interface-facts/SKILL.md`.
-  - Before claiming absence or zero, search for the action, not only its name. Run a known-match positive control through the same search. An empty control invalidates the search, and a matching control must also increase the examined-item count.
-  - Before a high-risk number, a root cause or a coverage claim enters a decision, follow `.agents/skills/falsify-first/SKILL.md`.
+  - For third-party interfaces, read our adapter and current vendor docs; use `interface-facts`, never memory.
+  - Before absence/zero claims, search for the action and run a known-match control through the same search. An empty control invalidates it; a match must increase the examined count.
+  - Use `falsify-first` before high-risk numbers, root causes or coverage claims enter a decision.

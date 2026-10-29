@@ -213,7 +213,9 @@ _VIEWS: dict[
 
 
 def _shown(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
-    found = read_record(args.directory, args.record)
+    found = record_view.read_view(
+        args.directory, args.record, view=args.view, snapshot=args.snapshot
+    )
     if found is None:
         return EXIT_REFUSED, {"record": args.record, "found": False}
     return EXIT_OK, found
@@ -324,7 +326,9 @@ def _run(
             "appended": bool(appended),
             **_owed_of(args.directory, record),
         }
-    records = query_records(args.directory, status=args.status, limit=args.limit)
+    records = query_records(
+        args.directory, status=args.status, limit=args.limit, query=args.query, summary=args.summary
+    )
     return EXIT_OK, {"count": len(records), "records": records}
 
 

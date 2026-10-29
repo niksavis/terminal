@@ -1019,7 +1019,12 @@ def _refuse_unbounded(kind: str, payload: Mapping[str, object], refuse_over: int
 
 
 def _prepare_entry(
-    key: str, value: object, redact: Callable[[str], str] | None, cut_at: int | None
+    key: str,
+    value: object,
+    redact: Callable[[str], str] | None,
+    cut_at: int | None,
+    *,
+    refuse_cut: bool = False,
 ) -> dict[str, object]:
 
     if key in TRUNCATABLE_KEYS and isinstance(value, (dict, list)):
@@ -1033,6 +1038,11 @@ def _prepare_entry(
     cut, original = _truncate(prepared, cut_at)
     if cut == prepared:
         return {key: prepared}
+    if refuse_cut:
+        raise InvalidEventError(
+            f"prose text is {original} bytes after redaction; limit is {cut_at}: "
+            "shorten the note or store the detail in an artifact and link it"
+        )
     return {
         key: cut,
         f"{key}_truncated": True,
@@ -1046,12 +1056,21 @@ def prepare_payload(
     kind: str | None = None,
     redact: Callable[[str], str] | None = None,
     max_text_bytes: int = MAX_TEXT_BYTES,
+    historical_prose: bool = False,
 ) -> dict[str, object]:
 
     cut_at, refuse_over = _text_bound(kind, max_text_bytes)
     prepared: dict[str, object] = {}
     for key, value in payload.items():
-        prepared.update(_prepare_entry(key, value, redact, cut_at))
+        prepared.update(
+            _prepare_entry(
+                key,
+                value,
+                redact,
+                None if historical_prose and kind in PROSE_KINDS and key == "text" else cut_at,
+                refuse_cut=kind in PROSE_KINDS and key == "text",
+            )
+        )
     if kind is not None and refuse_over is not None:
         _refuse_unbounded(kind, prepared, refuse_over)
     return prepared
@@ -1083,6 +1102,7 @@ def append(  # noqa: PLR0913 — every keyword is an injected dependency the kit
     held_lock: LedgerLock | None = None,
     lock_timeout_s: float = DEFAULT_LOCK_TIMEOUT_S,
     writer: str | None = None,
+    historical_prose: bool = False,
 ) -> list[Event]:
 
     pending = list(drafts)
@@ -1107,7 +1127,11 @@ def append(  # noqa: PLR0913 — every keyword is an injected dependency the kit
         minted: list[Event] = []
         for draft in pending:
             payload = prepare_payload(
-                draft.payload, kind=draft.kind, redact=redact, max_text_bytes=max_text_bytes
+                draft.payload,
+                kind=draft.kind,
+                redact=redact,
+                max_text_bytes=max_text_bytes,
+                historical_prose=historical_prose,
             )
             event_id = event_id_for(draft.record, draft.kind, payload, generation=draft.generation)
             if event_id in retired:

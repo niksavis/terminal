@@ -136,7 +136,7 @@ hooks:
     stage: commit-msg
     pass_filenames: true
   - id: pre-push-script
-    description: "Run the configured full checks before a push, and refuse one that would race a landing."
+    description: "Run the fast checks for the pushed files before a push (the full checks under CI), and refuse a push that would race a landing."
     script: pre-push.py
     stage: pre-push
     always_run: true

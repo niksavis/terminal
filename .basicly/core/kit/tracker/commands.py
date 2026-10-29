@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +22,7 @@ def _load(file_name: str, module_name: str) -> Any:
     return module
 
 
+parent_progress = _load("parent_progress.py", "basicly_tracker_kit_parent_progress")
 queries = _load("queries.py", "basicly_tracker_kit_queries")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
 templates = _load("templates.py", "basicly_tracker_kit_templates")
@@ -109,34 +110,25 @@ def _append(
     template = templates.load(ledger)
     found = events.read_events(ledger)[0]
     states = events.fold(found).records
+    drafts, progress_parents = parent_progress.progress(found, drafts)
     values.refuse(events, drafts, template, states, found)
     holders.refuse(states, drafts)
-    review.refuse(states, drafts, writers.writer_class(), template, found=found)
+    review_drafts = [
+        draft
+        for draft in drafts
+        if not (
+            draft.record in progress_parents
+            and draft.kind == events.KIND_STATUS
+            and draft.payload.get("status") == "in_progress"
+        )
+    ]
+    review.refuse(states, review_drafts, writers.writer_class(), template, found=found)
     resolved = recurrence.at_the_generation_this_write_needs(
         events, ledger, drafts, repeat=repeat, redact=redact
     )
     return events.append(
         ledger, resolved, actor=writers.writer_class(), redact=redact, held_lock=lock
     )
-
-
-def _resolved_labels(state: Any, add: Iterable[str], remove: Iterable[str]) -> str:
-
-    labels = list(labels_of(state.fields.get(LABELS_FIELD)))
-    for name in _split_all(add):
-        if name not in labels:
-            labels.append(name)
-    for name in _split_all(remove):
-        if name in labels:
-            labels.remove(name)
-    return LABEL_SEPARATOR.join(labels)
-
-
-def _split_all(values: Iterable[str]) -> list[str]:
-    found: list[str] = []
-    for value in values:
-        found.extend(part.strip() for part in value.split(LABEL_SEPARATOR) if part.strip())
-    return found
 
 
 def update(  # noqa: PLR0913 — one argument per thing an update can set
@@ -166,7 +158,7 @@ def update(  # noqa: PLR0913 — one argument per thing an update can set
             for name, value in sorted(named.items())
         ]
         if add_labels or remove_labels:
-            resolved = _resolved_labels(state, add_labels, remove_labels)
+            resolved = label_shape.resolved_labels(state, add_labels, remove_labels)
             drafts.append(
                 events.Draft(record, events.KIND_FIELD, {"name": LABELS_FIELD, "value": resolved})
             )

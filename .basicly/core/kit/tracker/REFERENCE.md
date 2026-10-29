@@ -65,7 +65,10 @@ python3 .basicly/kit/tracker/cli.py update .basicly/ledger acme-a1b2 --status in
 
 ### comment
 
-Append one comment.
+Append one comment. Text above 4,096 UTF-8 bytes after redaction is refused without
+appending events. Shorten the note or link an artifact. Older clipped notes remain
+readable with their original truncation metadata. Historical snapshot import preserves
+full source prose, including notes above this limit.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py comment .basicly/ledger acme-a1b2 "The export drops a trailing newline."
@@ -246,6 +249,8 @@ other record. It also names the `holder`, any unresolved `conflicts`, and a `com
 that gives each comment with its writer class and time.
 
 ```sh
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2 --view current
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2 --view history --snapshot <snapshot_identity>
 python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2
 ```
 
