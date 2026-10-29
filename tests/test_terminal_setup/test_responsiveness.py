@@ -86,7 +86,7 @@ def _start_zsh(home: Path) -> str:
     result = subprocess.run(
         ["zsh", "-f", "-c", HERDR_PROBE],
         env={
-            **os.environ,
+            **{name: value for name, value in os.environ.items() if name != "FPATH"},
             "HOME": str(home),
             "ZDOTDIR": str(home),
             "PATH": "/usr/bin:/bin",
