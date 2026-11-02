@@ -1,13 +1,14 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 240
-  codex: 240
-  copilot: 240
+  claude: 102
+  codex: 102
+  copilot: 102
 id: external-facts
 description: Establish external facts and numbers from evidence, never from recall.
 category: decisions
 priority: high
+phase: plan
 applies_to: [all]
 tags:
 - evidence
@@ -15,8 +16,6 @@ tags:
 status: active
 title: External Facts
 body: |
-  - Do not answer from memory about a third-party interface. A flag, field, model id, price, limit or version can change. Read our own adapter first, then the vendor's current documentation. The `interface-facts` skill gives the steps.
-  - An empty search result does not prove absence. Before you report a zero, run a positive control: a search that must match a case you have seen. When the control is also empty, the search is wrong. When it matches, check that the count of examined items moved. If the count did not move, the search never read the control.
-  - A capability is absent only when its action is absent, not its name. Before you report that a tool cannot do something, search for what it does, not only for the name you expected.
-  - Derive a number twice, by two paths that share no step. When they disagree, suspect the instrument first.
-  - When two causes predict the same result, say so and change the probe until they differ.
+  - For third-party interfaces, read our adapter and current vendor docs; use `interface-facts`, never memory.
+  - Before absence/zero claims, search for the action and run a known-match control through the same search. An empty control invalidates it; a match must increase the examined count.
+  - Use `falsify-first` before high-risk numbers, root causes or coverage claims enter a decision.

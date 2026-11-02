@@ -59,7 +59,7 @@ def main() -> int:
         )
         return 0
     proc = subprocess.run(  # nosec B603
-        command, cwd=Path.cwd(), check=False, capture_output=True, text=True
+        command, cwd=Path.cwd(), check=False, capture_output=True, text=True, encoding="utf-8"
     )
     print(proc.stdout, end="")
     print(proc.stderr, end="", file=sys.stderr)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import subprocess
 import sys
 from dataclasses import replace
@@ -1501,31 +1502,50 @@ def test_a_first_install_skips_the_version_check(installer: object, tmp_path: Pa
     with mock.patch("terminal_setup.prerequisites._add_to_user_path"):
         installer(cast(Runner, runner), platform)  # type: ignore[operator]
 
-    script = next(command[-1] for command in runner.commands if command[:1] == ["powershell"])
+    command = next(command for command in runner.commands if command[:1] == ["powershell"])
+    script = command[-1]
+    assert command[:2] == ["powershell", "-NoProfile"]
     assert "--version" not in script
     assert ".terminal-setup-old" in script
 
 
-def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
-
+def _add_to_user_path_command() -> list[str]:
     runner = SpyRunner()
     with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
         _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
+    return runner.commands[-1]
 
-    script = runner.commands[-1][-1]
+
+def _broadcast_script(script: str) -> str:
+    encoded = script.split("'-EncodedCommand', '", 1)[1].split("'", 1)[0]
+    return base64.b64decode(encoded).decode("utf-16-le")
+
+
+def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
+    script = _add_to_user_path_command()[-1]
+
     assert "DoNotExpandEnvironmentNames" in script
     assert "ExpandString" in script
     assert "-ieq" in script
     assert "$dir = 'C:\\Users\\test\\tool'" in script
-    assert "SendMessageTimeout" in script
+    assert "SendMessageTimeout" in _broadcast_script(script)
+
+
+def test_add_to_user_path_does_not_wait_for_the_environment_broadcast() -> None:
+    script = _add_to_user_path_command()[-1]
+
+    assert "SendMessageTimeout" not in script
+    assert "Start-Process powershell -NoNewWindow" in script
+    assert "-Wait" not in script
+    assert "'-NoProfile', '-NonInteractive'" in script
+
+
+def test_add_to_user_path_skips_the_user_profile() -> None:
+    assert _add_to_user_path_command()[:2] == ["powershell", "-NoProfile"]
 
 
 def test_the_path_broadcast_type_is_not_named_after_its_method() -> None:
-    runner = SpyRunner()
-    with mock.patch("terminal_setup.prerequisites._add_to_process_path"):
-        _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
-
-    script = runner.commands[-1][-1]
+    script = _broadcast_script(_add_to_user_path_command()[-1])
     type_name = script.split("-MemberDefinition $sig -Name '", 1)[1].split("'", 1)[0]
     method = script.split("public static extern IntPtr ", 1)[1].split("(", 1)[0]
     assert method == "SendMessageTimeout"
@@ -1669,3 +1689,153 @@ def test_system_install_runs_the_packages_without_asking() -> None:
     runner = _run_system_packages(allow_sudo=True, assume_yes=True, answer=False, tty=False)
 
     assert len(runner.commands) == 1
+
+
+def _wezterm_user_install(home: Path) -> Path:
+    gui = home / "AppData" / "Local" / "Programs" / "WezTerm" / "wezterm-gui.exe"
+    gui.parent.mkdir(parents=True)
+    gui.write_text("")
+    return gui
+
+
+def test_ensure_wezterm_adds_the_user_install_to_the_start_menu(tmp_path: Path) -> None:
+    gui = _wezterm_user_install(tmp_path)
+    runner = SpyRunner()
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    with mock.patch.object(runner, "which", create=True, return_value=str(gui)):
+        prerequisites_module.ensure_wezterm(cast(Runner, runner), platform)
+
+    command = runner.commands[-1]
+    assert command[:2] == ["powershell", "-NoProfile"]
+    assert "GetFolderPath('Programs')" in command[-1]
+    assert "'WezTerm.lnk'" in command[-1]
+    assert f"$shortcut.TargetPath = '{gui}'" in command[-1]
+
+
+def test_ensure_wezterm_writes_no_shortcut_without_the_user_install(tmp_path: Path) -> None:
+    runner = SpyRunner()
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    with mock.patch.object(runner, "which", create=True, return_value="wezterm"):
+        prerequisites_module.ensure_wezterm(cast(Runner, runner), platform)
+
+    assert runner.commands == []
+
+
+def test_wezterm_location_names_the_user_install(tmp_path: Path) -> None:
+    gui = _wezterm_user_install(tmp_path)
+    platform = replace(make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET), home=tmp_path)
+
+    assert prerequisites_module.wezterm_location(cast(Runner, SpyRunner()), platform) == str(gui)
+
+
+@pytest.mark.parametrize(
+    ("manager", "command"),
+    [
+        (PackageManager.APT, "sudo apt-get install -y zsh tmux git curl wget"),
+        (PackageManager.PACMAN, "sudo pacman -S --noconfirm zsh tmux git curl wget"),
+        (PackageManager.DNF, "sudo dnf install -y zsh tmux git curl wget"),
+    ],
+)
+def test_no_sudo_skips_the_shell_tools_and_prints_their_install_command(
+    manager: PackageManager, command: str
+) -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager), no_sudo=True
+    )
+
+    assert runner.commands == []
+    assert any(command in message for _, message in runner.reporter.messages)
+
+
+def test_no_sudo_still_installs_the_shell_tools_with_homebrew() -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner),
+        make_platform(OperatingSystem.MACOS, PackageManager.HOMEBREW),
+        no_sudo=True,
+    )
+
+    assert _installed_packages(runner.commands, PackageManager.HOMEBREW) == [
+        "zsh",
+        "tmux",
+        "git",
+        "curl",
+        "wget",
+    ]
+
+
+@pytest.mark.parametrize("manager", [PackageManager.PACMAN, PackageManager.DNF])
+def test_no_sudo_installs_wezterm_as_the_appimage_on_pacman_and_dnf(
+    manager: PackageManager,
+) -> None:
+    runner = SpyRunner()
+
+    with (
+        mock.patch.object(runner, "which", create=True, return_value=None),
+        mock.patch("terminal_setup.prerequisites._ensure_wezterm_appimage") as appimage,
+    ):
+        prerequisites_module.ensure_wezterm(
+            cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager), no_sudo=True
+        )
+
+    appimage.assert_called_once()
+    assert runner.commands == []
+
+
+def _herdr_commands(runner: SpyRunner) -> list[list[str]]:
+    return [command for command in runner.commands if "herdrdev/herdr" in command]
+
+
+def test_ensure_herdr_installs_the_linux_release_in_wsl_from_windows() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module.ensure_herdr(
+            cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+        )
+
+    [command] = _herdr_commands(runner)
+    assert command[:5] == ["wsl", "-d", "Ubuntu", "--exec", "python3"]
+    assert command[-1] == "herdr-linux-{arch}"
+
+
+def test_ensure_herdr_installs_the_release_on_a_linux_host() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module.ensure_herdr(
+            cast(Runner, runner), make_platform(OperatingSystem.LINUX, PackageManager.APT)
+        )
+
+    [command] = _herdr_commands(runner)
+    assert command[0] == sys.executable
+    assert "herdr" in command
+
+
+def test_ensure_herdr_uses_homebrew_on_macos() -> None:
+    runner = SpyRunner()
+
+    prerequisites_module.ensure_herdr(
+        cast(Runner, runner), make_platform(OperatingSystem.MACOS, PackageManager.HOMEBREW)
+    )
+
+    assert _installed_packages(runner.commands, PackageManager.HOMEBREW) == ["herdr"]
+    assert _herdr_commands(runner) == []
+
+
+def test_herdr_installed_asks_wsl_on_a_windows_run() -> None:
+    runner = SpyRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        found = prerequisites_module.herdr_installed(
+            cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+        )
+
+    assert found is True
+    assert runner.commands[-1][:4] == ["wsl", "-d", "Ubuntu", "--exec"]
+    assert ".local/bin/herdr" in runner.commands[-1][-1]

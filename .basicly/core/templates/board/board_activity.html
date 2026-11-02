@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Work activity · basicly</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.5 system-ui,sans-serif;background:#101720;color:#e4ebf3}*{box-sizing:border-box}body{overflow-wrap:anywhere;max-width:1200px;margin:auto;padding:24px}a{color:#a9caff}header,nav,.meta{display:flex;gap:16px;align-items:center;flex-wrap:wrap}header{justify-content:space-between}h1{margin:0;font-size:1.6rem}h2{font-size:1.1rem;margin:0 0 8px}p{margin:8px 0}.muted{color:#b1bece}.status{border:1px solid #64758b;border-radius:20px;padding:3px 10px;font-size:.85rem}.task{margin:18px 0;background:#192330;border:1px solid #34465c;border-radius:12px;padding:20px}.task a{overflow-wrap:anywhere}.meta{font-size:.85rem;color:#b1bece;margin:12px 0}dl{display:grid;grid-template-columns:110px 1fr;gap:8px 16px;margin:16px 0}dt{color:#b1bece}dd{margin:0;overflow-wrap:anywhere}details{border-top:1px solid #34465c;margin-top:16px;padding-top:12px}summary,button{cursor:pointer}button,input{font:inherit;padding:7px 10px;border:1px solid #64758b;border-radius:6px;background:#192330;color:inherit}input{max-width:100%;width:240px}button:focus-visible,a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid #a9caff;outline-offset:3px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;border-left:2px solid #64758b;padding-left:12px}.error{color:#ffb9b9}.notice{padding:12px 0;border-bottom:1px solid #34465c}form{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}@media(max-width:600px){body{padding:16px}.task{padding:16px}dl{grid-template-columns:1fr;gap:3px}dd{margin-bottom:9px}h1{font-size:1.35rem}}
+</style>
+</head>
+<body>
+<header><h1>Work activity</h1><nav aria-label="Views"><a href="/backlog.html">Complete backlog</a><a href="/wall">Harness wall</a></nav></header>
+<p class="muted">Task progress and reported actions from the shared tracker. A task in progress does not prove an agent is running.</p>
+<form id="filter"><label>Epic or task <input id="root" name="root" placeholder="All tracked work" autocomplete="off"></label><button type="submit">Show</button><button type="button" id="refresh">Refresh</button></form>
+<div class="notice"><span id="connection" role="status" aria-live="polite">Connecting…</span><span id="count" class="muted"></span></div>
+<main id="tasks" aria-label="Tracked work"></main>
+<template id="card"><article class="task"><div class="meta"><span class="status" data-field="status"></span><span data-field="phase"></span><span data-field="age"></span><span>Runtime unobserved</span><span data-field="since"></span></div><h2><a data-field="title"></a></h2><p data-field="purpose"></p><p><strong>Latest action: </strong><span data-field="action"></span></p><p class="meta"><span>Owner: <span data-field="owner"></span></span><span>Worktree: <span data-field="worktree"></span></span></p><dl><dt>Blocker</dt><dd data-field="blocker"></dd><dt>Next step</dt><dd data-field="next"></dd><dt>Validation</dt><dd data-field="evidence"></dd></dl><details><summary>Details and recent history</summary><p class="muted" data-field="runtime_reason"></p><p data-field="dependencies"></p><div data-field="logs"></div><p><a data-field="history">Full task and history</a></p></details></article></template>
+<script>
+const tasks = document.querySelector('#tasks');
+const connection = document.querySelector('#connection');
+const rootInput = document.querySelector('#root');
+let selectedRoot = new URLSearchParams(location.search).get('root') || '';
+rootInput.value = selectedRoot;
+let selectionVersion = 0;
+let etag = '';
+let busy = false;
+let failures = 0;
+let timer;
+function ago(value) {
+  const seconds = Math.max(0, Math.floor((Date.now() - Date.parse(value)) / 1000));
+  if (!Number.isFinite(seconds)) return 'Time unknown';
+  return seconds < 60 ? `${seconds}s ago` : seconds < 3600 ? `${Math.floor(seconds / 60)}m ago` : `${Math.floor(seconds / 3600)}h ago`;
+}
+function draw(data) {
+  const focused = document.activeElement;
+  const previous = new Map(Array.from(tasks.children).map(node => [node.dataset.id, node]));
+  let index = 0;
+  for (const item of data.items) {
+    let card = previous.get(item.id);
+    if (!card) card = document.querySelector('#card').content.firstElementChild.cloneNode(true);
+    previous.delete(item.id);
+    card.dataset.id = item.id;
+    for (const name of ['purpose','owner','worktree','blocker','next','evidence','runtime_reason']) card.querySelector(`[data-field="${name}"]`).textContent = item[name];
+    card.querySelector('[data-field="status"]').textContent = item.status.replaceAll('_',' ');
+    card.querySelector('[data-field="phase"]').textContent = `Reported phase: ${item.phase}`;
+    const age = card.querySelector('[data-field="age"]');
+    age.dataset.at = item.action_at || '';
+    age.textContent = `Last action ${ago(item.action_at)}`;
+    card.querySelector('[data-field="since"]').textContent = item.started_at ? `Marked active ${ago(item.started_at)}` : '';
+    card.querySelector('[data-field="dependencies"]').textContent = !Array.isArray(item.dependencies) ? 'Dependency observation unavailable' : item.dependencies.length ? `Dependencies not complete: ${item.dependencies.join(', ')}` : 'No outstanding dependencies recorded';
+    card.querySelector('[data-field="action"]').textContent = item.action || 'No action recorded';
+    const href = `/record/${encodeURIComponent(item.id)}.html`;
+    const title = card.querySelector('[data-field="title"]');
+    title.textContent = `${item.title} · ${item.id}`;
+    title.href = href;
+    card.querySelector('[data-field="history"]').href = href;
+    const logs = card.querySelector('[data-field="logs"]');
+    logs.replaceChildren();
+    for (const entry of item.logs) {
+      const text = document.createElement('pre');
+      text.textContent = `${entry.writer} · ${entry.at}\n${entry.text}`;
+      logs.append(text);
+    }
+    if (tasks.children[index] !== card) tasks.insertBefore(card,tasks.children[index] || null);
+    index += 1;
+  }
+  for (const card of previous.values()) card.remove();
+  if (focused !== document.body && document.contains(focused) && document.activeElement !== focused) focused.focus({preventScroll:true});
+  document.querySelector('#count').textContent = ` · ${data.items.length} of ${data.total} tasks; complete history stays in the backlog`;
+}
+async function refresh() {
+  if (busy) return;
+  if (document.hidden) { timer = setTimeout(refresh, 10000); return; }
+  busy = true;
+  const version = selectionVersion;
+  try {
+    const headers = etag ? {'If-None-Match': etag} : {};
+    const response = await fetch(`/activity.json?root=${encodeURIComponent(selectedRoot)}`, {headers, cache:'no-store', signal:AbortSignal.timeout(15000)});
+    if (version !== selectionVersion) return;
+    if (response.status !== 304) {
+      if (!response.ok) {
+        const error = new Error(response.status === 404 ? 'Task not found; previously loaded records remain below' : 'Activity unavailable');
+        error.name = 'ActivityRequestError';
+        throw error;
+      }
+      const data = await response.json();
+      if (version !== selectionVersion) return;
+      draw(data);
+      etag = response.headers.get('ETag') || '';
+    }
+    failures = 0;
+    connection.className = '';
+    connection.textContent = `Connected · checked ${new Date().toLocaleTimeString()}`;
+    for (const age of document.querySelectorAll('[data-field="age"]')) age.textContent = `Last action ${ago(age.dataset.at)}`;
+  } catch (error) {
+    if (version !== selectionVersion) return;
+    failures += 1;
+    connection.className = 'error';
+    connection.textContent = `${error.name === 'ActivityRequestError' ? 'Update unavailable' : 'Disconnected'} · ${error.message}. Displayed records may be stale.`;
+  } finally {
+    busy = false;
+    clearTimeout(timer);
+    timer = setTimeout(refresh, version !== selectionVersion ? 0 : Math.min(30000, 2000 * 2 ** Math.min(failures,4)));
+  }
+}
+document.querySelector('#filter').addEventListener('submit', event => {
+  event.preventDefault();
+  etag = '';
+  selectedRoot = rootInput.value.trim();
+  selectionVersion += 1;
+  connection.textContent = 'Loading selection…';
+  history.replaceState(null,'',`${location.pathname}?root=${encodeURIComponent(rootInput.value.trim())}`);
+  refresh();
+});
+document.querySelector('#refresh').addEventListener('click', refresh);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+refresh();
+</script>
+</body>
+</html>

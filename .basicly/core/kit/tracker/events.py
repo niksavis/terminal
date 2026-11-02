@@ -305,6 +305,41 @@ def event_id_for(
     )
 
 
+def generation_bounds(existing: Sequence[Event]) -> dict[str, int]:
+    bounds: dict[str, int] = {}
+    for event in canonical_order(existing):
+        bounds[event.record] = bounds.get(event.record, 0) + 1
+    return bounds
+
+
+def generation_of(event: Event, bound: int) -> int | None:
+    for generation in range(1, bound + 1):
+        if event.id == event_id_for(event.record, event.kind, event.payload, generation=generation):
+            return generation
+    return None
+
+
+def retired_ids(existing: Iterable[Event]) -> set[str]:
+    return {
+        retired
+        for event in existing
+        if isinstance(retired := event.payload.get(WITHDRAWN_FROM), str)
+    }
+
+
+def reserved_ids(existing: Sequence[Event]) -> set[str]:
+    return {event.id for event in existing} | retired_ids(existing)
+
+
+def available_generation(
+    record: str, kind: str, payload: Mapping[str, object], taken: set[str]
+) -> int:
+    generation = 1
+    while event_id_for(record, kind, payload, generation=generation) in taken:
+        generation += 1
+    return generation
+
+
 def to_json(event: Event) -> str:
 
     obj: dict[str, object] = dict(event.extra)
@@ -462,7 +497,7 @@ def _withdrawal_facts(payload: Mapping[str, object]) -> tuple[str, str]:
         raise InvalidEventError(
             f"a {KIND_WITHDRAWN} event needs the {WITHDRAWN_TARGET} event id, got {target!r}"
         )
-    if not isinstance(reason, str) or not reason:
+    if not isinstance(reason, str) or not reason.strip():
         raise InvalidEventError(
             f"a {KIND_WITHDRAWN} event needs a {WITHDRAWN_REASON}, got {reason!r}"
         )
@@ -984,7 +1019,12 @@ def _refuse_unbounded(kind: str, payload: Mapping[str, object], refuse_over: int
 
 
 def _prepare_entry(
-    key: str, value: object, redact: Callable[[str], str] | None, cut_at: int | None
+    key: str,
+    value: object,
+    redact: Callable[[str], str] | None,
+    cut_at: int | None,
+    *,
+    refuse_cut: bool = False,
 ) -> dict[str, object]:
 
     if key in TRUNCATABLE_KEYS and isinstance(value, (dict, list)):
@@ -998,6 +1038,11 @@ def _prepare_entry(
     cut, original = _truncate(prepared, cut_at)
     if cut == prepared:
         return {key: prepared}
+    if refuse_cut:
+        raise InvalidEventError(
+            f"prose text is {original} bytes after redaction; limit is {cut_at}: "
+            "shorten the note or store the detail in an artifact and link it"
+        )
     return {
         key: cut,
         f"{key}_truncated": True,
@@ -1011,12 +1056,21 @@ def prepare_payload(
     kind: str | None = None,
     redact: Callable[[str], str] | None = None,
     max_text_bytes: int = MAX_TEXT_BYTES,
+    historical_prose: bool = False,
 ) -> dict[str, object]:
 
     cut_at, refuse_over = _text_bound(kind, max_text_bytes)
     prepared: dict[str, object] = {}
     for key, value in payload.items():
-        prepared.update(_prepare_entry(key, value, redact, cut_at))
+        prepared.update(
+            _prepare_entry(
+                key,
+                value,
+                redact,
+                None if historical_prose and kind in PROSE_KINDS and key == "text" else cut_at,
+                refuse_cut=kind in PROSE_KINDS and key == "text",
+            )
+        )
     if kind is not None and refuse_over is not None:
         _refuse_unbounded(kind, prepared, refuse_over)
     return prepared
@@ -1048,6 +1102,7 @@ def append(  # noqa: PLR0913 — every keyword is an injected dependency the kit
     held_lock: LedgerLock | None = None,
     lock_timeout_s: float = DEFAULT_LOCK_TIMEOUT_S,
     writer: str | None = None,
+    historical_prose: bool = False,
 ) -> list[Event]:
 
     pending = list(drafts)
@@ -1068,12 +1123,22 @@ def append(  # noqa: PLR0913 — every keyword is an injected dependency the kit
         existing, _ = read_events(ledger)
         state = fold(existing)
         seen = {event.id for event in existing}
+        retired = retired_ids(existing)
         minted: list[Event] = []
         for draft in pending:
             payload = prepare_payload(
-                draft.payload, kind=draft.kind, redact=redact, max_text_bytes=max_text_bytes
+                draft.payload,
+                kind=draft.kind,
+                redact=redact,
+                max_text_bytes=max_text_bytes,
+                historical_prose=historical_prose,
             )
             event_id = event_id_for(draft.record, draft.kind, payload, generation=draft.generation)
+            if event_id in retired:
+                raise InvalidEventError(
+                    f"{event_id} is retired by a withdrawal; "
+                    "resolve a fresh generation before append"
+                )
             if event_id in seen:
                 continue
             item = state.records.setdefault(draft.record, RecordState(record=draft.record))
@@ -1103,11 +1168,25 @@ def append(  # noqa: PLR0913 — every keyword is an injected dependency the kit
             lock.release()
 
 
-def _withdrawn_payload(event: Event) -> dict[str, object]:
+def _withdrawn_payload(event: Event, ledger: Path) -> dict[str, object]:
+
+    prose_value = False
+    name = event.payload.get("name")
+    if (
+        event.kind == KIND_FIELD
+        and isinstance(name, str)
+        and isinstance(event.payload.get("value"), str)
+    ):
+        fields = _load_sibling("fields.py", "basicly_tracker_kit_fields")
+        template = None
+        if fields.known_field(name) is None:
+            templates = _load_sibling("templates.py", "basicly_tracker_kit_templates")
+            template = templates.load(ledger)
+        prose_value = fields.permits_text_withdrawal(name, template)
 
     payload: dict[str, object] = {WITHDRAWN_FROM: event.id}
     for key, value in event.payload.items():
-        if key in FOLD_READ_KEYS:
+        if key in FOLD_READ_KEYS and not (key == "value" and prose_value):
             payload[key] = value
             continue
         payload[key] = WITHDRAWN_PLACEHOLDER
@@ -1117,15 +1196,24 @@ def _withdrawn_payload(event: Event) -> dict[str, object]:
 
 def _find_line(ledger: Path, event_id: str) -> tuple[Path, str, int, Event]:
 
+    found = None
     for path in ledger_paths(ledger):
         text = path.read_text(encoding="utf-8")
         for index, line in enumerate(text.splitlines()):
             try:
-                event = from_json(line)
-            except InvalidEventError:
+                raw = json.loads(line)
+            except ValueError:
                 continue
-            if event.id == event_id:
-                return path, text, index, event
+            if not isinstance(raw, dict) or raw.get("id") != event_id:
+                continue
+            if found is not None:
+                raise InvalidEventError(
+                    f"{event_id} has duplicate stored copies; run the tracker kit's `compact` "
+                    "command before withdrawing it so no disclosed copy can remain"
+                )
+            found = path, text, index, from_json(line)
+    if found is not None:
+        return found
     raise InvalidEventError(f"no event in the log carries the id {event_id!r}")
 
 
@@ -1182,6 +1270,7 @@ def withdraw(  # noqa: PLR0913 - `append`'s injected seams, plus which event and
     lock_timeout_s: float = DEFAULT_LOCK_TIMEOUT_S,
 ) -> Event:
 
+    _withdrawal_facts({WITHDRAWN_TARGET: event_id, WITHDRAWN_REASON: reason})
     ledger = Path(directory)
     with LedgerLock(ledger, timeout_s=lock_timeout_s) as lock:
         path, text, index, target = _find_line(ledger, event_id)
@@ -1192,7 +1281,7 @@ def withdraw(  # noqa: PLR0913 - `append`'s injected seams, plus which event and
             )
         if WITHDRAWN_FROM in target.payload:
             raise InvalidEventError(f"{event_id} has already been withdrawn")
-        payload = _withdrawn_payload(target)
+        payload = _withdrawn_payload(target, ledger)
         if len(payload) == len(target.payload) + 1:
             raise InvalidEventError(
                 f"every key on {event_id} is one the fold reads by name, so there is no free "
@@ -1204,6 +1293,14 @@ def withdraw(  # noqa: PLR0913 - `append`'s injected seams, plus which event and
             raise InvalidEventError(
                 f"withdrawing {event_id} would mint {minted}, which the log already holds"
             )
+        audit = prepare_payload(
+            {WITHDRAWN_TARGET: minted, WITHDRAWN_REASON: reason}, kind=KIND_WITHDRAWN, redact=redact
+        )
+        _withdrawal_facts(audit)
+        if audit[WITHDRAWN_TARGET] != minted:
+            raise InvalidEventError(
+                "the redactor changed the withdrawal target; nothing was rewritten"
+            )
         lines = text.splitlines()
         lines[index] = to_json(replace(target, id=minted, payload=payload))
         _publish_text(path, "\n".join(lines) + ("\n" if text.endswith("\n") else ""))
@@ -1213,12 +1310,11 @@ def withdraw(  # noqa: PLR0913 - `append`'s injected seams, plus which event and
                 Draft(
                     target.record,
                     KIND_WITHDRAWN,
-                    {WITHDRAWN_TARGET: minted, WITHDRAWN_REASON: reason},
+                    audit,
                 )
             ],
             actor=actor,
             clock=clock,
-            redact=redact,
             held_lock=lock,
         )
         return recorded[0]

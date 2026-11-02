@@ -1,21 +1,22 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 204
-  codex: 204
-  copilot: 204
+  claude: 178
+  codex: 178
+  copilot: 178
 id: require-explicit-confirmation
 description: Actions that need the user's explicit confirmation first.
 category: boundaries
 priority: critical
 applies_to: [all]
 tags:
+- ask-first
 - safety
 - boundaries
 status: active
 title: Require Explicit Confirmation
 body: |
-  Ask the user before you:
+  These actions need explicit approval. Reuse it only for the same action and scope. Identify that approval. A new phase or agent needs no repeat approval.
 
   - force-push, rewrite history, or discard uncommitted work: `git reset --hard`, `git checkout -- <path>`, `git restore`, `git stash`, `git clean`, `rm -rf`;
   - read or write a `.env*` file;
@@ -24,6 +25,4 @@ body: |
   - add, remove or upgrade a dependency;
   - make a network call outside the task.
 
-  The deny-list blocks only some of these, and it differs per agent. A command that runs unblocked still needs confirmation. To undo your own edit, restore the file from a copy you made first.
-
-  IMPORTANT: never defeat a gate to make it pass. Do not skip or weaken a test, a lint or a type check, and do not bypass a hook (`--no-verify`, `--no-gpg-sign`). Fix the cause.
+  Tool access does not grant approval. Apply this list even when commands run unblocked. Undo your edit from a prior copy.

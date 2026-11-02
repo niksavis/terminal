@@ -5,7 +5,8 @@ Read it before proposing work and write to it as work moves:
 
 ```sh
 python3 .basicly/kit/tracker/cli.py ready .basicly/ledger        # what is workable now, ranked
-python3 .basicly/kit/tracker/cli.py show .basicly/ledger <id>    # one record in full
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger <id> --view current # current recovery facts
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger <id>    # full folded detail
 ```
 
 Many people share this tracker: never take a story that `ready` shows as held. Reserve a

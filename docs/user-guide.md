@@ -12,7 +12,7 @@ A rerun is safe. A missing tool installs, and a tool at its latest release is sk
 
 The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options.
 
-Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.12.7`.
+Each release carries its own copy of `install.ps1` and `install.sh`, and that copy installs that release. `releases/latest` always points to the newest release. To install one fixed release, use the commands on its [release page](https://github.com/niksavis/terminal/releases). `TERMINAL_SETUP_REF` overrides the release, for example `v0.19.1`.
 
 ## Install, update and check
 
@@ -52,7 +52,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 Run from Windows, these commands set up the Windows host and the default WSL distro together.
 
-With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
+With uv already installed, you can also run one fixed release directly, with no bootstrap script. Take the tag from the [release page](https://github.com/niksavis/terminal/releases), for example `uvx --from https://github.com/niksavis/terminal/archive/v0.19.1.zip terminal-setup --only report`. After a run, setup prints its follow-up commands in this form, with the tag that it ran.
 
 ## Unattended install for scripts and agents
 
@@ -96,17 +96,17 @@ Setup does not install a second copy beside a machine-wide one, because Windows 
 
 ### Windows
 
-After installation, start WezTerm from the Start menu or run:
+After installation, start WezTerm from the Start menu or run the command below. At the end of the install, setup prints where WezTerm is installed:
 
 ```powershell
 wezterm
 ```
 
-WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you will be in a zsh shell with tmux, starship, lazygit, direnv, just, fzf, and the extra CLI tools ready.
+WezTerm is configured to open WSL2 Ubuntu by default. The first time it starts, you are in a zsh shell with starship, lazygit, direnv, just, fzf and the other command-line tools ready. Run `tmux` to start a session that stays alive after the window closes.
 
-Press `Ctrl + Shift + l` — or right-click the `+` button in the tab bar, WezTerm's equivalent of the Windows Terminal new-tab dropdown — for the launch menu to switch shells: **Ubuntu (WSL)** (default), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. Each entry opens as its own tab, so WSL, PowerShell, and Git Bash can run side by side; the three Windows-native profiles are pinned to WezTerm's `local` domain so they start on Windows rather than inside the WSL tab you launched them from. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
+Press `Ctrl + Shift + l` — or right-click the `+` button in the tab bar, WezTerm's equivalent of the Windows Terminal new-tab dropdown — for the launch menu to switch shells: **Ubuntu-24.04 (WSL)** (named after your default WSL distro), **PowerShell** (pwsh 7), **Git Bash** (shown when Git for Windows is installed), and **Command Prompt**. Each entry opens as its own tab, so WSL, PowerShell, and Git Bash can run side by side; the three Windows-native profiles are pinned to WezTerm's `local` domain so they start on Windows rather than inside the WSL tab you launched them from. The setup wires the same Starship prompt into PowerShell 7 (`$PROFILE`) and Git Bash (`~/.bashrc`), sharing one `~/.config/starship.toml` on the Windows host, so those native shells match the WSL prompt. Command Prompt is left plain (cmd has no Starship prompt hook).
 
-The default Starship prompt is single-line for readability and now includes project context modules (git state/metrics, common runtimes, and container context) before the prompt symbol.
+The default Starship prompt is single-line for readability. It shows the git branch and state, the common runtimes and the container context before the prompt symbol.
 
 Linux-style shortcuts are enabled in WezTerm: use `Ctrl + Shift + t` for a new tab, `Ctrl + Shift + c` to copy, and `Ctrl + Shift + v` to paste. To split a pane, press `Ctrl + Shift + Space` (leader) then `-` (vertical) or `backslash` (horizontal). To close a pane, press `Ctrl + Shift + Space` then `x`.
 
@@ -192,7 +192,25 @@ wezterm
 
 See [`terminal-cheat-sheet.md`](../terminal-cheat-sheet.md) for the full command reference.
 
-WezTerm and tmux shortcuts in this README are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
+WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
+
+### herdr
+
+[herdr](https://herdr.dev/) keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Install it with `--herdr`. To install herdr with all three coding agents and link them, add `--herdr --agents all` to the install command. Setup installs it in WSL, on Linux and on macOS, and not on the Windows host, because herdr on Windows has more limits.
+
+Start it from the WezTerm launch menu, **herdr (WSL)** on Windows, or run `herdr` in a shell. herdr runs inside WezTerm and does not replace it. Your zsh and the starship prompt run in each herdr pane. herdr does the job of tmux for agent sessions, so use one of the two in a window, not both. The herdr prefix key is `Ctrl + b`. It does not clash with the tmux prefix `Ctrl + Space` or the WezTerm leader `Ctrl + Shift + Space`.
+
+To show the state of an agent, herdr needs its integration. Setup installs it for each agent that you name with `--agents`, when you also add `--herdr`. The integration adds hooks to the agent config in `~/.claude`, `~/.codex` or `~/.copilot`. For an agent that you installed another way, run this once in the shell where herdr runs:
+
+```bash
+herdr integration install claude
+herdr integration install copilot
+herdr integration install codex
+```
+
+`herdr integration status` shows which integrations are installed. The setup report shows them too, as `herdr-claude`, `herdr-copilot` and `herdr-codex`.
+
+zsh completes herdr commands with Tab. The first shell after a herdr install or update writes the completion file to `~/.cache/zsh/completions`.
 
 ## Command-line editing
 
@@ -217,12 +235,15 @@ The zsh configuration uses Emacs-style readline shortcuts. These work in any ter
 
 ## Starship prompt
 
+Git line metrics are disabled to avoid a diff on each prompt. Git branch and
+status information remain available.
+
 The prompt is intentionally single-line and context-rich. It is configured in [`terminal_setup/templates/starship.toml`](../terminal_setup/templates/starship.toml) and deployed to `~/.config/starship.toml`.
 
 A typical prompt looks like:
 
 ```text
-~/projects/terminal  main !? +12-3 py:v3.14.0 took 30s >
+~/projects/terminal  main !? py:v3.14.0 took 30s >
 ```
 
 | Segment               | Meaning                                               |
@@ -230,7 +251,6 @@ A typical prompt looks like:
 | `~/projects/terminal` | Current directory (truncated to repo root)            |
 | ` main`              | Git branch                                            |
 | `!?`                  | Git status (`!` modified, `?` untracked, etc.)        |
-| `+12-3`               | Git line metrics for staged/unstaged changes          |
 | `py:v3.14.0`          | Runtime context for active project tools              |
 | `took 30s`            | Duration of the last command (shown when over 500 ms) |
 | `>`                   | Prompt character (red if the last command failed)     |
@@ -272,7 +292,7 @@ Add options to any setup command. Each command below runs as copied, without a c
 
 - PowerShell: `& ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --dry-run`
 - WSL, Linux, macOS: `curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --dry-run`
-- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.12.7.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
+- Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.19.1.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
 - In a clone: `uv run python setup-terminal.py --dry-run`
 
 | Option | What it does |
@@ -280,16 +300,17 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--only check` | check the prerequisites, then exit |
 | `--dry-run` | print each step and change nothing |
 | `--only config` | re-apply all configs (also the Claude status line); install no packages |
-| `--only report` | print the verification report, then exit |
+| `--only report` | print the verification report, then exit. It shows each tool with its path and version, warns about Python older than 3.14 and Node.js older than v26, and lists the herdr integrations |
 | `--report` | run setup, then print the verification report |
 | `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
 | `--agents claude,codex` | also install these coding agents when missing; `all` installs all three. Setup never installs or updates an agent that you do not name |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS, and its integration for each agent named in `--agents`. With `--update`, setup updates herdr only with this option |
 | `--update` | update every user-local tool, Python and Node.js that is out of date, and the agents named in `--agents` |
 | `--skip-vscode` | skip the VS Code settings and extensions |
 | `--skip-starship` | skip the starship prompt |
-| `--skip-claude` | skip the Claude Code status line |
+| `--skip-claude` | skip the Claude Code status line and skills |
 | `--no-nerd-font` | install the universal (no Nerd Font) status line |
-| `--no-sudo` | never use sudo; print the apt command for missing WSL system packages |
+| `--no-sudo` | never use sudo; print the command for the packages that need it, in WSL and on a Linux host |
 | `--system-install` | install system-wide through apt or brew (needs sudo or admin) |
 | `--winget-versions replace` | Windows: replace each tool that winget installed in your user profile with the setup copy |
 | `--winget-versions keep` | Windows: keep each winget copy; only report it |
@@ -307,6 +328,37 @@ The two directory options are optional and personal, so setup never sets them by
 `--windows-terminal-cwd` and `--wsl-terminal-cwd` are optional user-specific values. No personal paths are hardcoded by default.
 
 ## Troubleshooting
+
+### WezTerm performance and stability defaults
+
+Windows and WSL use the Software setting to retain the GPU-driver workaround.
+Native Linux and macOS inherit WezTerm's renderer default. The template keeps
+native tab titles, a small status footer and a scrollback limit of 10,000 lines.
+
+The Kitty image protocol is disabled by default because older builds have known
+image-parser crashes. Applications that require this protocol will not show those
+images. The separate iTerm image protocol stays enabled.
+
+The [investigation report](validation/terminal-responsiveness.md) records the
+upstream reports, measured results, regression controls and remaining limits.
+Confirm the runtime renderer in WezTerm's debug overlay before a renderer change.
+A large Windows WSL working set alone does not establish memory exhaustion.
+
+### Nerd Font icons
+
+WezTerm draws Nerd Font icons with its built-in Symbols Nerd Font Mono, so you install no font. Each icon takes one column. To check it, run this in a WSL, Linux or macOS shell:
+
+```bash
+wezterm ls-fonts --text "$(printf '|\uf07b|')"
+```
+
+On Windows, run it in PowerShell:
+
+```powershell
+wezterm ls-fonts --text "|$([char]0xf07b)|"
+```
+
+The `\u{f07b}` line must show `cells=1` and `Symbols Nerd Font Mono`. Other terminals, such as the VS Code terminal or Windows Terminal, use their own font, and they can show the icon as an empty box.
 
 ### `xdg-desktop-portal` warning when starting WezTerm in WSL
 

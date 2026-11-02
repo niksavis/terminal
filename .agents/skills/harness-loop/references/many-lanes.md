@@ -2,43 +2,36 @@
 
 Reference for `basicly loop preflight` and `basicly loop supervise`.
 
-## Size a grant budget from the ledger
+## Task scope and optional spending limits
 
-Read the budget from recorded dispatches, not from an estimate of the work:
+The user task request authorizes its lanes and their normal phase transitions.
+No L-level grant or token ceiling is required before a pass starts.
+Keep required verification, scope checks and destructive-action protections enabled.
+
+Only record a token limit when the user explicitly sets one:
 
 ```sh
-uv run python -c "
-import json, statistics
-d = json.load(open('.basicly/usage/run-records.json'))
-ok = [r.get('tokens') or 0 for rs in d.values() for r in rs
-      if r.get('agent') != 'manual' and r.get('outcome') == 'executed']
-print('lanes', len(ok), 'mean', f'{statistics.mean(ok):,.0f}', 'max', f'{max(ok):,}')"
+basicly policy budget <epic> --tokens N
 ```
 
-Set the budget to `mean x lanes`. Add headroom for one lane that stops at `runner_timeout`.
-A killed lane still spends all the tokens it used before the kill.
+Show the recorded limit or remove it when the user withdraws it:
 
-- **"I will write the code myself" is not a budget.** `loop run` dispatches a metered runner.
-  The grant level covers the checkpoints. It does not decide who writes the code.
-- **The ceiling cannot stop a dispatch that has started.** The engine reads spend before a pass and records it after.
-  Budget for the overshoot.
+```sh
+basicly policy budget <epic>
+basicly policy budget <epic> --clear
+```
+
+Do not invent a user budget from a forecast. Report observed usage separately from estimates.
+A running dispatch can spend more before its next admission check, so report the enforcement boundary.
+Historical grants remain readable; do not rewrite them to resume a task.
 
 ## What `preflight` reports
 
-`preflight` writes nothing. It shows: a clean or dirty base, live worktrees, the runner and timeout,
-the grant and its remaining budget, the per-lane assumption for a lane it cannot size,
-the forecast if every lane starts, the band table, unpushed commits, and a `VERDICT`.
+`preflight` writes nothing. Read its base state, live worktrees, runner, forecast, band table and final verdict.
+A missing token limit is not a blocker. An explicit exhausted or unmeasurable limit still blocks further spend.
 
-The `VERDICT: not ready - ...` line joins every blocker:
-
-- a dirty base;
-- a metered runner with no token budget (`basicly policy grant <epic> --level L2 --token-budget N`);
-- a grant that is spent or cannot be metered;
-- the root's own checkpoint blocks provisioning;
-- no open child to provision;
-- the band refuses every open child.
-
-An unknown config name and a lane selector that names no issue return earlier with their own verdict.
+Resolve named readiness, dependency, scope, work-in-progress or configured-limit failures before spawning lanes.
+An unknown config name or a lane selector matching no issue has its own refusal.
 
 ## The band table
 

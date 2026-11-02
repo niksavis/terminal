@@ -16,6 +16,8 @@ local wsl_default_domain = nil
 -- namespace, while pwsh and cmd only limp along through WSL interop, in a WSL
 -- pane with WSL cwd semantics.
 local local_domain = { DomainName = "local" }
+local herdr_installed = __HERDR_INSTALLED__
+local wsl_default_distro = "__WSL_DEFAULT_DISTRO__"
 local wsl_startup_args = {
   "zsh",
   "-lc",
@@ -26,7 +28,7 @@ local function basename(path)
   if not path or path == "" then
     return ""
   end
-  return path:gsub("^.*[\\/]", "")
+  return (path:gsub("[\\/]+$", ""):gsub("^.*[\\/]", ""))
 end
 
 local function pane_cwd_basename(pane)
@@ -49,10 +51,12 @@ if is_windows then
     end
     config.wsl_domains = domains
 
-    local preferred = {
-      "WSL:Ubuntu-24.04",
-      "WSL:Ubuntu",
-    }
+    local preferred = {}
+    if wsl_default_distro ~= "" then
+      table.insert(preferred, "WSL:" .. wsl_default_distro)
+    end
+    table.insert(preferred, "WSL:Ubuntu-24.04")
+    table.insert(preferred, "WSL:Ubuntu")
     for _, candidate in ipairs(preferred) do
       for _, domain in ipairs(domains) do
         if domain.name == candidate then
@@ -99,10 +103,17 @@ config.launch_menu = {}
 if is_windows then
   if wsl_default_domain then
     table.insert(config.launch_menu, {
-      label = "Ubuntu (WSL)",
+      label = (wsl_default_domain:gsub("^WSL:", "")) .. " (WSL)",
       domain = { DomainName = wsl_default_domain },
       args = wsl_startup_args,
     })
+    if herdr_installed then
+      table.insert(config.launch_menu, {
+        label = "herdr (WSL)",
+        domain = { DomainName = wsl_default_domain },
+        args = { "zsh", "-lic", 'cd "__WSL_START_DIR__" 2>/dev/null || cd "$HOME"; exec herdr' },
+      })
+    end
   end
   table.insert(config.launch_menu, {
     label = "PowerShell",
@@ -145,6 +156,12 @@ if is_windows then
     args = { "cmd.exe" },
   })
 else
+  if herdr_installed then
+    table.insert(config.launch_menu, {
+      label = "herdr",
+      args = { "zsh", "-lic", "exec herdr" },
+    })
+  end
   table.insert(config.launch_menu, {
     label = "zsh",
     args = { "zsh", "-l" },
@@ -160,16 +177,16 @@ config.scrollback_lines = 10000
 config.max_fps = 30
 config.animation_fps = 10
 config.cursor_blink_rate = 0
+config.enable_kitty_graphics = false
 config.enable_scroll_bar = true
 config.check_for_updates = false
 config.window_close_confirmation = "NeverPrompt"
 config.adjust_window_size_when_changing_font_size = false
 
--- Display stability: prefer X11 over Wayland.
--- Windows and WSL use software rendering to bypass GPU driver rendering paths.
--- Limit redraws above to keep CPU use bounded during long coding sessions.
 config.enable_wayland = false
-config.front_end = (is_windows or is_wsl) and "Software" or "WebGpu"
+if is_windows or is_wsl then
+  config.front_end = "Software"
+end
 
 -- Always use the dark color scheme; do not query the desktop environment
 -- for the system theme. This avoids xdg-desktop-portal warnings under WSLg
@@ -274,6 +291,13 @@ if is_windows and wsl_default_domain then
     cwd = home_dir,
     args = wsl_startup_args,
   })
+  wezterm.on("new-tab-button-click", function(window, pane, button)
+    if button ~= "Left" then
+      return
+    end
+    window:perform_action(new_tab_action, pane)
+    return false
+  end)
 end
 
 local workspace_launcher_action = act.ShowLauncherArgs({ flags = "FUZZY|WORKSPACES" })

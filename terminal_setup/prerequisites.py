@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import platform as host_platform
@@ -179,6 +180,9 @@ def check_all(platform: PlatformInfo, runner: Runner) -> list[PrerequisiteStatus
     return statuses
 
 
+SUDO_PACKAGE_MANAGERS = frozenset({PackageManager.APT, PackageManager.PACMAN, PackageManager.DNF})
+
+
 def install_package(
     runner: Runner,
     package_manager: PackageManager,
@@ -215,12 +219,7 @@ def install_package(
     if wsl_distro and not is_running_in_wsl():
         command = wsl_exec_command(wsl_distro, command)
 
-    interactive = package_manager in {
-        PackageManager.APT,
-        PackageManager.PACMAN,
-        PackageManager.DNF,
-    }
-    runner.run(command, interactive=interactive)
+    runner.run(command, interactive=package_manager in SUDO_PACKAGE_MANAGERS)
 
 
 def _package_install_command(package_manager: PackageManager, package: str) -> list[str]:
@@ -480,6 +479,8 @@ RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     "direnv": ("direnv/direnv", "direnv", (r"direnv\.linux-{arch}",)),
 }
 STARSHIP_RELEASE = ("starship/starship", "starship", _RUST_ASSETS)
+HERDR_RELEASE = ("herdrdev/herdr", "herdr", (r"herdr-linux-{arch}",))
+_HERDR_PRESENT = 'test -x "$HOME/.local/bin/herdr" || command -v herdr >/dev/null 2>&1'
 
 
 def _install_release_tool(
@@ -991,7 +992,7 @@ def _windows_node_version(runner: Runner) -> tuple[str | None, str | None]:
     return result.stdout.strip() or None, path
 
 
-def _node_meets_target(version: str | None) -> bool:
+def node_meets_target(version: str | None) -> bool:
     return version is not None and _parse_version_tuple(version)[:1] >= (int(TARGET_NODE_MAJOR),)
 
 
@@ -999,11 +1000,11 @@ def _ensure_node_windows(runner: Runner, platform: PlatformInfo, *, update: bool
     target = platform.user_programs_dir / "nodejs"
     installed, path = _windows_node_version(runner)
     if path is not None and not is_user_scope(path, platform):
-        minimum = None if _node_meets_target(installed) else f"v{TARGET_NODE_MAJOR}"
+        minimum = None if node_meets_target(installed) else f"v{TARGET_NODE_MAJOR}"
         report_machine_scope(runner, "Node.js", installed, path, minimum=minimum)
         return
     managed = path is not None and Path(path).parent == target
-    if _node_meets_target(installed) and not (update and managed):
+    if node_meets_target(installed) and not (update and managed):
         runner.reporter.success(f"Node.js {installed} is present on Windows ({path})")
         return
     try:
@@ -1711,7 +1712,7 @@ def _ensure_windows_command_in_path(
     return False
 
 
-def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
+def ensure_shell_tools(runner: Runner, platform: PlatformInfo, *, no_sudo: bool = False) -> None:
     if platform.os == OperatingSystem.WINDOWS:
         return
     packages = {
@@ -1720,6 +1721,14 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo) -> None:
         PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget"],
         PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget"],
     }
+    if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
+        names = packages[platform.package_manager]
+        command = [*_package_install_command(platform.package_manager, names[0])[:-1], *names]
+        runner.reporter.warn(
+            "--no-sudo requested: skipping the shell tools. To install them, run: "
+            + shlex.join(command)
+        )
+        return
     if platform.package_manager == PackageManager.APT:
         update_packages(runner, PackageManager.APT)
     for package in packages.get(platform.package_manager, []):
@@ -1926,13 +1935,33 @@ def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = Fa
         install_package(runner, PackageManager.HOMEBREW, "starship")
 
 
+def ensure_herdr(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
+    if platform.os == OperatingSystem.WINDOWS:
+        _install_release_tool(
+            runner, "herdr", update=update, wsl_distro=_wsl_distro(platform), spec=HERDR_RELEASE
+        )
+        return
+    if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
+        install_package(runner, PackageManager.HOMEBREW, "herdr")
+        return
+    if platform.os == OperatingSystem.LINUX:
+        _install_release_tool(runner, "herdr", update=update, spec=HERDR_RELEASE)
+
+
+def herdr_installed(runner: Runner, platform: PlatformInfo) -> bool:
+    command = ["sh", "-c", _HERDR_PRESENT]
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        command = wsl_exec_command(_wsl_distro(platform), command)
+    return runner.run(command, check=False, dry_run_safe=True).returncode == 0
+
+
 _USER_PATH_READ = (
     "$key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true); "
     "$path = [string]$key.GetValue('Path', '', "
     "[Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames); "
     "$parts = @($path -split ';' | Where-Object { $_ -ne '' }); "
 )
-_USER_PATH_BROADCAST = (
+_USER_PATH_BROADCAST_SCRIPT = (
     '$sig = \'[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)] '
     "public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wParam, "
     "string lParam, uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);'; "
@@ -1940,7 +1969,12 @@ _USER_PATH_BROADCAST = (
     "-Namespace 'Win32Broadcast' -PassThru; "
     "[UIntPtr]$out = [UIntPtr]::Zero; "
     "$smto::SendMessageTimeout([IntPtr]0xffff, 0x1A, [UIntPtr]::Zero, 'Environment', "
-    "2, 5000, [ref]$out) | Out-Null "
+    "2, 5000, [ref]$out) | Out-Null"
+)
+_USER_PATH_BROADCAST = (
+    "Start-Process powershell -NoNewWindow -ArgumentList "
+    "'-NoProfile', '-NonInteractive', '-EncodedCommand', "
+    f"'{base64.b64encode(_USER_PATH_BROADCAST_SCRIPT.encode('utf-16-le')).decode('ascii')}' "
 )
 
 
@@ -1994,7 +2028,7 @@ def _add_to_user_path(runner: Runner, directory: Path) -> None:
         "$key.Close()"
     )
     runner.run(
-        ["powershell", "-Command", script],
+        ["powershell", "-NoProfile", "-Command", script],
         interactive=True,
         label=f"add {directory} to the user PATH",
     )
@@ -2030,8 +2064,43 @@ def _ensure_wezterm_user_install(
         f"Remove-Item $zip; "
         f"Remove-Item $extract -Recurse -Force"
     )
-    runner.run(["powershell", "-Command", script], interactive=True, label="install WezTerm")
+    runner.run(
+        ["powershell", "-NoProfile", "-Command", script], interactive=True, label="install WezTerm"
+    )
     _add_to_user_path(runner, install_dir)
+
+
+def _wezterm_user_gui(platform: PlatformInfo) -> Path:
+    return platform.user_programs_dir / "WezTerm" / "wezterm-gui.exe"
+
+
+def wezterm_location(runner: Runner, platform: PlatformInfo) -> str | None:
+    gui = _wezterm_user_gui(platform)
+    if platform.os == OperatingSystem.WINDOWS and gui.is_file():
+        return str(gui)
+    return runner.which("wezterm-gui") or runner.which("wezterm")
+
+
+def _ensure_wezterm_start_menu_entry(runner: Runner, platform: PlatformInfo) -> None:
+    gui = _wezterm_user_gui(platform)
+    if not gui.is_file():
+        return
+    script = (
+        "$lnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'WezTerm.lnk'; "
+        "$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk); "
+        f"$shortcut.TargetPath = {_powershell_literal(str(gui))}; "
+        "$shortcut.Save()"
+    )
+    result = runner.run(
+        ["powershell", "-NoProfile", "-Command", script],
+        check=False,
+        label="add WezTerm to the Start menu",
+    )
+    if result.returncode != 0:
+        runner.reporter.warn(
+            f"Could not add WezTerm to the Start menu (exit code {result.returncode}). "
+            f"Start it from {gui}."
+        )
 
 
 def _ensure_wezterm_windows(runner: Runner, platform: PlatformInfo) -> None:
@@ -2059,24 +2128,25 @@ def ensure_wezterm(
             platform.user_programs_dir / "WezTerm",
             _ensure_wezterm_user_install,
         )
-    if runner.which("wezterm"):
-        return
     if platform.os == OperatingSystem.WINDOWS:
-        _ensure_wezterm_windows(runner, platform)
+        if not runner.which("wezterm"):
+            _ensure_wezterm_windows(runner, platform)
+        _ensure_wezterm_start_menu_entry(runner, platform)
+        return
+    if runner.which("wezterm"):
         return
     if platform.os == OperatingSystem.MACOS and platform.package_manager == PackageManager.HOMEBREW:
         runner.run(["brew", "install", "--cask", "wezterm"])
         return
     if platform.os != OperatingSystem.LINUX:
         return
-    if platform.package_manager == PackageManager.APT:
-        if no_sudo:
-            runner.reporter.info(
-                "--no-sudo requested: skipping WezTerm apt repo and using AppImage fallback."
-            )
-            _ensure_wezterm_appimage(runner)
-        else:
-            _ensure_wezterm_apt(runner)
+    if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
+        runner.reporter.info(
+            "--no-sudo requested: skipping the package manager and using the WezTerm AppImage."
+        )
+        _ensure_wezterm_appimage(runner)
+    elif platform.package_manager == PackageManager.APT:
+        _ensure_wezterm_apt(runner)
     elif platform.package_manager == PackageManager.PACMAN:
         install_package(runner, PackageManager.PACMAN, "wezterm")
     elif platform.package_manager == PackageManager.DNF:

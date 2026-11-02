@@ -5,6 +5,7 @@ import importlib.util
 import json
 import sys
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,8 @@ events = _load("events")
 shaping = _load("shaping")
 labels = _load("labels")
 evidence_checks = _load("evidence_checks")
+small_task = _load("small_task")
+small = small_task.small
 _text = evidence_checks.filled_text
 _command = evidence_checks.filled_command
 _check_fault = evidence_checks.check_fault
@@ -52,6 +55,7 @@ SEMANTIC_FIELDS = frozenset({
     "issue_type",
 })
 MANAGED_FIELDS = frozenset({REVIEW_FIELD, CONFIRMATION_FIELD})
+NO_REVIEW = "no review is recorded; run review --evidence"
 
 
 class ProcessEvidenceError(events.LedgerError):
@@ -66,6 +70,25 @@ def _semantic(event: Any, record: str, names=SEMANTIC_FIELDS) -> bool:
     )
 
 
+def _headings(fields: Mapping[str, object], template, legacy: bool) -> tuple:
+    if not legacy:
+        return shaping.required(fields, template)
+    base = (shaping.TRIGGER_HEADING, shaping.ACCEPTANCE_HEADING, shaping.REQUIREMENTS_HEADING)
+    if template is None:
+        return base
+    kind = fields.get(shaping.TYPE_FIELD)
+    extra = template.for_type(kind if isinstance(kind, str) else "")
+    return tuple(dict.fromkeys((*(base if template.extends else ()), *template.sections, *extra)))
+
+
+@dataclass(frozen=True)
+class RevisionContext:
+    fields: Mapping[str, object] | None = None
+    drafts: Sequence[Any] = ()
+    template: Any = None
+    legacy: bool = False
+
+
 def revision(
     found: Sequence[Any],
     record: str,
@@ -74,9 +97,19 @@ def revision(
     *,
     template=None,
 ) -> str:
+    return _revision(found, record, RevisionContext(fields, drafts, template))
+
+
+def _revision(found: Sequence[Any], record: str, context: RevisionContext) -> str:
+    fields, drafts, template, legacy = (
+        context.fields,
+        context.drafts,
+        context.template,
+        context.legacy,
+    )
     states = events.fields_by_record(found)
     held = dict(fields) if fields is not None else dict(states[record])
-    headings = shaping.required(held, template)
+    headings = _headings(held, template, legacy)
     names = SEMANTIC_FIELDS | frozenset(shaping.field_of(heading) for heading in headings)
     semantic = sorted({event.id for event in found if _semantic(event, record, names)})
     pending = [dict(draft.payload) for draft in drafts if _semantic(draft, record, names)]
@@ -94,7 +127,7 @@ def revision(
     dependencies = {}
     for target in targets:
         fields = states.get(target, {})
-        target_headings = shaping.required(fields, template)
+        target_headings = _headings(fields, template, legacy)
         target_names = SEMANTIC_FIELDS | frozenset(
             shaping.field_of(heading) for heading in target_headings
         )
@@ -108,6 +141,16 @@ def revision(
         separators=(",", ":"),
     )
     return hashlib.sha256(packed.encode("utf-8")).hexdigest()
+
+
+def _current(saved, found, record, context: RevisionContext) -> bool:
+    if not saved:
+        return False
+    value = saved.get("revision")
+    order = (False, True) if saved.get("contract") == shaping.SHAPING_RULE else (True, False)
+    return any(
+        value == _revision(found, record, replace(context, legacy=legacy)) for legacy in order
+    )
 
 
 def _saved(found: Sequence[Any], record: str, fields: Mapping[str, object], name: str) -> Mapping:
@@ -177,8 +220,8 @@ def review_note(
 ) -> str:
     saved = _saved(found, record, fields, REVIEW_FIELD)
     if not saved:
-        return "no review is recorded; run review --evidence"
-    if saved.get("revision") != revision(found, record, fields, drafts, template=template):
+        return NO_REVIEW
+    if not _current(saved, found, record, RevisionContext(fields, drafts, template)):
         return "the recorded review is void because the record changed after it; run review again"
     return ""
 
@@ -196,11 +239,13 @@ def readiness(
         held = dict(state.fields) if state is not None else {}
     else:
         held = dict(fields)
+    if small(held):
+        return small_task.owed(held, len(criteria(held)))
     saved = _saved(found, record, held, REVIEW_FIELD)
-    current = bool(saved) and saved.get("revision") == revision(
-        found, record, held, drafts, template=template
-    )
-    if _compact_type(held) and (not current or set(saved) == {"checks", "revision", "writer"}):
+    current = _current(saved, found, record, RevisionContext(held, drafts, template))
+    if _compact_type(held) and (
+        not current or set(saved) - {"contract"} == {"checks", "revision", "writer"}
+    ):
         return () if current and _checks(held, saved.get("checks")) else (PLAN_HEADING,)
     rationales = saved.get("invest") if current else {}
     rationales = rationales if isinstance(rationales, Mapping) else {}
@@ -259,7 +304,11 @@ def review_draft(
             "redacts, which would void the review; name the program on PATH, such as python3 "
             "or uv run, or a path relative to the repository"
         )
-    value = {**payload, "revision": revision(found, record, template=template)}
+    value = {
+        **payload,
+        "revision": revision(found, record, template=template),
+        "contract": shaping.SHAPING_RULE,
+    }
     return _draft(record, REVIEW_FIELD, value, writer)
 
 
@@ -285,6 +334,18 @@ def confirmation_report(found: Sequence[Any], record: str, *, template=None) -> 
     return {
         "revision": revision(found, record, fields, template=template),
         "owed": list(readiness(found, record, fields, template=template)),
+        "review_current": _current(
+            _saved(found, record, fields, REVIEW_FIELD),
+            found,
+            record,
+            RevisionContext(fields, template=template),
+        ),
+        "confirmation_current": _current(
+            _saved(found, record, fields, CONFIRMATION_FIELD),
+            found,
+            record,
+            RevisionContext(fields, template=template),
+        ),
         "review": dict(_saved(found, record, fields, REVIEW_FIELD)),
         "confirmation": dict(_saved(found, record, fields, CONFIRMATION_FIELD)),
     }
@@ -309,15 +370,22 @@ def confirmation_draft(
     review = report["review"]
     if not isinstance(review, Mapping):
         raise ProcessEvidenceError("confirm requires a recorded review")
-    planned = {criterion_key(check["criterion"]): check["command"] for check in review["checks"]}
-    if any(
+    planned = {
+        criterion_key(check["criterion"]): check["command"] for check in review.get("checks", [])
+    }
+    if not small(state.fields) and any(
         planned[criterion_key(check["criterion"])] != check["command"]
         for check in payload["checks"]
     ):
         raise ProcessEvidenceError(
             "Completion Confirmation command argv must match the agreed plan for that criterion"
         )
-    return _draft(record, CONFIRMATION_FIELD, {**payload, "revision": report["revision"]}, writer)
+    return _draft(
+        record,
+        CONFIRMATION_FIELD,
+        {**payload, "revision": report["revision"], "contract": shaping.SHAPING_RULE},
+        writer,
+    )
 
 
 def closing_owed(
@@ -330,8 +398,8 @@ def closing_owed(
 ) -> tuple[str, ...]:
     missing = readiness(found, record, fields, drafts, template=template)
     saved = _saved(found, record, fields, CONFIRMATION_FIELD)
-    complete = saved.get("revision") == revision(
-        found, record, fields, drafts, template=template
+    complete = _current(
+        saved, found, record, RevisionContext(fields, drafts, template)
     ) and _checks(fields, saved.get("checks"), completed=True)
     review = _saved(found, record, fields, REVIEW_FIELD)
     planned = {
@@ -339,9 +407,12 @@ def closing_owed(
         for check in review.get("checks", [])
         if isinstance(check, dict) and "criterion" in check and "command" in check
     }
-    complete = complete and all(
-        planned.get(criterion_key(check["criterion"])) == check["command"]
-        for check in saved.get("checks", [])
+    complete = complete and (
+        small(fields)
+        or all(
+            planned.get(criterion_key(check["criterion"])) == check["command"]
+            for check in saved.get("checks", [])
+        )
     )
     return (*missing, *((COMPLETION_HEADING,) if not complete else ()))
 

@@ -7,12 +7,12 @@ description: Fixes a named defect in the lane's own worktree from its findings, 
 # Repair in place
 
 Repair is a mode of the implementer, not a new start.
-It uses the same worktree, the same scope and the same artifact. The brief is the findings, not the requirement.
+It uses the same worktree, the same scope and the same artifact. Use the findings together with the whole task acceptance contract.
 
 ## Rules
 
-- **Do not re-plan.** The plan passed its gate, and the rework allowance is per gate.
-- **Escalate when the finding shows the plan was wrong.** A plan defect is not a code defect. Say so and stop.
+- **Continue the existing task.** Do not repeat refinement or create a new plan for an implementation defect.
+- **Identify actual scope changes.** Resolve missing facts from the repository; ask only when a plan defect changes the approved outcome or needs new authority.
 - **Fix in the lane's worktree, never by re-dispatch.** A re-dispatch pays the scope-reading cost again with less budget.
 - **Reproduce before you fix.** Run the failing check and read its actual output.
 - **Check the gate's premise before you obey its remedy.** The repair advice of a gate can be wrong.
@@ -28,7 +28,7 @@ It uses the same worktree, the same scope and the same artifact. The brief is th
 4. Write a regression test that fails.
 5. Fix the cause, then check every other call site of the same code.
 6. Run the check again and read the summary line.
-7. Commit on the harness branch. The loop lands it again.
+7. Commit and integrate in the existing worktree workflow. Loop-managed tasks may use their landing transition; direct observer repairs use ordinary Git and disclose any authorized hook bypass.
 
 Do not pass a size gate by deleting comments or other text, and do not pass a test by loosening its assertion.
 Both make the gate green over the defect it exists to catch.

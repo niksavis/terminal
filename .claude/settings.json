@@ -31,7 +31,22 @@
       "Bash(basicly verify)",
       "Bash(basicly verify --mode fast)",
       "Bash(basicly verify --mode full)",
-      "Bash(basicly verify --mode staged)"
+      "Bash(basicly verify --mode staged)",
+      "Bash(git ls-remote origin)",
+      "Bash(git ls-remote --branches origin)",
+      "Bash(git ls-remote --tags origin)",
+      "Bash(gh run list *)",
+      "Bash(gh run view *)",
+      "Bash(gh release view *)",
+      "Bash(gh release list *)",
+      "Bash(gh workflow list *)",
+      "Bash(gh workflow view *)",
+      "Bash(basicly tracker write -- create *)",
+      "Bash(basicly tracker write -- update *)",
+      "Bash(basicly tracker write -- review *)",
+      "Bash(basicly tracker write -- confirm *)",
+      "Bash(basicly tracker write -- close *)",
+      "Bash(basicly tracker write -- comments add *)"
     ],
     "deny": [
       "Bash(rm -rf*)",
@@ -65,7 +80,17 @@
       "Bash(git *commit*--no-verify*)",
       "Bash(git *commit*--no-gpg-sign*)",
       "Bash(git *-c core.hooksPath*)",
-      "Bash(git *-c core.hookspath*)"
+      "Bash(git *-c core.hookspath*)",
+      "Bash(git *push*--force*)",
+      "Bash(git *push* -f*)",
+      "Bash(git *push*--delete*)",
+      "Bash(git *push* :**)",
+      "Bash(git *push* +:**)",
+      "Bash(gh release delete*)",
+      "Bash(gh repo delete*)",
+      "Bash(gh run delete*)",
+      "Bash(git *reset*--hard*)",
+      "Bash(git *clean*-f*)"
     ]
   },
   "hooks": {
@@ -75,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude pretooluse"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude pretooluse"
           }
         ]
       }
@@ -86,7 +111,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude posttooluse"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude posttooluse"
           }
         ]
       }
@@ -97,7 +122,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --no-project --no-python-downloads python \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude sessionstart"
+            "command": "uv run --no-project --no-python-downloads --python '>=3.14' python -X utf8 \"${CLAUDE_PROJECT_DIR}/.basicly/core/hooks/lefthook-runtime.py\" claude sessionstart"
           }
         ]
       }

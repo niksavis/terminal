@@ -100,6 +100,12 @@ def _followed(ledger: Path, checkout: Path | None) -> tuple[Path, Path] | None:
     return Path(named), place
 
 
+def checkout_name(ledger: Path | str) -> str:
+
+    here = shared_ledger(ledger).resolve()
+    return next((one.name for one in here.parents if _is_checkout(one)), "")
+
+
 def redirect_target(ledger: Path, checkout: Path) -> Path | None:
 
     followed = _followed(ledger, checkout)

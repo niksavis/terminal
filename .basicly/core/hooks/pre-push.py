@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
@@ -35,9 +36,54 @@ def ledger_write_in_flight(repo_root: Path) -> bool:
     return events.locking.is_held(repo_root / _LEDGER_DIR / events.LOCK_NAME)
 
 
+def _unset(sha: str) -> bool:
+    return set(sha) == {"0"}
+
+
+def _git(root: Path, *args: str) -> str | None:
+    result = subprocess.run(  # nosec B603, B607 # fixed git argv, no shell
+        ["git", *args],
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return result.stdout if result.returncode == 0 else None
+
+
+def pushed_paths(root: Path, refs: str) -> list[str] | None:
+    paths: set[str] = set()
+    seen = False
+    for line in refs.splitlines():
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        seen = True
+        if _unset(parts[1]):
+            continue
+        local, remote = parts[1], parts[3]
+        base = remote if not _unset(remote) else _git(root, "merge-base", local, "origin/HEAD")
+        listed = _git(root, "diff", "--name-only", "-z", base.strip(), local) if base else None
+        if listed is None:
+            return None
+        paths.update(path for path in listed.split("\0") if path)
+    return sorted(paths) if seen else None
+
+
+def _local_push(root: Path) -> int:
+    changed = pushed_paths(root, os.environ.get("BASICLY_PUSH_REFS") or sys.stdin.read())
+    if changed == []:
+        print("pre-push: the pushed commits change no file, so no check runs")
+        return 0
+    scope = "every fast check" if changed is None else f"fast checks for {len(changed)} files"
+    print(f"pre-push: {scope}; continuous integration runs the full suite")
+    return run_checks(root, "fast", changed=changed)
+
+
 def main() -> int:
     root = project_root()
-    if ledger_write_in_flight(root):
+    if ledger_write_in_flight(Path(os.environ.get("BASICLY_CHECKOUT") or root)):
         print(
             "pre-push: a ledger write is in flight, so this push would race it.\n"
             "Your commits and unstaged files are unchanged.\n"
@@ -45,6 +91,8 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    if not os.environ.get("CI"):
+        return _local_push(root)
     if load_cache(root) and cache_savings(root) > 0:
         result = subprocess.run(  # nosec B603, B607 # fixed project interpreter argv, no shell
             [

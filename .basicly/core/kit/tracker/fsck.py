@@ -31,6 +31,7 @@ migrate = _load("migrate.py", "basicly_tracker_kit_migrate")
 provenance = _load("provenance.py", "basicly_tracker_kit_provenance")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
 forks = _load("forks.py", "basicly_tracker_kit_forks")
+recovery = _load("recovery.py", "basicly_tracker_kit_recovery")
 events = snapshot.events
 
 
@@ -247,20 +248,17 @@ def _fork_findings(ordered: Sequence[Any]) -> list[Finding]:
     return findings
 
 
-def sequence_gaps(ordered: Sequence[Any]) -> dict[str, tuple[int, ...]]:
-
-    seen: dict[str, set[int]] = {}
-    for event in ordered:
-        seen.setdefault(event.record, set()).add(event.seq)
-    gaps = {}
-    for record, claimed in seen.items():
-        missing = tuple(sorted(set(range(1, max(claimed) + 1)) - claimed))
-        if missing:
-            gaps[record] = missing
-    return gaps
+sequence_gaps = recovery.sequence_gaps
 
 
-def _gap_findings(gaps: Mapping[str, tuple[int, ...]]) -> list[Finding]:
+def _gap_findings(gaps: Mapping[str, tuple[int, ...]], ordered: Sequence[Any]) -> list[Finding]:
+    losses = recovery.assess(ordered)
+    covered = {one.record: one.sequences for one in losses if not one.invalid}
+    outstanding = {
+        record: remaining
+        for record, missing in gaps.items()
+        if (remaining := tuple(seq for seq in missing if seq not in covered.get(record, ())))
+    }
 
     return [
         Finding(
@@ -275,7 +273,16 @@ def _gap_findings(gaps: Mapping[str, tuple[int, ...]]) -> list[Finding]:
             ),
             event_ids=(),
         )
-        for record, missing in sorted(gaps.items())
+        for record, missing in sorted(outstanding.items())
+    ] + [
+        Finding(
+            kind=recovery.INVALID_ACKNOWLEDGMENT if one.invalid else recovery.ACKNOWLEDGED_LOSS,
+            severity=BROKEN if one.invalid else WARNING,
+            subject=one.record,
+            detail=one.detail,
+            event_ids=(one.event_id,),
+        )
+        for one in losses
     ]
 
 
@@ -288,17 +295,21 @@ def _duplicate_id_findings(collected: Sequence[Any]) -> list[Finding]:
     for event_id, found in sorted(lines.items()):
         if len(found) < 2:
             continue
-        content = {(one.record, one.seq, one.kind, _dumps(one.payload)) for one in found}
-        if len(content) < 2:
-            continue
+        content = {events.to_json(one) for one in found}
+        identical = len(content) == 1
         findings.append(
             Finding(
                 kind=DUPLICATE_ID,
-                severity=BROKEN,
+                severity=WARNING if identical else BROKEN,
                 subject=event_id,
                 detail=(
+                    f"{len(found)} identical event copies share this id; `compact` removes "
+                    "byte-identical copies and refuses differing stored bytes"
+                )
+                if identical
+                else (
                     f"{len(found)} lines share this id and {len(content)} of them disagree about "
-                    f"the record, sequence, kind or payload it names, so the fold keeps one of "
+                    f"the stored event content, so the fold keeps one of "
                     f"them by canonical order rather than by evidence"
                 ),
                 event_ids=(event_id,),
@@ -394,26 +405,14 @@ def _unfolded_kind_findings(folded: Any, ordered: Sequence[Any]) -> list[Finding
     ]
 
 
-def _minted_at_some_generation(event: Any, bound: int) -> bool:
-
-    for generation in range(1, bound + 1):
-        if event.id == events.event_id_for(
-            event.record, event.kind, event.payload, generation=generation
-        ):
-            return True
-    return False
-
-
 def _unminted_id_findings(ordered: Sequence[Any]) -> list[Finding]:
 
-    per_record: dict[str, int] = {}
-    for event in ordered:
-        per_record[event.record] = per_record.get(event.record, 0) + 1
+    per_record = events.generation_bounds(ordered)
     findings = []
     for event in ordered:
         if not events.ids.is_record_id(event.record):
             continue
-        if _minted_at_some_generation(event, per_record[event.record]):
+        if events.generation_of(event, per_record[event.record]) is not None:
             continue
         findings.append(
             Finding(
@@ -619,7 +618,7 @@ def check(directory: Path | str) -> Report:
     findings = _unparseable_findings(quarantined)
     findings += _malformed_findings(malformed)
     findings += _fork_findings(ordered)
-    findings += _gap_findings(gaps)
+    findings += _gap_findings(gaps, ordered)
     findings += _duplicate_id_findings(sound)
     findings += _reference_findings(ordered)
     findings += _unminted_id_findings(ordered)

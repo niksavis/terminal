@@ -65,7 +65,10 @@ python3 .basicly/kit/tracker/cli.py update .basicly/ledger acme-a1b2 --status in
 
 ### comment
 
-Append one comment.
+Append one comment. Text above 4,096 UTF-8 bytes after redaction is refused without
+appending events. Shorten the note or link an artifact. Older clipped notes remain
+readable with their original truncation metadata. Historical snapshot import preserves
+full source prose, including notes above this limit.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py comment .basicly/ledger acme-a1b2 "The export drops a trailing newline."
@@ -246,6 +249,8 @@ other record. It also names the `holder`, any unresolved `conflicts`, and a `com
 that gives each comment with its writer class and time.
 
 ```sh
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2 --view current
+python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2 --view history --snapshot <snapshot_identity>
 python3 .basicly/kit/tracker/cli.py show .basicly/ledger acme-a1b2
 ```
 
@@ -320,6 +325,22 @@ Fold the whole log and report anything broken. Exit 0 clean, 1 stale derivative,
 python3 .basicly/kit/tracker/cli.py fsck .basicly/ledger
 ```
 
+### acknowledge-loss
+
+Record proven unrecoverable history without inventing a missing event.
+Pass the exact missing sequence set in ascending order. Repeat `--sequence`
+and `--evidence` as needed. The reason and each historical reference must be nonempty.
+The example requires a confirmed missing sequence 9 with later surviving history.
+On healthy history, the command refuses with a nonzero exit and writes nothing.
+
+```sh
+python3 .basicly/kit/tracker/cli.py acknowledge-loss .basicly/ledger acme-a1b2 --sequence 9 --reason "Original content unavailable" --evidence "git:COMMIT"
+```
+
+The command appends a present-day artifact bound to the surviving history digest.
+`fsck` retains a warning that the original content remains unknown.
+Changed history, malformed acknowledgments, and new gaps still fail.
+
 ### shards
 
 The pending writer shards the ledger holds.
@@ -333,6 +354,8 @@ python3 .basicly/kit/tracker/cli.py shards .basicly/ledger
 Fold every pending shard into the trunk log. Run it on the default branch as its own
 pull request. `init --fold-on-merge` reports this command after a merge; it never runs
 compaction or creates a commit from a Git hook.
+Compaction also removes byte-identical copies from trunk logs. It validates all
+copies first and refuses differing stored bytes before changing any file.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py compact .basicly/ledger

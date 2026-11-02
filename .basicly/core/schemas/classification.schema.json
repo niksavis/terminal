@@ -55,8 +55,7 @@
       "required": [
         "gates",
         "model_tier",
-        "rework_allowance",
-        "ship"
+        "rework_allowance"
       ],
       "description": "What the level buys, resolved rather than implied. Carried alongside the letter so no consumer re-derives the mapping, and so a level recorded under one table is still readable after the table changes.",
       "properties": {
@@ -82,7 +81,8 @@
         "ship": {
           "type": "string",
           "minLength": 1,
-          "description": "Whether SHIP may be delegated or has to be a human. Carried on the classification because the answer is fixed by the level at CLASSIFY, and discovering it at SHIP is discovering it after the tokens are spent."
+          "deprecated": true,
+          "description": "Optional historical classification metadata. It no longer controls task authorization."
         }
       }
     }

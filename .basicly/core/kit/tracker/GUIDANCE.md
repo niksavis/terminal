@@ -48,6 +48,13 @@ python3 .basicly/kit/tracker/cli.py dor .basicly/ledger <id>     # exit 0 shaped
 python3 .basicly/kit/tracker/cli.py ready .basicly/ledger --mine # the stories you hold
 ```
 
+Use `show <ledger> <id> --view current` for current fields, all clarifications and
+latest attributed handoffs. Older handoffs and process details remain accessible with
+`--view history --snapshot <snapshot_identity>`. The selective view is recovery guidance,
+not a complete original contract. Source loss is reported; a longer read cannot restore
+text already truncated by its writer. Preserve decisions, blockers, evidence, process
+ownership and next actions that cannot be derived; skip unchanged handover narration.
+
 A `holder` marked `stale` had no event for `stale_days` (14 by default); ask the holder
 before you take it. A story marked `contested` was reserved by two people on different
 branches; the two agree who keeps it, then run `resolve` to keep the current holder, or
@@ -67,20 +74,30 @@ python3 .basicly/kit/tracker/cli.py child .basicly/ledger <parent-id> --title "<
 python3 .basicly/kit/tracker/cli.py close .basicly/ledger <id> --reason "<what shipped, and the evidence>"
 ```
 
+## Read only what you need
+
+Use `list <ledger> --summary --query "<words>"` to search all current fields and
+comment history without downloading that prose for every match. `--status` and
+`--limit` still apply. Use `show <ledger> <id>` for the complete canonical record.
+The board uses the same summaries and retrieves full detail when a card opens.
+Its Show more action makes every result reachable; closed records remain searchable.
+
 ## Shape a record
 
-A shaped record carries three things:
+A shaped record carries Context and Acceptance criteria, plus Requirements when needed:
 
-1. **A trigger** in the description, in one of two voices. Situation: "When <situation>, I
-   want to <motivation>, so I can <outcome>." Persona: "As a <persona>, I want <goal>, so
-   that <benefit>." Do not invent a persona when a situation triggers the work.
+1. **Context** in the description: under `## Context`, state the problem and intended
+   outcome in plain language. Existing situation ("When…, I want…, so I can…") and persona
+   ("As a…, I want…, so that…") formats remain supported; neither formula is required.
 2. **Acceptance criteria** as `--acceptance`. Write one bullet per check: "When <event>, the
    <system> shall <response>."
-3. **Requirements** as `--requirements`. Name the standard that the result must obey, not
-   the method.
+3. **Requirements**, when distinct constraints apply, as `--requirements`. Do not repeat
+   the context or acceptance criteria as filler. An explicit project template can require
+   this field.
 
-Each trigger part needs text: the situation or persona, motivation or goal, and outcome
-or benefit. Empty parts, punctuation alone, and placeholders such as `<outcome>`, `TODO`
+Context needs meaningful text; review judges whether it states the problem and outcome.
+For a legacy trigger, each situation/persona, motivation/goal and outcome/benefit needs
+text. Empty parts, punctuation alone, and placeholders such as `<outcome>`, `TODO`
 or `TBD` cannot shape a trigger. Each criterion and requirement must be filled.
 
 Capture a raw idea with `create --title` even when these parts are unknown. The reply names
@@ -150,6 +167,24 @@ stored review and confirmation evidence. For an explicit `task`, `bug` or `chore
 }
 ```
 
+A small task skips the review. A record is small when all three rules hold:
+
+1. `issue_type` is `task`, `bug` or `chore`.
+2. It carries `--field size=small`.
+3. It has exactly one acceptance criterion.
+
+A small record can be claimed once its Context and its one criterion are filled. Close
+still needs `confirm` with one check: the criterion, the command that ran, the observed
+result and exit code 0. No review plan has to match. When a rule breaks, `claim` refuses
+and names the rule. Fix it, or clear the flag with `--field size=` and record a review.
+Use `size=small` for one change that one check proves; split anything larger.
+
+```sh
+python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix <p> --title "<what>" \
+    --description "<a ## Context section>" --acceptance "<the one check>" \
+    --field issue_type=bug --field size=small
+```
+
 The full shape remains available for every type and required for other types:
 
 ```json
@@ -176,8 +211,8 @@ criterion and planned argv. The tracker displays these commands; it does not exe
 Every criterion must appear once. Pass the JSON as one argument:
 
 ```sh
-python3 .basicly/core/kit/tracker/cli.py review .basicly/ledger <id> --evidence '<review JSON>'
-python3 .basicly/core/kit/tracker/cli.py claim .basicly/ledger <id>
+python3 .basicly/kit/tracker/cli.py review .basicly/ledger <id> --evidence '<review JSON>'
+python3 .basicly/kit/tracker/cli.py claim .basicly/ledger <id>
 ```
 
 After running the agreed check, `confirm` takes the following shape. Record only output

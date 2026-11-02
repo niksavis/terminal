@@ -16,15 +16,12 @@ def at_the_generation_a_repeat_needs(
     events: Any, ledger: Path, drafts: Sequence[Any], redact: Redact | None = None
 ) -> list:
 
-    taken = {event.id for event in events.read_events(ledger)[0]} if ledger.is_dir() else set()
+    taken = events.reserved_ids(events.read_events(ledger)[0]) if ledger.is_dir() else set()
     resolved = []
     for draft in drafts:
         stored = _stored(events, draft, redact)
-        generation = 1
+        generation = events.available_generation(draft.record, draft.kind, stored, taken)
         event_id = events.event_id_for(draft.record, draft.kind, stored, generation=generation)
-        while event_id in taken:
-            generation += 1
-            event_id = events.event_id_for(draft.record, draft.kind, stored, generation=generation)
         taken.add(event_id)
         resolved.append(replace(draft, generation=generation))
     return resolved
@@ -50,13 +47,17 @@ def _gate_recurrences(events: Any, existing: Sequence[Any], drafts: Sequence[Any
     if not any(draft.kind == events.KIND_GATE for draft in drafts):
         return list(drafts)
     latest: dict = {}
-    taken = {event.id for event in existing}
+    bounds = events.generation_bounds(existing)
+    taken = events.reserved_ids(existing)
     for event in events.canonical_order(list(existing)):
         if event.kind == events.KIND_GATE:
             if not all(isinstance(event.payload.get(name), str) for name in ("gate", "provider")):
                 continue
             key = (event.record, event.payload.get("gate"), event.payload.get("provider"))
-            latest[key] = events.event_id_for(event.record, event.kind, event.payload, generation=1)
+            latest[key] = (
+                events.event_id_for(event.record, event.kind, event.payload, generation=1),
+                events.generation_of(event, bounds[event.record]),
+            )
     resolved = []
     for draft in drafts:
         if draft.kind != events.KIND_GATE:
@@ -67,15 +68,17 @@ def _gate_recurrences(events: Any, existing: Sequence[Any], drafts: Sequence[Any
             raise events.InvalidEventError("a gate recurrence needs a string gate and provider")
         key = (draft.record, stored.get("gate"), stored.get("provider"))
         signature = events.event_id_for(draft.record, draft.kind, stored, generation=1)
-        generation = 1
-        event_id = signature
-        if latest.get(key) != signature:
-            while event_id in taken:
-                generation += 1
-                event_id = events.event_id_for(
-                    draft.record, draft.kind, stored, generation=generation
+        previous = latest.get(key)
+        if previous is not None and previous[0] == signature:
+            generation = previous[1]
+            if generation is None:
+                raise events.InvalidEventError(
+                    f"{draft.record} has an unminted gate id; repair the ledger before appending"
                 )
-        latest[key] = signature
+        else:
+            generation = events.available_generation(draft.record, draft.kind, stored, taken)
+        event_id = events.event_id_for(draft.record, draft.kind, stored, generation=generation)
+        latest[key] = signature, generation
         taken.add(event_id)
         resolved.append(replace(draft, generation=generation))
     return resolved
@@ -94,7 +97,7 @@ def at_the_generation_this_write_needs(
         return at_the_generation_a_repeat_needs(events, ledger, drafts, redact)
     existing = events.read_events(ledger)[0] if ledger.is_dir() else []
     drafts = _gate_recurrences(events, existing, drafts, redact)
-    taken = {event.id for event in existing}
+    taken = events.reserved_ids(existing)
     state_kinds = {events.KIND_STATUS, events.KIND_FIELD}
     if not any(
         draft.kind in state_kinds

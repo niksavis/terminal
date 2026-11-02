@@ -7,6 +7,9 @@ import subprocess  # nosec B404
 from dataclasses import dataclass
 from pathlib import Path
 
+if os.name == "nt":
+    import _winapi
+
 
 @dataclass(frozen=True)
 class Snapshot:
@@ -37,7 +40,17 @@ def link_directory(source: Path, destination: Path) -> None:
     try:
         destination.symlink_to(source, target_is_directory=True)
     except OSError:
-        shutil.copytree(source, destination)
+        if os.name != "nt":
+            raise ValueError(
+                "cannot share a snapshot directory; enable directory symlinks"
+            ) from None
+        try:
+            _winapi.CreateJunction(str(source.resolve()), str(destination))
+        except OSError as err:
+            raise ValueError(
+                "cannot share a snapshot directory; enable symlinks or use a volume "
+                "supporting junctions"
+            ) from err
 
 
 def reuse_prepared_environment(snapshot: Path, env: dict[str, str]) -> None:
@@ -53,11 +66,46 @@ def reuse_prepared_environment(snapshot: Path, env: dict[str, str]) -> None:
         )
 
 
-def prepare(root: Path, directory: Path) -> Snapshot:
+def normalize_checkout(root: Path, paths: list[bytes], env: dict, original_tree: bytes) -> None:
+    if os.name != "nt":
+        return
+    git(
+        root,
+        "add",
+        "--renormalize",
+        "--pathspec-from-file=-",
+        "--pathspec-file-nul",
+        env=env,
+        data=b"\0".join(paths) + b"\0",
+    )
+    if git(root, "write-tree", env=env).strip() != original_tree:
+        raise ValueError(
+            "snapshot normalization changed staged content; "
+            "check line-ending attributes and restage"
+        )
+
+
+def pushed_commit(refs: str) -> str | None:
+    commits = {
+        parts[1]
+        for parts in (line.split() for line in refs.splitlines())
+        if len(parts) == 4 and set(parts[1]) != {"0"}
+    }
+    return commits.pop() if len(commits) == 1 else None
+
+
+def seed_index(root: Path, index: Path, temporary_index: Path, commit: str | None) -> None:
+    if commit is None:
+        shutil.copyfile(index, temporary_index)
+        return
+    git(root, "read-tree", commit, env={**os.environ, "GIT_INDEX_FILE": str(temporary_index)})
+
+
+def prepare(root: Path, directory: Path, commit: str | None = None) -> Snapshot:
     index = index_path(root)
     before = digest(index)
     temporary_index = directory / "index"
-    shutil.copyfile(index, temporary_index)
+    seed_index(root, index, temporary_index, commit)
     snapshot = directory / "tree"
     snapshot.mkdir()
     common = os.fsdecode(git(root, "rev-parse", "--absolute-git-dir")).strip()
@@ -66,6 +114,7 @@ def prepare(root: Path, directory: Path) -> Snapshot:
         "GIT_INDEX_FILE": str(temporary_index),
         "GIT_WORK_TREE": str(snapshot),
         "GIT_DIR": common,
+        "BASICLY_CHECKOUT": str(root),
         "PYTHONPATH": str(snapshot / "src") + os.pathsep + os.environ.get("PYTHONPATH", ""),
     }
     original_tree = git(root, "write-tree", env=env).strip()
@@ -85,8 +134,11 @@ def prepare(root: Path, directory: Path) -> Snapshot:
         env=env,
         data=b"\0".join(paths) + b"\0",
     )
+    normalize_checkout(root, paths, env, original_tree)
     (snapshot / ".git").write_text(f"gitdir: {common}\n", encoding="utf-8")
-    untracked = git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    untracked = (
+        [] if commit else git(root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+    )
     for name in untracked:
         if not name:
             continue

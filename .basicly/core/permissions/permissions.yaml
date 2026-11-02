@@ -5,9 +5,9 @@
 # command family that reads or checks, and no pattern accepts a program named on its
 # command line. `basicly verify` runs the checks that `basicly.toml` configures, the same
 # class as the `Bash(npm test)` rule that the vendor documents as narrow. The loader
-# refuses an allow that auto mode drops, because such a rule grants arbitrary code
-# execution: a blanket `Bash`, a wildcard in the program position, an interpreter, a
-# package manager, a command wrapper, an `Agent` or a `Monitor` rule. Rule syntax is from
+# refuses broad auto-mode grants and conservatively excludes interpreters, package
+# managers and command wrappers, even when Claude retains a fixed-script allow.
+# Blanket `Bash`, wildcarded programs, `Agent` and `Monitor` are also excluded. Syntax is from
 # code.claude.com/docs/en/permissions (read 2026-09-25): a trailing ` *` also matches the
 # bare command, and `:*` is an equivalent spelling that this file does not use.
 #
@@ -22,6 +22,15 @@
 # `git diff`, `git log`, `git show` (`--output` writes a file). `ls`, `cat`, `head`,
 # `grep`, `find` and the read-only forms of git are in Claude Code's built-in read-only
 # set, which needs no rule in any mode.
+#
+# `git ls-remote *` is not a read-only allow: --upload-pack names a program.
+# Fixed origin reads above leave that option subject to ordinary permission checks.
+# Tracker writes use basicly on PATH; claiming uses write -- update --status in_progress.
+# Standalone tracker consumers keep their Python CLI and its normal permission checks.
+# Remote deletion uses :** deliberately: a terminal :* is Claude's legacy prefix syntax,
+# and Bash(git *push* :*) did not deny a colon refspec in the native 2.1.312 probe.
+# Infix Git denies also match quoted commit-message text; this partial backstop retains
+# that conservative behavior (basicly-4uxidwg), rather than claiming argument parsing.
 #
 # Each deny entry is a semantic guardrail. `claude` lists the native
 # `permissions.deny` patterns Claude Code enforces at tool time, projected into
@@ -74,6 +83,18 @@ allow:
       - "Bash(git worktree list *)"
       - "Bash(git branch)"
       - "Bash(git branch --show-current)"
+      - "Bash(git ls-remote origin)"
+      - "Bash(git ls-remote --branches origin)"
+      - "Bash(git ls-remote --tags origin)"
+  - id: github-read
+    description: read GitHub CI runs releases and workflows
+    claude:
+      - "Bash(gh run list *)"
+      - "Bash(gh run view *)"
+      - "Bash(gh release view *)"
+      - "Bash(gh release list *)"
+      - "Bash(gh workflow list *)"
+      - "Bash(gh workflow view *)"
   - id: basicly-read
     description: read the repository snapshot and the tracker ledger with basicly on the path
     claude:
@@ -82,6 +103,15 @@ allow:
       - "Bash(basicly tracker list *)"
       - "Bash(basicly tracker ready *)"
       - "Bash(basicly tracker stats *)"
+  - id: basicly-tracker-write
+    description: record scoped tracker changes through the installed basicly engine and trusted repository kit
+    claude:
+      - "Bash(basicly tracker write -- create *)"
+      - "Bash(basicly tracker write -- update *)"
+      - "Bash(basicly tracker write -- review *)"
+      - "Bash(basicly tracker write -- confirm *)"
+      - "Bash(basicly tracker write -- close *)"
+      - "Bash(basicly tracker write -- comments add *)"
   - id: basicly-check
     description: run the basicly drift checks and the configured verify checks, without a fix or a recorded gate
     claude:
@@ -114,10 +144,26 @@ deny:
       - "Bash(git push --force-with-lease*)"
       - "Bash(git push -f*)"
       - "Bash(git push*--force*)"
+      - "Bash(git *push*--force*)"
+      - "Bash(git *push* -f*)"
     copilot:
       - "shell(git push --force)"
       - "shell(git push --force-with-lease)"
       - "shell(git push -f)"
+  - id: remote-delete
+    description: block deletion of remote refs and GitHub releases repositories or runs
+    claude:
+      - "Bash(git *push*--delete*)"
+      - "Bash(git *push* :**)"
+      - "Bash(git *push* +:**)"
+      - "Bash(gh release delete*)"
+      - "Bash(gh repo delete*)"
+      - "Bash(gh run delete*)"
+    copilot:
+      - "shell(git push --delete)"
+      - "shell(gh release delete)"
+      - "shell(gh repo delete)"
+      - "shell(gh run delete)"
   - id: bypass-gates
     description: block skipping the commit/push gates (no-verify / no-gpg-sign / core.hooksPath)
     claude:
@@ -137,6 +183,8 @@ deny:
     claude:
       - "Bash(git reset --hard*)"
       - "Bash(git clean*-f*)"
+      - "Bash(git *reset*--hard*)"
+      - "Bash(git *clean*-f*)"
       - "Bash(git filter-branch*)"
       - "Bash(git filter-repo*)"
     copilot:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import shutil
 import sys
@@ -16,6 +17,9 @@ TEMPLATE_DIR = _REPO_ROOT / "terminal_setup" / "templates"
 CHEAT_SHEET_PATH = _REPO_ROOT / "terminal-cheat-sheet.html"
 IMG_ZOOM_SOURCE = _REPO_ROOT / "terminal_setup" / "img_zoom_tool"
 _WSL_START_DIR_PLACEHOLDER = "__WSL_START_DIR__"
+_HERDR_PLACEHOLDER = "__HERDR_INSTALLED__"
+_WSL_DEFAULT_DISTRO_PLACEHOLDER = "__WSL_DEFAULT_DISTRO__"
+_WSL_DISTRO_NAME = re.compile(r"[A-Za-z0-9._-]+")
 
 
 def template_path(name: str) -> Path:
@@ -24,6 +28,12 @@ def template_path(name: str) -> Path:
 
 def _escape_for_lua_string(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _lua_wsl_distro(name: str | None) -> str:
+    if name is None or _WSL_DISTRO_NAME.fullmatch(name) is None:
+        return ""
+    return name
 
 
 _WSL_START_DIR_FORBIDDEN = ('"', "`", "$(", "\\", "\n")
@@ -56,15 +66,22 @@ def deploy_wezterm_config(
     platform: PlatformInfo,
     *,
     wsl_start_dir: str | None = None,
+    herdr: bool = False,
 ) -> None:
     if platform.wezterm_config_dir is None:
         return
     runner.ensure_dir(platform.wezterm_config_dir)
     source = template_path("wezterm.lua")
     destination = platform.wezterm_config_dir / "wezterm.lua"
-    rendered = source.read_text(encoding="utf-8").replace(
-        _WSL_START_DIR_PLACEHOLDER,
-        _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
+    rendered = (
+        source
+        .read_text(encoding="utf-8")
+        .replace(
+            _WSL_START_DIR_PLACEHOLDER,
+            _escape_for_lua_string(_resolve_wsl_start_dir(wsl_start_dir)),
+        )
+        .replace(_HERDR_PLACEHOLDER, "true" if herdr else "false")
+        .replace(_WSL_DEFAULT_DISTRO_PLACEHOLDER, _lua_wsl_distro(platform.wsl_distribution))
     )
     runner.write_text(destination, rendered)
 
@@ -294,8 +311,9 @@ def deploy_all(  # noqa: PLR0913
     claude_nerdfont: bool = True,
     no_sudo: bool = False,
     wsl_start_dir: str | None = None,
+    herdr: bool = False,
 ) -> None:
-    deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir)
+    deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir, herdr=herdr)
     if _is_wsl_target(platform):
         deploy_wsl_configs(runner, platform, include_starship=include_starship)
         if include_starship and platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
@@ -382,6 +400,7 @@ def _claude_wsl_install_script(source: str, *, nerdfont: bool) -> str:
 
     command = _claude_statusline_command(nerdfont=nerdfont)
     return (
+        'PATH="$HOME/.local/bin:$PATH"; '
         'claude="$HOME/.claude"; '
         '[ -d "$claude" ] || { echo "Claude Code not detected ($claude missing); '
         'skipping status line."; exit 0; }; '
@@ -578,8 +597,11 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
     _deploy_img_zoom_skill_native(runner, platform, source)
 
 
-BASICLY_REF = "v0.26.10"
-BASICLY_SPEC = f"git+https://github.com/niksavis/basicly@{BASICLY_REF}"
+BASICLY_REF = "v0.32.0"
+BASICLY_SPEC = (
+    "https://github.com/niksavis/basicly/releases/download/"
+    f"{BASICLY_REF}/basicly-{BASICLY_REF.removeprefix('v')}-py3-none-any.whl"
+)
 CLI_TOOLS_SKILL = "cli-tools"
 _CLI_TOOLS_LABEL = "install the basicly cli-tools skills"
 _SKILLS_USER = ["tool", "run", "--from", BASICLY_SPEC, "basicly", "skills-user"]

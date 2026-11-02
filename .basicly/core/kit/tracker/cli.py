@@ -157,6 +157,12 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
     "claim": lambda a, r: commands.claim(a.directory, a.record, _holder(a), take=a.take, redact=r),
     "unassign": lambda a, r: commands.unassign(a.directory, a.record, redact=r),
     "resolve": lambda a, r: commands.resolve(a.directory, a.record, redact=r),
+    "acknowledge-loss": lambda a, r: fsck.recovery.acknowledge(
+        a.directory,
+        a.record,
+        fsck.recovery.Request(tuple(a.sequence), a.reason, tuple(a.evidence)),
+        redact=r,
+    ),
 }
 
 
@@ -207,7 +213,9 @@ _VIEWS: dict[
 
 
 def _shown(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
-    found = read_record(args.directory, args.record)
+    found = record_view.read_view(
+        args.directory, args.record, view=args.view, snapshot=args.snapshot
+    )
     if found is None:
         return EXIT_REFUSED, {"record": args.record, "found": False}
     return EXIT_OK, found
@@ -318,7 +326,9 @@ def _run(
             "appended": bool(appended),
             **_owed_of(args.directory, record),
         }
-    records = query_records(args.directory, status=args.status, limit=args.limit)
+    records = query_records(
+        args.directory, status=args.status, limit=args.limit, query=args.query, summary=args.summary
+    )
     return EXIT_OK, {"count": len(records), "records": records}
 
 

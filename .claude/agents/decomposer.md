@@ -1,6 +1,6 @@
 ---
 name: decomposer
-description: Cuts a classified unit of work into children that can each be built, verified and demonstrated end to end. Invoked by the engine at DECOMPOSE, once `classification` and `change-shape` validate and the loop depth calls for a plan. Returns an `implementation-plan` in which every child carries testable acceptance criteria, scope globs, declared dependencies, a token budget, an integrity level, and the command that demonstrates it. Read-only. It proposes a plan; the engine writes it.
+description: Cuts a classified unit of work into children that can each be built, verified and demonstrated end to end. Invoked by the engine at DECOMPOSE, once `classification` and `change-shape` validate and the loop depth calls for a plan. Returns an `implementation-plan` in which every child carries testable acceptance criteria, scope globs, declared dependencies and the command that demonstrates it. Explicit spending limits remain optional. Read-only. It proposes a plan; the engine writes it.
 tools: Read, Grep, Glob, Bash
 tier: high
 effort: high
@@ -46,10 +46,11 @@ The plan gate refuses a child that lacks one of these:
 - **Scope globs**, disjoint or declared as shared. Two children that write
   the same path run one after the other.
 - **Declared dependencies**, in a graph with no cycle.
-- **A token budget.**
-- **An integrity level.**
 - **A demonstration**: a command, a request or a test that exercises the
   child through the consumer surface.
+
+Do not require a token budget or permission level. Preserve an explicit user spending limit.
+The engine selects required verification from the scope.
 
 Emit an `implementation-plan`. Report the forecast diff size of each child.
 Report a child whose forecast is far past reviewable. Do not refuse it.

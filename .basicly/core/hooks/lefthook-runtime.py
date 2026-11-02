@@ -9,6 +9,11 @@ import subprocess  # nosec B404
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
+
+
+class MissingRuntimeError(ValueError):
+    pass
 
 
 def project_root() -> Path:
@@ -134,35 +139,54 @@ def run_foreign_hook(root: Path, arguments: list[str], raw: bytes | None) -> int
     ).returncode
 
 
+def runtime_module(name: str):
+    source = Path(__file__).with_name(f"{name}.py")
+    spec = importlib.util.spec_from_file_location(f"basicly_{name}", source)
+    if spec is None or spec.loader is None:
+        raise ValueError("hook runtime is missing; run basicly hooks-build")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _snapshot(
+    manager: str, stage: str, root: Path, directory: Path, env: dict[str, str]
+) -> tuple[Any, Path]:
+    if manager != "git" or stage not in ("pre-commit", "pre-push"):
+        return None, root
+    module = runtime_module("staged-snapshot")
+    pushed = module.pushed_commit(env.get("BASICLY_PUSH_REFS", "")) if stage == "pre-push" else None
+    if stage == "pre-push" and not pushed:
+        return None, root
+    state = module.prepare(root, directory, pushed)
+    env.update(state.env)
+    return ((module, state) if stage == "pre-commit" else None), state.tree
+
+
 def launch(manager: str, stage: str, arguments: list[str]) -> int:
     root = project_root()
     suffix = ".exe" if os.name == "nt" else ""
     binary = root / ".basicly/bin" / f"lefthook{suffix}"
     if not binary.is_file():
-        raise ValueError("repository-local Lefthook is missing; run `basicly hooks-build`")
+        raise MissingRuntimeError(
+            "repository-local Lefthook runtime is missing. "
+            "Run the repository's pinned basicly command with `hooks-build --runtime-only`, "
+            "then `hooks-check`, and retry. In a basicly source checkout, use "
+            "`uv run basicly hooks-build --runtime-only` and `uv run basicly hooks-check`."
+        )
     env = {**os.environ, "BASICLY_HOOK_ARGS": json.dumps(arguments)}
     agent = manager != "git"
     name = stage if not agent else f"basicly-{manager}-{stage}"
     raw = sys.stdin.buffer.read() if agent or stage == "pre-push" else None
+    if stage == "pre-push" and raw is not None:
+        env["BASICLY_PUSH_REFS"] = raw.decode("utf-8", "replace")
     if not agent:
         foreign_code = run_foreign_hook(root, arguments, raw)
         if foreign_code:
             return foreign_code
     with tempfile.TemporaryDirectory(prefix="basicly-hook-") as directory:
-        snapshot_state = None
-        run_root = root
-        if manager == "git" and stage == "pre-commit":
-            source = Path(__file__).with_name("staged-snapshot.py")
-            spec = importlib.util.spec_from_file_location("basicly_staged_snapshot", source)
-            if spec is None or spec.loader is None:
-                raise ValueError("staged snapshot runtime is missing; run `basicly hooks-build`")
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[spec.name] = module
-            spec.loader.exec_module(module)
-            state = module.prepare(root, Path(directory))
-            snapshot_state = (module, state)
-            run_root = state.tree
-            env.update(state.env)
+        snapshot_state, run_root = _snapshot(manager, stage, root, Path(directory), env)
         result_path = Path(directory) / "result.json"
         env["BASICLY_HOOK_RESULT"] = str(result_path)
         command = [str(binary), "run", name, "--no-auto-install", "--no-tty"]
@@ -215,6 +239,9 @@ def main() -> int:
             print("use lefthook-runtime.py <git|claude|codex|copilot> <event>", file=sys.stderr)
             return 2
         return launch(sys.argv[1], sys.argv[2], sys.argv[3:])
+    except MissingRuntimeError as exc:
+        print(f"basicly hook failed: {exc}", file=sys.stderr)
+        return 2
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
         print(f"basicly hook failed: {type(exc).__name__}", file=sys.stderr)
         return 2

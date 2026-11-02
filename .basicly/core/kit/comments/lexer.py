@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
+    from jsx import State
     from languages import Language
 
 _REGEX_PRECEDERS = frozenset("(,=:[!&|?{};+-*%~^<>")
@@ -24,15 +25,14 @@ class Span(NamedTuple):
         return source[self.start : self.end]
 
 
-def comment_spans(source: str, language: Language) -> list[Span]:
+def comment_spans(source: str, language: Language, *, jsx_state: State | None = None) -> list[Span]:
 
     protected = _heredoc_ranges(source) if language.heredocs else ()
     spans: list[Span] = []
     index = 0
-    size = len(source)
     line = 1
     previous = ""
-    while index < size:
+    while index < len(source):
         char = source[index]
         if char == "\n":
             line += 1
@@ -42,13 +42,15 @@ def comment_spans(source: str, language: Language) -> list[Span]:
         if _within(index, protected):
             index += 1
             continue
+        transition = jsx_state.advance(source, index, previous) if jsx_state is not None else None
+        if transition is not None:
+            end, previous = transition
+            line += source.count("\n", index, end)
+            index = end
+            continue
         block = _block_at(source, index, language)
         if block is not None:
-            opener, closer = block
-            end = source.find(closer, index + len(opener))
-            if end == -1:
-                raise LexError(f"line {line}: block comment opened with {opener!r} never closes")
-            end += len(closer)
+            end = _comment_end(source, index, *block, line)
             spans.append(Span(index, end, line))
             line += source.count("\n", index, end)
             index = end
@@ -56,8 +58,7 @@ def comment_spans(source: str, language: Language) -> list[Span]:
             continue
         opener = _line_comment_at(source, index, language, previous)
         if opener is not None:
-            end = source.find("\n", index)
-            end = size if end == -1 else end
+            end = _comment_end(source, index, opener, "\n", line)
             spans.append(Span(index, end, line))
             index = end
             continue
@@ -66,23 +67,45 @@ def comment_spans(source: str, language: Language) -> list[Span]:
             index = _skip_string(source, index, rule, line)
             previous = '"'
             continue
-        if (
-            language.regex_literals
-            and char == "/"
-            and _regex_here(previous)
-            and not (language.jsx_tags and _ends_jsx_tag(source, index, previous))
-        ):
+        if language.regex_literals and char == "/" and _regex_here(previous):
             index = _skip_regex(source, index, line)
-            previous = "/"
+            previous = "v"
             continue
         if not char.isspace():
             previous = char
         index += 1
+    if jsx_state is not None:
+        jsx_state.finish()
     return spans
 
 
 def _within(index: int, ranges: tuple[tuple[int, int], ...]) -> bool:
     return any(start <= index < end for start, end in ranges)
+
+
+def atom_end(source: str, index: int, language: Language, previous: str) -> tuple[int, str] | None:
+    line = source.count("\n", 0, index) + 1
+    block = _block_at(source, index, language)
+    if block is not None:
+        return _comment_end(source, index, *block, line), ""
+    opener = _line_comment_at(source, index, language, previous)
+    if opener is not None:
+        return _comment_end(source, index, opener, "\n", line), previous
+    rule = _string_at(source, index, language)
+    if rule is not None:
+        return _skip_string(source, index, rule, line), '"'
+    if language.regex_literals and source[index] == "/" and _regex_here(previous):
+        return _skip_regex(source, index, line), "v"
+    return None
+
+
+def _comment_end(source: str, index: int, opener: str, closer: str, line: int) -> int:
+    end = source.find(closer, index + len(opener))
+    if closer == "\n":
+        return len(source) if end == -1 else end
+    if end == -1:
+        raise LexError(f"line {line}: block comment opened with {opener!r} never closes")
+    return end + len(closer)
 
 
 def _block_at(source: str, index: int, language: Language):
@@ -126,12 +149,6 @@ def _skip_string(source: str, index: int, rule, line: int) -> int:
 def _regex_here(previous: str) -> bool:
 
     return previous == "" or previous in _REGEX_PRECEDERS
-
-
-def _ends_jsx_tag(source: str, index: int, previous: str) -> bool:
-    if index > 0 and source[index - 1] == "<":
-        return True
-    return previous == "}" and source.startswith(">", index + 1)
 
 
 def _skip_regex(source: str, index: int, line: int) -> int:

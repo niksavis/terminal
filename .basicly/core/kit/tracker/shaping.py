@@ -12,7 +12,7 @@ REQUIREMENTS_FIELD = "requirements"
 DESCRIPTION_FIELD = "description"
 
 SHAPED_UNDER_FIELD = "shaped_under"
-SHAPING_RULE = "dor.v2"
+SHAPING_RULE = "dor.v3"
 
 REFINE_LABEL = "refine"
 
@@ -40,6 +40,8 @@ _BULLET = re.compile(r"^- (.+)$")
 
 JOB_VOICE = "job"
 USER_VOICE = "user"
+CONTEXT_VOICE = "context"
+CONTEXT_HEADING = "## Context"
 
 
 def _stated_intent(text: str, *, motivation: bool = False) -> bool:
@@ -54,6 +56,9 @@ def _stated_intent(text: str, *, motivation: bool = False) -> bool:
 
 
 def _trigger(description: str) -> tuple[str, str] | None:
+    context = section_text(description, CONTEXT_HEADING)
+    if _stated_intent(context):
+        return CONTEXT_VOICE, context
     for paragraph in _PARAGRAPH_BREAK.split(description):
         text = " ".join(paragraph.split())
         for voice, pattern in ((JOB_VOICE, _JOB_STORY), (USER_VOICE, _USER_STORY)):
@@ -97,7 +102,12 @@ def unfilled(text: str) -> bool:
 
 
 def states_something(text) -> bool:
-    return bool(isinstance(text, str) and text.strip()) and not unfilled(text)
+    return (
+        isinstance(text, str)
+        and bool(re.search(r"[^\W_]", text))
+        and not unfilled(text)
+        and not _TRIGGER_PLACEHOLDER.fullmatch(text.strip("-* \t"))
+    )
 
 
 def _held(record: Mapping[str, object], field: str, heading: str, closed: bool) -> bool:
@@ -119,7 +129,7 @@ SECTIONS = (
     (REQUIREMENTS_HEADING, REQUIREMENTS_FIELD),
 )
 
-CONDITIONS = (TRIGGER_HEADING, *(heading for heading, _field in SECTIONS))
+CONDITIONS = (CONTEXT_HEADING, ACCEPTANCE_HEADING)
 
 
 TYPE_FIELD = "issue_type"
@@ -155,7 +165,7 @@ def required(record: Mapping[str, object], template=None) -> tuple:
 
 def _meets(record: Mapping[str, object], heading: str, body: str, closed: bool) -> bool:
 
-    if heading == TRIGGER_HEADING:
+    if heading in (TRIGGER_HEADING, CONTEXT_HEADING):
         return trigger_voice(body) is not None
     known = dict(SECTIONS).get(heading)
     if known is not None:
@@ -178,6 +188,11 @@ def owed(record: Mapping[str, object], *, closed: bool = False, template=None, p
         for heading in required(record, template)
         if not _meets(record, heading, body, closed)
     )
+    constraints = record.get(REQUIREMENTS_FIELD)
+    supplied = bool(constraints.strip()) if isinstance(constraints, str) else bool(constraints)
+    invalid = supplied and not _held(record, REQUIREMENTS_FIELD, REQUIREMENTS_HEADING, closed)
+    if invalid and REQUIREMENTS_HEADING not in structural:
+        structural = (*structural, REQUIREMENTS_HEADING)
     return (*structural, *(() if closed else process))
 
 
@@ -206,9 +221,10 @@ def remedy(missing: Sequence[str]) -> str:
 
     parts = []
     for name in missing:
-        if name == TRIGGER_HEADING:
+        if name in (TRIGGER_HEADING, CONTEXT_HEADING):
             parts.append(
-                f"state a complete trigger with a situation/persona, motivation/goal and "
+                f"state the problem and intended outcome under ## Context, or a complete trigger "
+                f"with a situation/persona, motivation/goal and "
                 f"outcome/benefit; each part must contain text without placeholders. "
                 f"Use either voice - a situation, {JOB_STORY_EXAMPLE!r}, "
                 f"or a persona, {USER_STORY_EXAMPLE!r}. A persona is never required: where "
@@ -236,6 +252,11 @@ def remedy(missing: Sequence[str]) -> str:
         elif name == "## Confirmation Plan":
             parts.append(
                 "use review --evidence: checks of criterion, command (an argv list) and expected"
+            )
+        elif name.startswith("## Small Task"):
+            parts.append(
+                f"{name.partition(': ')[2]}; fix that, or clear size with --field size= and "
+                f"record a review"
             )
         elif name == "## Completion Confirmation":
             parts.append(

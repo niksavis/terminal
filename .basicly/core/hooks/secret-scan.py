@@ -94,6 +94,7 @@ def staged_added_lines() -> list[tuple[str, int, str]]:
         ["git", "diff", "--cached", "--unified=0", "--no-color", "--diff-filter=ACM"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     added: list[tuple[str, int, str]] = []

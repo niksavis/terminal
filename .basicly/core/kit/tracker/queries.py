@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -53,6 +54,8 @@ def query_records(
     *,
     status: str | Sequence[str] | None = None,
     limit: int | None = None,
+    query: str = "",
+    summary: bool = False,
 ) -> list[dict[str, object]]:
 
     wanted = None if status is None else {status} if isinstance(status, str) else set(status)
@@ -60,12 +63,37 @@ def query_records(
         values.require_status(each)
     records = folded(directory)
     views, _ = views_and_children(directory)
+    needle = query.casefold()
     matched = [
-        {**snapshot.record_to_dict(records[key]), "dependencies": _edges_of(views, key)}
+        {
+            **(_summary(records[key]) if summary else snapshot.record_to_dict(records[key])),
+            "dependencies": _edges_of(views, key),
+        }
         for key in sorted(records)
-        if not records[key].tombstoned and (wanted is None or records[key].status in wanted)
+        if not records[key].tombstoned
+        and (wanted is None or records[key].status in wanted)
+        and (not needle or needle in _search_text(records[key]))
     ]
     return matched if limit is None else matched[:limit]
+
+
+def _search_text(state: Any) -> str:
+    return json.dumps(
+        [state.record, state.status, *state.fields.values(), *state.comments],
+        ensure_ascii=False,
+    ).casefold()
+
+
+def _summary(state: Any) -> dict[str, object]:
+    names = ("title", "issue_type", "priority", "labels", "assignee", "close_resolution")
+    return {
+        "record": state.record,
+        "status": state.status,
+        "fields": {name: state.fields[name] for name in names if name in state.fields},
+        "dates": dict(state.dates),
+        "max_seq": state.max_seq,
+        "contested": list(state.contested),
+    }
 
 
 def _edges_of(views: Mapping[str, Any], record: str) -> list[dict[str, str]]:

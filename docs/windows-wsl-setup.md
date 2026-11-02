@@ -36,7 +36,7 @@ The Windows version and the virtualization rule come from the Microsoft pages [I
 ### Linux
 
 - `apt`, `pacman` or `dnf`. Only Ubuntu is tested.
-- `sudo` rights. Setup installs packages with `sudo` by default.
+- `sudo` rights. Setup installs packages with `sudo` by default. With `--no-sudo`, setup prints the package command for you to run instead.
 - `git`, `curl` and `wget`.
 
 ### macOS
@@ -105,7 +105,7 @@ Run the install from a normal PowerShell window, not as administrator:
 irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | iex
 ```
 
-Setup asks once for your Linux password from Step 2. To add coding agents, see [Quick install](../README.md#install).
+Setup asks once for your Linux password from Step 2. To add coding agents, see [Install](../README.md#install).
 
 ### Step 6: Restart and check
 
@@ -115,7 +115,7 @@ Close all terminal windows, so that the new PATH takes effect. Then run:
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report
 ```
 
-Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu.
+Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu. At the end of the install, setup prints where WezTerm is installed.
 
 [What gets installed](what-gets-installed.md) lists each tool that the install adds.
 
@@ -148,8 +148,10 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 | `starship.rs` | The starship installer on Linux, and inside WSL |
 | The Ubuntu `apt` mirrors | The WSL system packages |
 | `apt.fury.io` | The WezTerm `apt` repository on Linux outside WSL |
-| `claude.ai` | The Claude Code installer, only with `--agents` |
-| `registry.npmjs.org` | Copilot CLI and Codex, only with `--agents` |
+| `claude.ai`, `downloads.claude.ai` | The Claude Code installer and its download, only with `--agents` |
+| `chatgpt.com`, `releases.openai.com` | The Codex installer and its download, only with `--agents` |
+| `gh.io` | The Copilot CLI installer in WSL, Linux and macOS, only with `--agents` |
+| `registry.npmjs.org` | Copilot CLI on Windows, only with `--agents` |
 | The VS Code Marketplace | The Remote - WSL extension |
 
 When the GitHub API limit stops a download, set the `GITHUB_TOKEN` environment variable and run the install again.

@@ -24,6 +24,15 @@ setopt EXTENDED_GLOB
 # Ensure user-local binaries are available (starship, fd, bat shims).
 export PATH="$HOME/.local/bin:$PATH"
 
+_terminal_completions="$HOME/.cache/zsh/completions"
+if command -v herdr >/dev/null 2>&1; then
+  if [[ ! -s "$_terminal_completions/_herdr" || "${commands[herdr]}" -nt "$_terminal_completions/_herdr" ]]; then
+    mkdir -p "$_terminal_completions" && herdr completion zsh >| "$_terminal_completions/_herdr"
+  fi
+  fpath=("$_terminal_completions" $fpath)
+fi
+unset _terminal_completions
+
 # Completion
 autoload -Uz compinit
 compinit -d ~/.zcompdump
@@ -133,12 +142,13 @@ fi
 # fzf integration (josean-dev style)
 if command -v fzf >/dev/null 2>&1; then
   # Newer fzf versions support `fzf --zsh`; older distro builds expose scripts only.
-  if fzf --zsh >/dev/null 2>&1; then
-    eval "$(fzf --zsh)"
+  if _terminal_fzf_init="$(fzf --zsh 2>/dev/null)"; then
+    eval "$_terminal_fzf_init"
   else
     [[ -f /usr/share/doc/fzf/examples/key-bindings.zsh ]] && source /usr/share/doc/fzf/examples/key-bindings.zsh
     [[ -f /usr/share/doc/fzf/examples/completion.zsh ]] && source /usr/share/doc/fzf/examples/completion.zsh
   fi
+  unset _terminal_fzf_init
 
   fg="#CBE0F0"
   bg="#011628"

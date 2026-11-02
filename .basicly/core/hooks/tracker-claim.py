@@ -33,7 +33,7 @@ def _project_root() -> Path:
 
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(  # nosec B603 B607
-        ["git", *args], cwd=root, capture_output=True, text=True, check=False
+        ["git", *args], cwd=root, capture_output=True, text=True, encoding="utf-8", check=False
     )
 
 
@@ -77,6 +77,7 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
             cwd=root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
         if exported.returncode != 0:
@@ -98,16 +99,26 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
             cwd=root,
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=False,
         )
+
+
+def _exempt(root: Path, paths: list[str]) -> bool:
+    if not paths or not (root / LEDGER).is_dir():
+        return True
+    if _git(root, "rev-parse", "-q", "--verify", "MERGE_HEAD").returncode == 0:
+        return True
+    if all(_git(root, "cat-file", "-e", f"HEAD:{place}").returncode for place in PLACES):
+        sys.stderr.write("tracker-claim: this commit installs the tracker, so it needs no claim\n")
+        return True
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:
     paths = list(argv if argv is not None else sys.argv[1:])
     root = _project_root()
-    if not paths or not (root / LEDGER).is_dir():
-        return 0
-    if _git(root, "rev-parse", "-q", "--verify", "MERGE_HEAD").returncode == 0:
+    if _exempt(root, paths):
         return 0
     locate = _locate()
     tracker = locate.locate(root, PLACES)

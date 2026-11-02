@@ -45,20 +45,4 @@ A second person can run these two tests against your chain without a new derivat
 
 Deliver the smallest effective code fix and regression or control within the approved scope. When a catalog or policy change is necessary for that outcome or separately authorized, edit its YAML source and run the applicable catalog and projection checks. Record other improvements as separate recommendations.
 
-## Example
-
-```text
-Signal      3 of 5 lanes failed to land on one shared anchor, twice in one pass
-Why 1       the rebase conflicted            (the merge result names the conflict)
-Why 2       two lanes appended at one anchor (both scope globs name basicly.toml)
-Why 3       decompose grouped the work by scope-glob overlap, which is file adjacency
-Why 4       scope globs are the only structure the decomposer can see
-STOP        we control that
-
-Branch not taken: "generate the anchors". Real, but it fixes three files, not the
-slicing rule that keeps producing collisions.
-
-Control     a plan-gate refusal when two children declare an overlapping anchor
-Tier        control
-Covers      every decomposition that slices by file adjacency
-```
+For a worked chain from signal to control, read [example](references/example.md).

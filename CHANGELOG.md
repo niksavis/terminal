@@ -2,6 +2,208 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.20.0 - 2026-10-29
+
+Delta: v0.19.1..v0.20.0
+
+### Highlights
+
+- **The WezTerm `+` button opens a WSL tab on Windows.** It opens a WSL tab in your home folder, the same as Ctrl+Shift+T. Before, it failed with a WSL `chdir` error when the active WSL pane reported its folder as `//wsl.localhost/...`. The status bar now shows the folder name also when the path ends with a slash (term-nuzi5i).
+- **The `cli-tools` skill comes from basicly v0.32.0.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.32.0 release (term-jxrndt).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-fqdvf6) (3bd001d)
+- test(zsh): keep the parent fpath out of the herdr completion probe (term-2e6fb3) (59b1dab)
+- feat(kit): upgrade basicly to the current release (term-jxrndt) (a8ba671)
+- fix(wezterm): open the wsl home tab from the new tab button on windows (term-nuzi5i) (02c1e31)
+- chore(tracker): add the retro to the session handover (term-p4b5z) (a07f3fa)
+- chore(tracker): close the session retro record (term-mt5eqv) (8b41283)
+- docs(release): run the e2e test before the tag and name the clone run command (term-mt5eqv) (eed2ae4)
+- chore(tracker): close the release and record the session handover (term-yu3cgd) (ab974b4)
+
+## v0.19.1 - 2026-10-27
+
+Delta: v0.19.0..v0.19.1
+
+### Highlights
+
+- **A fresh install with `--herdr --agents all` ends with no failed step.** In v0.19.0, herdr refused the Copilot CLI integration on a new machine, because `~/.copilot` did not exist yet. Setup now creates the folder of each agent before it installs the integration (term-0u4brb).
+- **The user guide shows how to check Nerd Font icons.** WezTerm draws each icon in one column with its built-in Symbols Nerd Font Mono. Troubleshooting > Nerd Font icons has the check command for bash and PowerShell (term-uy9muk).
+
+### Commit delta (auto-generated)
+
+- docs(install): use the new release tag in the examples (term-yu3cgd) (6a54a3c)
+- chore(release): bump package version for next release (term-yu3cgd) (88ed0a7)
+- chore(tracker): close the release and the copilot and nerd font records (term-rez6ip) (f8aaf5b)
+- test(wezterm): lock nerd font icons to one cell and document the check (term-uy9muk) (6eeb101)
+- fix(herdr): create the agent folder before the integration (term-0u4brb) (b046394)
+- docs(install): describe the herdr integrations and the report versions (term-rez6ip) (6caf99c)
+
+## v0.19.0 - 2026-10-27
+
+Delta: v0.18.0..v0.19.0
+
+### Highlights
+
+- **Setup links herdr to your coding agents.** With `--herdr` and `--agents`, setup installs the herdr integration for each named agent, so herdr shows whether the agent is working, blocked or idle. The report lists each integration (term-uf9jj5).
+- **zsh completes herdr commands with Tab.** The completion file is written once and again only after herdr changes, so a new shell does not slow down (term-yphpem).
+- **WezTerm opens your default WSL distro.** Before, WezTerm preferred Ubuntu even when another distro was the default. The launch menu now names the distro (term-kxpm5r).
+- **The report shows more.** Each tool in WSL, on Linux and on macOS shows its version. The report warns about Python older than 3.14 and Node.js older than v26. On Windows, characters such as the copyright sign from WSL tools show correctly (term-9ye8ib, term-s2bd4y, term-sxem98).
+- **The cheat sheet shows herdr,** with its install command, its tool row and its integrations (term-fvuajc).
+
+### Commit delta (auto-generated)
+
+- docs(install): use the new release tag in the examples (term-rez6ip) (ad98e57)
+- chore(release): bump package version for next release (term-rez6ip) (f076e0b)
+- chore(tracker): close the herdr integration record (term-uf9jj5) (ae668e4)
+- chore(tracker): close the wsl decoding record (term-sxem98) (5ab10ae)
+- fix(runner): decode wsl command output as utf-8 (term-sxem98) (fda80b0)
+- chore(tracker): record the integration check still open (term-uf9jj5) (f58392e)
+- feat(herdr): install the integration for each named agent (term-uf9jj5) (dcb026f)
+- chore(tracker): file the single-width nerd font icon request (term-uy9muk) (a776d70)
+- chore(tracker): close the fragments record (term-xor5z3) (27b4afd)
+- feat(release): fold changelog fragments into the release highlights (term-xor5z3) (b0db873)
+- chore(tracker): close the herdr completion record (term-yphpem) (6944fd5)
+- feat(zsh): complete herdr commands from a cached file (term-yphpem) (bcaed1c)
+- chore(tracker): close the report records (term-s2bd4y) (b83c039)
+- fix(report): show versions and warn below the runtime target (term-s2bd4y) (f8430f7)
+- chore(tracker): note the wezterm part of the distro check as fixed (term-aeouh) (3d80998)
+- chore(tracker): close the wezterm distro and herdr records (term-kxpm5r) (fdb62c4)
+- docs(wezterm): name the default distro in the launch menu (term-kxpm5r) (7870114)
+- fix(wezterm): open the default wsl distro (term-kxpm5r) (05d937f)
+- ci(e2e): install herdr in the consumer install test (term-cupi7f) (8a99363)
+- docs(cheat-sheet): show the herdr install command and tool (term-fvuajc) (6689971)
+- chore(tracker): close the shipped release (term-pj2cil) (af1122e)
+- docs(readme): list the common setup options (term-pj2cil) (3893295)
+
+## v0.18.0 - 2026-10-27
+
+Delta: v0.17.1..v0.18.0
+
+### Highlights
+
+- **Setup can install herdr.** herdr keeps coding agents running in terminals that stay alive after the window closes, and it shows whether each agent is working, blocked or idle. Add `--herdr` to install it in WSL, on Linux and on macOS. Setup does not install it on the Windows host. When herdr is installed, the WezTerm launch menu has a **herdr (WSL)** entry on Windows and a **herdr** entry on Linux and macOS. To show the agent state, run `herdr integration install claude` once for each agent, as the user guide shows (term-ffbqpz).
+- **The docs use v0.18.0 in the fixed-release examples** (term-pj2cil).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-pj2cil) (150f68b)
+- chore(tracker): record the session handover (term-vbemoo) (84772fa)
+- chore(tracker): close the herdr feature (term-ffbqpz) (c85fd9f)
+- feat(setup): add herdr as an opt-in tool (term-ffbqpz) (c36e83c)
+- chore(tracker): close the shipped release (term-k6rm0e) (6f46551)
+
+## v0.17.1 - 2026-10-27
+
+Delta: v0.17.0..v0.17.1
+
+### Highlights
+
+- **`--no-sudo` runs no sudo command on a Linux host.** Setup skips zsh, tmux, git, curl and wget and prints the command that installs them. On pacman and dnf, WezTerm installs as the AppImage (term-hfmqvp).
+- **The docs say what goes where on each platform.** The README and the docs name the install folders on Windows, WSL, Linux and macOS, the user PATH entries, the WezTerm Start menu entry and the folder of each coding agent (term-dbhru2, term-z0jvce, term-da37zj).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-k6rm0e) (d5617db)
+- chore(tracker): close the validation record cleanup (term-3la8jo) (70783e4)
+- docs(validation): delete the old basicly validation records (term-3la8jo) (90b5a34)
+- chore(tracker): close the docs alignment (term-da37zj) (97d8eec)
+- docs(install): bring the docs up to date with the readme and the code (term-da37zj) (e2cd1df)
+- chore(tracker): close the agent docs record (term-z0jvce) (c50cb18)
+- docs(install): name where each coding agent installs (term-z0jvce) (9af4d19)
+- fix(setup): make no-sudo skip every sudo step on a linux host (term-hfmqvp) (034f33e)
+- chore(tracker): confirm and close the session records (term-dbhru2) (3cefa46)
+- docs(install): correct where setup installs each tool (term-dbhru2) (d64a47f)
+- chore(tracker): close the shipped release (term-vbemoo) (f532f0a)
+
+## v0.17.0 - 2026-10-27
+
+Delta: v0.16.3..v0.17.0
+
+### Highlights
+
+- **Windows setup no longer stops at the "add to the user PATH" step.** The step told every open window that the environment changed and waited up to 5 seconds for each window that did not answer. That message now goes out in the background, and the step skips the user PowerShell profile (term-n9i7ur).
+- **The Claude Code status line works in WSL right after a fresh install.** Setup installs jq into `~/.local/bin`, and the WSL status line step now finds it there, so it writes the `statusLine` setting (term-ktjvv2).
+- **WezTerm has a Start menu entry.** When setup installs WezTerm for one user from the release zip, it adds WezTerm to the Start menu. At the end, setup prints where WezTerm is installed (term-3ssu8z).
+- **The agent harness uses basicly v0.29.0** (term-xxvycv).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-vbemoo) (563ed75)
+- fix(configs): find the local jq when setting the wsl statusline (term-ktjvv2) (da827f8)
+- chore(tracker): file the missing statusline report (term-ktjvv2) (be335f3)
+- feat(windows): add the user wezterm install to the start menu (term-3ssu8z) (559960c)
+- fix(windows): stop the user path step from waiting on the environment broadcast (term-n9i7ur) (35d7d90)
+- feat(kit): upgrade basicly to the current release (term-xxvycv) (91a73c1)
+- chore(tracker): fold pending writer shards into the trunk log (term-shwsbp) (718ca50)
+- chore(tracker): close the shipped track (term-qok9vm) (094765f)
+
+## v0.16.3 - 2026-10-20
+
+Delta: v0.16.2..v0.16.3
+
+### Highlights
+
+- **Full setup installs the shared cli-tools skill without a source build.** It uses the published Basicly v0.26.11 wheel on native hosts and in WSL. The Git source used by v0.16.2 lacks required runtime archives and could fail this step (term-qok9vm).
+- **Includes the responsiveness fixes from v0.16.2.** WezTerm keeps native tab titles and Software rendering on Windows and WSL. Starship skips per-prompt line metrics, and zsh initializes fzf once (term-71hhgg, term-w53b6v).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-qok9vm)
+- fix(setup): install shared skills from the published basicly wheel (term-qok9vm)
+- chore(tracker): record the claim before provisioning (term-qok9vm) (bb28a9a)
+- chore(tracker): close the shipped track (term-kkqcfe) (d1b1439)
+
+## v0.16.2 - 2026-10-20
+
+Delta: v0.16.1..v0.16.2
+
+### Highlights
+
+- **WezTerm uses native tab titles.** Removing the custom Lua formatter avoids repeated conversion of the full configuration on the GUI thread. Windows and WSL retain Software rendering; native Linux and macOS use WezTerm's renderer default. Kitty graphics are disabled to avoid known image-handling crash paths in older builds, so applications using that protocol lose those images (term-71hhgg, term-w53b6v).
+- **Starship avoids a diff on every prompt.** Git line metrics are disabled, which avoids invoking content clean filters for those metrics. Branch and status information remain available (term-71hhgg).
+- **zsh initializes fzf once.** The configuration reuses the generated integration instead of starting fzf twice, and keeps the fallback for older versions (term-w53b6v).
+- **The repository harness and shared skill pin use basicly v0.26.11.** The upgrade keeps Codex shell repair reachable when the hook runtime is missing and documents the recovery commands (term-21t2uw, term-56sb6g).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-kkqcfe) (85f2220)
+- chore(tracker): record the claim before provisioning (term-kkqcfe) (d6ef197)
+- chore(tracker): record the upgrade handover (term-56sb6g) (f3ae108)
+- chore(tracker): close the shipped track (term-56sb6g) (d3ea6c8)
+- chore(harness): upgrade basicly for codex hook recovery (term-56sb6g) (41710ef)
+- chore(tracker): sync tracker state for the harness loop (term-56sb6g) (0a5d59f)
+- chore(tracker): close the shipped track (term-w53b6v) (29271c6)
+- fix(terminal): reduce terminal startup work and avoid known crash paths (term-w53b6v) (c39b6ac)
+- chore(tracker): sync tracker state for the harness loop (term-w53b6v) (c7488e2)
+- chore(tracker): record the claim before provisioning (term-56sb6g) (70a83fc)
+- chore(tracker): record the claim before provisioning (term-w53b6v) (4d6d03d)
+- docs(starship): align the prompt example with disabled metrics (term-e54g8k) (cc3c97f)
+- chore(tracker): close the shipped track (term-71hhgg) (c793574)
+- fix(config): avoid per-prompt diff metrics and custom tab title conversion (term-71hhgg) (3037e46)
+- chore(tracker): sync tracker state for the harness loop (term-71hhgg) (d81d3a5)
+- chore(tracker): record the claim before provisioning (term-71hhgg) (f7cbf1d)
+- chore(harness): update basicly and remove generated codex permissions (term-21t2uw) (1aa5443)
+- chore(tracker): fold pending writer shards into the trunk log (term-bzfgkl) (328bbad)
+- chore(harness): upgrade basicly patch and validate protected writes (term-bzfgkl) (6bf2067)
+- chore(tracker): sync tracker state for the harness loop (term-bzfgkl) (0be2966)
+- chore(tracker): record the claim before provisioning (term-bzfgkl) (f4e05f4)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (00c435d)
+- chore(tracker): close the shipped track (term-qe8sm3) (610d950)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (1485961)
+- docs(harness): identify sandbox landing refusal (term-qe8sm3) (3d66c8e)
+- docs(harness): record upgrade landing findings (term-qe8sm3) (fae9205)
+- chore(harness): upgrade basicly and validate live hooks (term-qe8sm3) (40d8204)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (496dec8)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (dbc7956)
+- chore(tracker): sync tracker state for the harness loop (term-qe8sm3) (b29230f)
+- chore(tracker): fold pending writer shards into the trunk log (term-qe8sm3) (949412a)
+- chore(tracker): fold pending writer shards into the trunk log (term-p4b5z) (935be5e)
+- chore(tracker): record the terminal session handover (term-p4b5z) (4e3e593)
+- chore(tracker): close the patch release and record the handover (term-3tpo8h) (9258e63)
+- chore(tracker): close the verified release installer bug (term-87rbae) (8ad99f3)
+
 ## v0.16.1 - 2026-10-15
 
 Delta: v0.16.0..v0.16.1

@@ -135,6 +135,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     install.add_argument(
+        "--herdr",
+        action="store_true",
+        help=(
+            "Install herdr, the runtime that keeps coding agents running, in WSL, on Linux "
+            "and on macOS. With --update, setup updates herdr only with this option."
+        ),
+    )
+    install.add_argument(
         "--winget-versions",
         choices=("keep", "replace"),
         dest="winget_versions",
@@ -178,6 +186,31 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
 
 
 WINDOWS_RUNTIMES = ("uv", "python", "node")
+VERSION_FLAGS = {"tmux": "-V"}
+NO_VERSION = frozenset({"img-zoom"})
+RUNTIME_TARGETS = {
+    "python": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
+    "python3": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
+    "node": (prerequisites.node_meets_target, f"v{prerequisites.TARGET_NODE_MAJOR}"),
+}
+
+
+def _target_status(command: str, version: str, detail: str) -> tuple[bool, str]:
+    target = RUNTIME_TARGETS.get(command)
+    if target is None:
+        return True, detail
+    meets, minimum = target
+    if meets(version):
+        return True, detail
+    return False, f"{detail}, below the target {minimum}"
+
+
+def _report_tool(runner: Runner, label: str, command: str, path: str, version: str) -> None:
+    if not path:
+        _report_status(runner, label, False, "")
+        return
+    ok, detail = _target_status(command, version, f"{path}, {version}" if version else path)
+    _report_status(runner, label, ok, detail)
 
 
 def _first_line(text: str) -> str:
@@ -185,9 +218,9 @@ def _first_line(text: str) -> str:
     return lines[0].strip() if lines else ""
 
 
-def _windows_tool_detail(
+def _windows_tool_info(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
-) -> str | None:
+) -> tuple[str, str, str] | None:
     path = runner.which(command)
     note = ""
     if path is None:
@@ -199,18 +232,46 @@ def _windows_tool_detail(
     result = runner.run([path, "--version"], check=False, dry_run_safe=True)
     version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
     scope = "user profile" if prerequisites.is_user_scope(path, platform_info) else "machine-wide"
-    return f"{path}, {version}, {scope}{note}"
+    return path, version, f"{scope}{note}"
+
+
+def _windows_tool_detail(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> str | None:
+    info = _windows_tool_info(runner, platform_info, command)
+    return None if info is None else ", ".join(info)
 
 
 def _report_optional_agent(runner: Runner, label: str, detail: str | None) -> None:
+    agent = label.rsplit(":", 1)[-1]
+    _report_optional(runner, label, detail, f"--agents {agent}")
+
+
+def _report_optional(runner: Runner, label: str, detail: str | None, option: str) -> None:
     if detail:
         runner.reporter.success(f"{label} ({detail})")
         return
-    agent = label.rsplit(":", 1)[-1]
     runner.reporter.info(
-        f"{label}: not installed (optional; to install it, run: "
-        f"{setup_command('--agents ' + agent)})"
+        f"{label}: not installed (optional; to install it, run: {setup_command(option)})"
     )
+
+
+def _report_herdr_integrations(
+    runner: Runner, platform_info: platform.PlatformInfo, side: str
+) -> None:
+    states = agents.herdr_integration_states(runner, platform_info)
+    for agent in agents.AGENTS:
+        label = f"{side}:herdr-{agent}"
+        state = states.get(agent, "not installed")
+        if state.startswith("current"):
+            runner.reporter.success(f"{label} ({state})")
+        elif state.startswith("not installed"):
+            _report_optional(runner, label, None, f"--herdr --agents {agent}")
+        else:
+            runner.reporter.warn(
+                f"{label} ({state}; to update it, run: "
+                f"{setup_command(f'--update --herdr --agents {agent}')})"
+            )
 
 
 def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> str | None:
@@ -223,13 +284,18 @@ def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> 
     return found if result.returncode == 0 and found else None
 
 
-def _wsl_command_present(
+def _wsl_command_info(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
-) -> tuple[bool, str]:
-
+) -> tuple[str, str]:
+    version_step = (
+        ""
+        if command in NO_VERSION
+        else f'; "$p" {VERSION_FLAGS.get(command, "--version")} </dev/null 2>&1 | head -n 1'
+    )
     script = (
-        f"if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
-        f"else command -v {command} || true; fi"
+        f"p=$(if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
+        f"else command -v {command} || true; fi); "
+        f'test -n "$p" || exit 0; echo "$p"{version_step}'
     )
     if is_running_in_wsl():
         result = runner.run(
@@ -244,8 +310,17 @@ def _wsl_command_present(
             check=False,
             dry_run_safe=True,
         )
-    output = result.stdout.strip()
-    return bool(output), output
+    lines = result.stdout.strip().splitlines()
+    path = lines[0].strip() if lines else ""
+    version = lines[1].strip() if len(lines) > 1 else ""
+    return path, version
+
+
+def _wsl_command_present(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> tuple[bool, str]:
+    path, version = _wsl_command_info(runner, platform_info, command)
+    return bool(path), f"{path}, {version}" if path and version else path
 
 
 def _wsl_file_exists(
@@ -290,8 +365,12 @@ def _print_windows_report(
         _report_windows_tool(runner, platform_info, tool)
 
     for command in WINDOWS_RUNTIMES:
-        detail = _windows_tool_detail(runner, platform_info, command)
-        _report_status(runner, f"windows:{command}", detail is not None, detail or "not found")
+        info = _windows_tool_info(runner, platform_info, command)
+        if info is None:
+            _report_status(runner, f"windows:{command}", False, "not found")
+            continue
+        ok, detail = _target_status(command, info[1], ", ".join(info))
+        _report_status(runner, f"windows:{command}", ok, detail)
     for agent in agents.AGENTS:
         _report_optional_agent(
             runner, f"windows:{agent}", _windows_tool_detail(runner, platform_info, agent)
@@ -373,11 +452,11 @@ def _print_wsl_report(
         "python3",
         "node",
     ]:
-        ok, detail = _wsl_command_present(runner, platform_info, command)
-        _report_status(runner, f"wsl:{command}", ok, detail)
+        path, version = _wsl_command_info(runner, platform_info, command)
+        _report_tool(runner, f"wsl:{command}", command, path, version)
     if include_starship:
-        ok, detail = _wsl_command_present(runner, platform_info, "starship")
-        _report_status(runner, "wsl:starship", ok, detail)
+        path, version = _wsl_command_info(runner, platform_info, "starship")
+        _report_tool(runner, "wsl:starship", "starship", path, version)
     for path in [
         "~/.local/bin/fd",
         "~/.local/bin/bat",
@@ -395,6 +474,10 @@ def _print_wsl_report(
         _report_optional_agent(
             runner, f"wsl:{agent}", _shell_agent_path(runner, agent, wsl_distro=distro)
         )
+    ok, detail = _wsl_command_present(runner, platform_info, "herdr")
+    _report_optional(runner, "wsl:herdr", detail if ok else None, "--herdr")
+    if ok:
+        _report_herdr_integrations(runner, platform_info, "wsl")
 
 
 def _host_command_path(runner: Runner, command: str) -> str | None:
@@ -405,8 +488,17 @@ def _host_command_path(runner: Runner, command: str) -> str | None:
     return runner.which(command)
 
 
+def _host_version(runner: Runner, command: str, path: str) -> str:
+    if command in NO_VERSION:
+        return ""
+    flag = VERSION_FLAGS.get(command, "--version")
+    result = runner.run([path, flag], check=False, dry_run_safe=True)
+    return _first_line(result.stdout or result.stderr or "")
+
+
 def _print_host_report(
     runner: Runner,
+    platform_info: platform.PlatformInfo,
     *,
     include_starship: bool,
 ) -> None:
@@ -438,14 +530,20 @@ def _print_host_report(
         "node",
     ]:
         path = _host_command_path(runner, command)
-        _report_status(runner, f"host:{command}", path is not None, path or "")
+        version = _host_version(runner, command, path) if path else ""
+        _report_tool(runner, f"host:{command}", command, path or "", version)
     if include_starship:
         path = _host_command_path(runner, "starship")
-        _report_status(runner, "host:starship", path is not None, path or "")
+        version = _host_version(runner, "starship", path) if path else ""
+        _report_tool(runner, "host:starship", "starship", path or "", version)
     for agent in agents.AGENTS:
         _report_optional_agent(
             runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)
         )
+    herdr = _host_command_path(runner, "herdr")
+    _report_optional(runner, "host:herdr", herdr, "--herdr")
+    if herdr:
+        _report_herdr_integrations(runner, platform_info, "host")
 
 
 def print_setup_report(
@@ -464,7 +562,7 @@ def print_setup_report(
     if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
         _print_wsl_report(runner, platform_info, include_starship=include_starship)
     else:
-        _print_host_report(runner, include_starship=include_starship)
+        _print_host_report(runner, platform_info, include_starship=include_starship)
 
     if include_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:
         vscode_path = platform_info.vscode_settings_path
@@ -508,6 +606,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     update: bool = False,
     no_sudo: bool = False,
     selected_agents: tuple[str, ...] = (),
+    herdr: bool = False,
     winget_versions: str | None = None,
     uninstall_system_versions: bool,
     keep_system_versions: bool,
@@ -568,7 +667,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 partial(prerequisites.ensure_wsl_cli_extras, runner, platform_info),
             )
         else:
-            prerequisites.ensure_shell_tools(runner, platform_info)
+            prerequisites.ensure_shell_tools(runner, platform_info, no_sudo=effective_no_sudo)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
         if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
@@ -623,6 +722,14 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
         agents.ensure_agents(runner, platform_info, selected_agents, update=update)
 
+        if herdr:
+            prerequisites.attempt(
+                runner,
+                "install herdr",
+                partial(prerequisites.ensure_herdr, runner, platform_info, update=update),
+            )
+            agents.ensure_herdr_integrations(runner, platform_info, selected_agents)
+
         if not skip_starship:
             prerequisites.attempt(
                 runner,
@@ -639,6 +746,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         claude_nerdfont=not no_nerd_font,
         no_sudo=no_sudo,
         wsl_start_dir=wsl_terminal_cwd,
+        herdr=herdr or prerequisites.herdr_installed(runner, platform_info),
     )
 
     if not skip_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:
@@ -670,6 +778,9 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         return 1
 
     runner.reporter.success("Setup complete.")
+    wezterm = prerequisites.wezterm_location(runner, platform_info)
+    if wezterm:
+        runner.reporter.step(f"WezTerm is installed at {wezterm}")
     if config_only:
         runner.reporter.step("Reload your shell or WezTerm to pick up the new configuration.")
     else:
@@ -756,6 +867,7 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         update=args.update,
         no_sudo=args.no_sudo,
         selected_agents=args.agents,
+        herdr=args.herdr,
         winget_versions=args.winget_versions,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",

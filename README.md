@@ -20,7 +20,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 These commands install the latest release. Run from Windows, setup sets up the Windows host and the default WSL distro together. Run inside WSL, it sets up only that distro. For cmd and Git Bash, see [Start commands](docs/what-gets-installed.md#start-commands).
 
-To add options, for example no questions and all coding agents (Claude Code, Copilot CLI, Codex):
+To add options, put them at the end of the command. This example asks no questions and installs all coding agents (Claude Code, Copilot CLI, Codex):
 
 ```powershell
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --unattended --agents all
@@ -30,7 +30,16 @@ To add options, for example no questions and all coding agents (Claude Code, Cop
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --unattended --agents all
 ```
 
-Use the same form with `--update` to update every tool, and with `--only report` to see what is installed. All options are in the [User guide](docs/user-guide.md#cli-options).
+| Option | What it does |
+| --- | --- |
+| `--update` | update each tool that is out of date |
+| `--unattended` | never ask a question and take the safe answer |
+| `--agents all` | also install Claude Code, Copilot CLI and Codex, or name some: `--agents claude,codex` |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS. With `--agents`, also link herdr to each named agent |
+| `--only report` | show what is installed, with versions, then stop |
+| `--dry-run` | show each step and change nothing |
+
+All options are in the [User guide](docs/user-guide.md#cli-options).
 
 ## What you get
 
@@ -54,12 +63,24 @@ Use the same form with `--update` to update every tool, and with `--only report`
 | img-zoom | Lets an agent read small text in an image | ✓ | ✓ | ✓ |
 | podman, bubblewrap, socat | Containers, and the Claude Code sandbox | ✗ | ✓ | ✗ |
 | Claude Code, Copilot CLI, Codex | Coding agents, only with `--agents` | ✓ | ✓ | ✓ |
+| herdr | Keeps coding agents running and shows their state, only with `--herdr` | ✗ | ✓ | ✓ |
 
 1. Run from Windows, setup does not install WezTerm in WSL: the WezTerm on Windows opens WSL. Run inside WSL, setup installs WezTerm there when it is missing.
 
-On Windows, the tools go into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with one entry in your user PATH. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
+Where setup puts the tools:
 
-`git`, `curl` and `wget` must be present before you run setup. Setup also writes the config files for these tools. When Claude Code is present, it adds a status line and two skills.
+| Platform | Folder |
+| --- | --- |
+| Windows host | command-line tools and starship: `%LOCALAPPDATA%\Programs\terminal-tools\bin`. WezTerm: `%LOCALAPPDATA%\Programs\WezTerm`, with a WezTerm entry in the Start menu. Node.js: `%LOCALAPPDATA%\Programs\nodejs`. uv, Python and Claude Code: `%USERPROFILE%\.local\bin`. Codex: `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`. Copilot CLI: the Node.js folder |
+| WSL | `~/.local/bin`, also for the coding agents. zsh, tmux, tree and the container packages come from apt |
+| Linux | the package manager. uv, Python, yq and the tools that the package manager does not have: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
+| macOS | Homebrew. uv and Python: `~/.local/bin`. Node.js: `~/.local`. lazygit: `/usr/local/bin` |
+
+On Windows, setup adds each of these folders to your user PATH. It installs no second WezTerm when one is already on PATH or in `C:\Program Files`. At the end, setup prints where WezTerm is installed. A copy that winget installed stays as it is. To replace it with the setup copy, add `--winget-versions replace`. Setup never changes a copy that needs administrator rights.
+
+`git`, `curl` and `wget` must be present before you run setup. Setup also writes the config files for these tools. When the `~/.claude` folder exists, it adds a status line and two skills for Claude Code.
+
+To see the path of each installed tool, run setup with `--only report`.
 
 [What gets installed](docs/what-gets-installed.md) gives each tool's version, its source on each platform, and how a coding agent benefits from it.
 
@@ -76,4 +97,4 @@ On Windows, the tools go into `%LOCALAPPDATA%\Programs\terminal-tools\bin`, with
 
 ## License
 
-[MIT](LICENSE)
+Released under the [MIT License](LICENSE).

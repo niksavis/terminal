@@ -16,8 +16,8 @@ with `/hooks` before it runs them.
 
 Git launchers verify that the managed dispatcher completed. If Lefthook skips
 it because its native file selection is empty, the launcher runs only the
-managed job once; foreign job filters still apply. Original Git arguments are
-forwarded to consumer-owned Lefthook commands.
+managed job once; foreign job filters still apply. The launcher forwards the
+original Git argument list to Lefthook and to the managed dispatcher.
 
 Git pre-commit runs against an isolated index snapshot. Successful mechanical
 fixes update the index while preserving partially staged working files. Pre-push
@@ -48,12 +48,12 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 | `secret-scan` | `pre-commit` | `git` | [`secret-scan.py`](secret-scan.py) | Block a commit that stages a likely secret (basicly-yzyd). |
 | `tracker-path-scan` | `pre-commit` | `git` | [`tracker-path-scan.py`](tracker-path-scan.py) | Block a commit that stages a machine-specific path in the tracker export (basicly-vkh0.5). |
 | `internal-info-scan` | `pre-commit` | `git` | [`internal-info-scan.py`](internal-info-scan.py) | Block a commit that stages an internal-only identifier (basicly-0n3d). |
-| `no-comments` | `pre-commit` | `git` | [`no-comments.py`](no-comments.py) | Refuse a commit that adds a prose comment to a code file. |
+| `no-comments` | `pre-commit` | `git` | [`no-comments.py`](no-comments.py) | Enforce the selected comment policy; strict no-comments is the default. |
 | `kit-boundary` | `pre-commit` | `git` | [`kit-boundary.py`](kit-boundary.py) | Fail when a kit module reaches back into basicly (basicly-vkh0.16). |
 | `commit-msg-script` | `commit-msg` | `git` | [`commit-msg.py`](commit-msg.py) | Validate conventional commit message format. |
 | `tracker-commit-msg-script` | `commit-msg` | `git` | [`tracker-commit-msg.py`](tracker-commit-msg.py) | Validate that a commit message references an issue id the tracker holds. |
 | `tracker-claim-script` | `commit-msg` | `git` | [`tracker-claim.py`](tracker-claim.py) | Refuse a commit that changes files outside the ledger unless the committer holds a named record in progress. |
-| `pre-push-script` | `pre-push` | `git` | [`pre-push.py`](pre-push.py) | Run the configured full checks before a push, and refuse one that would race a landing. |
+| `pre-push-script` | `pre-push` | `git` | [`pre-push.py`](pre-push.py) | Run the fast checks for the pushed files before a push (the full checks under CI), and refuse a push that would race a landing. |
 | `protect-generated` | `pretooluse` | `claude` | [`protect-generated.py`](protect-generated.py) | Block agent edits to basicly-generated files (Claude Code PreToolUse hook). |
 | `unsplit-loop-guard` | `pretooluse` | `claude` | [`unsplit-loop-guard.py`](unsplit-loop-guard.py) | Refuse a for-loop over an unsplit scalar (Claude Code PreToolUse hook, basicly-m2g3). |
 | `pipe-status-guard` | `pretooluse` | `claude` | [`pipe-status-guard.py`](pipe-status-guard.py) | Refuse reading a pipeline's exit status when a filter ends it (PreToolUse, xkqxp9). |

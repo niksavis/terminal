@@ -64,13 +64,7 @@ npx skills find <query>
 npx skills find <query> --owner <owner>
 ```
 
-Examples:
-
-| The user asks | Search |
-| --- | --- |
-| "how do I make my React app faster?" | `npx skills find react performance` |
-| "can you help me with PR reviews?" | `npx skills find pr review` |
-| "I need to create a changelog" | `npx skills find changelog` |
+For example requests, search terms and a sample presentation, read [search](references/search.md).
 
 The leaderboard at <https://skills.sh/> ranks skills by total installs.
 
@@ -87,17 +81,7 @@ The leaderboard at <https://skills.sh/> ranks skills by total installs.
 ## Step 5: Present the options
 
 For each relevant skill, give the name and what it does, the install count and the
-owner, the install command, and the link at skills.sh:
-
-```text
-The "react-best-practices" skill gives React and Next.js performance guidelines
-from Vercel Engineering (185K installs).
-
-To install it in this project:
-npx skills add vercel-labs/agent-skills@react-best-practices
-
-More: https://skills.sh/vercel-labs/agent-skills/react-best-practices
-```
+owner, the install command, and the link at skills.sh.
 
 ## Step 6: Install after consent
 
@@ -109,22 +93,6 @@ npx skills add <owner/repo@skill>
 
 `npx skills update` updates the installed skills; it is also a network call. In a basicly
 repository, convert a skill that stays into a `skill.yaml` source (see the rules).
-
-## Search terms
-
-| Category | Example queries |
-| --- | --- |
-| Web development | react, nextjs, typescript, css, tailwind |
-| Testing | testing, jest, playwright, e2e |
-| DevOps | deploy, docker, kubernetes, ci-cd |
-| Documentation | docs, readme, changelog, api-docs |
-| Code quality | review, lint, refactor, best-practices |
-| Design | ui, ux, design-system, accessibility |
-| Productivity | workflow, automation, git |
-
-- Use specific keywords: "react testing" finds more than "testing".
-- Try another term: when "deploy" finds nothing, try "deployment" or "ci-cd".
-- Many skills come from `vercel-labs/agent-skills` and `ComposioHQ/awesome-claude-skills`.
 
 ## When nothing is found
 

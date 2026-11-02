@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import re
 import shutil
@@ -165,6 +166,52 @@ def test_deployed_wezterm_reply_background_has_readable_contrast(
     text_luminance = luminance(foreground.group(1))
     background_luminance = luminance(reply_background.group(1))
     assert (text_luminance + 0.05) / (background_luminance + 0.05) >= 8
+
+
+@pytest.mark.parametrize(
+    ("os", "label"), [(OperatingSystem.WINDOWS, "herdr (WSL)"), (OperatingSystem.LINUX, "herdr")]
+)
+def test_the_wezterm_launch_menu_offers_herdr_only_when_it_is_installed(
+    tmp_path: Path, os: OperatingSystem, label: str
+) -> None:
+    platform = make_platform(os, tmp_path)
+    assert platform.wezterm_config_dir is not None
+    destination = platform.wezterm_config_dir / "wezterm.lua"
+
+    deploy_wezterm_config(Runner(dry_run=False), platform, herdr=True)
+    with_herdr = destination.read_text(encoding="utf-8")
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+    without_herdr = destination.read_text(encoding="utf-8")
+
+    assert "local herdr_installed = true" in with_herdr
+    assert f'label = "{label}"' in with_herdr
+    assert "local herdr_installed = false" in without_herdr
+    assert "__HERDR_INSTALLED__" not in with_herdr + without_herdr
+
+
+@pytest.mark.parametrize(
+    ("distro", "rendered"),
+    [
+        ("Debian", 'local wsl_default_distro = "Debian"'),
+        ("Ubuntu-24.04", 'local wsl_default_distro = "Ubuntu-24.04"'),
+        ('Deb"ian', 'local wsl_default_distro = ""'),
+        ("Deb\\ian", 'local wsl_default_distro = ""'),
+        (None, 'local wsl_default_distro = ""'),
+    ],
+)
+def test_wezterm_prefers_the_default_wsl_distro_that_setup_found(
+    tmp_path: Path, distro: str | None, rendered: str
+) -> None:
+    platform = dataclasses.replace(
+        make_platform(OperatingSystem.WINDOWS, tmp_path), wsl_distribution=distro
+    )
+    assert platform.wezterm_config_dir is not None
+
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+
+    content = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
+    assert rendered in content
+    assert "__WSL_DEFAULT_DISTRO__" not in content
 
 
 def test_deploy_wezterm_config_supports_optional_wsl_start_dir(tmp_path: Path) -> None:
@@ -492,7 +539,8 @@ def test_wezterm_open_config_pins_local_domain() -> None:
 def test_wezterm_wsl_launch_entry_pins_wsl_domain() -> None:
     content = template_path("wezterm.lua").read_text(encoding="utf-8")
     entry = re.search(
-        r'label = "Ubuntu \(WSL\)",\s*\n\s*domain = \{ DomainName = wsl_default_domain \},',
+        r'label = \(wsl_default_domain:gsub\("\^WSL:", ""\)\) \.\. " \(WSL\)",\s*\n'
+        r"\s*domain = \{ DomainName = wsl_default_domain \},",
         content,
     )
     assert entry is not None, "WSL launch entry does not pin the WSL domain"
@@ -1185,7 +1233,10 @@ def test_basicly_pin_matches_the_installed_harness() -> None:
     )
 
     assert f"v{install['basicly_version']}" == BASICLY_REF
-    assert BASICLY_SPEC.endswith(f"@{BASICLY_REF}")
+    assert (
+        "https://github.com/niksavis/basicly/releases/download/"
+        f"{BASICLY_REF}/basicly-{install['basicly_version']}-py3-none-any.whl"
+    ) == BASICLY_SPEC
 
 
 def test_the_pinned_harness_carries_no_tool_skills() -> None:
@@ -1288,3 +1339,35 @@ def test_scripted_claude_steps_print_labels_not_scripts(
     assert "wsl -d Ubuntu --exec sh: install the Claude Code status line" in out
     assert "wsl -d Ubuntu --exec sh: install the img-zoom skill" in out
     assert "wsl -d Ubuntu --exec sh: install the basicly cli-tools skills" in out
+
+
+@_posix_only
+def test_wsl_status_line_uses_the_jq_that_setup_installs_in_local_bin(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    local_bin = home / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    fake_jq = local_bin / "jq"
+    fake_jq.write_text('#!/bin/sh\nprintf \'{"statusLine": "set"}\'\n')
+    fake_jq.chmod(0o755)
+    system_bin = tmp_path / "bin"
+    system_bin.mkdir()
+    for tool in ("cp", "mv", "rm", "mktemp", "cat"):
+        found = shutil.which(tool)
+        assert found is not None
+        (system_bin / tool).symlink_to(found)
+    script = configs_module._claude_wsl_install_script(
+        str(template_path("statusline.sh")), nerdfont=True
+    )
+
+    result = subprocess.run(
+        [shutil.which("sh") or "sh", "-c", script],
+        env={"HOME": str(home), "PATH": str(system_bin)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "jq not found" not in result.stdout
+    assert json.loads((home / ".claude" / "settings.json").read_text()) == {"statusLine": "set"}

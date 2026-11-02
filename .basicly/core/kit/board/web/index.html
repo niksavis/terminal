@@ -137,7 +137,7 @@
 <body>
 <header>
   <h1>Tracker</h1>
-  <div class="picker search-box"><input id="search" type="search" placeholder="Search titles and ids   ( / )" aria-label="Search" autocomplete="off"></div>
+  <div class="picker search-box"><input id="search" type="search" placeholder="Search cards and history   ( / )" aria-label="Search" autocomplete="off"></div>
   <div id="counts" aria-live="polite"></div>
   <button class="btn" id="new" type="button">New story</button>
 </header>
@@ -168,8 +168,8 @@ const PRIORITIES = [["0", "critical"], ["1", "high"], ["2", "medium"], ["3", "lo
 const STATUSES = ["open", "in_progress", "blocked", "deferred"];
 const EDGE_NAMES = { blocks: "waits on", "parent-child": "is a child of", related: "is related to", "discovered-from": "was discovered from" };
 const TABS = [["ready", "Ready"], ["working", "In progress"], ["refine", "Refine"], ["blocked", "Blocked"], ["mine", "Mine"], ["active", "All open"], ["closed", "Closed"]];
-const LIST_CAP = 400;
-const state = { dependents: new Map(), edgeTypes: ["blocks"], recordTypes: [], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", current: null };
+const PAGE_SIZE = 100;
+const state = { dependents: new Map(), edgeTypes: ["blocks"], recordTypes: [], me: "", records: new Map(), closed: null, ready: [], refine: new Map(), blocked: new Map(), tab: "ready", type: "", sort: "rank", query: "", searchMatches: null, pageSize: PAGE_SIZE, current: null };
 
 function el(tag, attrs, ...children) {
   const node = document.createElement(tag);
@@ -231,9 +231,10 @@ function age(stamp) {
 }
 
 const SECTIONS = {
-  "Trigger": ["trigger", "the situation that causes the work: When <situation>, I want <goal>, so I can <outcome>."],
+  "Context": ["context", "the problem and intended outcome, in plain language."],
+  "Trigger": ["context", "the problem and intended outcome; existing story formats are supported."],
   "Acceptance Criteria": ["acceptance criteria", "checks that prove the work is done, one per line: - [ ] <a check a person can run>. Verify checks them."],
-  "Requirements": ["requirements", "what the solution must hold to, for example: standard library only. Validation judges the result against them."],
+  "Requirements": ["requirements", "optional distinct constraints, for example: standard library only. Validation checks the whole task."],
   "Steps to Reproduce": ["steps to reproduce", "the steps that make the bug happen, one per line."],
   "Success Criteria": ["success criteria", "what must be true when the whole epic is done."],
 };
@@ -254,8 +255,8 @@ function doneBlock(shown) {
   if (process) {
     const review = process.review || {};
     const confirmation = process.confirmation || {};
-    const reviewed = Boolean(process.revision && review.revision === process.revision && !(process.owed || []).length);
-    const confirmed = reviewed && confirmation.revision === process.revision;
+    const reviewed = Boolean((process.review_current ?? (process.revision && review.revision === process.revision)) && !(process.owed || []).length);
+    const confirmed = reviewed && (process.confirmation_current ?? confirmation.revision === process.revision);
     const details = el("details", {}, el("summary", {}, "Review and confirmation · Review: " + (reviewed ? "recorded for this card" : "required") + ". Confirmation: " + (confirmed ? "recorded for this card" : "required") + "."));
     if (review.revision && !reviewed) details.append(el("p", {}, "The saved review does not cover the current card. Refine it with an agent."));
     if (review.invest) details.append(el("ul", {}, Object.entries(review.invest).map(([name, reason]) => el("li", {}, el("b", {}, name), ": " + reason))));
@@ -275,7 +276,7 @@ function doneBlock(shown) {
   return el("div", { class: "notice note dod" }, "Confirmation needs review and recorded evidence; available fields do not prove completion:",
     el("ul", {}, [
       item(Boolean(String(f.acceptance_criteria || "").trim()), "acceptance criteria", "check each one against the result"),
-      item(Boolean(String(f.requirements || "").trim()), "requirements", "check the result against its intended use"),
+      ...(String(f.requirements || "").trim() ? [item(true, "requirements", "check the distinct constraints too")] : []),
     ]));
 }
 
@@ -303,15 +304,18 @@ function outage(message) {
 async function load() {
   const version = await call("GET", "/version").then((stamp) => stamp.version, () => "");
   const [index, ready, blocked, refine, ...lists] = await Promise.all([
-    call("GET", ""), call("GET", "/ready?limit=5000"), call("GET", "/blocked"), call("GET", "/refine"),
-    ...STATUSES.map((status) => call("GET", "/records?status=" + status)),
+    call("GET", ""), call("GET", "/ready"), call("GET", "/blocked"), call("GET", "/refine"),
+    ...STATUSES.map((status) => call("GET", "/records?summary=1&status=" + status)),
   ]).catch((error) => {
     outage(error.message);
     throw error;
   });
   outage("");
+  if (state.version && state.version !== version) state.closed = null;
   state.version = version;
   state.me = index.holder || "";
+  document.title = index.repository ? index.repository + " · Tracker" : "Tracker";
+  document.querySelector("header h1").textContent = document.title;
   state.edgeTypes = index.edge_types || state.edgeTypes;
   state.recordTypes = index.record_types || state.recordTypes;
   state.records = new Map(lists.flatMap((list) => list.records).map((one) => [one.record, one]));
@@ -327,9 +331,11 @@ async function load() {
   state.refine = new Map(refine.records.map((one) => [one.record, one]));
   if (!state.loaded && !state.ready.length && state.records.size) state.tab = "active";
   state.loaded = true;
+  if (state.tab === "closed") await closedRecords();
   drawMirror(index.mirror);
   drawCounts();
   drawList();
+  if (state.query.trim()) await searchRecords(state.query);
 }
 
 function drawMirror(mirror) {
@@ -423,7 +429,7 @@ function linksLine(item) {
 }
 
 async function closedRecords() {
-  if (!state.closed) state.closed = (await call("GET", "/records?status=closed")).records;
+  if (!state.closed) state.closed = (await call("GET", "/records?summary=1&status=closed")).records;
   return state.closed;
 }
 
@@ -435,6 +441,7 @@ async function pick(key) {
 
 async function showView(key) {
   state.tab = key;
+  state.pageSize = PAGE_SIZE;
   if (key === "closed") await attempt(closedRecords);
   drawList();
 }
@@ -492,10 +499,12 @@ function drawList() {
   const items = population().filter((item) => {
     const fields = item.record ? item.record.fields : {};
     if (state.type && fields.issue_type !== state.type) return false;
-    return !query || item.id.toLowerCase().includes(query) || String(fields.title || "").toLowerCase().includes(query);
+    return !query || (state.searchMatches ? state.searchMatches.has(item.id)
+      : item.id.toLowerCase().includes(query) || String(fields.title || "").toLowerCase().includes(query));
   }).sort(compare);
-  const rows = items.slice(0, LIST_CAP).map(row);
-  if (items.length > rows.length) rows.push(el("li", { class: "empty" }, `${items.length - rows.length} more: search or filter to narrow the list`));
+  const shown = state.pageSize || PAGE_SIZE;
+  const rows = items.slice(0, shown).map(row);
+  if (items.length > shown) rows.push(el("li", {}, el("button", { class: "btn plain", type: "button", onclick: () => { state.pageSize = shown + PAGE_SIZE; drawList(); } }, `Show more · ${items.length - shown} remaining`)));
   if (!rows.length) rows.push(el("li", { class: "empty" }, state.tab === "mine" && !state.me ? "set git config user.name so the tracker knows who you are" : "nothing here"));
   document.getElementById("rows").replaceChildren(...rows);
 }
@@ -577,6 +586,30 @@ function select(options, value, onchange, unset) {
 function section(title, value, placeholder) {
   return el("section", { class: "block" }, el("h3", {}, title),
     value && String(value).trim() ? markdown(value) : el("div", { class: "none" }, placeholder));
+}
+
+function contextParts(value) {
+  const text = String(value || "").trim();
+  const parts = text.split(/^## /m);
+  if (parts.length === 1) return { context: text, details: "" };
+  const preamble = parts.shift().trim();
+  let context = preamble;
+  const details = [];
+  for (const part of parts) {
+    const end = part.indexOf("\n");
+    const heading = end < 0 ? part.trim() : part.slice(0, end).trim();
+    const body = end < 0 ? "" : part.slice(end + 1).trim();
+    if ((heading === "Context" || heading === "Trigger") && !context) context = body;
+    else details.push("## " + part.trim());
+  }
+  return context ? { context, details: details.join("\n\n") } : { context: text, details: "" };
+}
+
+function contextBlock(value) {
+  const parts = contextParts(value);
+  const block = section("Context", parts.context, "Describe the problem and intended outcome.");
+  if (parts.details) block.append(el("details", {}, el("summary", {}, "Task details"), markdown(parts.details)));
+  return block;
 }
 
 function grow(area) {
@@ -673,6 +706,14 @@ async function drawChecklist(box, type) {
   }
 }
 
+function contextDescription(value, original) {
+  const text = String(value || "").trim();
+  if (!text) return text;
+  if (original !== undefined && text === String(original || "").replace(/^## Context\s*\n+/, "").trim()) return original;
+  if (text === original || /^## Context(?:\s|$)/m.test(text)) return text;
+  return "## Context\n\n" + text;
+}
+
 function storyForm(values, { status, submit, cancel, note, draft, revision }) {
   try {
     const saved = draft && localStorage.getItem("tracker-draft:" + draft);
@@ -691,10 +732,10 @@ function storyForm(values, { status, submit, cancel, note, draft, revision }) {
     el("label", {}, "Title", el("input", { class: "field", name: "title", required: true, value: String(values.title || "") })),
     el("div", { class: "inline" }, el("label", {}, "Type", type), el("label", {}, "Priority", priority), state_ ? el("label", {}, "Status", state_) : null),
     el("label", {}, "Labels", labelInput(values.labels)),
-    el("label", {}, "Idea / context", area("description", values.description, "Capture what you know. An agent can help shape the story later.", true)),
+    el("label", {}, "Context", area("description", String(values.description || "").replace(/^## Context\s*\n+/, ""), "Describe the problem and intended outcome.", true)),
     el("details", { open: Boolean(status) }, el("summary", {}, "Refinement details · optional for capture"),
     el("label", {}, "Acceptance criteria", area("acceptance", values.acceptance, "- [ ] a check a person can run")),
-    el("label", {}, "Requirements", area("requirements", values.requirements, "- what the solution must hold to")),
+    el("label", {}, "Requirements · optional", area("requirements", values.requirements, "Distinct constraints only; leave empty when none apply.")),
     checklist),
     el("div", { class: "form-foot" }, el("button", { class: "btn", type: "submit" }, submit),
       el("button", { class: "btn plain", type: "button", onclick: cancel }, "Cancel"),
@@ -703,7 +744,7 @@ function storyForm(values, { status, submit, cancel, note, draft, revision }) {
   form.addEventListener("input", () => drawChecklist(checklist, type.value));
   drawChecklist(checklist, type.value);
   form.read = () => ({
-    title: form.title.value, description: form.description.value, acceptance: form.acceptance.value, requirements: form.requirements.value,
+    title: form.title.value, description: contextDescription(form.description.value, status ? values.description : undefined), acceptance: form.acceptance.value, requirements: form.requirements.value,
     issue_type: type.value, priority: priority.value, status: state_ ? state_.value : undefined,
     labels: labelsOf(form.labels.value),
   });
@@ -930,15 +971,15 @@ function commentsBlock(shown) {
   const log = shown.comment_log || shown.comments.map((text) => ({ text }));
   const text = el("textarea", { placeholder: "Add a comment", style: "min-height: 5rem" });
   return el("section", { class: "block" }, el("h3", {}, "Conversation", el("span", {}, String(log.length))),
-    el("ul", { class: "comments" }, log.map((one) => el("li", {},
+    el("details", {}, el("summary", {}, "Show history"), el("ul", { class: "comments" }, log.map((one) => el("li", {},
       one.writer ? el("div", { class: "who" }, writer(one.writer) + (one.at ? " · " + one.at.slice(0, 16).replace("T", " ") : "")) : null,
-      el("div", { class: "text" }, one.text)))),
+      el("div", { class: "text" }, one.text))))),
     text, el("div", { class: "row-actions" }, el("button", { class: "btn plain", type: "button", onclick: () => act("comments", { text: text.value }, "comment added") }, "Comment")));
 }
 
 function refinementBlock(shown, dor) {
   const missing = (dor.blocking || []).map((name) => sectionOf(name)[0]);
-  const prompt = "Refine tracker record " + shown.record + ". Read its card and conversation using the installed tracker CLI. Preserve the person's raw context. Ask about missing facts instead of inventing them. Use the review form allowed by the current tracker guidance. Shape its trigger, requirements and acceptance criteria into the typed fields. "
+  const prompt = "Refine tracker record " + shown.record + ". Read its card and conversation using the installed tracker CLI. Preserve the person's raw context. Ask about missing facts instead of inventing them. Use the review form allowed by the current tracker guidance. Write concise Context and observable Acceptance criteria. Use Requirements only for distinct constraints; validate the whole user need. "
     + (missing.length ? "The tracker currently requires: " + missing.join(", ") + ". " : "")
     + "Keep the card and confirmation linked: record questions and decisions when needed, and make each acceptance criterion a planned check. Re-read authoritative readiness after updating; clear the refine label only after agent review.";
   const text = grow(el("textarea", { readonly: true, "aria-label": "Agent refinement handoff" }, prompt));
@@ -1014,9 +1055,9 @@ async function open(record, quiet) {
     titleBlock(shown),
     shown.status === "closed" ? el("div", { class: "notice" }, (f.close_resolution === "cancelled" ? "Cancelled: " : "Closed: ") + String(f.close_reason || "")) : actionsBar(shown, waitingReason(shown, dor)),
     ...cards.filter((card) => !reviewed(card)),
-    section("Card · story / context", f.description, "no story yet: say when it happens, what the person wants, and what for"),
-    section("Confirmation · acceptance criteria", f.acceptance_criteria, "no acceptance criteria yet"),
-    section("Requirements", f.requirements, "no requirements yet"),
+    contextBlock(f.description),
+    section("Acceptance criteria", f.acceptance_criteria, "Describe the observable conditions for completion."),
+    ...(String(f.requirements || "").trim() ? [section("Requirements", f.requirements, "")] : []),
     ...(shown.status !== "closed" && (!dor.ready || labelsOf(f.labels).includes(REFINE)) ? [refinementBlock(shown, dor)] : []),
     ...cards.filter(reviewed),
     linksBlock(shown),
@@ -1105,7 +1146,25 @@ async function routed() {
 }
 
 const search = document.getElementById("search");
-search.addEventListener("input", (event) => { state.query = event.target.value; drawList(); });
+let searchTimer;
+async function searchRecords(query) {
+  try {
+    const result = await call("GET", "/records?summary=1&query=" + encodeURIComponent(query));
+    if (state.query !== query) return;
+    state.searchMatches = new Set(result.records.map((one) => one.record));
+    drawList();
+  } catch (error) {
+    if (state.query === query) toast("Search could not finish: " + error.message, true);
+  }
+}
+search.addEventListener("input", (event) => {
+  state.query = event.target.value.trim();
+  state.searchMatches = null;
+  state.pageSize = PAGE_SIZE;
+  clearTimeout(searchTimer);
+  drawList();
+  if (state.query.trim()) searchTimer = setTimeout(() => searchRecords(state.query), 180);
+});
 search.after(suggest(search, { source: (text) => matching(text, ""), choose: (one) => go(one.record), render: storyRow }));
 
 function busy() {

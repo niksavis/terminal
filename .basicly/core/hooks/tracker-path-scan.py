@@ -36,6 +36,7 @@ def staged_tracker_files() -> list[str]:
         ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=False,
     )
     return [line for line in proc.stdout.splitlines() if _TRACKER_GLOB.match(line)]
@@ -43,7 +44,7 @@ def staged_tracker_files() -> list[str]:
 
 def staged_content(path: str) -> str:
     proc = subprocess.run(  # nosec B603 B607
-        ["git", "show", f":{path}"], capture_output=True, text=True, check=False
+        ["git", "show", f":{path}"], capture_output=True, text=True, encoding="utf-8", check=False
     )
     return proc.stdout if proc.returncode == 0 else ""
 

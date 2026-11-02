@@ -531,6 +531,50 @@ class Compaction:
     duplicates: int = 0
 
 
+def _stored_id(line: bytes) -> str | None:
+    try:
+        payload = json.loads(line)
+    except ValueError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    ident = payload.get("id")
+    return ident if isinstance(ident, str) else None
+
+
+def _stored_lines(directory: Path) -> tuple[dict[str, bytes], dict[Path, bytes], int]:
+    known: dict[str, bytes] = {}
+    rewritten: dict[Path, bytes] = {}
+    duplicates = 0
+    for path in events.log_paths(directory):
+        original = path.read_bytes()
+        kept: list[bytes] = []
+        for line in original.splitlines(keepends=True):
+            ident = _stored_id(line)
+            if ident is not None and ident in known:
+                if known[ident] != line:
+                    raise events.LedgerError(f"{ident} has different stored content")
+                duplicates += 1
+                continue
+            if ident is not None:
+                known[ident] = line
+            kept.append(line)
+        body = b"".join(kept)
+        if body != original:
+            rewritten[path] = body
+    return known, rewritten, duplicates
+
+
+def _publish_compacted(path: Path, body: bytes) -> None:
+    temporary = events.temporary_beside(path)
+    try:
+        temporary.write_bytes(body)
+        events.replace_file(temporary, path)
+    except OSError:
+        temporary.unlink(missing_ok=True)
+        raise
+
+
 def compact(
     directory: Path | str,
     *,
@@ -555,25 +599,23 @@ def compact(
             if not wanted or events.writer_of(path) in wanted
         ]
         trunk = events.append_target(ledger, writer="")
-        if not shards:
-            return Compaction(trunk=trunk, shards=())
-        known = {event.id for event in events.read_events_from(events.log_paths(ledger))[0]}
+        known, rewritten, duplicates = _stored_lines(ledger)
         carried: list[str] = []
-        duplicates = 0
         for path in shards:
-            for line in path.read_text(encoding="utf-8").splitlines():
+            for line in path.read_bytes().splitlines(keepends=True):
                 if not line.strip():
                     continue
-                try:
-                    event = events.from_json(line)
-                except events.InvalidEventError:
-                    carried.append(line)
-                    continue
-                if event.id in known:
+                ident = _stored_id(line)
+                if ident is not None and ident in known:
+                    if known[ident] != line:
+                        raise events.LedgerError(f"{ident} has different stored content")
                     duplicates += 1
                     continue
-                known.add(event.id)
-                carried.append(line)
+                if ident is not None:
+                    known[ident] = line
+                carried.append(line.removesuffix(b"\n").decode("utf-8"))
+        for path, body in rewritten.items():
+            _publish_compacted(path, body)
         if carried:
             events.append_lines(trunk, carried)
         for path in shards:

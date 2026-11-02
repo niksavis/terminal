@@ -424,25 +424,21 @@ def import_snapshot(  # noqa: PLR0913 — every keyword past the snapshot is an 
         report.rejected.extend(refused)
 
         beads.values.refuse_external_refs(events, events.fold(existing).records, drafts)
-        if dry_run:
-            report.imported = sorted(
-                draft.record for draft in drafts if draft.kind == events.KIND_CREATED
+        minted = (
+            drafts
+            if dry_run
+            else events.append(
+                ledger,
+                drafts,
+                actor=actor,
+                clock=clock,
+                redact=redact,
+                max_text_bytes=max_text_bytes,
+                historical_prose=True,
+                held_lock=lock,
             )
-            report.tombstoned = sorted(
-                draft.record for draft in drafts if draft.kind == events.KIND_TOMBSTONE
-            )
-            return report
-
-        minted = events.append(
-            ledger,
-            drafts,
-            actor=actor,
-            clock=clock,
-            redact=redact,
-            max_text_bytes=max_text_bytes,
-            held_lock=lock,
         )
-        report.events = minted
+        report.events = [] if dry_run else minted
         report.imported = sorted(
             event.record for event in minted if event.kind == events.KIND_CREATED
         )

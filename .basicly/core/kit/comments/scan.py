@@ -22,6 +22,7 @@ def _load(file_name: str, module_name: str):
 
 
 languages = _load("languages.py", "basicly_comments_kit_languages")
+jsx = _load("jsx.py", "basicly_comments_kit_jsx")
 lexer = _load("lexer.py", "basicly_comments_kit_lexer")
 directives = _load("directives.py", "basicly_comments_kit_directives")
 python_source = _load("python_source.py", "basicly_comments_kit_python_source")
@@ -49,13 +50,39 @@ def all_spans(path: Path, source: str) -> list:
     language = languages.for_suffix(suffix)
     if language is None:
         raise ValueError(f"{path}: the comments kit claims no language for {suffix!r}")
-    return lexer.comment_spans(source, language)
+    jsx_state = (
+        jsx.State(
+            typescript=suffix == ".tsx",
+            atom_end=lambda text, index, previous: lexer.atom_end(text, index, language, previous),
+            lex_error=LexError,
+        )
+        if language.jsx_tags and suffix not in {".ts", ".mts", ".cts"}
+        else None
+    )
+    try:
+        return lexer.comment_spans(source, language, jsx_state=jsx_state)
+    except jsx.JSXError as err:
+        raise LexError(str(err)) from err
 
 
 def findings(path: Path, source: str) -> list:
+    spans = all_spans(path, source)
+    if languages.is_python(path.suffix.lower()):
+        openers = ("#",)
+    else:
+        language = languages.for_suffix(path.suffix.lower())
+        openers = language.line_comments + tuple(opener for opener, _ in language.block_comments)
     return [
-        Finding(path, span.line, span.text(source), span)
-        for span in all_spans(path, source)
+        Finding(
+            path,
+            span.line,
+            span.text(source),
+            span._replace(
+                replacement=directives.retained_suffix(span.text(source), openers)
+                or span.replacement
+            ),
+        )
+        for span in spans
         if not directives.is_directive(span.text(source))
     ]
 

@@ -1,91 +1,82 @@
 {
   "version": "1",
-  "generated_at": "2026-10-19T16:04:46.644664+00:00",
+  "generated_at": "2026-10-29T11:56:23.175416+00:00",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:f630ca61a7a5eefa3f8b76de4c9c042f61c866bd3d8ff3202f37931c63a6f5f1",
+      "hash": "sha256:9da5c03862c9cc1a4b177716bfff9e70762b7b9ee846b33a9d4213f0828783aa",
       "source_fragments": [
-        "knowledge-priming",
         "code-is-authoritative",
-        "core-rules",
-        "mistake-proofing",
         "no-user-path-leakage",
         "secure-coding",
-        "decision-protocol",
-        "external-facts",
         "require-explicit-confirmation",
         "project-defaults",
         "claude-quirks",
-        "harness-loop",
         "overlay-authoring",
-        "quality-gate",
         "quality-gate-rendered",
         "quirks",
-        "claude-defaults",
-        "session-completion",
+        "knowledge-priming",
+        "harness-loop",
+        "decision-protocol",
+        "external-facts",
+        "core-rules",
+        "mistake-proofing",
+        "non-interactive-shell",
+        "quality-gate",
         "git-discipline",
-        "non-interactive-shell"
-      ]
-    },
-    ".claude/rules/platform-hermetic-tests.md": {
-      "hash": "sha256:4652807c2a7a6d3b6b05ccc75ec813806584f9c3b71cc7b222235f3ab0187787",
-      "source_fragments": [
-        "platform-hermetic-tests"
+        "session-completion"
       ]
     },
     ".claude/rules/python-style.md": {
-      "hash": "sha256:445f8da53aed9ec378960c7febdfda069c0f8fd7fdd626c05c455f95493e3024",
+      "hash": "sha256:a505b101aafcd48c3f44c3a90d05dd85af593df5cdaa204cc7b45ba3254cc1fe",
       "source_fragments": [
         "python-style"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:010d0963b7c1a47beabe71204430337352ec5052010295867e968d45bb3e63b7",
+      "hash": "sha256:e90416fc4deb3e53654c8bc4663a39b9a1bffb66b1cea200760af4875e766ee6",
       "source_fragments": [
-        "knowledge-priming",
         "code-is-authoritative",
-        "core-rules",
-        "mistake-proofing",
         "no-user-path-leakage",
         "secure-coding",
-        "decision-protocol",
-        "external-facts",
         "require-explicit-confirmation",
         "project-defaults",
-        "harness-loop",
         "overlay-authoring",
-        "quality-gate",
         "quality-gate-rendered",
         "quirks",
-        "session-completion",
-        "git-discipline",
+        "knowledge-priming",
+        "harness-loop",
+        "decision-protocol",
+        "external-facts",
+        "core-rules",
+        "mistake-proofing",
         "non-interactive-shell",
-        "platform-hermetic-tests",
+        "quality-gate",
+        "git-discipline",
+        "session-completion",
         "python-style"
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:da967f3b7d2ddc5d8c5723d3d6bf179002ca6be13f2609839ac9bc388cf97ee1",
+      "hash": "sha256:98d482737287c5155afbaab7ce3f24b015413122eec3cc3aec2e1bdced6418a1",
       "source_fragments": [
-        "knowledge-priming",
         "code-is-authoritative",
-        "core-rules",
-        "mistake-proofing",
         "no-user-path-leakage",
         "secure-coding",
-        "decision-protocol",
-        "external-facts",
         "require-explicit-confirmation",
         "project-defaults",
-        "harness-loop",
         "overlay-authoring",
-        "quality-gate",
         "quality-gate-rendered",
         "quirks",
-        "copilot-defaults",
-        "session-completion",
+        "knowledge-priming",
+        "harness-loop",
+        "decision-protocol",
+        "external-facts",
+        "core-rules",
+        "mistake-proofing",
+        "non-interactive-shell",
+        "quality-gate",
         "git-discipline",
-        "non-interactive-shell"
+        "session-completion"
       ]
     }
   }
