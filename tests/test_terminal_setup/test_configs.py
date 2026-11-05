@@ -136,6 +136,39 @@ def test_deploy_wezterm_config(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "operating_system",
+    [OperatingSystem.WINDOWS, OperatingSystem.LINUX, OperatingSystem.MACOS],
+)
+def test_deployed_wezterm_reply_background_has_readable_contrast(
+    tmp_path: Path, operating_system: OperatingSystem
+) -> None:
+    platform = make_platform(operating_system, tmp_path)
+    deploy_wezterm_config(Runner(dry_run=False), platform)
+
+    assert platform.wezterm_config_dir is not None
+    content = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
+    foreground = re.search(r'foreground = "#([0-9A-Fa-f]{6})"', content)
+    reply_background = re.search(r'brights = \{ "#([0-9A-Fa-f]{6})"', content)
+    assert foreground is not None
+    assert reply_background is not None
+
+    def luminance(color: str) -> float:
+        channels = [int(color[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+        linear = [
+            channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+            for channel in channels
+        ]
+        return sum(
+            channel * weight
+            for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True)
+        )
+
+    text_luminance = luminance(foreground.group(1))
+    background_luminance = luminance(reply_background.group(1))
+    assert (text_luminance + 0.05) / (background_luminance + 0.05) >= 8
+
+
+@pytest.mark.parametrize(
     ("os", "label"), [(OperatingSystem.WINDOWS, "herdr (WSL)"), (OperatingSystem.LINUX, "herdr")]
 )
 def test_the_wezterm_launch_menu_offers_herdr_only_when_it_is_installed(

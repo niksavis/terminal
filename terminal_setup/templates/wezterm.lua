@@ -214,7 +214,7 @@ config.colors = {
   selection_fg = "#DEE6F0",
   split = "#314A6B",
   ansi = { "#1E2D45", "#F38BA8", "#A6E3A1", "#F9E2AF", "#89B4FA", "#CBA6F7", "#94E2D5", "#CAD3DF" },
-  brights = { "#B7C5DA", "#FFAAC2", "#C0F0B8", "#FFF0C2", "#B4D0FF", "#DEC2FF", "#B4F0E5", "#DEE6F0" },
+  brights = { "#26364D", "#FFAAC2", "#C0F0B8", "#FFF0C2", "#B4D0FF", "#DEC2FF", "#B4F0E5", "#DEE6F0" },
   tab_bar = {
     background = "#060D18",
     active_tab = { bg_color = "#1D3557", fg_color = "#DEE6F0", intensity = "Bold" },
