@@ -1,8 +1,8 @@
 ## Import from another tracker
 
 ```sh
-basicly tracker import .beads/issues.jsonl --source beads --dry-run   # writes nothing
-basicly tracker import .beads/issues.jsonl --source beads
+basicly tracker import .beads/issues.jsonl --from beads --dry-run   # writes nothing
+basicly tracker import .beads/issues.jsonl --from beads
 ```
 
 - The import keeps the source ids, so old commit messages still resolve.

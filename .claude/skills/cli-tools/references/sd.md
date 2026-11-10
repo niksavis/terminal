@@ -16,9 +16,18 @@ sd 'old' 'new' file.ts
 sd -p 'old' 'new' file.ts
 sd -F 'a.b' 'a_b' file.ts
 sd 'v(\d+)' 'version-$1' file.txt
-fd -e ts -x sd 'old' 'new' {}
-rg -l 'old_api' | xargs sd 'old_api' 'new_api'
 ```
+
+Replace across many files in four steps. A different count is a stop:
+
+```bash
+rg -c -F 'old_api' | awk -F: '{s+=$2} END {print s}'
+rg -l -F 'old_api' | xargs sd -p -F 'old_api' 'new_api'
+rg -l -F 'old_api' | xargs sd -F 'old_api' 'new_api'
+rg -c -F 'new_api' | awk -F: '{s+=$2} END {print s}'
+```
+
+The first count must equal the last. Then read `git diff`.
 
 ## Output
 

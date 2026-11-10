@@ -9,7 +9,22 @@ trigger:
     - prompt: "confirm the price and limit rather than recalling them"
     - prompt: "is there a machine readable version of this vendor documentation i can fetch"
   negative:
+    - prompt: "audit our hooks and skills against the latest Anthropic guidance"
+      owner: best-practices-audit
     - prompt: "cut a version of this repository"
       owner: release-process
     - prompt: "keep this change out of my main checkout"
       owner: worktree-isolation
+tasks:
+  - query: "Does ruff support a --output-format=sarif flag? We want to use it in CI."
+    expected_behavior:
+      - "Runs the installed ruff with --help or an invalid value before reading documentation"
+      - "Records the fact with the ruff version, the date and the source"
+  - query: "Check the current Anthropic price per million input tokens for the newest Opus and write it into docs/costs.md."
+    expected_behavior:
+      - "Fetches the price from the vendor's own host, not an aggregator"
+      - "Does not cache or commit the fetched page"
+  - query: "docs/notes.md says: Codex has no config file deny rules. Confirm it before we rely on it."
+    expected_behavior:
+      - "Reads our own adapter code for the interface before the design doc"
+      - "States the claim at the precision the evidence supports and says how it would correct the sentence in docs/notes.md if it is wrong"

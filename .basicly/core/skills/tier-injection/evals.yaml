@@ -12,3 +12,14 @@ trigger:
       owner: harness-loop
     - prompt: "check the vendor's current model ids"
       owner: interface-facts
+tasks:
+  - query: "My reviewer subagent has tier: low but still runs on the big model."
+    expected_behavior:
+      - "Checks for a model pin in the agent definition first"
+      - "Checks the Claude Code version, since before 2.1.251 CLAUDE_CODE_SUBAGENT_MODEL outranks the hook"
+  - query: "I just installed the tier kit; run /clear and test it."
+    expected_behavior:
+      - "Says the whole CLI process must be relaunched after a first install"
+  - query: "Should model-map.json be committed?"
+    expected_behavior:
+      - "Commits .basicly/core/models/model-map.json in the repository"

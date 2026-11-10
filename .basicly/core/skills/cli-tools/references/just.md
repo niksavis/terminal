@@ -7,7 +7,7 @@ Run the project's named commands from its `justfile`. Use it instead of retyping
 - **List the recipes first.** `just --list` shows each recipe with its comment and arguments.
 - **Read a recipe before you run it.** `just --show <recipe>` prints its body, and `just --dry-run <recipe>` prints the commands without running them.
 - **Run from any subdirectory.** just searches up for the `justfile`, and it runs recipes in the directory of that file.
-- **Name the file when there are two.** `-f <justfile>` removes the guess. `-d <directory>` sets where recipes run, and just refuses it without `-f`.
+- **Name the file when there are two.** `-f <justfile>` removes the guess. `-d <directory>` sets where recipes run.
 - **Check `.env` loading.** A justfile with `set dotenv-load` reads `.env`. `--no-dotenv` turns it off.
 - **Script with `--summary` or `--json`.** Parse those, not the formatted `--list` output.
 

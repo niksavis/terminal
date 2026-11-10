@@ -1,0 +1,23 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "why does the Windows install keep breaking, find the cause"
+    - prompt: "this test fails intermittently and we do not know why, find the cause"
+    - prompt: "the same bug came back a third time, find out what let it through"
+  negative:
+    - prompt: "fix the defect the verify findings name in the lane worktree"
+      owner: repair-in-place
+    - prompt: "before this number goes in the report, try to prove it wrong"
+      owner: falsify-first
+tasks:
+  - query: "The commit hook refused my change three times this week for the same reason; find out why."
+    expected_behavior:
+      - "Runs the failing command and pastes its output before reasoning"
+      - "Cites an observation for every link: a path:line, a command output or a ledger row"
+  - query: "CI failed on main with: uv.lock is out of date with pyproject.toml. The cause is that someone forgot to update the lockfile."
+    expected_behavior:
+      - "Does not stop on a person and asks what let the mistake reach a commit"
+      - "Ends with a Control row naming a check, gate or refusal this repository owns"
+  - query: "test_board_snapshot fails on every second CI run with a timeout; find the root cause and fix it in the same change."
+    expected_behavior:
+      - "Diagnoses the failure and hands the fix to repair-in-place or the owner with the Control row, instead of fixing it in the same change"

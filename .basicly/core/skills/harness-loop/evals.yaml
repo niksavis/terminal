@@ -12,3 +12,15 @@ trigger:
       owner: harness-client
     - prompt: "keep this change out of my main checkout"
       owner: worktree-isolation
+tasks:
+  - query: "Resume the loop work on basicly-x after my session restarted."
+    expected_behavior:
+      - "Runs basicly loop status for the issue before acting"
+      - "Continues the existing task and worktree instead of restarting completed steps"
+  - query: "The lane looks done; record the verify gate so we can move on."
+    expected_behavior:
+      - "Does not record the verify gate by hand, because the build-to-verify transition performs the landing"
+      - "Confirms the landing from the [merged] output"
+  - query: "A loop pass is running in another session and my base checkout has stray files blocking the landing."
+    expected_behavior:
+      - "Keeps the base checkout read-only and does not delete the other session's files"

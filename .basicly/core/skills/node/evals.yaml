@@ -12,3 +12,16 @@ trigger:
       owner: python
     - prompt: "mount access under /mnt/c is painfully slow"
       owner: wsl
+tasks:
+  - query: "The commit failed with: node_modules/markdownlint-cli2/... is missing. The package is in package-lock.json."
+    expected_behavior:
+      - "Runs npm ci, not npm install"
+      - "Does not add or upgrade a dependency"
+  - query: "markdownlint passes in my terminal but the git hook says no usable node found when Claude commits."
+    expected_behavior:
+      - "Explains that a non-interactive shell does not load nvm"
+      - "Applies the PATH fix from references/wsl-node-path.md and checks command -v node points at the Linux node"
+  - query: "Turn off the markdownlint hook for this repository."
+    expected_behavior:
+      - "Sets hooks.markdownlint.enabled = false in basicly.toml or a basicly.d file"
+      - "Says the hook then prints the opted-out line and exits 0"

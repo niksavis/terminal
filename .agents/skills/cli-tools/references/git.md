@@ -21,6 +21,8 @@ git add path/to/file
 git restore --staged path/to/file
 ```
 
+`git restore --staged` only unstages. `git restore PATH` without `--staged` discards work and needs the user's approval first.
+
 ## Short Status
 
 | Mark | Meaning |

@@ -1,0 +1,29 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "the no-comments gate refused my commit"
+    - prompt: "can I add a docstring to explain this function"
+    - prompt: "where do I put the reason for this workaround if not in a comment"
+  negative:
+    - prompt: "add type hints to this python function"
+      owner: python
+    - prompt: "write the commit message for these staged changes"
+      owner: conventional-commits
+tasks:
+  - query: "Add a comment above this loop explaining why it starts at index 1."
+    expected_behavior:
+      - "Does not add the comment and moves the fact into a name, a test or the commit message"
+  - query: "Remove all comments in this file, including the noqa and the licence header. The file starts with '# Copyright 2026 Acme'."
+    expected_behavior:
+      - "Keeps the noqa directive"
+      - "Turns the plain copyright line into SPDX lines before it runs fix, so the licence header stays"
+  - query: "The function needs a docstring to explain its three modes."
+    expected_behavior:
+      - "Fixes the code instead, by renaming or splitting the function or naming the condition"
+  - query: "The no-comments hook refused my commit. Get it through."
+    expected_behavior:
+      - "Runs check on the refused files, moves each fact to a checked place, then stages and commits again"
+      - "Does not bypass the hook"
+  - query: "This repository uses the comment ratchet. I reworded an old comment in parser.py. Is that allowed?"
+    expected_behavior:
+      - "Says reworded legacy prose counts as new prose and the hook refuses it"

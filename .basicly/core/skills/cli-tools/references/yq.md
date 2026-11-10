@@ -1,6 +1,6 @@
 # yq
 
-Read and change YAML files, and convert between YAML and JSON. Use it instead of a text edit on a config file.
+Read and change YAML files, read TOML with `-p toml -oy`, and convert between YAML and JSON. Use it instead of a regex or a text edit on a config file.
 
 ## Rules
 

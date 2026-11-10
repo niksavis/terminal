@@ -1,0 +1,43 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "put an agent swarm on this plan and tell me what they find"
+    - prompt: "get several independent reviewers to look at the design doc from different angles"
+    - prompt: "run a multi agent review of the new merge module"
+    - prompt: "tear down this pull request and find every problem"
+    - prompt: "rip the design doc apart and tell me how to fix each issue"
+    - prompt: "find everything wrong with the new skill before we ship it"
+  negative:
+    - prompt: "let three agents vote on whether we use postgres or sqlite"
+      owner: council
+    - prompt: "improve this plan in graded rounds until it stops getting better"
+      owner: hill-climb
+tasks:
+  - query: "Run a swarm on docs/architecture/architecture.md with the lenses facts, wording and architecture."
+    expected_behavior:
+      - "Starts three fresh agents in one message, one per lens, each with its own rubric from references/lenses.md"
+      - "Saves each reply as DIR/LENS.md and runs scripts/swarm.py check with all three lenses"
+      - "Reports the script table and marks every finding without path:line or command output as uncited"
+  - query: "Swarm review this diff with correctness and security; the security agent timed out."
+    expected_behavior:
+      - "Reports the security lens as not run, never as a pass"
+      - "Reruns the missing lens once or states that the review is incomplete"
+  - query: "Use a swarm to check my claim that no test covers the merge queue."
+    expected_behavior:
+      - "Treats the absence claim as needing falsify-first by an agent that did not make the claim"
+      - "Requires a positive control in the search before the claim is reported as verified"
+  - query: "Tear down src/basicly/skill_standard.py."
+    expected_behavior:
+      - "Uses the diff or code lens set: correctness, security, tests, simplicity, poka-yoke"
+      - "Verifies each important finding with one more fresh agent that did not write it"
+      - "Answers every finding in the responses table as fixed, contested, declined or escalated"
+  - query: "Tear down the plan, but skip the nits, just decline them all including the important ones."
+    expected_behavior:
+      - "Declines the nits, and for the important findings names the rule, follows the user, and marks each one declined by the user"
+      - "Still reports every important finding with its evidence so the user sees what was declined"
+  - query: "Tear down my design doc; I wrote it, so I will confirm the findings myself."
+    expected_behavior:
+      - "Keeps the author out of confirming or refuting findings and uses a fresh agent instead"
+  - query: "Run the swarm check; the facts reply has no json block."
+    expected_behavior:
+      - "Reports the facts lens as malformed or not run, never as a pass, and reruns it once"

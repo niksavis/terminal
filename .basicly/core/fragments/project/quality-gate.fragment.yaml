@@ -17,4 +17,4 @@ title: Quality Gate
 body: |
   - While editing, run the tests affected by the change. Continuous integration runs the full suite.
   - Keep all required gates enabled. Report what ran, what failed and what did not run.
-  - For a failed check, changed inputs, a tracker-only change or a release candidate, read the `harness-loop` skill's verification reference.
+  - After a failed check, or for a release candidate, read the `harness-loop` skill's verification reference.

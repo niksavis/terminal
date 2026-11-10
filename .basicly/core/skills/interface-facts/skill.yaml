@@ -8,39 +8,21 @@ description: "Establishes a third-party CLI flag, API field, model, price or lim
 instructions: |
   # Interface Facts
 
-  Establish how a third-party interface behaves from evidence you fetch now. A model knows an interface only as it was at training time, and vendors change interfaces.
+  Establish how a third-party interface behaves from evidence you observe now. A model knows an interface only as it was at training time, and vendors change interfaces.
 
   The skill covers CLI flags and output formats, API fields and endpoints, model ids, context windows, token accounting, prices, rate limits, config schemas and behaviour that changes with a version.
 
-  ## Rules
+  ## Steps
 
-  - **An external interface fact is unverified until you fetch it.** A wrong fact about another vendor's interface gets committed as prose and believed for months.
-  - **Read our own code before our own prose.** A design document's summary of an interface is a claim about a claim.
-  - **Run the installed binary before you read the documentation.** The documentation describes a release. The binary on the path is the one that runs.
-  - **Record the version and the date with every fact.** A claim with no version cannot be checked again, only argued again.
-  - **Only the vendor's own host counts as a source.** An aggregator, a mirror or a summary site does not.
-  - **Never cache or commit fetched documentation.** The cache lands in a consumer tree, and the upstream licence is not ours to give.
-  - **Correct the stale document in place.** Two claims that disagree cost more than one wrong claim.
+  Do steps 1 to 4 in order and stop at the first one that answers the question. If an earlier step contradicts that answer, take the vendor's answer and say what disagreed. Always do step 5.
 
-  ## Order of evidence
+  1. **Read our own code that touches the interface:** `git grep -n TOOL`; an empty result counts as absence only after the same search finds a known match. An adapter, a parser or a hook was written against a real probe and is under test. Read it before our own prose.
+  2. **Run the installed binary:** `TOOL --help`, `TOOL --version`, `--dry-run`, or an invalid flag whose error names the valid set. For a default behaviour, run the command itself; a flag list does not show a default.
+  3. **Fetch the vendor's current documentation** from the route in [routes](references/routes.md). Limit any search to the vendor's own host; an aggregator, a mirror or a summary is not a source. Ask a narrow question: the exact flag or field name. Use browser tools only when a page needs JavaScript.
+  4. **Read the vendor's changelog** when a version matters, and the vendor's source or issue tracker when a documented feature does not work.
+  5. **Record the fact**, as shown below.
 
-  1. **Our own code that touches the interface.** An adapter, a parser or a hook was written against a real probe and is under test.
-  2. **The installed binary.** Use `--help`, `--version`, `--dry-run`, or an invalid flag whose error names the valid set. For a default behaviour, run the command itself. A flag list does not show a default.
-  3. **The vendor's current documentation**, fetched now.
-  4. **The vendor's changelog**, which dates the change.
-  5. **The vendor's source or issue tracker**, which shows a documented feature that does not work.
-  6. **Third-party writing.** This is the weakest evidence and is never sufficient alone.
-
-  A landing page or a feature grid is marketing. A README is a claim.
-
-  ## How to fetch
-
-  1. Limit the search to the vendor's host, so a third-party summary cannot rank above the source.
-  2. Fetch the specific page.
-  3. Ask a narrow question: the exact flag name, the exact field name, whether a machine-readable output mode exists.
-  4. Use browser tools only when a page needs JavaScript to render.
-
-  To find the documentation of uv, ruff, Claude Code, the Anthropic API, Codex, GitHub, Python or pytest, read [routes](references/routes.md). Probe a route before you quote it.
+  Writing by anyone other than the vendor is the weakest evidence and never enough alone. A landing page or a feature grid is marketing. A README is a claim.
 
   ## State the claim precisely
 
@@ -49,11 +31,7 @@ instructions: |
 
   ## Record the fact
 
-  Put the fact on the tracker record, with the version, the date and the URL:
-
-  ```sh
-  basicly tracker write -- comments add <id> "verified <date> against <url> (<tool> <version>): ..."
-  ```
+  Comment on the tracker record, as `work-tracker` shows, with `verified DATE against URL (TOOL VERSION): ...`. Never cache or commit the fetched page; its licence is not ours to give.
 
   When a repo document and the vendor disagree, the vendor decides what the interface does. The repo decides what we chose to do. Correct the document in place and name what refuted it.
 

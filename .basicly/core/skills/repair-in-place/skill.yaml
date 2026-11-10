@@ -18,14 +18,11 @@ instructions: |
   - **Continue the existing task.** Do not repeat refinement or create a new plan for an implementation defect.
   - **Identify actual scope changes.** Resolve missing facts from the repository; ask only when a plan defect changes the approved outcome or needs new authority.
   - **Fix in the lane's worktree, never by re-dispatch.** A re-dispatch pays the scope-reading cost again with less budget.
-  - **Reproduce before you fix.** Run the failing check and read its actual output.
   - **Check the gate's premise before you obey its remedy.** The repair advice of a gate can be wrong.
-  - **Fix the cause at every call site.** A defect that came through a shared helper reached the other callers too.
-  - **Never weaken the gate that failed.** See the confirmation list in the always-on rules.
 
   ## Procedure
 
-  1. Read the findings in the brief.
+  1. Read the findings in the brief. When the cause is unclear or the failure recurs, run `root-cause` first.
   2. Run the failing check in the worktree and read its output.
   3. Build any test fixture from the observed error, never from a suspected message.
      A fixture built from a guess tests a failure that never occurs.

@@ -1,23 +1,32 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 40
+  listing: 63
 name: catalog-authoring
 invocation: model
-description: "Authors catalog sources (skills, fragments, styles) in YAML and projects them. Use when adding a new skill or fragment to the catalog, or before editing a generated file."
+description: "Authors catalog sources in YAML (always-on fragments, output styles and the skill.yaml format) and projects them. Use before editing a generated file such as SKILL.md, CLAUDE.md or AGENTS.md, or when adding a fragment or output style."
 instructions: |
   # Catalog Authoring
 
   Write catalog sources in YAML and project them to the files that coding agents load.
 
+  ## Steps
+
+  1. Start a skill with `basicly catalog new skill <slug>`, or a fragment with `basicly catalog new fragment <id> --category <category>`.
+     Write an output style by hand, as [sources](references/sources.md) shows. Find an existing skill with `basicly catalog list skill`.
+  2. Edit the YAML source, never the projected file.
+  3. Run `basicly catalog lint`.
+  4. Build and check the projection: `basicly build` then `basicly check` for a fragment, `basicly skills-build` then
+     `basicly skills-check` for a skill, `basicly styles-build` then `basicly styles-check` for an output style.
+  5. Run `basicly catalog verify` before a catalog commit.
+  6. Read each projected file back where the agent reads it, as [projection](references/projection.md) shows.
+
   ## Rules
 
-  - **Never name a source for discovery.** Agents load `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, `*.instructions.md`, `*.mdc` and `GEMINI.md` by file name, so a source is `skill.yaml`, `<id>.fragment.yaml` or `style.yaml`. `basicly catalog lint` refuses a `.md` source.
-  - **Verify where the agent reads the guidance, not the file you edited.** A host can substitute or fall back, so the projection is not what the agent gets.
+  - **Never give a source a file name that an agent loads.** Agents load `SKILL.md`, `AGENTS.md`, `CLAUDE.md`, `*.instructions.md`, `*.mdc` and `GEMINI.md` by file name, so a source is `skill.yaml`, `<id>.fragment.yaml` or `style.yaml`.
   - **Apply the deletion test to each bullet.** If its removal causes no mistake, leave it out.
   - **Tag a source with `technologies` only when it is useless outside that technology.** An untagged source ships everywhere.
-  - **Keep local sources out of `.basicly/core/` in a consumer repository.** `basicly install` overwrites `.basicly/core/`. Put a fragment in `.basicly-local/fragments/`.
-  - **Edit a generated file through its source.** `.claude/skills/`, `.claude/rules/*.md`, `.agents/skills/` and the always-on files are projections. Start a source with `basicly catalog new <fragment|skill> <name>`, check it with `basicly catalog lint`, then run `basicly build`.
+  - **Keep local sources out of `.basicly/core/` in a consumer repository.** `basicly install --force` overwrites a hand-edited core file. Put a fragment in `.basicly-local/fragments/`.
   - **Put a Claude-only prompt, command or runbook in `.claude/*.md`.** No catalog source projects it.
   - **Add no copy under `.github/instructions/`.** Copilot then loads the same rule twice. Prefer a skill to a prompt file, and put a custom agent in `.github/agents/*.agent.md`.
 
@@ -25,4 +34,4 @@ instructions: |
 
   - Before creating or changing a source type, read [sources](references/sources.md) for its schema, placement, overlay and host projection.
   - Before composing or delivering guidance, read [projection](references/projection.md) for wording, checks and effective-host readback.
-  - Completion means the source and delivered host files agree, with local overlays preserved; report actual consumer checks.
+  - Done when the source and its projected files agree, local overlays are kept, and you report each check you ran.

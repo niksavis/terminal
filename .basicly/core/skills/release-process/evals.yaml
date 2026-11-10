@@ -12,3 +12,14 @@ trigger:
       owner: conventional-commits
     - prompt: "decompose this work before I build it"
       owner: harness-loop
+tasks:
+  - query: "Cut v0.43.0 now; CI on main is still running."
+    expected_behavior:
+      - "Waits for the CI run on main to pass before cutting, and treats a running build as a stop"
+  - query: "The release dry run refuses because of an old changelog fragment; just delete the fragment."
+    expected_behavior:
+      - "Refuses to delete the fragment to clear the refusal and fixes the cause the refusal names"
+  - query: "Release v0.43.0 for basicly-x and publish it."
+    expected_behavior:
+      - "Runs uv run basicly release 0.43.0 --issue basicly-x --dry-run before the real cut"
+      - "Pushes main and the tag only because the request includes publication, then checks the tag workflow is green"

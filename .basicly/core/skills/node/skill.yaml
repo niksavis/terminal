@@ -16,51 +16,11 @@ instructions: |
 
   - **Install with `npm ci`, not `npm install`.** It installs exactly what
     `package-lock.json` pins. Commit the lockfile with each dependency change.
-  - **Run a tool with `npx --no-install <tool>`.** It runs the pinned local package and
+  - **Run a tool with `npx --no-install TOOL`.** It runs the pinned local package and
     refuses to download a different version.
-  - **Put the Linux node on `PATH` before a script or background job runs node or npx.** A
-    non-interactive shell does not load nvm, so WSL can find a Windows node instead.
-  - **Ask before you add a dependency.** It is on the confirmation list.
-
-  ## The markdownlint hook
-
-  The hook finds node itself and never calls `npx`. It uses the first usable node from this
-  list, and never a Windows node under `/mnt`:
-
-  1. `node` on `PATH`
-  2. the newest node under nvm (`$NVM_DIR`, or `~/.nvm`)
-  3. `/usr/local/bin/node`, then `/usr/bin/node`
-
-  The hook and `basicly install` refuse missing prerequisites before reporting success.
-  Install checks before writing files, including with `--dry-run`. Read the refusal:
-
-  | Message | Fix |
-  | --- | --- |
-  | *node_modules/markdownlint-cli2/... is missing* | Run `npm ci` when the package is locked. Otherwise get approval, then run `npm install --save-dev markdownlint-cli2` and commit the package files. |
-  | *no usable node found on PATH, under nvm, or in /usr/bin* | Install a Linux node, for example `nvm install --lts`. |
-
-  The enabled hook reads inputs from the repository's `.markdownlint-cli2.jsonc`,
-  `.markdownlint-cli2.yaml`, `.markdownlint-cli2.cjs` or `.markdownlint-cli2.mjs`.
-  A style-only `.markdownlint.json` file does not select CLI2 inputs. Keep existing input and
-  rule choices; install creates no Markdown policy. Before a first commit, configure
-  real consumer Markdown inputs. The first-loop tutorial explicitly chooses `README.md`
-  and `NOTES.md`, with a clean README and every default rule enabled.
-
-  Only an explicit configuration opts out. The hook then prints `markdownlint: opted out by
-  hooks.markdownlint.enabled=false` and exits 0:
-
-  ```toml
-  [hooks.markdownlint]
-  enabled = false
-  ```
-
-  The hook reads `basicly.toml`, sorted `basicly.d/*.toml`, then `basicly.local.toml`.
-  Later settings win. A malformed setting refuses. A technology selection excluding Node
-  does not install the markdown gate or require its runtime.
-
-  ## Node in a non-interactive shell on WSL
-
-  A script, a background job or a hook does not load your shell profile. Then `node` and
-  `npx` can resolve to a Windows install. The fix is in
-  [references/wsl-node-path.md](references/wsl-node-path.md). The `wsl` skill covers the
-  general interop model.
+  - **When the markdownlint hook refuses, read its message.** The node it picks, each
+    refusal with its fix, its inputs and how to opt out are in
+    [markdownlint hook](references/markdownlint-hook.md).
+  - **When node or npx resolves to a Windows install from a script or hook,** apply
+    [the WSL node PATH fix](references/wsl-node-path.md). The `wsl` skill explains why a
+    non-interactive shell differs from your terminal.

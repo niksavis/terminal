@@ -49,7 +49,9 @@ python3 .basicly/kit/tracker/cli.py ready .basicly/ledger --mine # the stories y
 ```
 
 Use `show <ledger> <id> --view current` for current fields, all clarifications and
-latest attributed handoffs. Older handoffs and process details remain accessible with
+latest attributed summary handoffs. A handoff marked `[new facts]` immediately after
+its session or model handoff marker stays in the current view alongside later notes.
+Older summaries and process details remain accessible with
 `--view history --snapshot <snapshot_identity>`. The selective view is recovery guidance,
 not a complete original contract. Source loss is reported; a longer read cannot restore
 text already truncated by its writer. Preserve decisions, blockers, evidence, process

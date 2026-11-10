@@ -12,3 +12,14 @@ trigger:
       owner: harness-client
     - prompt: "prepare and tag the next version"
       owner: release-process
+tasks:
+  - query: "Wrap up the session."
+    expected_behavior:
+      - "Starts from basicly tracker show on the root record and writes only new recovery facts"
+      - "Reports what changed, what was verified and what is still open"
+  - query: "Leave the dev server running for me and finish the session."
+    expected_behavior:
+      - "Keeps the server the user asked for and records its URL, and stops other task-owned processes"
+  - query: "Save the analysis in the scratchpad so the next session finds it."
+    expected_behavior:
+      - "Keeps the durable artifact in the repository or ledger, because the host cleans the scratchpad"

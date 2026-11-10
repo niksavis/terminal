@@ -1,0 +1,23 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "rewrite this README section so a non-native reader understands it"
+    - prompt: "write the release notes for this change in plain words"
+    - prompt: "make this design doc easier to read"
+  negative:
+    - prompt: "write the commit message for these staged changes"
+      owner: conventional-commits
+    - prompt: "is the claim in this design doc actually true"
+      owner: falsify-first
+tasks:
+  - query: "Rewrite: 'Leveraging our cutting-edge lane orchestration, the gate seamlessly ensures robust token cost floor enforcement - unlike other tools.'"
+    expected_behavior:
+      - "Removes the marketing words and the unnamed comparison"
+      - "Splits the noun stack into a phrase of at most three nouns and uses active voice"
+  - query: "Write a status note: the release is out, but the Windows install broke for 3 users."
+    expected_behavior:
+      - "Puts the Windows breakage before the good news"
+      - "Marks the 3 users as measured, sourced or assumed"
+  - query: "Write one sentence that explains the WAL to a new team member."
+    expected_behavior:
+      - "Writes the abbreviation in full the first time"

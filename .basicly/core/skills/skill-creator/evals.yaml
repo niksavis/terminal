@@ -8,8 +8,25 @@ trigger:
     - prompt: "does my skill actually help, compare runs with it and without it"
     - prompt: "the skill never gets picked up when people ask for it, fix its trigger"
     - prompt: "grade the outputs of the new skill version against the old one"
+    - prompt: "I want to add a new skill to the catalog"
   negative:
+    - prompt: "hill climb the plan in graded rounds with fresh reviewers"
+      owner: hill-climb
     - prompt: "add an always-on fragment to the instruction files"
       owner: catalog-authoring
     - prompt: "is there a community skill on skills.sh for terraform"
       owner: find-skills
+tasks:
+  - query: "Turn the dependency bump routine we just used into a skill. We ran uv lock --upgrade-package, then the affected tests, then wrote the changelog fragment, and you corrected me to read the upstream changelog before the bump."
+    expected_behavior:
+      - "Takes the steps and corrections from the conversation before asking questions"
+      - "Writes trigger cases and at least three task cases in evals.yaml before tuning the description"
+  - query: "My new skill never triggers; make its description longer with every keyword."
+    expected_behavior:
+      - "Tunes the description against trigger cases with realistic prompts, not by adding every keyword"
+  - query: "I wrote the new skill and ran its task cases. I will grade the runs myself and call it done."
+    expected_behavior:
+      - "Has an agent that did not write the skill grade the task runs before calling it done"
+  - query: "Run run_loop.py on my skill's description now."
+    expected_behavior:
+      - "Asks the user before it starts the claude -p scripts, because they cost tokens and time"

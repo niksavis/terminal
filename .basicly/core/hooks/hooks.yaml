@@ -51,6 +51,12 @@ hooks:
     stage: pre-commit
     always_run: true
     pass_filenames: false
+  - id: hook-contracts
+    description: "Check shipped Python hook syntax and subprocess encodings before commit."
+    script: hook-contracts.py
+    stage: pre-commit
+    files: \.py$
+    pass_filenames: false
   - id: pre-commit-script
     description: "Run the configured fast checks before a commit."
     script: pre-commit.py

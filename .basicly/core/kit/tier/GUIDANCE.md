@@ -22,7 +22,7 @@ Choose the tier by the work, not by caution:
 | `low` | mechanical, checkable, high volume: a sweep, a format, a count |
 | `medium` | usual implementation with a clear specification |
 | `high` | design judgment, an unclear requirement, a review that must find small faults |
-| `maximum` | the few decisions that cost much when wrong and are difficult to undo |
+| `maximum` | never a delegated worker: the advisor a smaller model asks about a decision that costs much when wrong, or the session model that orchestrates work larger than one context window or routine work with a long cost tail |
 
 If all work gets `high`, you use too much budget. If all work gets `low`, you must do the
 work again. The tier is the decision.
@@ -59,7 +59,8 @@ definition yourself.
 
 ## Two traps
 
-- **When `CLAUDE_CODE_SUBAGENT_MODEL` is set, the hook does nothing.** Examine that variable
-  first when an injection seems to have no effect.
+- **On Claude Code before 2.1.251, `CLAUDE_CODE_SUBAGENT_MODEL` outranks the hook.** Since
+  2.1.251 the model the hook writes wins, and the variable is the default for a spawn that the
+  hook leaves alone. Examine the version first when an injection seems to have no effect.
 - **The hook writes the short alias, not the full model id.** The resolver prints both
   `alias` and `model`. Use the one that the surface uses.

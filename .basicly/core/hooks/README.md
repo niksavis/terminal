@@ -43,6 +43,7 @@ module docstring, and gated by `.scripts/docs_claims.py`.
 | `session-start-codex` | `sessionstart` | `codex` | [`session-start.py`](session-start.py) | Put the ledger's orientation in Codex's context at session open. |
 | `markdownlint` | `pre-commit` | `git` | [`markdownlint.py`](markdownlint.py) | Run markdownlint-cli2 through a node this script resolves itself (basicly-jr0l.14). |
 | `identity-guard` | `pre-commit` | `git` | [`identity-guard.py`](identity-guard.py) | Block commits made with an unconfigured or auto-derived git identity. |
+| `hook-contracts` | `pre-commit` | `git` | [`hook-contracts.py`](hook-contracts.py) | Check shipped Python hook syntax and subprocess encodings before commit. |
 | `pre-commit-script` | `pre-commit` | `git` | [`pre-commit.py`](pre-commit.py) | Run the configured fast checks before a commit. |
 | `catalog-lint` | `pre-commit` | `git` | [`catalog-lint.py`](catalog-lint.py) | Pre-commit hook: validate catalog YAML sources via ``basicly catalog lint``. |
 | `secret-scan` | `pre-commit` | `git` | [`secret-scan.py`](secret-scan.py) | Block a commit that stages a likely secret (basicly-yzyd). |

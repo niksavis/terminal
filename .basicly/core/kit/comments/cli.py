@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import os
 import sys
 from pathlib import Path
 
@@ -57,25 +58,39 @@ def covered_files(roots, skipped) -> list:
             if scan.is_covered(path) and not any(part in skipped for part in path.parts):
                 found.append(path)
             continue
-        for candidate in sorted(path.rglob("*")):
-            if not candidate.is_file() or not scan.is_covered(candidate):
-                continue
-            if any(part in skipped for part in candidate.parts):
-                continue
-            found.append(candidate)
+        if any(part in skipped for part in path.parts):
+            continue
+        candidates = []
+        for directory, folders, files in os.walk(path):
+            folders[:] = [name for name in folders if name not in skipped]
+            candidates.extend(Path(directory) / name for name in files if name not in skipped)
+        found.extend(
+            candidate
+            for candidate in sorted(candidates)
+            if candidate.is_file() and scan.is_covered(candidate)
+        )
     return found
+
+
+def _check_one(path, stream) -> int | None:
+    try:
+        findings = scan.findings(path, path.read_text(encoding="utf-8"))
+    except (scan.LexError, UnicodeDecodeError) as err:
+        stream.write(f"{path}: cannot be read with certainty, so it is left alone: {err}\n")
+        return None
+    for finding in findings:
+        stream.write(f"{path}:{finding.line}: {_one_line(finding.text)}\n")
+    return len(findings)
 
 
 def check(paths, stream) -> int:
     found = unreadable = 0
     for path in paths:
-        try:
-            for finding in scan.findings(path, path.read_text(encoding="utf-8")):
-                stream.write(f"{path}:{finding.line}: {_one_line(finding.text)}\n")
-                found += 1
-        except (scan.LexError, UnicodeDecodeError) as err:
-            stream.write(f"{path}: cannot be read with certainty, so it is left alone: {err}\n")
+        count = _check_one(path, stream)
+        if count is None:
             unreadable += 1
+        else:
+            found += count
     stream.write(
         f"comments: {found} prose comments in {len(paths)} files, {unreadable} unreadable\n"
     )

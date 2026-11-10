@@ -30,6 +30,7 @@ shaping = _load("shaping")
 labels = _load("labels")
 evidence_checks = _load("evidence_checks")
 small_task = _load("small_task")
+conversation = _load("conversation")
 small = small_task.small
 _text = evidence_checks.filled_text
 _command = evidence_checks.filled_command
@@ -182,26 +183,6 @@ def _saved(found: Sequence[Any], record: str, fields: Mapping[str, object], name
     )
 
 
-def _conversation(found: Sequence[Any], record: str, references: object) -> bool:
-    if not isinstance(references, list) or not references:
-        return False
-    for reference in references:
-        if not isinstance(reference, int) or isinstance(reference, bool) or reference <= 0:
-            return False
-        matching = [
-            event
-            for event in events.canonical_order(found)
-            if event.record == record and event.seq == reference
-        ]
-        if (
-            len(matching) != 1
-            or matching[0].kind not in events.PROSE_KINDS
-            or not _text(matching[0].payload.get("text"))
-        ):
-            return False
-    return len(set(references)) == len(references)
-
-
 def _checks(fields: Mapping[str, object], checks: object, *, completed: bool = False) -> bool:
     return _check_fault(fields, checks, completed=completed) is None
 
@@ -252,7 +233,7 @@ def readiness(
     missing = [
         f"{INVEST_HEADING}: {quality}" for quality in INVEST if not _text(rationales.get(quality))
     ]
-    if not current or not _conversation(found, record, saved.get("conversation")):
+    if not current or conversation.fault(found, record, saved.get("conversation")):
         missing.append(CONVERSATION_HEADING)
     if not current or not _checks(held, saved.get("checks")):
         missing.append(PLAN_HEADING)
@@ -322,10 +303,8 @@ def _full_review(found: Sequence[Any], record: str, payload: Mapping[str, Any]) 
         raise ProcessEvidenceError(
             "INVEST review requires a filled rationale for " + ", ".join(INVEST)
         )
-    if not _conversation(found, record, payload["conversation"]):
-        raise ProcessEvidenceError(
-            "Conversation requires same-card comment seqs without forks; read show comment_log"
-        )
+    if fault := conversation.fault(found, record, payload["conversation"]):
+        raise ProcessEvidenceError(f"Conversation refused: {fault}; read show comment_log")
 
 
 def confirmation_report(found: Sequence[Any], record: str, *, template=None) -> dict[str, Any]:

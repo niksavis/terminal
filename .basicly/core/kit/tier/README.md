@@ -189,11 +189,34 @@ output is the contract.
    definition frontmatter already names a model, the hook does nothing.
 3. **The hook writes the short alias, not the full model id.** The aliases are `haiku`,
    `sonnet`, `opus` and `fable` for the tiers `low`, `medium`, `high` and `maximum`.
-4. **When `CLAUDE_CODE_SUBAGENT_MODEL` is set, the hook does nothing.** Examine that
-   variable first when an injection seems to have no effect.
+4. **Since Claude Code 2.1.251, the model the hook writes outranks
+   `CLAUDE_CODE_SUBAGENT_MODEL`.** The variable is then the host default for a spawn that the
+   hook leaves alone. On an older Claude Code the variable wins, so examine it first there.
 5. **The host loads a hook in a new directory only when the CLI process starts.** See the
    restart notice in [Install the spawn hook](#install-the-spawn-hook). A dry run or a run
    that changes nothing does not print the notice, because there is nothing to reload.
+
+## Give an untiered spawn a default tier
+
+Set `BASICLY_DEFAULT_TIER` to `low`, `medium` or `high` to give a worker tier to a spawn
+that has none:
+
+```console
+$ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"general-purpose","prompt":"x"}}' \
+    | BASICLY_DEFAULT_TIER=medium python3 .basicly/kit/tier/claude_tier_hook.py
+{"hookSpecificOutput": {"hookEventName": "PreToolUse",
+ "updatedInput": {"model": "sonnet", "prompt": "x", "subagent_type": "general-purpose"}}}
+```
+
+- **The default applies only to a `general-purpose` spawn, or to a spawn with no
+  `subagent_type`.** Another type with no definition, such as `Explore` or `Plan`, keeps the
+  host default model.
+- The rules above still apply. A spawn that names a model and a repository with no map are
+  left alone.
+- **`maximum` is not a worker tier.** For `maximum` or any other value, the hook changes
+  nothing and returns a `systemMessage` warning that names the variable, the value and the
+  allowed values. The host shows that warning to you. It does not show the stderr of a hook
+  that exits 0.
 
 ## Debug an injection
 
@@ -210,7 +233,6 @@ $ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_typ
 and the host default model stays, in these cases:
 
 - The call is not an `Agent` spawn.
-- `CLAUDE_CODE_SUBAGENT_MODEL` is set.
 - The tool input or the definition frontmatter already names a model.
 - The hook finds no map in the directory tree of the spawn.
 - The hook finds no definition file `.claude/agents/<name>.md` in the spawn directory or

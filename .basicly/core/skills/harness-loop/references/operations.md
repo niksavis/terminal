@@ -63,6 +63,7 @@ Use it to inspect one transition. Both commands exit non-zero when the track sto
 Pass the input that `loop status` or `loop advance` names as `needs input`.
 Both also accept `--execution {session,worker}`; `session` is the default.
 Other flags on both: `--runner <agent>` (`manual` gives a handoff), `--autonomy`, `--tier`.
+`basicly runner list` shows which runners are available and which one `auto` selects.
 `loop run` also takes `--confirm <code>`, `--root <epic>` and `--detach`.
 
 ## Task authorization and safety
@@ -141,10 +142,11 @@ Split the shared file where you can, because serial lanes are slower.
 ### Verify gate
 
 The build-to-verify `loop advance` rebases, runs verify, records the required gate and merges.
-If you record the gate first (`basicly verify --issue`), the phase jumps to verify without the merge.
+If you record the gate first (`basicly verify --mode full --issue`), the phase jumps to verify without the merge.
 Ship refuses to close an issue whose branch has not landed.
 After landing, reuse passing evidence only when the existing engine establishes equivalent trusted inputs.
-If inputs changed or a check failed, rerun affected checks from the base checkout only:
+Run affected checks locally after a failure.
+Record full gate evidence in CI from the base checkout only after landing:
 
 ```sh
 basicly verify --mode full --issue <id>
@@ -157,7 +159,7 @@ A dirty worktree, or a branch with no commit, blocks the landing with "commit th
 Deterministic checks (tests, lint, types, build) record a required gate. A failed required gate blocks.
 Semantic AI checks record an advisory gate. It never blocks.
 A loop-provisioned worktree records gates in the base ledger through the redirect file.
-`basicly verify --issue` refuses in a linked worktree that has no redirect.
+`basicly verify --mode full --issue` refuses in a linked worktree that has no redirect.
 
 A failed node gets a bounded rework loop (`[policy] max_rework`, default 2).
 Rework is gate results and comments, not a status. At the cap, the node escalates to a human.

@@ -1,0 +1,23 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "run the new install command the way a user would and show me what it prints"
+    - prompt: "before the README says we support this, prove it works for a consumer"
+    - prompt: "validate the change against the original requirement, not just the tests"
+  negative:
+    - prompt: "fix the defect the validator found in the lane worktree"
+      owner: repair-in-place
+    - prompt: "try to prove this coverage claim wrong"
+      owner: falsify-first
+tasks:
+  - query: "Validate basicly-x: the record says 'basicly decompose refuses a plan child with no demonstration'."
+    expected_behavior:
+      - "Runs basicly decompose as a consumer would, on a plan whose child has no demonstration, and pastes its real output"
+      - "Checks the output against the acceptance criterion, not only that it ran without error"
+  - query: "The tests pass, so the board page change is validated."
+    expected_behavior:
+      - "Asks whether the transcript could exist without the change and rejects a test rerun as validation"
+      - "Renders the page and inspects screenshots at each claimed viewport"
+  - query: "Summarize what the builder said it did and mark the record validated."
+    expected_behavior:
+      - "Checks the whole task contract from the record instead of the builder summary"

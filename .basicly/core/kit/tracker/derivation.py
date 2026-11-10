@@ -178,19 +178,35 @@ def is_ready(
         return False
     if not is_dispatchable(view.status, vocabulary):
         return False
-    if children.get(view.record):
+    if open_children(view.record, views, children, vocabulary):
         return False
     for edge in view.dependencies:
-        if edge.type not in vocabulary.blocking_types:
-            continue
-        blocker = views.get(edge.target)
-        if (
-            blocker is None
-            or blocker.status not in vocabulary.closed_statuses
-            or blocker.resolution == "cancelled"
+        if edge.type in vocabulary.blocking_types and blocker_holds(
+            views.get(edge.target), vocabulary
         ):
             return False
     return True
+
+
+def open_children(
+    record: str,
+    views: Mapping[str, RecordView],
+    children: Mapping[str, Sequence[str]],
+    vocabulary: Vocabulary,
+) -> list[str]:
+    return [
+        child
+        for child in children.get(record, ())
+        if not views[child].tombstoned and views[child].status not in vocabulary.closed_statuses
+    ]
+
+
+def blocker_holds(blocker: RecordView | None, vocabulary: Vocabulary) -> bool:
+    return (
+        blocker is None
+        or blocker.status not in vocabulary.closed_statuses
+        or blocker.resolution == "cancelled"
+    )
 
 
 def verdicts(

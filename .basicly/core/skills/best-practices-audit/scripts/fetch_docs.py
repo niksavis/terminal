@@ -46,7 +46,7 @@ SOURCES = {
 TIMEOUT_S = 20.0
 COMPLETE = 0
 PARTIAL = 1
-OFFLINE = 2
+OFFLINE = 3
 STAMP_FILE = "FETCHED_AT"
 HTTP_OK = 200
 USER_AGENT = "basicly-best-practices-audit"
@@ -54,11 +54,13 @@ USER_AGENT = "basicly-best-practices-audit"
 Fetch = Callable[[str], bytes]
 
 
-def fetch(url: str) -> bytes:
+def fetch(
+    url: str, connect: Callable[..., http.client.HTTPConnection] = http.client.HTTPSConnection
+) -> bytes:
     parts = urllib.parse.urlsplit(url)
     if parts.scheme != "https" or not parts.hostname:
         raise ValueError(f"refusing {url!r}: only https sources are fetched")
-    connection = http.client.HTTPSConnection(parts.hostname, timeout=TIMEOUT_S)
+    connection = connect(parts.hostname, timeout=TIMEOUT_S)
     try:
         connection.request("GET", parts.path, headers={"User-Agent": USER_AGENT})
         response = connection.getresponse()
@@ -79,17 +81,33 @@ def pull(out: Path, get: Fetch = fetch) -> tuple[list[str], list[str]]:
     fetched: list[str] = []
     failed: list[str] = []
     for name, url in SOURCES.items():
+        suffix = Path(url).suffix or ".md"
+        (out / f"{name}{suffix}").unlink(missing_ok=True)
         try:
             body = get(url)
         except (OSError, http.client.HTTPException) as exc:
             failed.append(f"{name}: {url}: {exc}")
             continue
-        suffix = Path(url).suffix or ".md"
         (out / f"{name}{suffix}").write_bytes(body)
         fetched.append(f"{name}: {len(body)} bytes from {url}")
     if fetched:
         (out / STAMP_FILE).write_text(datetime.now(UTC).isoformat() + "\n", encoding="utf-8")
     return fetched, failed
+
+
+def inside_git_tree(path: Path) -> bool:
+    return any((parent / ".git").exists() for parent in [path, *path.parents])
+
+
+def out_refusal(out: Path) -> str:
+    if out.exists() and not out.is_dir():
+        return "--out names a file; pass a directory, or omit --out for the temp default"
+    if inside_git_tree(out.resolve()):
+        return (
+            "--out is inside a git working tree, and fetched pages must never be committed; "
+            "omit --out for the temp default"
+        )
+    return ""
 
 
 def main(argv: list[str] | None = None, get: Fetch = fetch) -> int:
@@ -103,6 +121,9 @@ def main(argv: list[str] | None = None, get: Fetch = fetch) -> int:
         for name, url in SOURCES.items():
             print(f"{name}\t{url}")
         return COMPLETE
+    refusal = out_refusal(args.out)
+    if refusal:
+        parser.error(refusal)
     fetched, failed = pull(args.out, get)
     for line in fetched:
         print(f"fetched {line}")

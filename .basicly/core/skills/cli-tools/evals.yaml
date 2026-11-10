@@ -8,8 +8,19 @@ trigger:
     - prompt: "pull the version field out of package.json"
     - prompt: "list all markdown files under docs"
     - prompt: "call the staging health endpoint and show the response"
+    - prompt: "lint this deploy.sh shell script for mistakes"
   negative:
     - prompt: "which issues are ready to be claimed"
       owner: work-tracker
     - prompt: "the commit-msg hook rejected my message"
       owner: conventional-commits
+tasks:
+  - query: "Find every file that mentions retention_probe. rg is not installed on this machine."
+    expected_behavior:
+      - "Says rg is missing and uses the fallback grep -rn"
+  - query: "Let me pick the branch with fzf and then open lazygit to stage."
+    expected_behavior:
+      - "Does not start fzf or lazygit itself and gives the user the commands to run"
+  - query: "Read the version field from pyproject.toml."
+    expected_behavior:
+      - "Uses yq or a parser for the TOML field instead of a regex over the file"

@@ -1,0 +1,23 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "verify failed on the lane, fix the defect the findings name in its worktree"
+    - prompt: "the validator rejected the change, repair it without replanning"
+    - prompt: "repair the lane after the gate refused it"
+  negative:
+    - prompt: "this test fails intermittently and we do not know why, find the cause"
+      owner: root-cause
+    - prompt: "resume the loop on this issue after my session restarted"
+      owner: harness-loop
+tasks:
+  - query: "Verify failed for lane basicly-x.2 with a pyright error; the brief has the findings. Fix it."
+    expected_behavior:
+      - "Fixes in the lane's existing worktree and does not re-dispatch the lane or write a new plan"
+      - "Runs the failing check in the worktree and reads its output before editing"
+      - "Builds any test fixture from the observed error output"
+  - query: "The module-size gate refused the lane; delete some comments to get under the cap."
+    expected_behavior:
+      - "Refuses to pass the size gate by deleting text and fixes the size cause instead"
+  - query: "The gate says to add the file to an exemption list; do that to repair the lane."
+    expected_behavior:
+      - "Checks the gate's premise before following its remedy"

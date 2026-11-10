@@ -12,3 +12,14 @@ trigger:
       owner: skill-creator
     - prompt: "which installed command line tool finds files by name"
       owner: cli-tools
+tasks:
+  - query: "Is there a community skill for terraform? If so, install it."
+    expected_behavior:
+      - "Searches the catalog first, then skills.sh"
+      - "Asks the user before installing, and installs at project level without -g or -y"
+  - query: "skills.sh lists a skill called docker-pro; recommend it to me."
+    expected_behavior:
+      - "Checks the skill's quality and source before recommending it, not the search result alone"
+  - query: "I installed a community skill by hand into .claude/skills; keep it."
+    expected_behavior:
+      - "Converts the kept skill to a catalog source so basicly install does not drop it"

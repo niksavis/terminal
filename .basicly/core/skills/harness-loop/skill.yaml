@@ -24,8 +24,6 @@ instructions: |
 
   ## Boundaries
 
-  - The user task request authorizes classification, decomposition and completion within its scope. Do not create a synthetic grant or require a token budget. Honor explicit spending limits.
-  - Keep verification honest, host permissions and destructive-action confirmations intact. A bypass is not a passing check.
   - For loop-managed work, commit code on its branch before advancing; the engine commits loop tracker state. Direct observer work commits its own tracker evidence.
   - The build-to-verify transition performs landing and records verification. Do not record that gate early; it can skip the landing. Confirm landing from the `[merged]` output.
   - Keep the base checkout read-only while another pass runs. Never clear another session's files to unblock landing.
@@ -36,5 +34,6 @@ instructions: |
 
   - When using loop transitions to start a leaf, classify/decompose, land, validate, ship or recover a refusal, read [operations](references/operations.md). It includes exact commands, phase inputs, ledger handling and escalation rules.
   - Before deciding which checks to run or rerun, read [verification](references/verification.md).
+  - Before waiting on a long-running command or CI, read [bounded waiting](references/waiting.md).
   - Before running parallel lanes, read the **Many lanes** section of operations. For lane limits and spending observations, also read [many-lanes](references/many-lanes.md).
   - For ordinary implementation inside an existing lane, use the task facts and relevant implementation skills. Load the operational reference when a transition or failure requires it.

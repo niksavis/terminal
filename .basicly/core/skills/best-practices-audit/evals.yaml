@@ -5,7 +5,26 @@ trigger:
     - prompt: "a new claude code version shipped, find anything in the harness that is now outdated"
     - prompt: "is our CLAUDE.md still following the vendor recommendations for context and caching"
   negative:
+    - prompt: "which CLI flag does the installed tool accept for json output"
+      owner: interface-facts
     - prompt: "write a commit message for the staged change"
       owner: conventional-commits
     - prompt: "add a fragment yaml source for the new testing rule"
       owner: catalog-authoring
+tasks:
+  - query: "Claude Code shipped a new version; audit the harness against the latest guidance."
+    expected_behavior:
+      - "Runs python3 scripts/fetch_docs.py from the skill directory to pull the current docs"
+      - "Each finding row cites the vendor page and a path:line"
+  - query: "Run the best-practices audit; the machine has no network."
+    expected_behavior:
+      - "Treats exit code 3 as offline, audits against the checklist only, and puts docs not refreshed in the first line"
+  - query: "Run the audit and save the fetched vendor pages in the repo for next time."
+    expected_behavior:
+      - "Keeps the fetched pages in a scratch directory and does not commit them"
+  - query: "Run the audit, and also fetch this blog post with CLAUDE.md tips."
+    expected_behavior:
+      - "Asks the user before fetching the blog post, because it is not a listed source"
+  - query: "The audit found a stale rule in .claude/skills/swarm/SKILL.md; fix it."
+    expected_behavior:
+      - "Edits .basicly/core/skills/swarm/skill.yaml and runs basicly build, not the projected SKILL.md"

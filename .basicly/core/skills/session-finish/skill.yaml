@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 39
+  listing: 33
 name: session-finish
 invocation: model
-description: "Closes a session with a usage report, a retro and a handover of what changed and is open. Use when the user wraps up or a long run ends."
+description: "Summarizes what changed and what is still open. Use to wrap up a session or run a retro. Write only new recovery facts."
 instructions: |
   # Session Finish
 
@@ -12,9 +12,9 @@ instructions: |
 
   ## Rules
 
-  - **Keep recovery facts in the existing ledger.** Start with `basicly tracker show <id> --view current`. It preserves current fields, clarifications and latest attributed handoffs. Retrieve omitted history with `--view history --snapshot <snapshot_identity>` for unresolved or conflicting facts. The view is recovery guidance, not a complete contract.
-  - **Write only new recovery facts.** Preserve decisions, changed assumptions, uncertainty, blockers, evidence references, owned process handles and the next action when they cannot be derived. Do not repeat current card fields, Git history or unchanged handoffs on routine transitions.
-  - **Verify a recorded process handle before replacing it.** A polling timeout is not proof that a process stopped. Resume or inspect the same handle; do not launch a duplicate.
+  - **Keep recovery facts in the existing ledger.** `basicly tracker show <id> --view current` preserves current fields, clarifications and latest attributed handoffs. Retrieve omitted history with `--view history --snapshot <snapshot_identity>` for unresolved or conflicting facts. The view is recovery guidance, not a complete contract.
+  - **Write only new recovery facts.** Preserve decisions, changed assumptions, uncertainty, blockers, evidence references, owned process handles and the next action when they cannot be derived. Mark these notes with `[new facts]` immediately after the handover marker so the current view retains each addition. Do not repeat current card fields, Git history or unchanged handoffs on routine transitions.
+  - **Verify a recorded process handle before replacing it.** A polling timeout is not proof that a process stopped. Resume or inspect the same handle through its owning host or tool; do not launch a duplicate. A PID is local to its host and process namespace. If that owner cannot be reached, report the process state as unknown instead of stopped.
   - **Stop task-owned temporary processes before handover.** Preserve services the user explicitly asked to keep running; record their URLs and ownership. Never stop another session's process.
   - **Keep every durable artifact in the repository.** The host cleans the scratchpad without warning.
   - **Write scratch files to a subdirectory unique to your lane.** A concurrent lane can overwrite a file at a shared path.
@@ -22,6 +22,10 @@ instructions: |
   - **Never invent a retro finding.** When nothing concrete happened, skip the retro and say so.
   - **Never reset or delete the usage counters.** They accumulate across sessions.
   - **In a long run, report the elapsed time, the tokens spent where the host shows them, and the items left.** Report at each milestone, not only at the end.
+
+  ## 0. Read the root record
+
+  Run `basicly tracker show <id> --view current` on the root record first. Write the handover from what it already holds.
 
   ## 1. Usage statistics
 
@@ -35,14 +39,4 @@ instructions: |
 
   ## 3. Clean handoff
 
-  1. Run `git status`. Remove partial edits, debug output and stray files. Name in the summary anything that you leave on purpose.
-  2. Check the state of records whose implementation changed. Close completed claimed work, or record its true state. Do not repeat gates or reopen closed work for a handover.
-  3. List task-owned background processes; stop temporary ones and identify user-requested services left running.
-  4. Before you restore a file from a backup, compare the backup with `git show HEAD:<path>`.
-  5. If new recovery facts remain, write one concise handover note on the existing root record. Keep closed work explicitly closed; preserve facts needed after interruption and link full evidence rather than pasting it:
-
-     ```sh
-     basicly tracker write -- comments add <root-id> "[session handover $(date +%F)] STATE: ... NEXT: ..."
-     ```
-
-  6. End with changed outcomes, actual checks and open work. Include usage figures only when available and useful. Reuse an existing equivalent handoff; no extra report commit is needed solely because a phase changed.
+  Before closing the session, read [clean handoff](references/clean-handoff.md) for tree cleanup, record closure, process ownership and the root handover note.

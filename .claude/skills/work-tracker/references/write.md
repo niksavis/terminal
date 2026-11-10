@@ -117,13 +117,13 @@ A return to a status that the record held before is recorded.
 - **Statuses:** `open`, `in_progress`, `blocked`, `deferred`, `closed`. There is no rework
   status. A rework cycle stays `in_progress`, with a failed gate result and a comment.
 - **Ready set:** each record that is not closed or deferred, has no open blocker and has
-  no children. An `in_progress` record is in it.
+  no open children. An `in_progress` record is in it.
 - **Folded record:** `record`, `status`, `fields`, `comments`, `dates` (`created`,
   `updated`, `closed`, derived from the events), `max_seq`, `tombstoned`, `totals`,
   `dependencies`, `dependents`. The two edge keys are always present, and each edge names
   its type and the status of the other record.
-- **Ids:** `<prefix>-<code>`, with one hyphen. The commit hook refuses a slug id with more
-  hyphens. Let the tracker make the id.
+- **Ids:** `<prefix>-<code>`. A prefix holds no hyphen, because the commit gate reads the first
+  hyphen as the prefix boundary. Let the tracker make the id.
 - **Priority:** 0 critical to 4 backlog, default 2. Use 0 and 1 only for release-blocking
   or next work.
 - **Types:** the harness work types are `bug`, `chore`, `epic`, `feature`, `task`; the default is `task`. The field accepts

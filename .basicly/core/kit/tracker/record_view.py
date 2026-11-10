@@ -31,6 +31,7 @@ templates = _load("templates.py", "basicly_tracker_kit_templates")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
 forks = _load("forks.py", "basicly_tracker_kit_forks")
 process = _load("process_evidence.py", "basicly_tracker_kit_process_evidence")
+graph = _load("record_graph.py", "basicly_tracker_kit_record_graph")
 snapshot = queries.snapshot
 events = snapshot.events
 
@@ -61,8 +62,13 @@ def _owed(found: list[Any], record: str, template: Any) -> dict[str, object]:
     return {"owed": list(missing), "blocking": list(blocking), "remedy": remedy}
 
 
-def _title(states: Mapping[str, Any], record: str) -> str:
-    return str(states[record].fields.get("title", "")) if record in states else ""
+def _linked(row: Mapping[str, Any], kind: str) -> dict[str, object]:
+    return {
+        "id": row["id"],
+        "dependency_type": kind,
+        "status": row["status"],
+        "title": row["title"],
+    }
 
 
 def _edges(record: str, views: Mapping[str, Any], states: Mapping[str, Any]) -> dict[str, object]:
@@ -70,31 +76,16 @@ def _edges(record: str, views: Mapping[str, Any], states: Mapping[str, Any]) -> 
     view = views.get(record)
     return {
         "dependencies": [
-            {
-                "id": edge.target,
-                "dependency_type": edge.type,
-                "status": _status(views, edge.target),
-                "title": _title(states, edge.target),
-            }
+            _linked(graph.node(edge.target, views, states), edge.type)
             for edge in (view.dependencies if view is not None else ())
         ],
         "dependents": [
-            {
-                "id": other,
-                "dependency_type": edge.type,
-                "status": held.status or "",
-                "title": _title(states, other),
-            }
+            _linked(graph.node(other, views, states), edge.type)
             for other, held in sorted(views.items())
             for edge in held.dependencies
             if edge.target == record and not held.tombstoned
         ],
     }
-
-
-def _status(views: Mapping[str, Any], record: str) -> str:
-    view = views.get(record)
-    return "unknown" if view is None else view.status or ""
 
 
 def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
@@ -108,6 +99,7 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
     views = queries.differential.views_from_events(found)
     shown = snapshot.record_to_dict(state)
     shown.update(_edges(record, views, states))
+    shown.update(graph.Graph(views, states).shown(record))
     now = queries.holders.newest(states)
     shown["holder"] = queries.holders.holding(state, template.stale_days, now)
     ordered = events.canonical_order(found)
@@ -138,6 +130,11 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
 def _handoff_key(note: Mapping[str, Any]) -> tuple[str, str] | None:
     text, writer = note.get("text"), note.get("writer")
     if not isinstance(text, str) or not isinstance(writer, str) or not writer:
+        return None
+    if re.match(
+        r"^\[(?:model handoff|session handover \d{4}-\d{2}-\d{2})\]\s+\[new facts\](?:\s|$)",
+        text,
+    ):
         return None
     if text.startswith("[model handoff]"):
         return "model handoff", writer
@@ -224,8 +221,9 @@ def read_view(
             "omitted_notes": len(notes) - len(retained),
         },
         "coverage_and_omissions": (
-            "Current fields, artifacts, all ordinary clarification notes and the latest "
-            "handoff per kind and writer. Older handoffs and process detail remain in "
+            "Current fields, artifacts, all ordinary clarification notes, every handoff "
+            "marked [new facts] and the latest summary handoff per kind and writer. "
+            "Older summaries and process detail remain in "
             "snapshot-checked history. Handoffs are recovery guidance, not a complete "
             "contract; retrieve history for unresolved or conflicting facts."
         ),

@@ -15,3 +15,13 @@ trigger:
       owner: node
     - prompt: "my tests leak state into each other and fail when reordered"
       owner: test-discipline
+tasks:
+  - query: "Tidy this: except ValueError, TypeError: return None"
+    expected_behavior:
+      - "Leaves except A, B: unchanged because PEP 758 makes it valid on Python 3.14"
+  - query: "Run git from Python with env={'GIT_DIR': d} and a shell string."
+    expected_behavior:
+      - "Copies os.environ into the child environment and passes an argv list"
+  - query: "Add a helper class for this one call site to make it cleaner."
+    expected_behavior:
+      - "Judges whether the abstraction earns its keep and keeps one call site inline"

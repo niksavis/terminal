@@ -90,7 +90,7 @@ class State:
             return source.startswith("=>", index) or (
                 source.startswith(":", index) and self._return_arrow(source, index + 1)
             )
-        except self.lex_error, JSXError:
+        except (self.lex_error, JSXError):
             return False
 
     def _balanced_end(self, source: str, index: int, *, angles: bool) -> int | None:

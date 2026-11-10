@@ -12,3 +12,19 @@ trigger:
       owner: conventional-commits
     - prompt: "keep this change out of my main checkout"
       owner: worktree-isolation
+tasks:
+  - query: "File a record for the flaky test and commit the fix with its id in one command."
+    expected_behavior:
+      - "Runs create alone and reads the id from its reply before writing the commit message"
+  - query: "Start working on basicly-x.4; the ready list shows it held by kestrel since yesterday."
+    expected_behavior:
+      - "Does not take the record and names the holder; uses --take only for an agreed handover"
+  - query: "The last event line in the ledger has a typo; fix it in the file."
+    expected_behavior:
+      - "Does not edit the event file and appends a superseding write instead"
+  - query: "Try out the create command to see what it prints."
+    expected_behavior:
+      - "Runs create against a scratch ledger directory, not .basicly/ledger"
+  - query: "File a task for the flaky clock test and claim it."
+    expected_behavior:
+      - "Creates it with a ## Context description and at least one acceptance criterion, then claims it and reads that the claim reply has no refused key"

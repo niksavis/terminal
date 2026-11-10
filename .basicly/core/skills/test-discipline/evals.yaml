@@ -12,3 +12,13 @@ trigger:
       owner: python
     - prompt: "exercise this change the way a consumer would run it"
       owner: validate-as-consumer
+tasks:
+  - query: "This test passes alone but fails when the suite runs in parallel."
+    expected_behavior:
+      - "Looks for shared mutable state or a fixture the test does not own"
+  - query: "Add a sleep(2) so the background thread finishes before the assertion."
+    expected_behavior:
+      - "Waits for the condition with a monotonic clock instead of a fixed sleep"
+  - query: "Test the private _parse helper directly."
+    expected_behavior:
+      - "Asserts on the caller-visible behaviour instead of the private helper"

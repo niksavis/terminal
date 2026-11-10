@@ -70,6 +70,40 @@
           }
         }
       }
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Task cases in the vendor evaluation shape: a realistic query, optional input files beside skill.yaml, and the behaviour a grader checks. Run them with the skill-creator evaluation loop; the skill standard requires at least three.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query",
+          "expected_behavior"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "expected_behavior": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
     }
   }
 }

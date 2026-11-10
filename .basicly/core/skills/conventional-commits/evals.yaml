@@ -12,3 +12,14 @@ trigger:
       owner: worktree-isolation
     - prompt: "which issues are ready to be claimed"
       owner: work-tracker
+tasks:
+  - query: "Commit with the subject: Fix Windows path handling in v0.42.1 for basicly-x."
+    expected_behavior:
+      - "Writes the subject in lowercase letters, digits, spaces and hyphens with the record id, and moves Windows and v0.42.1 into the body"
+  - query: "The commit-msg hook refused my commit with: subject contains a forbidden character '_' in fix the retry_policy default (basicly-x). Try again."
+    expected_behavior:
+      - "Reads the hook's error output and removes the underscore from the subject"
+      - "Runs git status --short and checks column 1 before the next commit"
+  - query: "Commit this change; use basicly-zzz9 as the id."
+    expected_behavior:
+      - "Uses only the id of a record the ledger holds, and files or finds the record when basicly-zzz9 does not exist"

@@ -96,10 +96,19 @@ def _summary(state: Any) -> dict[str, object]:
     }
 
 
-def _edges_of(views: Mapping[str, Any], record: str) -> list[dict[str, str]]:
+def _edges_of(views: Mapping[str, Any], record: str) -> list[dict[str, object]]:
     view = views.get(record)
     held = view.dependencies if view is not None else ()
-    return [{"id": edge.target, "dependency_type": edge.type} for edge in held]
+    vocabulary = differential.DEFAULT_VOCABULARY
+    return [
+        {"id": edge.target, "dependency_type": edge.type}
+        | (
+            {"holds": differential.blocker_holds(views.get(edge.target), vocabulary)}
+            if edge.type in vocabulary.blocking_types
+            else {}
+        )
+        for edge in held
+    ]
 
 
 def views_and_children(directory: Path | str) -> tuple:
@@ -151,7 +160,7 @@ def blocked(directory: Path | str) -> dict[str, object]:
             "title": str(states[record].fields.get("title") or ""),
             "status": view.status,
             "blocked_by": _open_blockers(view, views, vocabulary),
-            "children": sorted(children.get(record) or ()),
+            "children": differential.open_children(record, views, children, vocabulary),
         })
     return {"count": len(rows), "records": rows}
 
@@ -162,10 +171,9 @@ def _open_blockers(view: Any, views: Mapping[str, Any], vocabulary: Any) -> list
         if edge.type not in vocabulary.blocking_types:
             continue
         target = views.get(edge.target)
-        if target is None:
-            found.append({"record": edge.target, "status": "unknown"})
-        elif target.status not in vocabulary.closed_statuses or target.resolution == "cancelled":
-            found.append({"record": edge.target, "status": target.status or ""})
+        if differential.blocker_holds(target, vocabulary):
+            status = "unknown" if target is None else target.status or ""
+            found.append({"record": edge.target, "status": status})
     return sorted(found, key=lambda row: row["record"])
 
 

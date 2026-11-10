@@ -4,6 +4,8 @@ Manage terminal sessions that continue after a disconnect. Use it to run logs, t
 
 ## Rules
 
+- **An agent runs only `tmux ls`, `tmux list-keys` and `tmux source-file`.** `new`, `attach` and `split-window` wait for a person; give them to the user to run.
+
 - **Use `tmux new -A -s <name>`.** It attaches to the session if it exists and creates it if not.
 - **Run `tmux ls` before you create a session.** It shows the sessions that already run.
 - **Reload with `source-file` before you restart.** A reload keeps the running sessions.

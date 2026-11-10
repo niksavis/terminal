@@ -30,7 +30,7 @@ ast-grep run --pattern 'console.log($ARG)' --rewrite 'logger.info($ARG)' --lang 
 
 ## Output
 
-- `--rewrite` alone prints a diff and does not write. Add `--update-all` or `--interactive` to write.
+- `--rewrite` alone prints a diff and does not write. An agent adds `--update-all` to write; `--interactive` waits for a person.
 - Default output shows the file and the location of each match.
 - `--json` prints match objects with the range and the metavariable bindings.
 - A file that does not parse can hide an expected match.

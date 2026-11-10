@@ -12,3 +12,15 @@ trigger:
       owner: python
     - prompt: "cut a version of this repository"
       owner: release-process
+tasks:
+  - query: "git in my WSL repo behaves oddly with file modes and is very slow; the repo is at /mnt/c/work/app."
+    expected_behavior:
+      - "Recommends moving the repository to the Linux filesystem under the home folder"
+      - "Names slow /mnt access and different case and permission rules as the cause"
+  - query: "python works when I type it but my script started from a hook picks a different python."
+    expected_behavior:
+      - "Runs command -v python to see which binary resolves"
+      - "Explains that the non-interactive shell does not read the profile and sets PATH in the script or uses bash -lc"
+  - query: "Open the current folder in Windows Explorer from WSL."
+    expected_behavior:
+      - "Runs explorer.exe ."

@@ -1,0 +1,27 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "let a council of agents vote on whether we ship the flag module or adopt openfeature"
+    - prompt: "have a panel decide between these three options and show me the dissent"
+    - prompt: "put the eight open decisions to a vote"
+  negative:
+    - prompt: "find everything that is wrong with this design"
+      owner: swarm
+    - prompt: "run a multi agent review of the plan, one lens per agent"
+      owner: swarm
+tasks:
+  - query: "Council: should the tracker store events as one file per event or keep the jsonl shards? Options: per-event, shards."
+    expected_behavior:
+      - "States one closed question with the exact option labels per-event and shards"
+      - "Briefs 3 or 5 voters with different stances, none of whom sees another vote"
+      - "Runs swarm.py tally with --options per-event,shards and reports the vote table, the decision and the strongest dissent"
+  - query: "Run a council of three on the release channel name; one voter returned nothing."
+    expected_behavior:
+      - "Counts the missing vote against every option"
+      - "Reports no decision when no option has a majority of all three voters and hands the choice to the user"
+  - query: "Council: what should we build next?"
+    expected_behavior:
+      - "Treats the open question as unfit for a council and proposes a swarm first to produce 2 to 4 options"
+  - query: "Run a council of two agents on whether to keep the shards."
+    expected_behavior:
+      - "Uses 3 voters, or 5 for a decision that is hard to undo, and does not run a council of two"

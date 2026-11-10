@@ -11,6 +11,10 @@ if os.name == "nt":
     import _winapi
 
 
+LINKED = (".venv", "node_modules", "build/lefthook")
+USAGE = ".basicly/usage"
+
+
 @dataclass(frozen=True)
 class Snapshot:
     root: Path
@@ -119,6 +123,7 @@ def prepare(root: Path, directory: Path, commit: str | None = None) -> Snapshot:
     }
     original_tree = git(root, "write-tree", env=env).strip()
     env["BASICLY_SNAPSHOT_TREE"] = original_tree.decode("ascii")
+    env["BASICLY_SNAPSHOT_LINKS"] = "\n".join((*LINKED, USAGE))
     files = git(root, "ls-files", "-z", env=env).split(b"\0")
     changed = git(root, "diff", "--cached", "--name-only", "-z", env=env).split(b"\0")
     if any(Path(os.fsdecode(path)).name.startswith(".env") for path in changed if path):
@@ -149,18 +154,18 @@ def prepare(root: Path, directory: Path, commit: str | None = None) -> Snapshot:
         destination = snapshot / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination, follow_symlinks=False)
-    for name in (".venv", "node_modules", "build/lefthook"):
+    for name in LINKED:
         source = root / name
         if source.is_dir() and not (snapshot / name).exists():
             (snapshot / name).parent.mkdir(parents=True, exist_ok=True)
             link_directory(source, snapshot / name)
     reuse_prepared_environment(snapshot, env)
-    usage = root / ".basicly/usage"
+    usage = root / USAGE
     usage.mkdir(parents=True, exist_ok=True)
     if not (usage / ".gitignore").exists():
         (usage / ".gitignore").write_text("*\n", encoding="utf-8")
     (snapshot / ".basicly").mkdir(exist_ok=True)
-    destination = snapshot / ".basicly/usage"
+    destination = snapshot / USAGE
     if not destination.exists():
         link_directory(usage, destination)
     for name in (".basicly/bin",):

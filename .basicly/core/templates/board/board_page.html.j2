@@ -880,7 +880,7 @@
          cell-borne widths stopped applying the moment grouping landed and the title column
          collapsed to the right-hand edge. A colgroup states them independently of any row. */
       .ready col.pri {
-        width: 46px;
+        width: 104px;
       }
       .ready col.id {
         width: 158px;
@@ -932,6 +932,12 @@
       }
       .ready .pri {
         color: var(--warn);
+      }
+      .ready .pri-set {
+        align-items: center;
+        display: inline-flex;
+        gap: var(--space-1);
+        white-space: nowrap;
       }
       .ready .id {
         color: var(--accent);
@@ -1538,7 +1544,26 @@
           </tr>
 {%- for item in group.rows %}
           <tr>
-            <td class="pri">{{ item.priority }}</td>
+{%- set park = parking.get(item.ident) %}
+{%- set pri = park.priority if park else none %}
+            <td class="pri">
+{%- if pri and pri.token %}
+              <form method="post" action="{{ pri.route }}" target="{{ pri.frame }}" class="pri-set">
+                <input type="hidden" name="token" value="{{ pri.token }}">
+                <input type="hidden" name="action" value="{{ pri.action }}">
+                <input type="hidden" name="issue" value="{{ item.ident }}">
+                <select name="priority" aria-label="priority of {{ item.ident }}" title="{{ pri.command }}">
+{%- if pri.current not in pri.choices %}
+                  <option value="" selected>{{ item.priority or "none" }}</option>
+{%- endif %}
+{%- for choice in pri.choices %}
+                  <option value="{{ choice }}"{% if choice == pri.current %} selected{% endif %}>P{{ choice }}</option>
+{%- endfor %}
+                </select>
+                <button type="submit" class="btn btn-board">{{ pri.offer }}</button>
+              </form>
+{%- else %}{{ item.priority }}{%- endif %}
+            </td>
             <td class="id clip">{{ rec(item.ident) }}</td>
             <td class="clip" title="{{ titles.get(item.ident, item.title) }}">{{ item.title }}</td>
             <td class="act">
@@ -1556,7 +1581,6 @@
                 <button type="submit" class="btn btn-board" title="{{ begin.command }}">{{ begin.offer }}</button>
               </form>
 {%- endif %}
-{%- set park = parking.get(item.ident) %}
 {%- if park and park.token %}
               <form method="post" action="{{ park.route }}" target="{{ park.frame }}">
                 <input type="hidden" name="token" value="{{ park.token }}">

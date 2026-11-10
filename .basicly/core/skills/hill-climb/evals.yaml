@@ -1,0 +1,28 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "hill climb this plan until the grades stop going up"
+    - prompt: "iterate on the design in rounds with fresh graders each time"
+    - prompt: "keep improving the skill text round by round and show me the score table"
+  negative:
+    - prompt: "improve this skill's trigger rate with evals and a benchmark"
+      owner: skill-creator
+    - prompt: "find every defect in this diff and propose fixes"
+      owner: swarm
+    - prompt: "let a panel vote between option a and option b"
+      owner: council
+tasks:
+  - query: "Hill climb plan-v4.md on coverage, order, poka-yoke and done states."
+    expected_behavior:
+      - "Fixes the four properties with a line for what 10 means before round 1 and runs swarm.py climb-init"
+      - "Grades each round only from fresh reviewer replies, never from the author"
+      - "Runs swarm.py climb-round after each round and follows the printed decision"
+  - query: "Round 3 of the climb showed no property rising by a full point; run one more round anyway."
+    expected_behavior:
+      - "Treats the request as the user override, runs the round with --past-stop and marks it as past the stop in the report"
+  - query: "Hill climb the README, and add a new property for tone in round 2."
+    expected_behavior:
+      - "Keeps the properties fixed after round 0 and offers a new climb for the added property"
+  - query: "Record climb round 2; one of the three reviewers did not reply."
+    expected_behavior:
+      - "Reruns the missing lens once with the same brief, does not drop it because 2 lenses is below 3, and never records the round with the missing reply"

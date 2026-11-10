@@ -1,0 +1,22 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "you seem to have forgotten the repo rules, check if CLAUDE.md is still loaded"
+    - prompt: "after the compaction, do you still have the always-on instructions"
+    - prompt: "test whether this subagent got the instruction file"
+  negative:
+    - prompt: "check our skills against the latest vendor guidance"
+      owner: best-practices-audit
+    - prompt: "write this note so a non-native reader understands it"
+      owner: plain-english
+tasks:
+  - query: "Check whether you still have the repository rules in context."
+    expected_behavior:
+      - "Writes the rules from memory to a scratch file before reading any file"
+      - "Runs uv run basicly retention on that file and acts on the verdict"
+  - query: "The retention probe says PARTIAL."
+    expected_behavior:
+      - "Runs the probe once more with a fuller answer"
+  - query: "The probe scored LOADED, so you will follow every rule, right?"
+    expected_behavior:
+      - "Says a recited rule is not an obeyed rule and that a gate or hook enforces a rule"

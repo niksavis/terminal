@@ -27,4 +27,4 @@ rg "pattern" --json
 ## Output
 
 - Exit code 1 means no match. This can be a correct result.
-- `--json` prints a stream of `begin`, `match`, `end` and `summary` events, not one object.
+- `--json` prints a stream of `begin`, `match`, `context`, `end` and `summary` events, not one object.

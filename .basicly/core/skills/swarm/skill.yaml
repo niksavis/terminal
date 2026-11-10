@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../schemas/skill.schema.json
+schema_version: 1
+token_cost:
+  listing: 84
+name: swarm
+invocation: model
+description: "Runs several fresh agents on one artifact, one lens each, and merges their evidence into a verdict table; in teardown mode it also verifies, answers and fixes every finding. Use when asked for an agent swarm, several reviewers, a multi-agent review, or to tear down or find everything wrong with a diff, plan, design or document."
+instructions: |
+  # Swarm
+
+  Run fresh agents on one artifact, one lens each. Merge only what they prove. `council` and `hill-climb` reuse these steps by name.
+
+  The script is `${CLAUDE_SKILL_DIR}/scripts/swarm.py`, in the folder of this SKILL.md. `DIR` is a new folder per run in the session scratchpad, such as `swarm-merge-review-1`.
+
+  **Teardown mode** is for "tear down", "rip apart" or "find everything wrong". It runs steps 1 to 7, then Answer and Fix.
+
+  ## Steps
+
+  1. **Frame.** Name the artifact, the question and 3 to 6 lenses that do not overlap, with rubrics from [lenses](references/lenses.md). In teardown mode the question is "what is wrong with this artifact?" and the lenses are the preset for its type. When the user names fewer than 3 lenses, add the closest lenses to reach 3 and say which. For one claim, propose `falsify-first`, run by a fresh agent that did not make the claim; run the swarm when the user still asks for it.
+  2. **Brief.** Fill [the brief](assets/brief.md) once per lens: its rubric, a reading list of at most 6 items, a word cap of 400 unless the user sets one. Pass the artifact, never your own conclusion.
+  3. **Launch.** Start all agents in one message so they run in parallel, with the agent that [lenses](references/lenses.md) names for each lens. A named agent runs on the tier of its definition. For a general-purpose agent, always pass `model`: the `alias` that `python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier medium` prints, or the one for `high` when the lens needs more judgement. An agent started with no `model` runs on the session model. Never start a reviewer on `maximum`. Use lower effort for a mechanical lens.
+  4. **Collect.** Save each reply as `DIR/LENS.md`. Wait for each agent's completion notice; never write a reply for an agent that has not returned. An agent that fails or stops without a reply has not returned.
+  5. **Check.** Run:
+
+     ```sh
+     python3 -B ${CLAUDE_SKILL_DIR}/scripts/swarm.py check --lenses a,b,c --dir DIR
+     ```
+
+     Exit 1 names each lens that is not run or malformed. Rerun that lens once with the same brief into the same `DIR`, then run the check again. If it still fails, report it as not run.
+  6. **Verify.** Give each important finding to one more fresh agent. It confirms or refutes the finding with evidence, and runs `falsify-first` when the finding rests on a number, a root cause or an absence claim. Drop a refuted finding; mark a confirmed one verified, and any other one unverified. An absence finding stays unverified until the fresh agent's positive control, a known match run through the same search, passes.
+  7. **Report.** Give the user the script table, the verified important findings and numbered decisions with one recommendation each. Mark every finding that Verify did not verify as unverified, and every finding the script marks UNCITED as uncited. Name the agent that verified each claim.
+
+  ## Teardown mode: answer and fix
+
+  1. **Answer.** Fill [the responses table](assets/responses.md) for every finding, each with its evidence. For each contested important finding, start one fresh agent with the finding and the counter-evidence; its answer stands.
+  2. **Fix.** Fix every finding marked fixed and run the check that proves it. Ask before editing a file the user wrote or a file outside the repository. After 3 teardowns of one artifact, report what is still open; use `hill-climb` when the goal is a higher grade.
+
+  ## Rules
+
+  - Each agent is fresh: it sees the artifact, its brief and its reading list, never another agent's reply.
+  - A missing report is "not run", never a pass.
+  - The author of the artifact never verifies or refutes a finding. When the user wants to verify findings themselves, name this rule, still run the fresh agent, and list the user's answers beside it.
+  - An important finding is fixed, contested or escalated. Decline one only when the user says so, marked "declined by the user", and name the rule the user overrode.
+  - Ask the user before more than 8 agents at once.
+
+  ## Read when needed
+
+  - [Report format](references/report-format.md) for the json block and the merge rules.

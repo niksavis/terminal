@@ -10,62 +10,14 @@ Construct a one-line commit subject that passes the `commit-msg` and `tracker-co
 
 ## Rules
 
-- **Use `basicly commit` by default.** It derives the type, the scope and the record id, so only the description is yours.
+- **Use `basicly commit` by default.**
 - **Write the description in lowercase letters, digits, spaces and hyphens only.** The hook rejects every other character, also in proper nouns and acronyms.
 - **Put a version, a file name or a capitalised name in the body.** The hooks check only the subject line.
-- **Never invent a record id.** The hook reads the ids from `.basicly/ledger/events-*.jsonl`.
+- **Use the id of a record the ledger holds;** `work-tracker` files it and stages the ledger.
+- **After a refusal, read the hook's output first.** It names the offending character or the missing record; fix that, not a guess.
 - **Read `git status --short` column 1 before you commit.** `git commit` takes the whole index, including a file staged by a refused attempt.
-- **Run `basicly hooks-build` once in each clone and worktree.** An uninstalled hook lets a bad message through to CI.
-- **When a hook rejects the commit, read its error output.** It names the offending characters.
-
-## Default: basicly commit
-
-```sh
-basicly commit "<description>"
-basicly commit "<description>" --body "Bump to 1.2.0 in README.md." --dry-run
-```
-
-It derives the type from the work class of the record, the scope from the staged paths and the record id from the branch. It refuses a description that the character rules reject, names the character, and does not commit.
-
-| Flag | Effect |
-| --- | --- |
-| `--body` | Free-form body, for capitals, dots and file names |
-| `--type` | Overrides the derived type |
-| `--scope` | Overrides the derived scope |
-| `--issue` | Overrides the record id bound to the branch |
-| `--breaking` | Adds the `!` before the colon |
-| `--dry-run` | Prints the message and does not commit |
-
-## Format
-
-Write the subject by hand only when `basicly commit` cannot derive it, for example outside the worktree of a record.
-
-```text
-type(scope)!: description (record-id[, record-id...])
-```
-
-| Part | Rule |
-| --- | --- |
-| `type` | One of `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert` |
-| `(scope)` | Optional. Lowercase kebab-case, no space |
-| `!` | Optional. Directly before the colon. Marks a breaking change |
-| `description` | Imperative mood. Entirely lowercase. Letters, digits, spaces and hyphens only, so no underscore and no dot. At least 3 characters. It starts with a letter and has no trailing punctuation |
-| `(record-id, ...)` | One or more ids that the tracker holds, comma-separated in one trailing parenthetical |
-
-- A record id is `<prefix>-<base>`, with optional dotted levels for child records, for example `app-q49` or `app-zrj.4.1`. The prefix is the tracker prefix of this repository.
-- The hook finds an id by its prefix at a word boundary anywhere in the message. A hyphenated word in the description is not an id. A trailer such as `Refs: app-q49` also counts.
-- Merge commits and subjects that start with `Revert "` are exempt.
-
-Procedure:
-
-1. Pick the type that matches the intent of the change.
-2. Find or create the record with `work-tracker`.
-3. Add `!` only for a breaking change of an interface or a behaviour.
-4. Write the description.
-5. Add the record ids in one trailing parenthetical.
-6. Run `git commit -m "..."`, or name the paths with `git commit -F - -- <paths>`.
 
 ## Read when needed
 
+- Before composing a subject by hand or using command overrides, read [message format and command options](references/message-format.md).
 - For valid/invalid subjects, a refusal or hook installation details, read [examples and enforcement](references/examples-and-enforcement.md).
-- Completion means the intended staged diff is committed with the real record id; read the commit result before any push or tracker write.

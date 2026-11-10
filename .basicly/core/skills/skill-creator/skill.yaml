@@ -5,7 +5,7 @@
 # are removed. Each changed file beside this one carries its own notice.
 schema_version: 1
 token_cost:
-  listing: 43
+  listing: 67
 name: skill-creator
 invocation: model
 license: Apache-2.0
@@ -13,54 +13,50 @@ metadata:
   source: anthropics/skills skills/skill-creator
   source-commit: 8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4
   modified-by: basicly 2026-10-02
-description: "Writes a new skill or improves one with evals, a benchmark, graded versions and trigger tuning. Use when turning a workflow into a skill or when a skill never gets picked up."
+description: "Writes a new skill or improves one with evals, a benchmark, graded versions and description tuning. Use when adding a new skill to the catalog, turning a workflow into a skill, comparing runs with and without a skill, or when a skill never gets picked up."
 instructions: |
   # Skill Creator
 
   > Modified by basicly on 2026-10-02 from anthropics/skills skill-creator at 8a1541c4 (Apache-2.0, see `LICENSE.txt`).
 
   Create a skill, test it on real prompts, measure it, and improve it until the user is
-  satisfied. This skill owns the eval loop. The `catalog-authoring` skill owns the source
-  format: the fields of `skill.yaml`, where a source lives and how it projects.
+  satisfied. This skill owns the eval loop.
 
   The loop:
 
   1. Decide what the skill does and roughly how.
   2. Write a draft as a `skill.yaml` source.
-  3. Write routing evals, then run a few test prompts with and without the skill.
+  3. Write the trigger cases and task cases in `evals.yaml`, then run a few task cases with and without the skill.
   4. Evaluate the results with the user, both by reading them and by the numbers.
   5. Rewrite the skill from the feedback and from flaws that the benchmark shows.
-  6. Repeat. Then grow the test set and try again at a larger scale.
+  6. Repeat. Then add task cases and run again at a larger scale.
 
   Find out where the user is in this loop and continue from there. A user with a draft goes
   straight to the eval step. A user who wants no formal evals gets a quick draft and a
   conversation. Description tuning comes last.
 
-  Match the words to the user. "Evaluation" and "benchmark" are usually fine. Explain
-  "JSON" and "assertion" in one short clause unless the user clearly knows them.
-
   ## Capture the intent
 
   The conversation may already hold the workflow, for example "turn this into a skill".
   Then take the answers from it first: the tools used, the order of steps, the corrections
-  the user made, the input and output formats. Ask only for missing facts that change the result; reuse existing intent and approval.
+  the user made, the input and output formats. Ask only for missing facts that change the result.
 
   1. What does the skill let the agent do?
   2. When does it trigger: which phrases and situations?
   3. What is the expected output?
-  4. Does it need test cases? A skill with a verifiable output (a file transform, data
+  4. Does it need task cases? A skill with a verifiable output (a file transform, data
      extraction, generated code, fixed workflow steps) benefits from them. A skill with a
      subjective output (writing style, design) often does not. Suggest a default and let the
      user decide.
 
   Ask about edge cases, formats, example files, success criteria and dependencies before
-  you write test prompts. Before you build, check that no installed or published skill
+  you write task cases. Before you build, check that no installed or published skill
   already does the job: the `find-skills` skill does that search.
 
   ## Read when needed
 
   - Before source authoring, read [authoring](references/authoring.md); `catalog-authoring` owns catalog format and projections.
-  - For routing tests, real task trials, grading and timing, read [evaluation](references/evaluation.md). Independent isolated arms can run in parallel; ordinary authoring stays with the owner.
+  - For trigger cases, test runs with and without the skill, grading and timing, read [evaluation](references/evaluation.md). The run with the skill and the run without it may go to parallel agents; you write the skill yourself.
   - For feedback, blind comparison, description tuning or evaluator script commands, read [improvement](references/improvement.md). Execute the scripts; do not paste their source into the prompt.
-  - Specialist grading, comparison, analysis and JSON details remain in [grader](references/grader.md), [comparator](references/comparator.md), [analyzer](references/analyzer.md) and [schemas](references/schemas.md); read only the relevant procedure.
-  - Completion means representative tasks work, references are installed and retrieved, and routing changes are evidenced. Reuse already-given intent and approvals.
+  - Read [grader](references/grader.md), [comparator](references/comparator.md), [analyzer](references/analyzer.md) or [schemas](references/schemas.md) only for the step that names it.
+  - Done when every task case passes with the skill, graded by an agent that did not write it, every trigger case passes in `basicly catalog lint`, and `basicly skills-check` passes.

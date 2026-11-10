@@ -16,6 +16,7 @@ Cut a release with `basicly release`, which does every step up to the annotated 
 - **Never clear a refusal by a manual run of the named tool.** That records a witness for a check that the gate did not see pass.
 - **Never delete a changelog fragment to clear a refusal.** A release note must not disappear without notice.
 - **The command never pushes.** Push only when the user release request includes publication.
+- **The user release request authorizes the requested cut and publication.** No grant is needed. Required release gates must still pass.
 
 ## 1. Check that the repository uses it
 
@@ -27,51 +28,33 @@ If either is missing, stop and follow the repository's own release document.
 
 ## 2. Write the notes
 
-- Each change leaves its entry in `changelog.d/<record-id>.<category>.md`. The categories are `added`, `changed`, `deprecated`, `removed`, `fixed` and `security`. One file per change means that two lanes never collide on one anchor.
-- A hand-written body under `## [Unreleased]` also publishes, beside the fragments.
-- Write a summary under `## [Unreleased]`, above its first `###` heading. Write one paragraph on what the release changes for a user, then themed bullets. Name the record id of a fragment in each highlight.
-
-The release folds each fragment into `## [Unreleased]` under its Keep a Changelog heading, sorted by category and then by file name. It moves that body into the dated `## vX.Y.Z - <date>` section, deletes the fragments in the same commit, and leaves `[Unreleased]` empty.
+Each change has `changelog.d/RECORD-ID.CATEGORY.md`. Write a one-paragraph summary under `## [Unreleased]`, above its first `###` heading. The fragment rules are in [procedure](references/procedure.md).
 
 ## 3. Wait for green CI
 
-Cut only from a commit whose CI run on the release branch passed. A red or still running build is a stop.
+Cut only from a commit whose CI run on the release branch passed. A red or running build is a stop.
 
 ## 4. Choose the version and run the dry run
 
-Choose major, minor or patch yourself. The command refuses a version that does not move forward, but it does not choose one.
-
 ```sh
-uv run basicly release <version> --issue <record-id> --dry-run
+uv run basicly release VERSION --issue RECORD-ID --dry-run
 ```
 
-The dry run writes nothing and reports every refusal at once, each with the file or value it names. [refusals](references/refusals.md) lists them.
-
-A page under `docs/tutorial/` that names the current version as the one it was recorded against is rewritten to the new version by the release. A page that names any other version refuses: walk it against a build of this checkout and fix it first.
-
-The dry run checks preconditions, not the commit gates on the release tree. Find out whether the tag workflow runs the full checks before it publishes; in basicly it does, and a failed tag stays unpublished until the next patch. When the tag workflow does not, run the full checks on the release commit before you push the tag.
+You choose major, minor or patch. The dry run writes nothing and lists every refusal at once; [refusals](references/refusals.md) gives each fix.
 
 ## 5. Cut the release
 
 ```sh
-uv run basicly release <version> --issue <record-id>
+uv run basicly release VERSION --issue RECORD-ID
 ```
 
-It bumps `__version__`, regenerates the projections, rewrites the `vX.Y.Z` install pins in `README.md` and the other pin files, assembles the changelog, commits and creates the annotated tag. Add `--date YYYY-MM-DD` to set the changelog date. The default is today.
-
-The user release request authorizes the requested cut and publication. No L-level grant or mandatory budget is needed.
-Required release gates must still pass. Use `--shipping <node>` when the verified shipping node differs from the root.
-Keep publication inside the version and scope the user requested.
+It bumps the version, regenerates projections, rewrites install pins, assembles the changelog, commits and tags. What else it does and the flags are in [procedure](references/procedure.md).
 
 ## 6. Push and confirm
-
-Run the two commands that the release prints:
 
 ```sh
 git push origin main
 git push origin vX.Y.Z
 ```
 
-When a workflow publishes from the tag push, it reads `CHANGELOG.md` from the tagged commit. Confirm that the workflow run is green and that the release page matches the summary. Never edit the release page after publication. A page that disagrees with its changelog section is a defect.
-
-When a tag push is blocked by the Claude auto-mode classifier, read [auto-mode](references/auto-mode.md).
+Confirm that the tag workflow run is green and that the release page matches the summary. When the auto-mode classifier blocks a tag push, read [auto-mode](references/auto-mode.md).

@@ -1,0 +1,23 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "before we put this number in the report, try to prove it wrong"
+    - prompt: "I claim no caller uses this function; check that claim properly"
+    - prompt: "is this root cause really the cause, attack it"
+  negative:
+    - prompt: "find every defect in this pull request and propose fixes"
+      owner: swarm
+    - prompt: "this test fails intermittently, find out why"
+      owner: root-cause
+tasks:
+  - query: "Nothing in the repository calls parse_legacy(); confirm so we can delete it."
+    expected_behavior:
+      - "Searches for the call and runs a known-match positive control through the same search"
+      - "Reports the result as attacked this way, did not break, naming the search, not as a proof"
+  - query: "The cache made the suite 40% faster; put that in the release notes."
+    expected_behavior:
+      - "Measures the baseline before accepting the difference"
+      - "Derives the number a second way that shares no calculation step, or states what measured it and where"
+  - query: "This flaky test is caused by the clock; write that down as the root cause."
+    expected_behavior:
+      - "States the observation that would refute the clock cause and probes until two candidate causes predict different results"

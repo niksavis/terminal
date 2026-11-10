@@ -1,0 +1,22 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "split this epic into child tasks we can build one by one"
+    - prompt: "the plan gate refused my child task, fix the plan"
+    - prompt: "break the feature into tasks with acceptance criteria and a demo each"
+  negative:
+    - prompt: "claim the record before I start editing"
+      owner: work-tracker
+    - prompt: "resume the loop on this issue after my session restarted"
+      owner: harness-loop
+tasks:
+  - query: "Plan the flags epic as three children: schema, tests and CLI wiring."
+    expected_behavior:
+      - "Rejects the horizontal cut and slices so each child does something a consumer can see"
+      - "Gives every child a one-line backticked demonstration"
+  - query: "Scope child 2 as changelog.d/*.md and src/basicly/."
+    expected_behavior:
+      - "Replaces the globs with the child's own files, such as changelog.d/EPIC.2.added.md and the producing module"
+  - query: "Under parent basicly-x, child A depends on child B and child B depends on child A; create them."
+    expected_behavior:
+      - "Runs the dry run first and reports the cycle refusal before any record is created"

@@ -35,8 +35,8 @@ git rev-parse --git-path hooks
 
 ## Claude Code
 
-The Claude Code setting `worktree.bgIsolation` (on by default) moves a background agent into `.claude/worktrees/`.
-That conflicts with sibling worktrees. Run this once per repository to set it to `none`:
+By default Claude Code refuses a background session's edits in the main checkout until the session enters a worktree. Setting `worktree.bgIsolation` to `"none"` lets background sessions edit the working copy without a worktree (Claude Code settings reference and worktrees page, checked 2026-11-07).
+That default conflicts with sibling worktrees. Run this once per repository to set it to `none`:
 
 ```sh
 basicly worktree bg-isolation
@@ -45,3 +45,20 @@ basicly worktree bg-isolation
 The command writes the committed `.claude/settings.json`, so it asks for consent. `--yes` gives that consent.
 
 Codex and Copilot have no equivalent setting.
+
+## Protected destinations
+
+An agent sandbox can allow source edits while protecting `.codex`, `.agents` or the Git hook directory.
+Install and landing preflight planned changes before updating the catalog, committing tracker state or rebasing.
+An access refusal names the destination and the ordinary command to retry; unchanged protected outputs need no write.
+
+For an already-authorized upgrade or landing, request task-scoped execution review for that exact command in the named checkout.
+The CLI cannot escalate itself. Preserve dotenv denials, normal hooks, signing and loop checkpoints; do not broaden a machine profile.
+Read the retry result and verify the repository state before continuing the loop.
+
+## Merge several
+
+```sh
+basicly worktree merge-queue NAME:RECORD-ID ... [--mode M]
+basicly worktree list
+```

@@ -12,3 +12,13 @@ trigger:
       owner: release-process
     - prompt: "cut this feature into children that can each be landed"
       owner: decompose-plan
+tasks:
+  - query: "The supervisor is waiting on a decision about the merge order; just pick one for me."
+    expected_behavior:
+      - "Does not answer the decision for the human and shows the question with its facts instead"
+  - query: "My answer is: land lane 2 first because lane 3 depends on it. Record it."
+    expected_behavior:
+      - "Records the answer word for word"
+  - query: "The supervisor seems stuck; take over its lock and land the lanes yourself."
+    expected_behavior:
+      - "Refuses to take the lock from a live supervisor and does not land lanes"

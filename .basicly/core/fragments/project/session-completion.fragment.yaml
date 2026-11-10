@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 92
-  codex: 92
-  copilot: 92
+  claude: 49
+  codex: 49
+  copilot: 49
 id: session-completion
 description: How to end a session, including the retro after a mistake.
 category: project
@@ -15,5 +15,4 @@ tags:
 status: active
 title: Session Completion
 body: |
-  - Use `session-finish` at session end: leave no partial edits or stray files. Add a root `[session handover <date>]` note only for open work or facts the ledger and Git lack.
-  - After a refusal or correction, fix its cause within approved scope and carry the diagnosis into handover. Record further recommendations without expanding scope.
+  - Use `session-finish` only when a session or long run ends, not for one small task. Fix refusal causes within approved scope; carry unresolved facts and diagnosis into the handover.

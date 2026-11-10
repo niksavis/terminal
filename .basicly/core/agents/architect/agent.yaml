@@ -5,7 +5,7 @@ purpose: Surveys a whole codebase for structural decay and returns a remediation
 triggers: Use at a release boundary, or when a measure that no ratchet sees has moved, such as module count, call-chain depth or duplicated concepts. Not for a diff; `reviewer` owns that.
 returns: Returns a remediation backlog ordered by dependency, each item with the measurement that found it and shaped so that the plan gate admits it unchanged.
 posture: Writes the architecture document and nothing else; every other output is a proposal for a human and the engine.
-tier: maximum
+tier: high
 tools: [Read, Grep, Glob, Bash, Write, Edit]
 claude:
   effort: high
