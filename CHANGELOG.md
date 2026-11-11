@@ -2,6 +2,38 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.20.1 - 2026-11-11
+
+Delta: v0.20.0..v0.20.1
+
+### Highlights
+
+- **Codex prompt text is readable in WezTerm.** Before, some machines showed the Codex prompt as white text on a near-white light blue box. WezTerm bright black is now `#516077`, so light text on that box has 4.5:1 contrast and gray hint text stays visible at 2.7:1. Tests now check the contrast of each palette color on Windows, Linux and macOS (term-iej94y).
+- **The `cli-tools` skill comes from basicly v0.44.1.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.44.1 release (term-fqkule).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-iej94y) (0a58748)
+- chore(tracker): close the wezterm bright black record (term-iej94y) (2c78842)
+- fix(wezterm): keep prompt boxes and gray hints readable (term-iej94y) (55783c1)
+- chore(tracker): close the basicly upgrade record (term-fqkule) (4044946)
+- feat(kit): upgrade basicly to the current release (term-fqkule) (4d498a1)
+- chore(tracker): record the decision not to post upstream (term-3ntji0) (c754125)
+- chore(tracker): link the related herdr and codex issues (term-3ntji0) (1ba98ea)
+- chore(tracker): close the herdr codex restore bug as upstream (term-3ntji0) (e5e27f1)
+- chore(tracker): link the upstream herdr issue (term-3ntji0) (fc8871d)
+- chore(tracker): record the proven codex daemon cause (term-3ntji0) (d09656b)
+- chore(tracker): record the codex daemon cause (term-3ntji0) (deace50)
+- chore(tracker): record the codex pane session results (term-3ntji0) (9a4085f)
+- chore(tracker): record the second machine checks (term-3ntji0) (83e4626)
+- chore(tracker): file the herdr codex restore bug (term-3ntji0) (b845ade)
+- fix(wezterm): darken reply backgrounds for readable contrast (term-ymr5se) (c95bccf)
+- chore(tracker): close the wezterm new tab button record (term-nuzi5i) (c33bdd6)
+- chore(tracker): close the release and record the session handover (term-fqdvf6) (0f6285c)
+- chore(tracker): record terminal stability acceptance (term-8a8h02) (3e009c3)
+- fix(wezterm): use native tab title formatting (term-8a8h02) (8fda75c)
+- fix(starship): skip per-prompt diff metrics (term-n2htwr) (f1d29ec)
+
 ## v0.20.0 - 2026-10-29
 
 Delta: v0.19.1..v0.20.0
