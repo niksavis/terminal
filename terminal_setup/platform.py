@@ -42,6 +42,7 @@ class PlatformInfo:
     wezterm_config_dir: Path | None
     vscode_settings_path: Path | None
     wsl_os_id: str | None = None
+    wsl_os_name: str | None = None
 
     @property
     def user_programs_dir(self) -> Path:
@@ -215,6 +216,18 @@ def os_release_ids(text: str) -> tuple[str, ...]:
     return (own, *values.get("ID_LIKE", "").split()) if own else ()
 
 
+_PRETTY_NAME = re.compile(r"[A-Za-z0-9 ._()/+-]{1,80}")
+
+
+def os_release_name(text: str) -> str | None:
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep and key.strip() == "PRETTY_NAME":
+            name = value.strip().strip("\"'").strip()
+            return name if _PRETTY_NAME.fullmatch(name) else None
+    return None
+
+
 def is_debian_family(ids: tuple[str, ...]) -> bool:
     return any(name in DEBIAN_FAMILY for name in ids)
 
@@ -291,11 +304,12 @@ def detect_platform() -> PlatformInfo:
     if default_distro is None and in_wsl:
         default_distro = _detect_wsl_distro_from_command() or _detect_wsl_distro_from_proc()
     if in_wsl:
-        ids = os_release_ids(read_os_release(None))
+        os_release = read_os_release(None)
     elif default_distro is not None:
-        ids = os_release_ids(read_os_release(default_distro))
+        os_release = read_os_release(default_distro)
     else:
-        ids = ()
+        os_release = ""
+    ids = os_release_ids(os_release)
     return PlatformInfo(
         os=os,
         package_manager=detect_package_manager(os),
@@ -307,6 +321,7 @@ def detect_platform() -> PlatformInfo:
         wezterm_config_dir=get_wezterm_config_dir(),
         vscode_settings_path=get_vscode_settings_path(),
         wsl_os_id=ids[0] if ids else None,
+        wsl_os_name=os_release_name(os_release),
     )
 
 

@@ -16,6 +16,7 @@ from terminal_setup.platform import (
     is_debian_family,
     is_running_in_wsl,
     os_release_ids,
+    os_release_name,
     read_os_release,
 )
 from terminal_setup.windows_tools import _path_backup
@@ -157,3 +158,19 @@ def test_setup_data_lands_in_one_folder_that_follows_localappdata(
     assert platform.setup_data_dir == expected
     assert _windows_img_zoom_stage(platform).parent == expected
     assert _path_backup(platform).parent == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        (UBUNTU_2404_OS_RELEASE, "Ubuntu 24.04.5 LTS"),
+        ('PRETTY_NAME="Ubuntu 26.04.1 LTS"\nID=ubuntu\n', "Ubuntu 26.04.1 LTS"),
+        ("PRETTY_NAME='Debian GNU/Linux 13 (trixie)'\n", "Debian GNU/Linux 13 (trixie)"),
+        ('PRETTY_NAME="Ubuntu\x1b[31m red"\n', None),
+        ('PRETTY_NAME=""\n', None),
+        ("ID=ubuntu\n", None),
+        ("", None),
+    ],
+)
+def test_os_release_name_reads_a_safe_pretty_name_only(text: str, name: str | None) -> None:
+    assert os_release_name(text) == name

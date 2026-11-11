@@ -277,6 +277,25 @@ def test_check_wsl_present_when_running_inside_a_debian_family_wsl() -> None:
     assert "'Debian' (ID=debian) is Debian-family" in status.message
 
 
+@pytest.mark.parametrize("inside_wsl", [True, False])
+def test_check_wsl_names_the_release_the_distro_runs(*, inside_wsl: bool) -> None:
+    platform = replace(
+        make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+        is_wsl_available=True,
+        is_wsl_default_debian_family=True,
+        wsl_distribution="Ubuntu-24.04",
+        wsl_os_id="ubuntu",
+        wsl_os_name="Ubuntu 26.04.1 LTS",
+    )
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=inside_wsl):
+        status = check_wsl(platform, Runner(dry_run=True))
+    assert status.present is True
+    assert (
+        "WSL distro 'Ubuntu-24.04' runs Ubuntu 26.04.1 LTS (ID=ubuntu), which is Debian-family"
+        in status.message
+    )
+
+
 def test_check_wsl_refuses_a_wsl_guest_that_is_not_debian_family() -> None:
     platform = replace(
         make_platform(OperatingSystem.LINUX, PackageManager.DNF),

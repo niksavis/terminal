@@ -118,7 +118,12 @@ def _wsl_distro_status(platform: PlatformInfo, where: str) -> PrerequisiteStatus
     return PrerequisiteStatus(
         name="wsl-distro",
         present=True,
-        message=f"{where} WSL distro '{distro}' (ID={os_id}) is Debian-family",
+        message=(
+            f"{where} WSL distro '{distro}' runs {platform.wsl_os_name} (ID={os_id}), "
+            "which is Debian-family"
+            if platform.wsl_os_name
+            else f"{where} WSL distro '{distro}' (ID={os_id}) is Debian-family"
+        ),
     )
 
 
