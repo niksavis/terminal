@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.20.3 - 2026-11-11
+
+Delta: v0.20.2..v0.20.3
+
+### Highlights
+
+- **Setup names the Ubuntu release your WSL distro runs.** WSL keeps a distro's name after an in-place upgrade, so a distro named `Ubuntu-24.04` can run Ubuntu 26.04. The check now prints both, for example: the default WSL distro 'Ubuntu-24.04' runs Ubuntu 26.04.1 LTS (term-fym1vm).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-fym1vm) (9cee8bb)
+- chore(tracker): close the wsl release name record (term-fym1vm) (a020a0e)
+- fix(setup): name the release the wsl distro runs (term-fym1vm) (9fcc0a9)
+
 ## v0.20.2 - 2026-11-11
 
 Delta: v0.20.1..v0.20.2
