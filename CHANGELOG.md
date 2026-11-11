@@ -9,9 +9,13 @@ Delta: v0.20.1..v0.20.2
 ### Highlights
 
 - **A PowerShell run also updates the WezTerm config in WSL.** When WSL has its own WezTerm or a `~/.config/wezterm/wezterm.lua`, setup now copies the new Windows config there. Before, that file kept the old colors until you also ran setup inside WSL (term-xre3ty).
+- **Fresh Linux and WSL installs get an ast-grep that starts.** ast-grep 0.51.2 added a musl build that cannot start on glibc systems. Setup installed it, so `ast-grep` failed and the install report stopped with an error. Setup now starts each downloaded tool and uses the next release file when one cannot start. If you installed or updated on 2026-11-11 and `ast-grep` fails with "No such file or directory", run setup again (term-y8cmv4).
 
 ### Commit delta (auto-generated)
 
+- chore(tracker): close the release asset fallback record (term-y8cmv4) (4077235)
+- fix(setup): fall back to a release asset that starts (term-y8cmv4) (35ddc0c)
+- docs(release): update changelog for v0-20-2 (term-xre3ty) (82193ca)
 - chore(release): bump package version for next release (term-xre3ty) (8cadf44)
 - chore(tracker): close the wsl wezterm config record (term-xre3ty) (bd84430)
 - fix(setup): refresh the wsl wezterm config from a windows run (term-xre3ty) (fa41b42)
