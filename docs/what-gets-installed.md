@@ -51,7 +51,7 @@ Setup changes the Windows host and the default WSL distro in one run.
 | Where | What setup installs | What setup writes |
 | --- | --- | --- |
 | Windows host | uv, Python 3.14, Node.js 26, WezTerm, img-zoom, and into `%LOCALAPPDATA%\Programs\terminal-tools\bin`: starship, rg, fd, bat, fzf, jq, yq, xh, ast-grep, sd, typos, shellcheck, lazygit, delta, just. Also the agents named with `--agents`, the VS Code Remote - WSL extension when `code` is on PATH | `wezterm.lua`, `starship.toml`, the starship lines in the PowerShell 7 profile and in the Git Bash `.bashrc`, VS Code `settings.json`, and the Claude Code add-ons when `%USERPROFILE%\.claude` exists |
-| Default WSL distro | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1, podman-docker, all the command-line tools, uv, Python 3.14, Node.js 26, starship, img-zoom, the agents named with `--agents` | `.zshrc`, `.tmux.conf`, `starship.toml`, micro `settings.json`, the default shell, and the Claude Code add-ons when `~/.claude` exists |
+| Default WSL distro | zsh, tmux, tree, podman, bubblewrap, socat, libatomic1, podman-docker, all the command-line tools, uv, Python 3.14, Node.js 26, starship, img-zoom, the agents named with `--agents` | `.zshrc`, `.tmux.conf`, `starship.toml`, micro `settings.json`, the default shell, the Claude Code add-ons when `~/.claude` exists, and a copy of the Windows `wezterm.lua` in `~/.config/wezterm/` when WSL already has WezTerm or that file |
 
 The Windows host does not get zsh, tmux, tree, git-lfs or direnv. Setup does not install WezTerm in WSL on a Windows run. The WezTerm on Windows opens the WSL distro.
 

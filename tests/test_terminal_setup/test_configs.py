@@ -1403,3 +1403,69 @@ def test_wsl_status_line_uses_the_jq_that_setup_installs_in_local_bin(tmp_path: 
     assert result.returncode == 0, result.stderr
     assert "jq not found" not in result.stdout
     assert json.loads((home / ".claude" / "settings.json").read_text()) == {"statusLine": "set"}
+
+
+def _windows_host_wezterm_script(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr(
+        "terminal_setup.configs._to_wsl_path", lambda _runner, _distro, source: str(source)
+    )
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path / "windows")
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    commands: list[list[str]] = []
+    monkeypatch.setattr(
+        runner,
+        "run",
+        lambda command, **_kwargs: (
+            commands.append(command) or subprocess.CompletedProcess(command, 0, "", "")
+        ),
+    )
+    deploy_all(runner, platform, include_starship=False, include_claude=False, no_sudo=True)
+    scripts = [command[-1] for command in commands if ".config/wezterm" in command[-1]]
+    assert len(scripts) == 1
+    return scripts[0]
+
+
+def _run_in_wsl_home(script: str, home: Path) -> Path:
+    subprocess.run(
+        ["/bin/sh", "-c", script],
+        env={"HOME": str(home), "PATH": "/usr/bin:/bin"},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return home / ".config" / "wezterm" / "wezterm.lua"
+
+
+@_posix_only
+@pytest.mark.parametrize("wezterm_in_wsl", ["command", "config"])
+def test_windows_host_setup_refreshes_the_wezterm_config_in_wsl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, wezterm_in_wsl: str
+) -> None:
+    script = _windows_host_wezterm_script(tmp_path, monkeypatch)
+    home = tmp_path / "wsl-home"
+    if wezterm_in_wsl == "command":
+        local_bin = home / ".local" / "bin"
+        local_bin.mkdir(parents=True)
+        (local_bin / "wezterm").write_text("#!/bin/sh\n", encoding="utf-8")
+        (local_bin / "wezterm").chmod(0o755)
+    else:
+        (home / ".config" / "wezterm").mkdir(parents=True)
+        (home / ".config" / "wezterm" / "wezterm.lua").write_text("old", encoding="utf-8")
+
+    written = _run_in_wsl_home(script, home)
+
+    windows_config = tmp_path / "windows"
+    deployed = next(windows_config.rglob("wezterm.lua")).read_text(encoding="utf-8")
+    assert written.read_text(encoding="utf-8") == deployed
+
+
+@_posix_only
+def test_windows_host_setup_adds_no_wezterm_config_to_wsl_without_wezterm(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    script = _windows_host_wezterm_script(tmp_path, monkeypatch)
+    home = tmp_path / "wsl-home"
+    home.mkdir()
+
+    assert not _run_in_wsl_home(script, home).exists()

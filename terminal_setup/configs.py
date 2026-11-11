@@ -316,6 +316,8 @@ def deploy_all(  # noqa: PLR0913
     deploy_wezterm_config(runner, platform, wsl_start_dir=wsl_start_dir, herdr=herdr)
     if _is_wsl_target(platform):
         deploy_wsl_configs(runner, platform, include_starship=include_starship)
+        if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+            deploy_wsl_wezterm_config(runner, platform)
         if include_starship and platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
             deploy_windows_shell_prompts(runner, platform)
         if not no_sudo:
@@ -389,6 +391,33 @@ def deploy_wsl_configs(
             )
             for line in (result.stdout or "").splitlines():
                 runner.reporter.info(line)
+
+
+_WSL_WEZTERM_TARGET = ".config/wezterm/wezterm.lua"
+
+
+def wsl_wezterm_config_script(wsl_source: str) -> str:
+    target = f'"$HOME/{_WSL_WEZTERM_TARGET}"'
+    return (
+        'PATH="$HOME/.local/bin:$PATH"; '
+        f"if [ -f {target} ] || command -v wezterm >/dev/null 2>&1; then "
+        'mkdir -p "$HOME/.config/wezterm" || exit 1; '
+        f"cp -f {shlex.quote(wsl_source)} {target} || exit 1; "
+        f'echo "Updated ~/{_WSL_WEZTERM_TARGET} for the WezTerm in WSL"; fi'
+    )
+
+
+def deploy_wsl_wezterm_config(runner: Runner, platform: PlatformInfo) -> None:
+    if platform.wezterm_config_dir is None:
+        return
+    distro = _wsl_distro(platform)
+    wsl_source = _to_wsl_path(runner, distro, platform.wezterm_config_dir / "wezterm.lua")
+    result = runner.run(
+        wsl_exec_command(distro, ["sh", "-c", wsl_wezterm_config_script(wsl_source)]),
+        label=f"write ~/{_WSL_WEZTERM_TARGET} when WezTerm is in WSL",
+    )
+    for line in (result.stdout or "").splitlines():
+        runner.reporter.info(line)
 
 
 def _claude_statusline_command(*, nerdfont: bool) -> str:
