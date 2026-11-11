@@ -139,33 +139,65 @@ def test_deploy_wezterm_config(tmp_path: Path) -> None:
     "operating_system",
     [OperatingSystem.WINDOWS, OperatingSystem.LINUX, OperatingSystem.MACOS],
 )
-def test_deployed_wezterm_reply_background_has_readable_contrast(
+def test_deployed_wezterm_bright_black_keeps_box_text_and_hint_text_readable(
     tmp_path: Path, operating_system: OperatingSystem
 ) -> None:
+    palette = _deployed_wezterm_palette(tmp_path, operating_system)
+    bright_black = palette["brights"][0]
+
+    assert _contrast(palette["foreground"][0], bright_black) >= 4.5
+    assert _contrast(bright_black, palette["background"][0]) >= 2.5
+
+
+@pytest.mark.parametrize(
+    "operating_system",
+    [OperatingSystem.WINDOWS, OperatingSystem.LINUX, OperatingSystem.MACOS],
+)
+def test_deployed_wezterm_color_slots_are_readable_as_text(
+    tmp_path: Path, operating_system: OperatingSystem
+) -> None:
+    palette = _deployed_wezterm_palette(tmp_path, operating_system)
+    text_slots = palette["ansi"][1:] + palette["brights"][1:]
+
+    assert len(text_slots) == 14
+    assert all(_contrast(slot, palette["background"][0]) >= 4.5 for slot in text_slots)
+
+
+def _deployed_wezterm_palette(
+    tmp_path: Path, operating_system: OperatingSystem
+) -> dict[str, list[str]]:
     platform = make_platform(operating_system, tmp_path)
     deploy_wezterm_config(Runner(dry_run=False), platform)
-
     assert platform.wezterm_config_dir is not None
     content = (platform.wezterm_config_dir / "wezterm.lua").read_text(encoding="utf-8")
-    foreground = re.search(r'foreground = "#([0-9A-Fa-f]{6})"', content)
-    reply_background = re.search(r'brights = \{ "#([0-9A-Fa-f]{6})"', content)
-    assert foreground is not None
-    assert reply_background is not None
+    palette: dict[str, list[str]] = {}
+    for name, pattern, count in (
+        ("foreground", r'\n  foreground = ("#[0-9A-Fa-f]{6}")', 1),
+        ("background", r'\n  background = ("#[0-9A-Fa-f]{6}")', 1),
+        ("ansi", r"\n  ansi = \{([^}]*)\}", 8),
+        ("brights", r"\n  brights = \{([^}]*)\}", 8),
+    ):
+        match = re.search(pattern, content)
+        assert match is not None
+        palette[name] = re.findall(r'"#([0-9A-Fa-f]{6})"', match.group(1))
+        assert len(palette[name]) == count
+    return palette
 
-    def luminance(color: str) -> float:
-        channels = [int(color[index : index + 2], 16) / 255 for index in (0, 2, 4)]
-        linear = [
-            channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
-            for channel in channels
-        ]
-        return sum(
-            channel * weight
-            for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True)
-        )
 
-    text_luminance = luminance(foreground.group(1))
-    background_luminance = luminance(reply_background.group(1))
-    assert (text_luminance + 0.05) / (background_luminance + 0.05) >= 8
+def _luminance(color: str) -> float:
+    channels = [int(color[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+    linear = [
+        channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
+        for channel in channels
+    ]
+    return sum(
+        channel * weight for channel, weight in zip(linear, (0.2126, 0.7152, 0.0722), strict=True)
+    )
+
+
+def _contrast(first: str, second: str) -> float:
+    lighter, darker = sorted((_luminance(first), _luminance(second)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
 
 
 @pytest.mark.parametrize(
