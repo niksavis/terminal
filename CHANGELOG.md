@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.20.2 - 2026-11-11
+
+Delta: v0.20.1..v0.20.2
+
+### Highlights
+
+- **A PowerShell run also updates the WezTerm config in WSL.** When WSL has its own WezTerm or a `~/.config/wezterm/wezterm.lua`, setup now copies the new Windows config there. Before, that file kept the old colors until you also ran setup inside WSL (term-xre3ty).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-xre3ty) (8cadf44)
+- chore(tracker): close the wsl wezterm config record (term-xre3ty) (bd84430)
+- fix(setup): refresh the wsl wezterm config from a windows run (term-xre3ty) (fa41b42)
+
 ## v0.20.1 - 2026-11-11
 
 Delta: v0.20.0..v0.20.1
