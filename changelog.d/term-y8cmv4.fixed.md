@@ -1,0 +1,1 @@
+Setup installs a tool binary that starts. ast-grep 0.51.2 added a musl build that cannot start on glibc systems, and setup installed it, so a fresh Linux or WSL install failed its report. Setup now tries the next release asset when one cannot start.

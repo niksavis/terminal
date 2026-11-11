@@ -482,6 +482,7 @@ def test_each_windows_tool_installs_when_the_api_is_rate_limited(
     monkeypatch.setattr(release_install, "fetch", fetch)
     monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "v2.0.0")
     monkeypatch.setattr(release_install, "installed_version", lambda _path: "")
+    monkeypatch.setattr(release_install, "starts", lambda _path: True)
     monkeypatch.setattr(release_install.platform, "machine", lambda: machine)
     message = release_install.run(
         tool.repo, binary, False, list(tool.patterns), tmp_path, tmp_path / "state"

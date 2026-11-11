@@ -67,18 +67,27 @@ def record(binary: str, tag: str, bin_dir: Path, state_dir: Path) -> None:
     )
 
 
-def select_asset(assets: list[dict], patterns: list[str], machine: str) -> dict:
+def candidate_assets(assets: list[dict], patterns: list[str], machine: str) -> list[dict]:
     aliases = ARCH_ALIASES.get(machine)
     if aliases is None:
         raise InstallError(f"no release binary for this CPU ({machine})")
+    candidates: list[dict] = []
     for pattern in patterns:
         for alias in aliases:
             wanted = re.compile(pattern.replace("{arch}", re.escape(alias)))
-            for asset in assets:
-                if wanted.fullmatch(asset.get("name", "")):
-                    return asset
-    names = ", ".join(asset.get("name", "") for asset in assets)
-    raise InstallError(f"no release asset matches {patterns} for {machine}; assets: {names}")
+            candidates.extend(
+                asset
+                for asset in assets
+                if wanted.fullmatch(asset.get("name", "")) and asset not in candidates
+            )
+    if not candidates:
+        names = ", ".join(asset.get("name", "") for asset in assets)
+        raise InstallError(f"no release asset matches {patterns} for {machine}; assets: {names}")
+    return candidates
+
+
+def select_asset(assets: list[dict], patterns: list[str], machine: str) -> dict:
+    return candidate_assets(assets, patterns, machine)[0]
 
 
 def verified(payload: bytes, digest: str) -> bytes:
@@ -109,13 +118,32 @@ def extract(name: str, payload: bytes, binary: str) -> bytes:
     raise InstallError(f"{name} holds no file named {binary}")
 
 
-def install(destination: Path, content: bytes) -> None:
+def starts(binary: Path) -> bool:
+    try:
+        subprocess.run(  # nosec B603
+            [str(binary), "--version"], capture_output=True, timeout=30, check=False
+        )
+    except OSError:
+        return False
+    except subprocess.TimeoutExpired:
+        return True
+    return True
+
+
+def install(destination: Path, content: bytes) -> bool:
     destination.parent.mkdir(parents=True, exist_ok=True)
-    fd, temporary = tempfile.mkstemp(dir=destination.parent, prefix=f".{destination.name}.")
+    fd, temporary = tempfile.mkstemp(
+        dir=destination.parent, prefix=f".{destination.stem}.", suffix=destination.suffix
+    )
     with os.fdopen(fd, "wb") as handle:
         handle.write(content)
-    Path(temporary).chmod(0o755)
-    Path(temporary).replace(destination)
+    staged = Path(temporary)
+    staged.chmod(0o755)
+    if not starts(staged):
+        staged.unlink()
+        return False
+    staged.replace(destination)
+    return True
 
 
 def fetch(url: str) -> bytes:
@@ -224,14 +252,17 @@ def run(  # noqa: PLR0913
     if current and not update:
         return f"{binary} {current} is installed; {latest} is available"
     release = release_of(repo, tag)
-    asset = select_asset(release.get("assets", []), patterns, platform.machine())
-    url = asset.get("browser_download_url", "")
-    if not url.startswith(f"https://github.com/{repo}/releases/download/"):
-        raise InstallError(f"refusing a download outside {repo}'s releases: {url}")
-    payload = verified(fetch(url), asset.get("digest") or "")
-    install(destination, extract(asset["name"], payload, binary))
-    record(binary, latest, bin_dir, state_dir)
-    return f"installed {binary} {latest} into {destination}"
+    candidates = candidate_assets(release.get("assets", []), patterns, platform.machine())
+    for asset in candidates:
+        url = asset.get("browser_download_url", "")
+        if not url.startswith(f"https://github.com/{repo}/releases/download/"):
+            raise InstallError(f"refusing a download outside {repo}'s releases: {url}")
+        payload = verified(fetch(url), asset.get("digest") or "")
+        if install(destination, extract(asset["name"], payload, binary)):
+            record(binary, latest, bin_dir, state_dir)
+            return f"installed {binary} {latest} into {destination}"
+    names = ", ".join(asset["name"] for asset in candidates)
+    raise InstallError(f"no release asset of {tag} starts on this machine; tried: {names}")
 
 
 def main(argv: list[str]) -> int:

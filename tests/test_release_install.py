@@ -4,6 +4,7 @@ import ast
 import hashlib
 import io
 import json
+import sys
 import tarfile
 import zipfile
 from email.message import Message
@@ -191,6 +192,7 @@ def _release(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: str) ->
     monkeypatch.setattr(release_install, "BIN_DIR", tmp_path)
     monkeypatch.setattr(release_install, "STATE_DIR", tmp_path / "state")
     monkeypatch.setattr(release_install, "installed_version", lambda _path: installed)
+    monkeypatch.setattr(release_install, "starts", lambda _path: True)
     monkeypatch.setattr(release_install.platform, "machine", lambda: "x86_64")
     return fetched
 
@@ -310,6 +312,7 @@ def test_rate_limited_install_keeps_checksum_verification(
     monkeypatch.setattr(release_install, "fetch", fetch)
     monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "v2.0.0")
     monkeypatch.setattr(release_install, "installed_version", lambda _path: "")
+    monkeypatch.setattr(release_install, "starts", lambda _path: True)
     monkeypatch.setattr(release_install.platform, "machine", lambda: "x86_64")
     if digest == "valid":
         message = release_install.run(
@@ -401,3 +404,74 @@ def test_public_page_failure_is_not_reported_as_a_success(monkeypatch: pytest.Mo
     with pytest.raises(release_install.urllib.error.HTTPError) as caught:
         release_install.release_of("jqlang/jq", "v2.0.0")
     assert caught.value.code == 503
+
+
+def _two_asset_release(monkeypatch: pytest.MonkeyPatch, musl: bytes, gnu: bytes) -> None:
+    base = "https://github.com/ast-grep/ast-grep/releases/download/0.51.2/"
+    payloads = {}
+    for name, binary in (
+        ("app-x86_64-unknown-linux-musl.zip", musl),
+        ("app-x86_64-unknown-linux-gnu.zip", gnu),
+    ):
+        zipped = io.BytesIO()
+        with zipfile.ZipFile(zipped, "w") as archive:
+            archive.writestr("ast-grep", binary)
+        payloads[base + name] = zipped.getvalue()
+    release = {
+        "tag_name": "0.51.2",
+        "assets": [
+            {
+                "name": url.rsplit("/", 1)[-1],
+                "browser_download_url": url,
+                "digest": "sha256:" + hashlib.sha256(payload).hexdigest(),
+            }
+            for url, payload in payloads.items()
+        ],
+    }
+    monkeypatch.setattr(
+        release_install,
+        "fetch",
+        lambda url: json.dumps(release).encode() if "api.github.com" in url else payloads[url],
+    )
+    monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "0.51.2")
+    monkeypatch.setattr(release_install.platform, "machine", lambda: "x86_64")
+
+
+_RUST = [
+    r"[^/]*-{arch}-unknown-linux-musl\.(?:tar\.gz|zip)",
+    r"[^/]*-{arch}-unknown-linux-gnu\.(?:tar\.gz|zip)",
+]
+_UNSTARTABLE = b"\x7fELF this binary cannot start"
+_STARTS = b"#!/bin/sh\necho ast-grep 0.51.2\n"
+_OLDER = b"#!/bin/sh\necho ast-grep 0.51.1\n"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a POSIX shell script")
+def test_an_asset_that_cannot_start_falls_back_to_the_next_asset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _two_asset_release(monkeypatch, musl=_UNSTARTABLE, gnu=_STARTS)
+
+    message = release_install.run(
+        "ast-grep/ast-grep", "ast-grep", False, _RUST, tmp_path, tmp_path / "state"
+    )
+
+    assert message == f"installed ast-grep 0.51.2 into {tmp_path / 'ast-grep'}"
+    assert (tmp_path / "ast-grep").read_bytes() == _STARTS
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["ast-grep", "state"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="runs a POSIX shell script")
+def test_no_startable_asset_keeps_the_installed_binary_and_names_the_assets(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _two_asset_release(monkeypatch, musl=_UNSTARTABLE, gnu=_UNSTARTABLE)
+    (tmp_path / "ast-grep").write_bytes(_OLDER)
+
+    with pytest.raises(release_install.InstallError, match="starts on this machine; tried: app-"):
+        release_install.run(
+            "ast-grep/ast-grep", "ast-grep", True, _RUST, tmp_path, tmp_path / "state"
+        )
+
+    assert (tmp_path / "ast-grep").read_bytes() == _OLDER
+    assert [path.name for path in tmp_path.iterdir()] == ["ast-grep"]
