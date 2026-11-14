@@ -344,6 +344,72 @@ upstream reports, measured results, regression controls and remaining limits.
 Confirm the runtime renderer in WezTerm's debug overlay before a renderer change.
 A large Windows WSL working set alone does not establish memory exhaustion.
 
+### Prompt and shell startup performance
+
+Setup preserves existing `.zshenv` entries and adds `skip_global_compinit=1` so
+Ubuntu's global shell config does not initialize completions before the managed
+`.zshrc` initializes them. Completion security checks remain enabled.
+
+Starship uses the installed Git executable for status checks. When Windows
+Starship is available on the WSL PATH as `starship.exe`, setup detects its path
+and configures [the Windows bridge](https://starship.rs/config/#git-status) for
+repositories on Windows drives. Linux repositories continue to use Linux Git.
+Without a Windows Starship executable, the Linux status check remains active.
+The same configuration is deployed from Windows and from inside WSL.
+
+Open a new shell after deployment so the startup change takes effect. Use
+`starship timings` inside a slow repository to inspect prompt module costs.
+
+### Machine preferences that survive updates
+
+Keep machine-specific WezTerm settings in
+`~/.config/wezterm/wezterm-local.lua`, beside the generated `wezterm.lua`.
+The file returns a function that applies preferences after the shared defaults:
+
+```lua
+return function(config)
+  config.font_size = 13.0
+  config.front_end = "Software"
+  config.enable_kitty_graphics = false
+end
+```
+
+Setup never replaces this file. WezTerm watches an existing local file for
+changes. Installing a local file for the first time requires reloading the main
+config or opening a new WezTerm process. Preserve Software rendering on machines
+where hardware rendering has caused freezes, regardless of their hardware speed.
+
+For Starship, put only your preferences in `~/.config/starship.local.toml`:
+
+```toml
+[git_status]
+use_git_executable = true
+
+[character]
+success_symbol = "[>](green)"
+```
+
+During installation and updates, setup merges these values into the generated
+`starship.toml`, preserving other defaults and nested palette entries. Local
+values win over defaults and detected Windows bridge settings. Setup preserves
+the local file; rerun the configuration deployment after editing it. These
+files work independently on the Windows host and inside WSL.
+
+An optional Tokyo Night-inspired preset is included as
+`terminal_setup/templates/wezterm-local-tokyo-night.lua`. It uses deep navy
+surfaces, blue and purple accents, and a softer application-background fill.
+It leaves renderer, refresh-rate and Kitty compatibility settings alone.
+To opt in, copy it beside your generated config as `wezterm-local.lua`; if you
+already have a local file, merge the desired settings rather than replacing it.
+The shared default palette is unchanged.
+
+For a machine-local readability adjustment, WezTerm's
+[`text_background_opacity`](https://wezterm.org/config/appearance.html#text-background-opacity)
+can soften application-painted background fills. This affects application
+backgrounds generally; it is not a Codex-only theme setting. It does not require
+enabling hardware acceleration or changing window transparency. Applications
+that emit RGB fills cannot be corrected by changing one ANSI palette slot.
+
 ### Nerd Font icons
 
 WezTerm draws Nerd Font icons with its built-in Symbols Nerd Font Mono, so you install no font. Each icon takes one column. To check it, run this in a WSL, Linux or macOS shell:

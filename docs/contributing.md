@@ -25,6 +25,15 @@ uv run pytest tests/
 
 Run the setup flow after your contributor environment is ready:
 
+If you use the same Windows checkout from WSL, give WSL a separate virtual
+environment. Windows and Linux cannot share the checkout's `.venv`:
+
+```bash
+UV_PROJECT_ENVIRONMENT="$HOME/.cache/terminal-dev-venv" uv run pytest tests/
+```
+
+The Windows commands can continue to use their default `.venv`.
+
 ```bash
 uv run python setup-terminal.py
 ```

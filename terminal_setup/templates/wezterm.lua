@@ -404,4 +404,15 @@ config.keys = {
   { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
 }
 
+local local_config_dir = wezterm.config_file:match("^(.*)[/\\]") or "."
+local local_config_path = local_config_dir .. "/wezterm-local.lua"
+local local_config_file = io.open(local_config_path, "r")
+if local_config_file then
+  local_config_file:close()
+  wezterm.add_to_config_reload_watch_list(local_config_path)
+  local apply_local = assert(loadfile(local_config_path))()
+  assert(type(apply_local) == "function", "wezterm-local.lua must return a function(config)")
+  apply_local(config)
+end
+
 return config

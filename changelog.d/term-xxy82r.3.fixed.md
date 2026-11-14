@@ -1,0 +1,1 @@
+- Add an opt-in Tokyo Night-inspired local preset with readable navy surfaces and softer application-painted RGB prompt backgrounds, preserving shared rendering compatibility defaults.

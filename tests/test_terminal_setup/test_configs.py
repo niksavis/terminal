@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -35,6 +37,7 @@ from terminal_setup.configs import (
     deploy_claude_img_zoom_skill,
     deploy_claude_statusline,
     deploy_micro_config,
+    deploy_starship_config,
     deploy_tmux_config,
     deploy_wezterm_config,
     deploy_windows_shell_prompts,
@@ -104,10 +107,222 @@ def test_template_path_points_to_existing_files() -> None:
         assert template_path(name).exists(), f"template {name} is missing"
 
 
+def test_zsh_deploy_preserves_zshenv_and_initializes_completions_once(tmp_path: Path) -> None:
+    original = '. "$HOME/.cargo/env"\n'
+    (tmp_path / ".zshenv").write_text(original, encoding="utf-8")
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+
+    deploy_zsh_config(runner, platform)
+    deploy_zsh_config(runner, platform)
+
+    content = (tmp_path / ".zshenv").read_text(encoding="utf-8")
+    assert content.startswith(original)
+    assert content.count("skip_global_compinit=1") == 1
+
+
+@pytest.mark.parametrize("in_wsl", [False, True])
+def test_starship_deploy_selects_native_git_and_bridges_only_wsl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_wsl: bool
+) -> None:
+    monkeypatch.setattr(configs_module, "is_running_in_wsl", lambda: in_wsl)
+    bridge = "/mnt/c/Program Files/starship/bin/starship.exe"
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "which", lambda name: bridge if name == "starship.exe" else None)
+    platform = make_platform(OperatingSystem.LINUX if in_wsl else OperatingSystem.WINDOWS, tmp_path)
+
+    deploy_starship_config(runner, platform)
+    deploy_starship_config(runner, platform)
+
+    settings = tomllib.loads((tmp_path / ".config/starship.toml").read_text(encoding="utf-8"))
+    assert settings["git_status"]["use_git_executable"] is True
+    assert settings["git_status"].get("windows_starship") == (bridge if in_wsl else None)
+    assert not list(tmp_path.rglob(f"*{BACKUP_SUFFIX}"))
+
+
+def test_starship_deploy_without_windows_binary_keeps_linux_status(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(configs_module, "is_running_in_wsl", lambda: True)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "which", lambda _name: None)
+
+    deploy_starship_config(runner, make_platform(OperatingSystem.LINUX, tmp_path))
+
+    settings = tomllib.loads((tmp_path / ".config/starship.toml").read_text(encoding="utf-8"))
+    assert "windows_starship" not in settings["git_status"]
+    assert settings["git_status"]["use_git_executable"] is True
+
+
+@pytest.mark.parametrize("in_wsl", [False, True])
+def test_starship_redeploy_preserves_local_overrides(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, in_wsl: bool
+) -> None:
+    monkeypatch.setattr(configs_module, "is_running_in_wsl", lambda: in_wsl)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "which", lambda _name: None)
+    local = tmp_path / ".config/starship.local.toml"
+    local.parent.mkdir()
+    personal = (
+        "[git_status]\nuse_git_executable = false\n"
+        '[palettes.tokyonight_night]\nblue = "#88CCEE"\n'
+        '[custom.example]\ncommand = "printf \\"hello\\""\n'
+        "when = true\n"
+        '[kubernetes]\ndetect_files = ["local-k8s.yaml"]\n'
+    )
+    local.write_text(personal, encoding="utf-8")
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+
+    deploy_starship_config(runner, platform)
+    deploy_starship_config(runner, platform)
+
+    settings = tomllib.loads((tmp_path / ".config/starship.toml").read_text(encoding="utf-8"))
+    assert settings["git_status"]["use_git_executable"] is False
+    assert settings["git_status"]["modified"] == "!"
+    assert settings["palettes"]["tokyonight_night"]["blue"] == "#88CCEE"
+    assert settings["palettes"]["tokyonight_night"]["red"] == "#f7768e"
+    assert settings["custom"]["example"]["command"] == 'printf "hello"'
+    assert settings["kubernetes"]["detect_files"] == ["local-k8s.yaml"]
+    assert "helm" in settings["kubernetes"]["detect_folders"]
+    assert local.read_text(encoding="utf-8") == personal
+    assert not list(tmp_path.rglob(f"*{BACKUP_SUFFIX}"))
+
+
+@pytest.mark.skipif(shutil.which("wezterm") is None, reason="requires WezTerm")
+def test_wezterm_redeploy_loads_local_preferences_after_defaults(tmp_path: Path) -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    assert platform.wezterm_config_dir is not None
+    platform.wezterm_config_dir.mkdir(parents=True)
+    local = platform.wezterm_config_dir / "wezterm-local.lua"
+    personal = (
+        "return function(config)\n"
+        "  config.max_fps = 45\n"
+        '  config.colors.background = "#010203"\n'
+        "  config.text_background_opacity = 0.55\n"
+        "end\n"
+    )
+    local.write_text(personal, encoding="utf-8")
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+
+    deploy_wezterm_config(runner, platform)
+    deploy_wezterm_config(runner, platform)
+
+    assert local.read_text(encoding="utf-8") == personal
+    config = platform.wezterm_config_dir / "wezterm.lua"
+    content = config.read_text(encoding="utf-8")
+    probe = (
+        'assert(config.max_fps == 45, "local fps must win")\n'
+        'assert(config.colors.background == "#010203", "local color must win")\n'
+        'assert(config.text_background_opacity == 0.55, "local opacity must win")\n'
+        'wezterm.log_info("TERMINAL_LOCAL_OVERRIDE_PASS")\nreturn config'
+    )
+    config.write_text(content.replace("return config", probe), encoding="utf-8")
+    result = subprocess.run(
+        ["wezterm", "--config-file", str(config), "show-keys", "--lua"],
+        env=dict(os.environ, WEZTERM_LOG="info"),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+        timeout=30,
+    )
+    assert "TERMINAL_LOCAL_OVERRIDE_PASS" in result.stdout + result.stderr
+
+
+@pytest.mark.skipif(shutil.which("wezterm") is None, reason="requires WezTerm")
+def test_local_tokyo_night_preset_preserves_renderer_and_readable_roles(tmp_path: Path) -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    deploy_wezterm_config(runner, platform)
+    assert platform.wezterm_config_dir is not None
+    local = platform.wezterm_config_dir / "wezterm-local.lua"
+    shutil.copy2(template_path("wezterm-local-tokyo-night.lua"), local)
+    config = platform.wezterm_config_dir / "wezterm.lua"
+    content = config.read_text(encoding="utf-8")
+    probe = (
+        'assert(config.enable_kitty_graphics == false, "keep image workaround")\n'
+        'assert(config.max_fps == 30, "keep conservative refresh default")\n'
+        'assert(config.window_background_opacity == 1.0, "keep opaque window")\n'
+        'assert(config.text_background_opacity == 0.2, "soften application fills")\n'
+        'wezterm.log_info("TOKYO_NIGHT_PALETTE:" .. wezterm.json_encode(config.colors))\n'
+        "return config"
+    )
+    config.write_text(content.replace("return config", probe), encoding="utf-8")
+    result = subprocess.run(
+        ["wezterm", "--config-file", str(config), "show-keys", "--lua"],
+        env=dict(os.environ, WEZTERM_LOG="info"),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+        timeout=30,
+    )
+    match = re.search(r"TOKYO_NIGHT_PALETTE:(\{.*\})", result.stdout + result.stderr)
+    assert match is not None
+    colors = json.loads(match.group(1))
+    foreground = colors["foreground"].removeprefix("#")
+    background = colors["background"].removeprefix("#")
+    muted = colors["brights"][0].removeprefix("#")
+    assert _contrast(foreground, background) >= 11
+    assert _contrast(foreground, muted) >= 4.5
+    assert _contrast(muted, background) >= 2.5
+    for color in colors["ansi"][1:] + colors["brights"][1:]:
+        assert _contrast(color.removeprefix("#"), background) >= 4.5
+
+
+@pytest.mark.parametrize("bridge_enabled", [False, True])
+def test_prompt_helper_preserves_user_settings_and_handles_windows_paths(
+    tmp_path: Path, bridge_enabled: bool
+) -> None:
+    home = tmp_path / "user's home"
+    home.mkdir()
+    original = '. "$HOME/.cargo/env"\n'
+    (home / ".zshenv").write_text(original, encoding="utf-8")
+    tools = (
+        tmp_path / 'tools with "quotes"' if sys.platform != "win32" else tmp_path / "tools space"
+    )
+    tools.mkdir()
+    bridge = tools / "starship.exe"
+    bridge.write_text("", encoding="utf-8")
+    bridge.chmod(0o755)
+    helper = Path(configs_module.__file__).with_name("prompt_config.py")
+    command = [
+        sys.executable,
+        str(helper),
+        "--home",
+        str(home),
+        "--zsh",
+        "--starship-template",
+        str(template_path("starship.toml")),
+    ]
+    if bridge_enabled:
+        command.append("--wsl")
+    for _ in range(2):
+        subprocess.run(
+            command,
+            env=dict(os.environ, PATH=str(tools)),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    settings = tomllib.loads((home / ".config/starship.toml").read_text(encoding="utf-8"))
+    assert settings["git_status"].get("windows_starship") == (
+        str(bridge) if bridge_enabled else None
+    )
+    assert (home / ".zshenv").read_text(encoding="utf-8") == original + "skip_global_compinit=1\n"
+    assert (home / ".zshenv.terminal-setup.bak").read_text(encoding="utf-8") == original
+    assert not (home / ".config/starship.toml.terminal-setup.bak").exists()
+
+
 def test_starship_git_status_symbols_escape_the_dollar_sign() -> None:
     template = tomllib.loads(template_path("starship.toml").read_text(encoding="utf-8"))
     git_status = template["git_status"]
-    symbols = {key: value for key, value in git_status.items() if key not in {"format", "style"}}
+    symbols = {
+        key: value
+        for key, value in git_status.items()
+        if isinstance(value, str) and key not in {"format", "style"}
+    }
     unescaped = {key: value for key, value in symbols.items() if re.search(r"(?<!\\)\$", value)}
     assert "stashed" in symbols
     assert unescaped == {}
@@ -812,6 +1027,18 @@ def _deploy_from_windows(home: Path, monkeypatch: pytest.MonkeyPatch) -> list[st
     )
     reporter = RecordingReporter()
     runner = Runner(dry_run=False, reporter=reporter)
+    tools = home / ".local" / "bin"
+    tools.mkdir(parents=True, exist_ok=True)
+    uv = tools / "uv"
+    uv.write_text(
+        "#!/bin/sh\n"
+        'test "$1 $2 $3 $4 $5 $6" = '
+        '"run --no-project --no-python-downloads --python 3.14 python" || exit 1\n'
+        "shift 6\n"
+        f'exec {shlex.quote(sys.executable)} "$@"\n',
+        encoding="utf-8",
+    )
+    uv.chmod(0o755)
     monkeypatch.setattr(
         runner,
         "run",

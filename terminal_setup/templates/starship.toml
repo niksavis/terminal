@@ -48,6 +48,7 @@ format = " [$symbol $branch]($style)"
 style = "fg:magenta"
 
 [git_status]
+use_git_executable = true
 format = " [$all_status$ahead_behind]($style)"
 style = "fg:grey"
 conflicted = "="

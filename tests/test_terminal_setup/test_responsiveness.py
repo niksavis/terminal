@@ -163,6 +163,7 @@ def test_wezterm_draws_a_nerd_font_icon_in_one_cell(tmp_path: Path) -> None:
         ],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         check=True,
         timeout=60,
     )

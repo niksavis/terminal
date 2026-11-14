@@ -154,6 +154,7 @@ def test_main_check_mode() -> None:
 def test_main_runs_wsl_setup_when_inside_wsl() -> None:
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=True),
+        mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
         mock.patch("terminal_setup.cli.platform.detect_platform") as mock_detect,
         mock.patch("terminal_setup.cli.run_check", return_value=0),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools") as mock_tools,

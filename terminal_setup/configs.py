@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .prerequisites import _add_to_user_path, attempt, root_shell_command
+from .prompt_config import configure_zshenv, write_starship_config
 from .runner import Runner
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -113,12 +114,19 @@ def deploy_tmux_config(runner: Runner, platform: PlatformInfo) -> None:
 
 def deploy_zsh_config(runner: Runner, platform: PlatformInfo) -> None:
     _deploy_template(runner, template_path("zshrc"), platform.home, ".zshrc")
+    if not runner.dry_run:
+        configure_zshenv(platform.home)
 
 
 def deploy_starship_config(runner: Runner, platform: PlatformInfo) -> None:
     config_dir = platform.home / ".config"
     runner.ensure_dir(config_dir)
-    _deploy_template(runner, template_path("starship.toml"), platform.home, ".config/starship.toml")
+    if runner.dry_run:
+        runner.reporter.info("write ~/.config/starship.toml")
+        return
+    bridge = runner.which("starship.exe") if is_running_in_wsl() else None
+    if write_starship_config(platform.home, template_path("starship.toml"), bridge):
+        runner.reporter.info(_backup_message(".config/starship.toml"))
 
 
 def deploy_micro_config(runner: Runner, platform: PlatformInfo) -> None:
@@ -366,8 +374,6 @@ def deploy_wsl_configs(
         ("zshrc", ".zshrc"),
         ("micro-settings.json", ".config/micro/settings.json"),
     ]
-    if include_starship:
-        templates.append(("starship.toml", ".config/starship.toml"))
     for template, target_name in templates:
         source = template_path(template)
         if is_running_in_wsl():
@@ -391,6 +397,28 @@ def deploy_wsl_configs(
             )
             for line in (result.stdout or "").splitlines():
                 runner.reporter.info(line)
+
+    if is_running_in_wsl():
+        if not runner.dry_run:
+            configure_zshenv(platform.home)
+        if include_starship:
+            deploy_starship_config(runner, platform)
+    else:
+        helper = _to_wsl_path(runner, distro, Path(__file__).with_name("prompt_config.py"))
+        script = (
+            'PATH="$HOME/.local/bin:$PATH"; '
+            "uv run --no-project --no-python-downloads --python 3.14 python "
+            f'{shlex.quote(helper)} --home "$HOME/" --zsh --wsl'
+        )
+        if include_starship:
+            source = _to_wsl_path(runner, distro, template_path("starship.toml"))
+            script += f" --starship-template {shlex.quote(source)}"
+        result = runner.run(
+            wsl_exec_command(distro, ["sh", "-c", script]),
+            label="configure WSL prompt performance",
+        )
+        for line in (result.stdout or "").splitlines():
+            runner.reporter.info(line)
 
 
 _WSL_WEZTERM_TARGET = ".config/wezterm/wezterm.lua"
