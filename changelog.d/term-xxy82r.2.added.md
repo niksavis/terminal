@@ -1,1 +1,0 @@
-- Preserve per-machine WezTerm and Starship override files across installation and updates while retaining shared rendering compatibility defaults.

@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.21.0 - 2026-11-14
+
+Delta: v0.20.3..v0.21.0
+
+### Highlights
+
+- **Keep your own terminal preferences.** Setup preserves `wezterm-local.lua` and `starship.local.toml` across installation and updates, applying your values after the shared defaults.
+- **Faster prompts on Windows and WSL.** Starship uses native Git status and detects Windows Starship for Windows-drive checkouts inside WSL. Ubuntu initializes shell completions once while retaining their security checks.
+- **Optional navy colors inspired by Tokyo Night.** The local preset provides readable text and softer application-painted backgrounds. Shared renderer, refresh-rate and Kitty graphics workarounds remain unchanged.
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-1xzen9) (ca908c1)
+- docs(terminal): record prompt and local palette validation (term-3f1acg) (8a0d9fa)
+- fix(terminal): speed prompts and preserve local preferences (term-xxy82r.1, term-xxy82r.2, term-xxy82r.3) (8c946ed)
+- chore(tracker): record the session handover (term-iej94y) (f3aa199)
+
 ## v0.20.3 - 2026-11-11
 
 Delta: v0.20.2..v0.20.3

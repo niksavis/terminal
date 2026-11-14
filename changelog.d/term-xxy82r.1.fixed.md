@@ -1,1 +1,0 @@
-- Reduce prompt latency with native Git status, automatic Windows Starship bridging for WSL Windows-drive checkouts, and a single Ubuntu completion initialization.
