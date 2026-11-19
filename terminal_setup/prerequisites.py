@@ -1727,10 +1727,19 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo, *, no_sudo: bool 
     if platform.os == OperatingSystem.WINDOWS:
         return
     packages = {
-        PackageManager.APT: ["zsh", "tmux", "git", "curl", "wget", "gnupg", "xz-utils"],
+        PackageManager.APT: [
+            "zsh",
+            "tmux",
+            "git",
+            "curl",
+            "wget",
+            "gnupg",
+            "xz-utils",
+            "libatomic1",
+        ],
         PackageManager.HOMEBREW: ["zsh", "tmux", "git", "curl", "wget"],
         PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget", "gnupg", "xz"],
-        PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget", "gnupg2", "xz"],
+        PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget", "gnupg2", "xz", "libatomic"],
     }
     if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
         names = packages[platform.package_manager]

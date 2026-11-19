@@ -695,6 +695,7 @@ def test_a_failed_shell_tool_costs_that_tool_and_the_rest_still_install() -> Non
         "wget",
         "gnupg",
         "xz-utils",
+        "libatomic1",
     ]
     assert runner.failures == ["install tmux"]
 
@@ -702,12 +703,12 @@ def test_a_failed_shell_tool_costs_that_tool_and_the_rest_still_install() -> Non
 @pytest.mark.parametrize(
     ("manager", "expected"),
     [
-        (PackageManager.APT, ["gnupg", "xz-utils"]),
-        (PackageManager.DNF, ["gnupg2", "xz"]),
+        (PackageManager.APT, ["gnupg", "xz-utils", "libatomic1"]),
+        (PackageManager.DNF, ["gnupg2", "xz", "libatomic"]),
         (PackageManager.PACMAN, ["gnupg", "xz"]),
     ],
 )
-def test_a_bare_linux_gets_the_gpg_and_xz_that_wezterm_and_node_need(
+def test_a_bare_linux_gets_what_wezterm_and_node_need(
     manager: PackageManager, expected: list[str]
 ) -> None:
     runner = FailingPackageRunner([])
@@ -716,7 +717,7 @@ def test_a_bare_linux_gets_the_gpg_and_xz_that_wezterm_and_node_need(
         cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager)
     )
 
-    assert _installed_packages(runner.commands, manager)[-2:] == expected
+    assert _installed_packages(runner.commands, manager)[-len(expected) :] == expected
 
 
 def test_delta_without_an_apt_package_installs_from_its_release() -> None:
