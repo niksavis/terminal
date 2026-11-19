@@ -1,2 +1,7 @@
 extends:
 - .basicly/lefthook.yml
+
+pre-push:
+  commands:
+    terminal-tests:
+      run: uv run python .scripts/git-hooks/pre-push.py
