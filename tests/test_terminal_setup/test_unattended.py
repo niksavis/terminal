@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from unittest import mock
@@ -180,7 +181,22 @@ def test_unattended_inside_wsl_skips_the_shell_change_when_sudo_needs_a_password
 def test_unattended_runs_children_with_an_empty_stdin(*, interactive: bool) -> None:
     runner = Runner(reporter=CapturingReporter(), unattended=True)
 
-    with mock.patch.object(subprocess, "run") as run:
+    done = subprocess.CompletedProcess(["claude", "update"], 0, stdout="", stderr="")
+    with mock.patch.object(subprocess, "run", return_value=done) as run:
         runner.run(["claude", "update"], interactive=interactive)
 
     assert run.call_args.kwargs["stdin"] is subprocess.DEVNULL
+
+
+def test_an_unattended_step_shows_its_stderr_and_carries_it_into_the_failure(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runner = Runner(reporter=CapturingReporter(), unattended=True)
+    script = "import sys; sys.stderr.write('first\\nxz: Cannot exec\\n'); sys.exit(2)"
+
+    with pytest.raises(subprocess.CalledProcessError) as raised:
+        runner.run([sys.executable, "-c", script], interactive=True)
+
+    assert raised.value.returncode == 2
+    assert "xz: Cannot exec" in raised.value.stderr
+    assert "xz: Cannot exec" in capsys.readouterr().err

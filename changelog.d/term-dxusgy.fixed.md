@@ -1,0 +1,1 @@
+- **Setup works on a bare Ubuntu or Debian.** Setup installs gpg and xz with the shell tools, so the WezTerm and Node.js steps no longer fail on a machine without them. On Debian 12, delta comes from its release because apt has no package. A failed step in unattended mode names the last lines of its error output (term-dxusgy).

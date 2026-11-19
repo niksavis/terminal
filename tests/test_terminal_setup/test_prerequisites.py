@@ -693,8 +693,38 @@ def test_a_failed_shell_tool_costs_that_tool_and_the_rest_still_install() -> Non
         "git",
         "curl",
         "wget",
+        "gnupg",
+        "xz-utils",
     ]
     assert runner.failures == ["install tmux"]
+
+
+@pytest.mark.parametrize(
+    ("manager", "expected"),
+    [
+        (PackageManager.APT, ["gnupg", "xz-utils"]),
+        (PackageManager.DNF, ["gnupg2", "xz"]),
+        (PackageManager.PACMAN, ["gnupg", "xz"]),
+    ],
+)
+def test_a_bare_linux_gets_the_gpg_and_xz_that_wezterm_and_node_need(
+    manager: PackageManager, expected: list[str]
+) -> None:
+    runner = FailingPackageRunner([])
+
+    prerequisites_module.ensure_shell_tools(
+        cast(Runner, runner), make_platform(OperatingSystem.LINUX, manager)
+    )
+
+    assert _installed_packages(runner.commands, manager)[-2:] == expected
+
+
+def test_delta_without_an_apt_package_installs_from_its_release() -> None:
+    runner = SpyRunner()
+
+    assert prerequisites_module._install_apt_fallback(cast(Runner, runner), "git-delta")
+
+    assert _release_repos(runner.commands) == ["dandavison/delta"]
 
 
 def test_xh_without_an_apt_package_installs_from_its_release_without_a_terminal() -> None:

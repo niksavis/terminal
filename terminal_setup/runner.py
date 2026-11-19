@@ -62,9 +62,9 @@ class ConsoleReporter:
         marker, color, label = _LEVEL_STYLES[level]
         marker = marker if self._unicode else label
         if self._color:
-            print(f"\033[{color}m{marker}\033[0m {message}")
+            print(f"\033[{color}m{marker}\033[0m {message}", flush=True)
         else:
-            print(f"{marker} {message}")
+            print(f"{marker} {message}", flush=True)
 
     def info(self, message: str) -> None:
         self._emit("info", message)
@@ -98,6 +98,28 @@ class ConsoleReporter:
         except EOFError, OSError:
             return False
         return answer.strip().lower() in {"y", "yes"}
+
+
+def _run_keeping_stderr(
+    command: list[str], *, check: bool, cwd: Path | None, env: dict[str, str] | None
+) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(  # nosec B603
+        command,
+        check=False,
+        cwd=cwd,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=None,
+        stderr=subprocess.PIPE,
+        text=True,
+        errors="replace",
+    )
+    if result.stderr:
+        sys.stderr.write(result.stderr)
+        sys.stderr.flush()
+    if check and result.returncode != 0:
+        raise subprocess.CalledProcessError(result.returncode, command, stderr=result.stderr)
+    return result
 
 
 _SCRIPT_FLAGS = ("-c", "-Command")
@@ -139,6 +161,8 @@ class Runner:
                 stdout="",
                 stderr="",
             )
+        if interactive and self.unattended:
+            return _run_keeping_stderr(command, check=check, cwd=cwd, env=env)
         if interactive:
             return subprocess.run(  # nosec B603
                 command,
