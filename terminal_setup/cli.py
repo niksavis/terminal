@@ -357,6 +357,10 @@ def _windows_tool_runs(
                 break
     if path is None:
         return None, "not found"
+    return _windows_path_runs(runner, path)
+
+
+def _windows_path_runs(runner: Runner, path: str) -> tuple[bool, str]:
     result = runner.run([path, "--version"], check=False, dry_run_safe=True)
     line = _first_line(result.stdout or result.stderr or "")
     return result.returncode == 0, line or f"exit code {result.returncode}"
@@ -412,9 +416,13 @@ def verify_tools_run(  # noqa: PLR0913
     tools = [tool.command for tool in windows_tools.WINDOWS_TOOLS]
     if include_starship:
         tools.append(windows_tools.STARSHIP.command)
-    for command in (*tools, *WINDOWS_RUNTIMES, *selected_agents):
+    for command in (*tools, *WINDOWS_RUNTIMES):
         outcome = _windows_tool_runs(runner, platform_info, command)
         _record_tool_run(runner, f"windows:{command}", outcome, missing_ok=False)
+    for agent in selected_agents:
+        found = agents.windows_agent_path(runner, platform_info, agent)
+        outcome = _windows_path_runs(runner, found) if found else (None, "not found")
+        _record_tool_run(runner, f"windows:{agent}", outcome, missing_ok=False)
 
 
 def _wsl_command_info(

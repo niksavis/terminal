@@ -1043,6 +1043,9 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
             update and not _node_is_current(runner, wsl_distro=distro)
         ):
             _install_node_binary(runner, wsl_distro=distro)
+        elif not update:
+            installed = _read_version(runner, NODE_INSTALLED_QUERY, wsl_distro=distro)
+            runner.reporter.success(f"Node.js {installed or 'unknown version'} is present in WSL")
         attempt(
             runner,
             "install Node.js on Windows",
@@ -1055,6 +1058,10 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
         update and not _node_is_current(runner, wsl_distro=None)
     ):
         _install_node_binary(runner)
+        return
+    if not update:
+        installed = _read_version(runner, NODE_INSTALLED_QUERY, wsl_distro=None)
+        runner.reporter.success(f"Node.js {installed or 'unknown version'} is present")
 
 
 def _node_is_current(runner: Runner, *, wsl_distro: str | None) -> bool:

@@ -236,3 +236,14 @@ def test_windows_failed_agent_update_names_the_manual_retry(tmp_path: Path) -> N
     assert ("step", "To retry, run 'codex update' in Windows PowerShell (powershell.exe).") in (
         runner.reporter.messages  # type: ignore[attr-defined]
     )
+
+
+def test_codex_is_found_where_its_windows_installer_puts_it(tmp_path: Path) -> None:
+    platform = replace(_windows_platform(), home=tmp_path)
+    codex = platform.user_programs_dir / "OpenAI" / "Codex" / "bin" / "codex.exe"
+    codex.parent.mkdir(parents=True)
+    codex.write_text("", encoding="utf-8")
+    runner = RecordingRunner(reporter=CapturingReporter())
+
+    with mock.patch.object(runner, "which", return_value=None):
+        assert agents.windows_agent_path(runner, platform, "codex") == str(codex)

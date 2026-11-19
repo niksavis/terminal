@@ -1022,6 +1022,22 @@ def test_ensure_node_update_skips_a_current_node() -> None:
     assert ("success", "Node.js v26.10.0 is up to date") in runner.reporter.messages
 
 
+def test_ensure_node_names_a_present_node_without_update() -> None:
+    runner = FakeRunner(outputs={_wsl_read(NODE_INSTALLED_QUERY): (0, "v26.10.0\n")})
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch(
+            "terminal_setup.prerequisites._is_user_local_command_available",
+            return_value=True,
+        ),
+    ):
+        ensure_node(cast(Runner, runner), platform)
+
+    assert _node_install_scripts(runner) == []
+    assert ("success", "Node.js v26.10.0 is present in WSL") in runner.reporter.messages
+
+
 def test_ensure_node_update_replaces_an_older_node_even_while_it_runs() -> None:
     runner = FakeRunner(
         outputs={
