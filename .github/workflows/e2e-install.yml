@@ -55,7 +55,7 @@ jobs:
         shell: sh
         run: |
           apt-get update
-          DEBIAN_FRONTEND=noninteractive apt-get install -y curl git ca-certificates sudo
+          DEBIAN_FRONTEND=noninteractive apt-get install -y curl git wget ca-certificates sudo
       - uses: actions/checkout@v4
       - name: Install as a consumer
         shell: bash
