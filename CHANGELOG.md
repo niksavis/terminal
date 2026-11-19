@@ -2,6 +2,26 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.21.1 - 2026-11-19
+
+Delta: v0.21.0..v0.21.1
+
+### Highlights
+
+- **The `cli-tools` skill comes from basicly v0.46.6.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.46.6 release, and the repository harness runs basicly 0.46.6 (term-vx2g0e).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for v0-21-1 (term-kc9nbf) (d880152)
+- chore(tracker): defer the bare-machine test and file the container install record (term-3osnol) (1fa51b8)
+- chore(tracker): record review and owner test steps (term-p4b5z) (f55e55d)
+- chore(tracker): record closed records (term-tc8jca) (bb97ac3)
+- fix(tests): keep hook git variables out of test git runs (term-tc8jca) (6711dfe)
+- build(hooks): run the test suite before every push (term-md6pgh) (2932c36)
+- fix(basicly): move the cli-tools skill pin to the installed harness (term-vx2g0e) (5e316e1)
+- chore(basicly): install basicly kit with ci migration (term-vx2g0e) (d64c33b)
+- chore(tracker): record verified release publication (term-1xzen9) (c23d32e)
+
 ## v0.21.0 - 2026-11-14
 
 Delta: v0.20.3..v0.21.0
