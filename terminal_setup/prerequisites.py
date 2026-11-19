@@ -514,8 +514,9 @@ def report_release_message(runner: Runner, message: str) -> None:
 
 def _failure_reason(error: Exception) -> str:
     if isinstance(error, subprocess.CalledProcessError):
-        detail = (error.stderr or error.stdout or "").strip().splitlines()
-        return detail[-1] if detail else f"exit code {error.returncode}"
+        detail = [line.strip() for line in (error.stderr or error.stdout or "").splitlines()]
+        detail = [line for line in detail if line]
+        return " | ".join(detail[-3:]) if detail else f"exit code {error.returncode}"
     return str(error) or error.__class__.__name__
 
 
@@ -531,7 +532,7 @@ def attempt(runner: Runner, label: str, action: Callable[[], object]) -> bool:
 
 
 def _install_apt_fallback(runner: Runner, package: str, *, wsl_distro: str | None = None) -> bool:
-    if package in {"ast-grep", "typos", "just", "xh"}:
+    if package in {"ast-grep", "typos", "just", "xh", "git-delta"}:
         _install_release_tool(runner, package, update=False, wsl_distro=wsl_distro)
         return True
 
@@ -1042,6 +1043,9 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
             update and not _node_is_current(runner, wsl_distro=distro)
         ):
             _install_node_binary(runner, wsl_distro=distro)
+        elif not update:
+            installed = _read_version(runner, NODE_INSTALLED_QUERY, wsl_distro=distro)
+            runner.reporter.success(f"Node.js {installed or 'unknown version'} is present in WSL")
         attempt(
             runner,
             "install Node.js on Windows",
@@ -1054,6 +1058,10 @@ def ensure_node(runner: Runner, platform: PlatformInfo, *, update: bool = False)
         update and not _node_is_current(runner, wsl_distro=None)
     ):
         _install_node_binary(runner)
+        return
+    if not update:
+        installed = _read_version(runner, NODE_INSTALLED_QUERY, wsl_distro=None)
+        runner.reporter.success(f"Node.js {installed or 'unknown version'} is present")
 
 
 def _node_is_current(runner: Runner, *, wsl_distro: str | None) -> bool:
@@ -1388,6 +1396,9 @@ def _command_for_package(package: str) -> str:
         "ast-grep": "ast-grep",
         "git-delta": "delta",
         "typos-cli": "typos",
+        "gnupg": "gpg",
+        "gnupg2": "gpg",
+        "xz-utils": "xz",
     }
     return mapping.get(package, package)
 
@@ -1597,6 +1608,8 @@ def ensure_wsl_tools(  # noqa: PLR0913
         "direnv",
         "curl",
         "wget",
+        "gnupg",
+        "xz-utils",
         "fzf",
         "fd-find",
         "bat",
@@ -1616,7 +1629,7 @@ def ensure_wsl_tools(  # noqa: PLR0913
 
     if no_sudo:
         runner.reporter.info("Installing WSL tools into ~/.local without sudo.")
-        base_packages = {"zsh", "tmux", "git", "curl", "wget", "tree"}
+        base_packages = {"zsh", "tmux", "git", "curl", "wget", "tree", "gnupg", "xz-utils"}
         for package in packages:
             command = _command_for_package(package)
             if package in base_packages:
@@ -1721,10 +1734,19 @@ def ensure_shell_tools(runner: Runner, platform: PlatformInfo, *, no_sudo: bool 
     if platform.os == OperatingSystem.WINDOWS:
         return
     packages = {
-        PackageManager.APT: ["zsh", "tmux", "git", "curl", "wget"],
+        PackageManager.APT: [
+            "zsh",
+            "tmux",
+            "git",
+            "curl",
+            "wget",
+            "gnupg",
+            "xz-utils",
+            "libatomic1",
+        ],
         PackageManager.HOMEBREW: ["zsh", "tmux", "git", "curl", "wget"],
-        PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget"],
-        PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget"],
+        PackageManager.PACMAN: ["zsh", "tmux", "git", "curl", "wget", "gnupg", "xz"],
+        PackageManager.DNF: ["zsh", "tmux", "git", "curl", "wget", "gnupg2", "xz", "libatomic"],
     }
     if no_sudo and platform.package_manager in SUDO_PACKAGE_MANAGERS:
         names = packages[platform.package_manager]

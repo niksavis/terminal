@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import subprocess  # nosec B404
 import sys
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 
@@ -188,6 +190,33 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
 WINDOWS_RUNTIMES = ("uv", "python", "node")
 VERSION_FLAGS = {"tmux": "-V"}
 NO_VERSION = frozenset({"img-zoom"})
+SHELL_TOOLS = (
+    "zsh",
+    "tmux",
+    "git",
+    "lazygit",
+    "git-lfs",
+    "direnv",
+    "fzf",
+    "fd",
+    "bat",
+    "rg",
+    "jq",
+    "yq",
+    "shellcheck",
+    "tree",
+    "xh",
+    "ast-grep",
+    "sd",
+    "just",
+    "delta",
+    "typos",
+    "uv",
+    "img-zoom",
+    "python3",
+    "node",
+)
+TOOL_MISSING = 127
 RUNTIME_TARGETS = {
     "python": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
     "python3": (prerequisites.python_meets_target, prerequisites.TARGET_PYTHON_MINOR),
@@ -282,6 +311,118 @@ def _shell_agent_path(runner: Runner, agent: str, *, wsl_distro: str | None) -> 
     result = runner.run(command, check=False, dry_run_safe=True)
     found = result.stdout.strip()
     return found if result.returncode == 0 and found else None
+
+
+def _probe_script(locate: str, command: str) -> str:
+    flag = VERSION_FLAGS.get(command, "--version")
+    probe = (
+        "exit 0"
+        if command in NO_VERSION
+        else f'out=$("$p" {flag} </dev/null 2>&1); s=$?; printf "%s\\n" "$out" | head -n 1; exit $s'
+    )
+    return f'p={locate}; test -n "$p" || exit {TOOL_MISSING}; {probe}'
+
+
+def _shell_tool_runs(
+    runner: Runner, locate: str, command: str, *, wsl_distro: str | None
+) -> tuple[bool | None, str]:
+    script = ["sh", "-c", _probe_script(locate, command)]
+    if wsl_distro and not is_running_in_wsl():
+        script = wsl_exec_command(wsl_distro, script)
+    result = runner.run(script, check=False, dry_run_safe=True)
+    line = _first_line(result.stdout or result.stderr or "")
+    if result.returncode == TOOL_MISSING and not line:
+        return None, "not found"
+    return result.returncode == 0, line or f"exit code {result.returncode}"
+
+
+def _shell_locate(command: str) -> str:
+    return (
+        f"$(if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
+        f"else command -v {command} || true; fi)"
+    )
+
+
+def _windows_tool_runs(
+    runner: Runner, platform_info: platform.PlatformInfo, command: str
+) -> tuple[bool | None, str]:
+    path = runner.which(command)
+    if path is None:
+        for local in (
+            platform_info.terminal_tools_dir / f"{command}.exe",
+            platform_info.home / ".local" / "bin" / f"{command}.exe",
+        ):
+            if local.exists():
+                path = str(local)
+                break
+    if path is None:
+        return None, "not found"
+    return _windows_path_runs(runner, path)
+
+
+def _windows_path_runs(runner: Runner, path: str) -> tuple[bool, str]:
+    result = runner.run([path, "--version"], check=False, dry_run_safe=True)
+    line = _first_line(result.stdout or result.stderr or "")
+    return result.returncode == 0, line or f"exit code {result.returncode}"
+
+
+def _record_tool_run(
+    runner: Runner, label: str, outcome: tuple[bool | None, str], *, missing_ok: bool
+) -> None:
+    ok, line = outcome
+    if ok is None and missing_ok:
+        runner.reporter.info(f"{label}: not installed")
+        return
+    if ok:
+        runner.reporter.success(f"{label} runs ({line})" if line else f"{label} runs")
+        return
+    runner.failures.append(f"run {label}")
+    runner.reporter.warn(f"{label} does not run: {line}")
+
+
+def verify_tools_run(  # noqa: PLR0913
+    runner: Runner,
+    platform_info: platform.PlatformInfo,
+    *,
+    include_starship: bool,
+    selected_agents: Sequence[str],
+    herdr: bool,
+    no_sudo: bool,
+) -> None:
+    runner.reporter.step("Checking that each installed tool runs")
+    in_wsl = is_running_in_wsl()
+    windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
+    shell_side = in_wsl or windows_host
+    commands: list[str] = list(SHELL_TOOLS) if shell_side else ["wezterm", *SHELL_TOOLS]
+    if include_starship:
+        commands.append("starship")
+    if herdr:
+        commands.append("herdr")
+    distro = (platform_info.wsl_distribution or "Ubuntu") if windows_host else None
+    side = "wsl" if shell_side else "host"
+    for command in commands:
+        outcome = _shell_tool_runs(runner, _shell_locate(command), command, wsl_distro=distro)
+        _record_tool_run(runner, f"{side}:{command}", outcome, missing_ok=no_sudo)
+    for agent in selected_agents:
+        found = _shell_agent_path(runner, agent, wsl_distro=distro)
+        outcome = (
+            _shell_tool_runs(runner, shlex.quote(found), agent, wsl_distro=distro)
+            if found
+            else (None, "not found")
+        )
+        _record_tool_run(runner, f"{side}:{agent}", outcome, missing_ok=False)
+    if not windows_host:
+        return
+    tools = [tool.command for tool in windows_tools.WINDOWS_TOOLS]
+    if include_starship:
+        tools.append(windows_tools.STARSHIP.command)
+    for command in (*tools, *WINDOWS_RUNTIMES):
+        outcome = _windows_tool_runs(runner, platform_info, command)
+        _record_tool_run(runner, f"windows:{command}", outcome, missing_ok=False)
+    for agent in selected_agents:
+        found = agents.windows_agent_path(runner, platform_info, agent)
+        outcome = _windows_path_runs(runner, found) if found else (None, "not found")
+        _record_tool_run(runner, f"windows:{agent}", outcome, missing_ok=False)
 
 
 def _wsl_command_info(
@@ -426,32 +567,7 @@ def _print_wsl_report(
     *,
     include_starship: bool,
 ) -> None:
-    for command in [
-        "zsh",
-        "tmux",
-        "git",
-        "lazygit",
-        "git-lfs",
-        "direnv",
-        "fzf",
-        "fd",
-        "bat",
-        "rg",
-        "jq",
-        "yq",
-        "shellcheck",
-        "tree",
-        "xh",
-        "ast-grep",
-        "sd",
-        "just",
-        "delta",
-        "typos",
-        "uv",
-        "img-zoom",
-        "python3",
-        "node",
-    ]:
+    for command in SHELL_TOOLS:
         path, version = _wsl_command_info(runner, platform_info, command)
         _report_tool(runner, f"wsl:{command}", command, path, version)
     if include_starship:
@@ -502,33 +618,7 @@ def _print_host_report(
     *,
     include_starship: bool,
 ) -> None:
-    for command in [
-        "wezterm",
-        "zsh",
-        "tmux",
-        "git",
-        "lazygit",
-        "git-lfs",
-        "direnv",
-        "fzf",
-        "fd",
-        "bat",
-        "rg",
-        "jq",
-        "yq",
-        "shellcheck",
-        "tree",
-        "xh",
-        "ast-grep",
-        "sd",
-        "just",
-        "delta",
-        "typos",
-        "uv",
-        "img-zoom",
-        "python3",
-        "node",
-    ]:
+    for command in ("wezterm", *SHELL_TOOLS):
         path = _host_command_path(runner, command)
         version = _host_version(runner, command, path) if path else ""
         _report_tool(runner, f"host:{command}", command, path or "", version)
@@ -757,6 +847,16 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             platform_info,
             windows_terminal_cwd=windows_terminal_cwd,
             wsl_terminal_cwd=wsl_terminal_cwd,
+        )
+
+    if not config_only and not runner.dry_run:
+        verify_tools_run(
+            runner,
+            platform_info,
+            include_starship=not skip_starship,
+            selected_agents=selected_agents,
+            herdr=herdr,
+            no_sudo=no_sudo,
         )
 
     if report:

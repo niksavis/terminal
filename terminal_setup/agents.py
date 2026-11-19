@@ -97,12 +97,17 @@ def _ensure_shell_agent(
     )
 
 
-def _windows_agent_path(runner: Runner, platform: PlatformInfo, agent: str) -> str | None:
+def windows_agent_path(runner: Runner, platform: PlatformInfo, agent: str) -> str | None:
     found = runner.which(agent)
     if found is not None:
         return found
-    local = platform.home / ".local" / "bin" / f"{agent}.exe"
-    return str(local) if local.exists() else None
+    for local in (
+        platform.home / ".local" / "bin" / f"{agent}.exe",
+        platform.user_programs_dir / "OpenAI" / "Codex" / "bin" / f"{agent}.exe",
+    ):
+        if local.exists():
+            return str(local)
+    return None
 
 
 def _windows_npm(runner: Runner) -> str:
@@ -118,7 +123,7 @@ def _windows_npm(runner: Runner) -> str:
 def _ensure_windows_agent(
     runner: Runner, platform: PlatformInfo, agent: str, *, update: bool
 ) -> None:
-    found = _windows_agent_path(runner, platform, agent)
+    found = windows_agent_path(runner, platform, agent)
     if found is None:
         if agent == "claude":
             runner.run(

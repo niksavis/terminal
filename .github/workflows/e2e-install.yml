@@ -5,6 +5,8 @@ name: e2e-install
   push:
     tags:
       - "v*"
+  schedule:
+    - cron: "17 4 * * 1"
   workflow_dispatch:
     inputs:
       ref:
@@ -37,6 +39,50 @@ jobs:
       - name: Install as a consumer
         shell: bash
         run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
+
+  linux-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:24.04
+          - debian:12
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install the documented prerequisites
+        shell: sh
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y curl git wget ca-certificates sudo
+      - uses: actions/checkout@v4
+      - name: Install as a consumer
+        shell: bash
+        run: |
+          set -o pipefail
+          sh ./install.sh --unattended --agents "${AGENTS}" 2>&1 | tee "${RUNNER_TEMP}/first.log"
+          grep -q "Setup complete." "${RUNNER_TEMP}/first.log"
+      - name: Check the version lines
+        shell: bash
+        run: |
+          export PATH="${HOME}/.local/bin:${PATH}"
+          for tool in uv python3 node claude copilot codex; do
+            command -v "${tool}" >/dev/null || { echo "${tool} is missing from PATH"; exit 1; }
+            printf '%s: %s\n' "${tool}" "$("${tool}" --version 2>&1 | head -n 1)"
+          done
+          python3 --version | grep -Eq '^Python 3\.14\.' || { echo "python3 is not 3.14"; exit 1; }
+          node --version | grep -Eq '^v26\.' || { echo "node is not v26"; exit 1; }
+      - name: Run setup again and expect present tools
+        shell: bash
+        run: |
+          set -o pipefail
+          sh ./install.sh --unattended --agents "${AGENTS}" 2>&1 | tee "${RUNNER_TEMP}/second.log"
+          log="${RUNNER_TEMP}/second.log"
+          grep -q "Setup complete." "${log}"
+          grep -Eq "Python 3\.14\.[0-9]+ is present" "${log}" || { echo "Python was not reported as present"; exit 1; }
+          grep -Eq "Node\.js v26\.[0-9.]+ is (present|up to date)" "${log}" || { echo "Node.js was not reported as present or up to date"; exit 1; }
+          if grep -Eq ": install (uv|Node\.js|Python 3\.14)$" "${log}"; then echo "The second run installed uv, Node.js or Python again"; exit 1; fi
 
   macos:
     runs-on: macos-latest

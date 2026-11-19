@@ -226,7 +226,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 On WSL and on Debian or Ubuntu, setup links `fd` to `fdfind` and `bat` to `batcat` when the distro names them so.
 
-On Linux outside WSL, `--no-sudo` makes setup run no sudo command. It skips the package-manager tools and prints the command that installs zsh, tmux, git, curl and wget. It puts lazygit into `~/.local/bin`, installs WezTerm as the nightly AppImage into `~/.local/bin`, and skips the default shell change.
+On Linux outside WSL, `--no-sudo` makes setup run no sudo command. It skips the package-manager tools and prints the command that installs zsh, tmux, git, curl, wget, gpg and xz. It puts lazygit into `~/.local/bin`, installs WezTerm as the nightly AppImage into `~/.local/bin`, and skips the default shell change.
 
 To see where each tool and agent is, run setup with `--only report`. It prints the path of each one.
 
@@ -286,7 +286,8 @@ When a config file differs from the template, setup keeps the old file as `<file
 
 ### Common baseline (all supported platforms)
 
-- Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`
+- Core shell tools: `zsh`, `tmux`, `git`, `curl`, `wget`, and on apt, dnf and pacman the gpg and xz packages (`gnupg` and `xz-utils` on apt, `gnupg2` and `xz` on dnf, `gnupg` and `xz` on pacman). The WezTerm apt key needs gpg, and the Node.js archive needs xz. Node.js 26 also needs libatomic: `libatomic1` on apt, `libatomic` on dnf; on pacman, `gcc-libs` ships it.
+- After the installs, setup runs the version command of each tool it installed. A tool that is missing or does not start counts as a failed step, so `Setup complete.` means every tool runs. With `--no-sudo`, a tool that setup skipped is reported as not installed.
 - Agent-first CLI tools: `lazygit`, `git-lfs`, `direnv`, `just`, `fzf`, `fd`/`fd-find`, `bat`, `ripgrep`, `jq`, `yq`, `shellcheck`, `tree`, `xh`, `ast-grep`, `sd`, `git-delta`, `typos`, `uv`
 - Agent image tool: `img-zoom`, installed with `uv tool install`. It crops a pixel box from an image file and magnifies it so an agent can read fine detail. Run from Windows, setup installs it both in WSL and natively on Windows (its folder goes on the user PATH); run inside WSL or on Linux/macOS, it installs it there. uv installs it from a copy setup keeps in `~/.local/share/terminal-setup/img_zoom_tool` (Windows: `%LOCALAPPDATA%\terminal-setup\img_zoom_tool`), so `uv tool upgrade` keeps working after `uv cache clean`. `img-zoom --python` prints its Python, which has Pillow and OpenCV for measuring scripts (Pillow only on Windows on ARM, where OpenCV publishes no build)
 - Runtimes: Python 3.14 from `uv python install 3.14 --default`, which puts `python` and `python3` in `~/.local/bin`; `--update` upgrades a uv-managed 3.14 to the latest patch. `node` (latest v26): user-local in `~/.local` on WSL, Linux and macOS, and on Windows from the official zip into `%LOCALAPPDATA%\Programs\nodejs`, checked against `SHASUMS256.txt` and added to the user PATH. npm installs global packages into that folder, so they stay when Node.js is updated. Setup warns when an older Node.js elsewhere may come first on PATH
