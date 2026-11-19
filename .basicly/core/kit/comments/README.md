@@ -56,6 +56,13 @@ pre-commit `exclude:`. `secret-scan` reads the staged diff itself:
 in those paths it skips only the generic assignment rule and still refuses a specific secret.
 Keep the regex narrow.
 
+For one generated line, prefer an entry in `.secret-scan-allow.toml` at the repository root
+over a path regex. When the scan refuses a generic assignment, it prints the exact entry: the
+rule, the path, the sha256 of the line and an empty `reason`. A person reads the line first,
+writes the reason and stages the file. An entry admits only that line and only the generic
+rule; a value under 12 characters cannot be admitted, and an entry that matches nothing fails
+the scan.
+
 Exit codes:
 
 - **0**: no prose found, or `fix` refused no file.

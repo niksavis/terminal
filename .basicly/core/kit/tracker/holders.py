@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import calendar
 import importlib.util
-import os
 import sys
 import time
 from collections.abc import Mapping, Sequence
@@ -73,11 +72,9 @@ def _config_files(start: Path, environ: Mapping[str, str]) -> list[Path]:
     return found
 
 
-def holder_and_source(
-    start: Path | str, environ: Mapping[str, str] | None = None
-) -> tuple[str, str]:
+def holder_and_source(start: Path | str, environ: Mapping[str, str]) -> tuple[str, str]:
 
-    values = os.environ if environ is None else environ
+    values = environ
     if values.get(HOLDER_VARIABLE, "").strip():
         return values[HOLDER_VARIABLE].strip(), f"env {HOLDER_VARIABLE}"
     files = _config_files(Path(start).resolve(), values)
@@ -95,9 +92,15 @@ def holder_and_source(
     return "", "default"
 
 
-def default_holder(start: Path | str, environ: Mapping[str, str] | None = None) -> str:
+def default_holder(start: Path | str, environ: Mapping[str, str]) -> str:
 
     return holder_and_source(start, environ)[0]
+
+
+def chosen_holder(start: Path | str, environ: Mapping[str, str]) -> str:
+
+    name, source = holder_and_source(start, environ)
+    return name if source in (HOLDER_GIT_CONFIG, f"env {HOLDER_VARIABLE}") else ""
 
 
 def _held_by(states: Mapping[str, Any], record: str) -> str:
@@ -119,6 +122,18 @@ def refuse(states: Mapping[str, Any], drafts: Sequence[Any]) -> None:
             f"{draft.record} is held by {holder} since {since}; ask them, or pass --take "
             f"to take it on purpose, which the ledger records"
         )
+
+
+def refuse_a_release_by_another(state: Any, record: str, by: str, take: bool) -> None:
+
+    holder = str(state.fields.get(HOLDER_FIELD) or "")
+    if not holder or holder == by or take:
+        return
+    since = state.dates.get(events.DATE_ASSIGNED) or "an unknown time"
+    raise fields.RefusedFieldError(
+        f"{record} is held by {holder} since {since}, not by {by}; only the holder gives it "
+        f"back, or pass --take to release it on purpose, which the ledger records"
+    )
 
 
 IN_PROGRESS = "in_progress"

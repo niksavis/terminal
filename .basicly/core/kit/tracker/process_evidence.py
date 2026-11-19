@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -88,6 +89,7 @@ class RevisionContext:
     drafts: Sequence[Any] = ()
     template: Any = None
     legacy: bool = False
+    index: Any = None
 
 
 def revision(
@@ -108,16 +110,17 @@ def _revision(found: Sequence[Any], record: str, context: RevisionContext) -> st
         context.template,
         context.legacy,
     )
-    states = events.fields_by_record(found)
+    states, grouped = context.index if context.index is not None else events.record_index(found)
     held = dict(fields) if fields is not None else dict(states[record])
     headings = _headings(held, template, legacy)
     names = SEMANTIC_FIELDS | frozenset(shaping.field_of(heading) for heading in headings)
-    semantic = sorted({event.id for event in found if _semantic(event, record, names)})
+    own = grouped.get(record, ())
+    semantic = sorted({event.id for event in own if _semantic(event, record, names)})
     pending = [dict(draft.payload) for draft in drafts if _semantic(draft, record, names)]
     content = {name: held.get(name) for name in sorted(names)}
     edges = {}
-    for event in events.canonical_order(found):
-        if event.record == record and event.kind in (events.KIND_EDGE, events.KIND_EDGE_RETRACTED):
+    for event in own:
+        if event.kind in (events.KIND_EDGE, events.KIND_EDGE_RETRACTED):
             target_key, type_key = labels.DIALECT_KEYS[labels.edge_dialect(event.payload)]
             edges[(event.payload.get(target_key), event.payload.get(type_key))] = (
                 event.kind == events.KIND_EDGE
@@ -134,7 +137,11 @@ def _revision(found: Sequence[Any], record: str, context: RevisionContext) -> st
         )
         dependencies[target] = [
             target_headings,
-            sorted({event.id for event in found if _semantic(event, target, target_names)}),
+            sorted({
+                event.id
+                for event in grouped.get(target, ())
+                if _semantic(event, target, target_names)
+            }),
         ]
     packed = json.dumps(
         [record, semantic, content, pending, dependencies, headings],
@@ -154,7 +161,9 @@ def _current(saved, found, record, context: RevisionContext) -> bool:
     )
 
 
-def _saved(found: Sequence[Any], record: str, fields: Mapping[str, object], name: str) -> Mapping:
+def _saved(
+    found: Sequence[Any], record: str, fields: Mapping[str, object], name: str, index: Any = None
+) -> Mapping:
     raw = fields.get(name)
     if not isinstance(raw, str):
         return {}
@@ -166,14 +175,12 @@ def _saved(found: Sequence[Any], record: str, fields: Mapping[str, object], name
         return {}
     matching = [
         event
-        for event in found
-        if event.record == record
-        and event.kind == events.KIND_FIELD
-        and event.payload.get("name") == name
+        for event in (index if index is not None else events.record_index(found))[1].get(record, ())
+        if event.kind == events.KIND_FIELD and event.payload.get("name") == name
     ]
     if not matching:
         return {}
-    last = events.canonical_order(matching)[-1]
+    last = matching[-1]
     return (
         value
         if last.payload.get("value") == raw
@@ -215,6 +222,21 @@ def readiness(
     *,
     template=None,
 ) -> tuple[str, ...]:
+    return _readiness(found, record, RevisionContext(fields, drafts, template))
+
+
+def readiness_many(
+    found: Sequence[Any], fields: Mapping[str, Mapping[str, object]], *, template: Any = None
+) -> dict[str, tuple[str, ...]]:
+    index = events.record_index(found)
+    return {
+        record: _readiness(found, record, RevisionContext(held, template=template, index=index))
+        for record, held in fields.items()
+    }
+
+
+def _readiness(found: Sequence[Any], record: str, context: RevisionContext) -> tuple[str, ...]:
+    fields = context.fields
     if fields is None:
         state = events.fold(found).records.get(record)
         held = dict(state.fields) if state is not None else {}
@@ -222,8 +244,8 @@ def readiness(
         held = dict(fields)
     if small(held):
         return small_task.owed(held, len(criteria(held)))
-    saved = _saved(found, record, held, REVIEW_FIELD)
-    current = _current(saved, found, record, RevisionContext(held, drafts, template))
+    saved = _saved(found, record, held, REVIEW_FIELD, context.index)
+    current = _current(saved, found, record, replace(context, fields=held))
     if _compact_type(held) and (
         not current or set(saved) - {"contract"} == {"checks", "revision", "writer"}
     ):
@@ -252,13 +274,11 @@ def _draft(record: str, name: str, value: Mapping[str, object], writer: str) -> 
     )
 
 
-def _machine_path(checks: Sequence[Mapping[str, Any]]) -> str | None:
-
-    rules = _load("beads").MACHINE_PATH_RULES
-    for check in checks:
-        if any(pattern.search(part) for part in check["command"] for _, pattern in rules):
-            return str(check["criterion"])
-    return None
+def _safe_commands(
+    checks: Sequence[Mapping[str, Any]], redactor: Callable[[str], str] | None = None
+) -> None:
+    if fault := evidence_checks.command_privacy_fault(checks, redactor):
+        raise ProcessEvidenceError(fault)
 
 
 def review_draft(
@@ -279,12 +299,7 @@ def review_draft(
         _full_review(found, record, payload)
     if fault := _check_fault(state.fields, payload["checks"]):
         raise ProcessEvidenceError(f"Confirmation Plan refused: {fault}")
-    if (criterion := _machine_path(payload["checks"])) is not None:
-        raise ProcessEvidenceError(
-            f"Confirmation Plan command for {criterion!r} holds a machine path that the ledger "
-            "redacts, which would void the review; name the program on PATH, such as python3 "
-            "or uv run, or a path relative to the repository"
-        )
+    _safe_commands(payload["checks"])
     value = {
         **payload,
         "revision": revision(found, record, template=template),
@@ -346,6 +361,7 @@ def confirmation_draft(
         )
     if fault := _check_fault(state.fields, payload["checks"], completed=True):
         raise ProcessEvidenceError(f"Completion Confirmation refused: {fault}")
+    _safe_commands(payload["checks"])
     review = report["review"]
     if not isinstance(review, Mapping):
         raise ProcessEvidenceError("confirm requires a recorded review")
@@ -402,10 +418,11 @@ def record_process(
     evidence: object,
     *,
     completed: bool = False,
-    redact: Callable[[str], str] | None = None,
+    redact: Any = None,
 ) -> list:
     commands = _load("commands")
-    ledger = commands._ledger(directory)
+    admitted, redact = commands.vault_write.admission(directory, redact, commands.environment())
+    ledger = commands._ledger(admitted)
     with events.LedgerLock(ledger) as lock:
         commands._require(ledger, record)
         found = events.read_events(ledger)[0]
@@ -414,7 +431,10 @@ def record_process(
             found,
             record,
             evidence,
-            commands.writers.writer_class(),
+            commands.writers.writer_class(os.environ),
             template=commands.templates.load(ledger),
         )
+        if isinstance(redact, commands.vault_write.WriteContext) and redact.target is not None:
+            saved = json.loads(draft.payload["value"])
+            _safe_commands(saved["checks"], commands.vault_write.effective_redactor(redact))
         return commands._append(ledger, [draft], redact, lock)

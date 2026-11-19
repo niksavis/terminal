@@ -124,7 +124,7 @@ def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
     ]
     shown["process"] = process.confirmation_report(found, record, template=template)
     shown.update(_owed(found, record, template))
-    return shown
+    return queries.vault_pending.annotate(directory, shown)
 
 
 def _handoff_key(note: Mapping[str, Any]) -> tuple[str, str] | None:

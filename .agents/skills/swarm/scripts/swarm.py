@@ -7,6 +7,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from round_report import print_rounds, round_metrics
+
 SEVERITIES = ("important", "nit", "pre-existing")
 JSON_BLOCK = re.compile(r"```json\s*\n(.*?)\n```", re.DOTALL)
 LOCATION = re.compile(r"[\w./-]+\.[A-Za-z0-9]+:\d+")
@@ -327,6 +329,10 @@ def cmd_climb_round(args: argparse.Namespace) -> int:
     important = sum(item["severity"] == "important" for item in merge(reports))
     if not 0 <= args.refuted <= important:
         raise SystemExit(f"hill-climb: --refuted must be 0 to {important}, the important count")
+    try:
+        metrics = round_metrics(args.dir, lenses, state["rounds"], merge(reports), args.usage)
+    except (OSError, ValueError) as error:
+        raise SystemExit(f"hill-climb: usage evidence refused: {error}") from error
     state["rounds"].append({
         "lenses": lenses,
         "dir": str(args.dir.resolve()),
@@ -335,20 +341,11 @@ def cmd_climb_round(args: argparse.Namespace) -> int:
         "highs": {p: max(values) for p, values in grades.items()},
         "important": important - args.refuted,
         "past_stop": bool(args.past_stop),
+        "metrics": metrics,
     })
     args.state.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
-    rounds = state["rounds"]
-    print("| property | " + " | ".join(f"r{n}" for n in range(1, len(rounds) + 1)) + " |")
-    print("|---|" + "---|" * len(rounds))
-    for p in state["properties"]:
-        cells = [
-            f"{r['scores'][p]:g}"
-            + (f"-{r['highs'][p]:g}" if r["highs"][p] != r["scores"][p] else "")
-            for r in rounds
-        ]
-        print(f"| {p} | {' | '.join(cells)} |")
-    print(f"| important findings | {' | '.join(str(r['important']) for r in rounds)} |")
-    print(f"\ndecision: {decide(state)}")
+    print(f"decision: {decide(state)}\n")
+    print_rounds(state)
     return 0
 
 
@@ -375,6 +372,7 @@ def parser() -> argparse.ArgumentParser:
     step.add_argument("--dir", type=Path, required=True)
     step.add_argument("--past-stop", action="store_true")
     step.add_argument("--refuted", type=int, default=0)
+    step.add_argument("--usage", type=Path, help="usage manifest bound to this round replies")
     step.set_defaults(run=cmd_climb_round)
     return root
 

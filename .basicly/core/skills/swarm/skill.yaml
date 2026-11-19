@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 84
+  listing: 72
 name: swarm
 invocation: model
-description: "Runs several fresh agents on one artifact, one lens each, and merges their evidence into a verdict table; in teardown mode it also verifies, answers and fixes every finding. Use when asked for an agent swarm, several reviewers, a multi-agent review, or to tear down or find everything wrong with a diff, plan, design or document."
+description: "Runs fresh agents on one artifact, one lens each, and merges their evidence into a verdict table; teardown mode also fixes each finding. Use for an agent swarm, several reviewers, a multi-agent review, or to tear down or find everything wrong with a diff, plan, design or document."
 instructions: |
   # Swarm
 
@@ -18,7 +18,7 @@ instructions: |
 
   1. **Frame.** Name the artifact, the question and 3 to 6 lenses that do not overlap, with rubrics from [lenses](references/lenses.md). In teardown mode the question is "what is wrong with this artifact?" and the lenses are the preset for its type. When the user names fewer than 3 lenses, add the closest lenses to reach 3 and say which. For one claim, propose `falsify-first`, run by a fresh agent that did not make the claim; run the swarm when the user still asks for it.
   2. **Brief.** Fill [the brief](assets/brief.md) once per lens: its rubric, a reading list of at most 6 items, a word cap of 400 unless the user sets one. Pass the artifact, never your own conclusion.
-  3. **Launch.** Start all agents in one message so they run in parallel, with the agent that [lenses](references/lenses.md) names for each lens. A named agent runs on the tier of its definition. For a general-purpose agent, always pass `model`: the `alias` that `python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier medium` prints, or the one for `high` when the lens needs more judgement. An agent started with no `model` runs on the session model. Never start a reviewer on `maximum`. Use lower effort for a mechanical lens.
+  3. **Launch.** Start all agents in one message so they run in parallel, with the agent that [lenses](references/lenses.md) names for each lens. A named agent runs on the tier of its definition. For a general-purpose agent, always pass `model`: the `alias` that `python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier medium` prints, or the one for `high` when the lens needs more judgement. For a start without an explicit model, follow the model selection order in `tier-injection`. Never start a reviewer on `maximum`. Use lower effort for a mechanical lens.
   4. **Collect.** Save each reply as `DIR/LENS.md`. Wait for each agent's completion notice; never write a reply for an agent that has not returned. An agent that fails or stops without a reply has not returned.
   5. **Check.** Run:
 

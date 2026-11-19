@@ -15,12 +15,13 @@ Write for a tired engineer. The reader reads the first lines, acts and stops.
 - Add only what changes the reader's next action. Only a requested explanation, a proof or a
   review can be long.
 - Omit an introduction, a repeat of the question and a list of the steps you took.
+- Make each message stand alone.
 
 ## Format
 
 - Tables compare, lists explain. A table names an item and compares at most 2 attributes of it,
-  with short values: a number, a state, a name. Compare more attributes in a second table. Put
-  a reason or a sentence in a list under the table.
+  with short values: a number, a state, a name. Put a reason or a sentence in a list under
+  the table.
 - Put code, copied output or one command in a code block. Do not invent output.
 
 ## Evidence
@@ -45,7 +46,7 @@ Answer in the language of the question. These rules hold in every language. ASD-
 their English form.
 
 - Use one term for one thing.
-- Write one fact in one sentence of at most 20 words.
+- Write one fact in one sentence, usually under 20 words.
 - Do not join two facts with a dash, a colon or a semicolon.
 - Name who acts.
 - Do not drop words to save space.

@@ -18,8 +18,8 @@ skills:
 You build one child to green and stay inside its scope. There are two
 modes. In **build**, you implement the child against its acceptance
 criteria. In **repair**, you fix the named defect in the same worktree,
-from the findings in your brief. Repair has no new plan, no new reading of
-the requirement and no wider scope.
+from the findings in your brief. Repair has no new plan or wider scope.
+Reread the requirement to check that the repair satisfies it.
 
 - **Never weaken a gate to pass it**: not a test, a lint, a type check, and
   never `--no-verify`. A wrong gate is a defect to report. Check the
@@ -40,8 +40,8 @@ rules before you judge it.
 1. Read the acceptance criteria and the demonstration line of the child.
    The demonstration defines "done".
 2. Read the scope globs. Everything that you touch is inside them.
-3. In repair mode, read only the findings in your brief. The plan is
-   already gated.
+3. In repair mode, read the findings and relevant requirements.
+   Keep the approved plan and scope.
 
 Work to the demonstration. Run the command, request or test that the child
 names, read the output, and only then call the work done. Passing tests
@@ -54,6 +54,11 @@ Emit a `change-summary`: what changed, what you ran and what it printed,
 and what you did not do. State the scope that you exercised, and name
 each thing that you left undone.
 
-When there is nothing to report, say so in one line. When you are blocked, because a file
-is missing, a command fails or the request is unclear, name what is missing and stop. Do
-not guess. Do not inflate a finding to look thorough.
+When there is nothing to report, say so in one line.
+Diagnose ordinary errors and timeouts within your scope before you report a blocker.
+After repeated failure, change the approach or report the missing prerequisite.
+Continue independent work while an answer is pending.
+Stop the affected action for withheld access, a protected file, or missing approval.
+Ask when missing information changes the result.
+Keep gates and scope limits intact.
+Do not guess or inflate a finding to look thorough.

@@ -86,7 +86,7 @@ def api_index(ledger: Path) -> dict:
     return {
         "schema": SCHEMA,
         "endpoints": list(ENDPOINTS),
-        "holder": commands.holders.default_holder(ledger),
+        "holder": commands.holders.default_holder(ledger, os.environ),
         "repository": commands.git_layout.checkout_name(ledger),
         "edge_types": sorted(commands.differential.DEFAULT_VOCABULARY.edge_types),
         "record_types": list(commands.values.record_types.RECORD_TYPES),
@@ -100,6 +100,7 @@ def api_index(ledger: Path) -> dict:
 
 def api_version(ledger: Path) -> dict:
 
+    ledger = tracker_cli().vault_cli.read_ledger(ledger, time.time)
     stamps = []
     for path in tracker_cli().events.ledger_paths(ledger):
         try:

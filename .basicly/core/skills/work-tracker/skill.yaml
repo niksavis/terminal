@@ -4,12 +4,59 @@ token_cost:
   listing: 41
 name: work-tracker
 invocation: model
-description: "Reads, files, claims and closes records in the ledger tracker. Use to plan work, check what is ready, file a bug, or claim a record before work starts."
+description: "Reads, files, claims and closes records in the work tracker. Use to plan work, check what is ready, file a bug, or claim a record before work starts."
 instructions: |
   # Work Tracker
 
-  The tracker is an append-only event log in `.basicly/ledger/`, committed with the code. Each write appends an event. A record is its events read in order.
+  Before implementation after a clone or pull, establish persistent tracker memory:
+
+  ```sh
+  uv run --no-project --python '>=3.14' python .basicly/tracker-bootstrap.py
+  ```
+
+  Stop implementation if bootstrap refuses. Follow its runtime, setup or credential remedy.
+  Bootstrap configures this machine without repeating repository migration or replacing unrelated settings.
+  With the engine installed, `basicly tracker bootstrap` establishes the same machine context before work.
+
+  The tracker is an append-only event log. Ledger mode writes `.basicly/ledger/`, committed with the code. With `.basicly-tracker.toml`, writes queue vault events beside the clone; own pending writes are visible and marked `pending` until shared.
   The kit is `python3 .basicly/core/kit/tracker/cli.py`, which needs nothing installed. The engine is `basicly tracker`, which works when `basicly` is on PATH.
+
+  ## Agent tools
+
+  The installed kit includes an MCP server. It needs no engine or third-party package.
+  Bind one process to one repository root.
+
+  ```sh
+  python3 .basicly/core/kit/tracker/mcp_server.py --repository REPOSITORY-ROOT
+  ```
+
+  Print client registration from the same installed kit.
+
+  ```sh
+  python3 .basicly/core/kit/tracker/mcp_config.py --client codex --repository REPOSITORY-ROOT
+  ```
+
+  The default scope is the user. Use `--scope project` for repository configuration.
+  Merge the returned server entry and preserve unrelated settings.
+  Codex requires its generated `env_vars` field to forward tracker identity into MCP.
+  The harness launcher gives each new foreground client a distinct tracker session.
+
+  ```sh
+  basicly tracker agent -- codex --no-daemon
+  ```
+
+  Use `--no-daemon` to isolate Codex from an existing shared server.
+  Desktop and already-running clients need their supported environment configuration.
+
+  Set `BASICLY_TRACKER_SESSION` to your unique agent session before launching tools and Git hooks.
+  Set `BASICLY_HOLDER` to your chosen holder name. Concurrent agents need different sessions.
+  Use `tracker_ready`, `tracker_show` and `tracker_create` to find and shape work.
+  Use `tracker_review` before claiming larger work.
+  Only a settled successful `tracker_claim` authorizes work.
+  In vault mode, then use `tracker_update` to set `status` to `in_progress`.
+  Use `tracker_confirm` with observed evidence before `tracker_close`.
+  Inspect `isError`, `exit_code` and the tracker report after every call.
+  Reconnect after changing `.basicly-tracker.toml`. Never replace the frozen ledger guard with a directory.
 
   ## Steps
 
@@ -26,20 +73,20 @@ instructions: |
   ```
 
   1. **Find or file the record before the work.** Give it a `## Context` and at least one acceptance criterion; a record bigger than `size=small` also needs `review --evidence` before the claim. Run `create` alone and read the id from its reply; the `tracker-commit-msg` hook refuses a commit that names an id the ledger does not hold.
-  2. **Claim it before the first edit,** then push, because others see a claim only after they pull. A refused claim prints a `refused` key and exits 1; fix what it names, then claim again.
+  2. **Claim it before the first edit.** In ledger mode, push so others can see it. In vault mode, use the native canonical claim, then set `in_progress` through update; the claim has its own exit codes and does not bypass readiness. A refusal names its remedy; follow it before retrying.
   3. **Confirm, then close it** once the whole task is done: `confirm` records each criterion with its command and result, as `{"checks": [{"criterion": "...", "command": ["argv"], "result": "what you saw", "exit_code": 0}]}`, and `close` refuses without it.
-  4. **Commit the code and the staged `.basicly/ledger` together**, with the id in the subject; the hooks read the Git index. Make no separate close commit.
+  4. **Commit with the id in the subject.** In ledger mode, stage the code and `.basicly/ledger` together; make no separate close commit. Vault mode writes no local ledger events.
 
-  When `basicly` is on PATH, `basicly tracker write -- ...` runs the writes through the engine with the grammar in [write](references/write.md); a claim there is `update RECORD-ID --status in_progress`.
+  When `basicly` is on PATH, `basicly tracker write -- ...` runs the writes through the engine with the grammar in [write](references/write.md). An engine claim is `update RECORD-ID --status in_progress` in ledger mode; vault mode needs the native canonical claim first. The write reference classifies all 15 vault forms and their remedies.
 
   ## Rules
 
-  - **Never take a record that someone holds.** `ready` names each holder; `--take` is for an agreed handover only. The holder is `--to`, else `BASICLY_HOLDER`, else `git config basicly.holder`, else your git name; set `basicly.holder` to a pseudonym, because the ledger is committed.
+  - **Never take a record that someone holds.** `ready` names each holder; `--take` is for an agreed handover only. Ledger mode uses `--to`, else `BASICLY_HOLDER`, else `git config basicly.holder`, else your git name. Vault claims use your chosen `BASICLY_HOLDER` or `basicly.holder`, else writer/session ids. Choose a pseudonym before publishing a name.
   - **Name a record by its title, with the id as the address.** A person cannot read a bare id.
   - **Never edit, delete or reorder a line in an event file.** Append the write that supersedes the wrong one.
   - **Probe against a scratch ledger directory, never the live one:** `python3 .basicly/core/kit/tracker/cli.py create "$(mktemp -d)" --prefix probe --title probe`. The log has no undo.
   - **Check the output shape before you parse it.** `show` on an absent record prints `{"found": false}`. The kit `create` prints JSON; read its `record` field. The engine `create` prints `created: RECORD-ID`, or JSON with `--json`.
-  - **Use one ledger per repository, never one per worktree.** The git-ignored `.basicly/ledger/redirect` points every worktree at the same log.
+  - **Use one tracker per repository, never one per worktree.** Ledger mode shares its log through `.basicly/ledger/redirect`. Vault mode uses the same vault and project prefix in every worktree. Keep the frozen guard and archive intact.
 
   ## Read when needed
 

@@ -3,6 +3,8 @@
 Each rule names its source. The source is a key of `SOURCES` in `scripts/fetch_docs.py`.
 A rule tagged **API only** applies only to code that calls the Claude Messages API itself.
 A repository that runs the `claude` command line tool marks it "not applicable".
+Classify each finding from the live source before proposing a change.
+A vendor recommendation is not an interface requirement.
 
 ## Contents
 
@@ -12,6 +14,7 @@ A repository that runs the `claude` command line tool marks it "not applicable".
 - Subagents
 - Permissions and tools
 - Context and cache
+- Model prompting
 - API only
 
 ## Skills
@@ -84,6 +87,15 @@ A repository that runs the `claude` command line tool marks it "not applicable".
 | Read the cache TTL from `claude -p "hello" --output-format json`: `usage.cache_creation.ephemeral_1h_input_tokens` and `ephemeral_5m_input_tokens`. | claude-code-prompt-caching |
 | A prompt below the minimum cacheable length is not cached, and no error says so. The minimum depends on the model. | prompt-caching |
 | Measure tokens on the model in use. The tokenizer of Claude Opus 4.7 and later gives about 30 percent more tokens for the same text. | token-counting |
+
+## Model prompting
+
+| Rule | Kind | Source |
+| --- | --- | --- |
+| Compare effort levels on representative tasks before choosing defaults. | Recommendation | fable-prompting |
+| Separate recoverable errors from permission and access blockers. | Recommendation | fable-prompting |
+| Review repeated delegation, accumulated cautions, and instructions from earlier models. | Recommendation | fable-prompting |
+| Change prompts separately and measure their effects. | Recommendation | fable-prompting |
 
 ## API only
 

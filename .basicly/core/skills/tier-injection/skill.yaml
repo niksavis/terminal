@@ -12,7 +12,7 @@ instructions: |
 
   ## Rules
 
-  - **Set `CLAUDE_CODE_SUBAGENT_MODEL` as a machine-wide default.** Then no untiered subagent inherits the session model. Since Claude Code 2.1.251 a model the hook writes outranks the variable; on an older Claude Code the variable wins.
+  - **Set `CLAUDE_CODE_SUBAGENT_MODEL` as a machine-wide fallback.** The [model selection order](#model-selection-order) defines when it applies.
   - **Relaunch the whole CLI process after a first install.** The host does not watch a directory that did not exist at startup. `/clear` reloads neither hooks nor agents.
   - **Remove a `model` pin to let the tier decide.** The hook leaves a definition that pins its own `model`, and a spawn that names one.
   - **Commit `.basicly/core/models/model-map.json` in the repository.** A repository with no map in its own tree gets no rewrite.
@@ -47,7 +47,29 @@ instructions: |
   ## Behaviour to expect
 
   - The hook writes an alias such as `opus`, not a model id. The `model` field of the Agent tool takes an alias. The frontmatter of a definition takes a full model id.
-  - A tier that the map marks `unavailable` resolves to nothing, never to the model of another tier.
+  - An unresolved tier declared by an agent refuses its spawn where this kit has an installed model map.
+    Repair the map or explicitly select a supported model.
+    An optional default does not block a spawn.
+  - The map records a concrete model version. Claude aliases select a family through the host's model settings.
+    Compare resolved and observed models before using a run as evidence for a specific version.
+
+  ## Model selection order
+
+  Verified 2026-11-13 with Claude Code 2.1.323 against [the vendor documentation](https://code.claude.com/docs/en/sub-agents#choose-a-model) and this kit's hook.
+  Since Claude Code 2.1.251, the normal order is:
+
+  1. The invocation's `model` parameter.
+  2. The definition's `model` field. `inherit` selects the session model here.
+  3. `CLAUDE_CODE_SUBAGENT_MODEL`.
+  4. The session model.
+
+  The kit's `PreToolUse` hook preserves explicit invocation models and definition model pins.
+  Otherwise, it resolves the declared tier and writes the invocation model before this selection.
+  `BASICLY_DEFAULT_TIER` supplies a fallback tier only for an untiered `general-purpose` start.
+  Before 2.1.251, `CLAUDE_CODE_SUBAGENT_MODEL` outranked invocation and definition models.
+  `CLAUDE_CODE_SUBAGENT_MODEL_FORCE=1` overrides the normal order, subject to the vendor's fork and inherited-skill exceptions.
+  An installed mod's `agent.spawn` hook can replace the invocation model. This is distinct from the kit's `PreToolUse` hook.
+  Compare the observed model with the requested model before reporting version-specific cost or behavior.
 
   ## Choose the model by role
 
@@ -55,6 +77,6 @@ instructions: |
   - **Delegated work names a tier.** Use `medium` by default, `high` for a judgement the owner would otherwise repeat, and `low` only to run a test suite or a mechanical search. A dispatch never names a provider model id; the model map resolves the tier.
   - **`maximum` is Fable, and Fable is never a delegated worker.** It has two roles. As advisor (`/advisor fable`), ask it when a problem survived two failed approaches or a decision is hard to undo. As orchestrator, make it the session model for work larger than one context window, or for routine work with a long cost tail.
   - **Raise the effort level before you add a second model.**
-  - A start with no tier and no `model` runs on the session model. Name the model in the call. As a net, set `BASICLY_DEFAULT_TIER=medium` in the `env` block of a Claude settings file: the hook then gives an untiered `general-purpose` start that tier.
+  - For a start without an explicit model, follow the [model selection order](#model-selection-order).
 
   For the measured cost of each choice, read [roles](references/roles.md).

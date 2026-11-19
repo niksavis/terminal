@@ -19,15 +19,16 @@ instructions: |
 
   > Modified by basicly on 2026-10-02 from vercel-labs/skills find-skills at 3694740 (MIT, see `LICENSE.txt`).
 
-  Find a skill that already does the job before anyone writes a new one. Search the
-  installed catalog first, then the open skills registry at skills.sh. Install nothing
-  without the consent of the user.
+  Classify the request before searching. Use discovery when the user asks to find or create a skill.
+  For an implementation request, complete the authorized task with available skills and tools.
+  Do not replace implementation with discovery or ask for the same task approval again.
+  For discovery, search the installed catalog first, then skills.sh. Install nothing without the consent of the user.
 
   ## When to use it
 
   - The user asks "is there a skill for X" or "find a skill for X".
-  - The user asks "how do I do X" or "can you do X", and X is a common, specialized task.
-  - The user wants to extend the agent with a domain: design, testing, deployment.
+  - The user asks which skill could support a named task.
+  - The user asks to find a skill for a domain, such as design, testing or deployment.
   - Before the `skill-creator` skill drafts a new skill.
 
   ## Rules
@@ -103,13 +104,9 @@ instructions: |
   ## When nothing is found
 
   1. Say that no existing skill matched.
-  2. Offer to do the task directly.
-  3. When the user does the task often, offer to create a skill with the `skill-creator`
-     skill.
+  2. If the user also requested implementation, continue that authorized task with available tools.
+  3. When the user does the task often, offer to create a skill with `skill-creator`.
 
   ```text
   I searched for skills related to "xyz" and found no match.
-  I can still do this task directly. Do you want me to go ahead?
-
-  If you do this often, I can create a skill for it and test it.
   ```

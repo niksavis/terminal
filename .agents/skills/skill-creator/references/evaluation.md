@@ -110,8 +110,13 @@ forced assertions. Update `eval_metadata.json` and `evals.json` with the asserti
 
 ### Step 3: Record the timing as each run completes
 
-The completion notice of each subagent holds `total_tokens` and `duration_ms`. It is the
-only place that holds them, so save them at once to `timing.json` in the run directory:
+Record actual timing and token metrics when the host supplies them through a completion notice or run metadata.
+For sequential runs, measure elapsed time when available. Save supported measurements to `timing.json` using the existing fields.
+Mark unavailable metrics as unknown in the report. Do not invent token totals or substitute zero for missing measurements.
+A cost comparison with unknown token counts is incomplete. Continue qualitative grading without claiming measured cost results.
+Known fault `basicly-50rls3p` substitutes output characters for missing token totals. Do not treat that substitution as token usage.
+
+When the host provides these measurements, the existing shape is:
 
 ```json
 {
@@ -127,7 +132,8 @@ only place that holds them, so save them at once to `timing.json` in the run dir
    `references/grader.md`. Save the result to `grading.json` in the run directory. Its
    `expectations` array uses the fields `text`, `passed` and `evidence`, because the
    viewer reads those names. Check an assertion with a script when a script can check it.
-2. **Aggregate into a benchmark.** This writes `benchmark.json` and `benchmark.md` with
+2. **Aggregate only when metrics are known.** If timing or token counts are unknown, report the cost comparison as incomplete.
+   Continue qualitative grading without aggregation. With complete metrics, this writes `benchmark.json` and `benchmark.md` with
    the pass rate, time and tokens of each configuration, the mean, the standard deviation
    and the delta. List each `with_skill` configuration before its baseline.
 
@@ -135,11 +141,12 @@ only place that holds them, so save them at once to `timing.json` in the run dir
    python3 -B <skill-dir>/scripts/aggregate_benchmark.py <workspace>/iteration-N --skill-name <name>
    ```
 
-3. **Do an analyst pass.** Read the benchmark for patterns that the averages hide: an
+3. **Do an analyst pass.** Without a complete benchmark, review grading and output notes directly.
+   With a benchmark, read it for patterns that the averages hide: an
    assertion that passes with and without the skill, a high-variance eval, a time or token
    cost. The "Analyzing Benchmark Results" section of `references/analyzer.md` lists them.
 4. **Open the viewer** with the outputs and the numbers. Use this script; do not write
-   custom HTML.
+   custom HTML. Omit `--benchmark` when the metrics are incomplete.
 
    ```sh
    python3 -B <skill-dir>/scripts/generate_review.py <workspace>/iteration-N \
@@ -152,7 +159,7 @@ only place that holds them, so save them at once to `timing.json` in the run dir
    `--static <workspace>/review.html` to write one self-contained file instead. The page
    loads nothing from the network.
 5. **Tell the user** that the results are open: the "Outputs" tab shows each test case
-   with a feedback box, and the "Benchmark" tab shows the numbers.
+   with a feedback box. The "Benchmark" tab shows numbers when a complete benchmark exists.
 
 Open the viewer before you judge the outputs yourself, so that the user sees them early.
 

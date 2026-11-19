@@ -54,6 +54,11 @@
     "override": {"type": "boolean"},
     "replaces": {"type": "array", "items": {"type": "string"}},
     "extends": {"type": "array", "items": {"type": "string"}},
+    "requires": {
+      "type": "array",
+      "items": {"enum": ["orchestration"]},
+      "description": "Features a workspace must enable in basicly.toml before this fragment is projected; absent means always projected."
+    },
     "enforced_by": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},

@@ -31,6 +31,19 @@ def _pin() -> Any:
     return module
 
 
+def harness() -> Any:
+    name = "basicly_tracker_kit_vault_cli"
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, _HERE / "vault_cli.py")
+    if spec is None or spec.loader is None:
+        raise ImportError("the tracker kit's vault_cli.py is missing; reinstall the tracker kit")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 class Tracker(NamedTuple):
     file: str
     command: str

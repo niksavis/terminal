@@ -20,7 +20,7 @@ Anthropic measured these on its own benchmarks. Source: `platform.claude.com/doc
 - The main model decides when to call the advisor. A subagent inherits the advisor of its session, and its cost.
 - A Fable advisor bills at Fable rates, to usage credits on a subscription plan.
 - A Fable 5.2 session accepts only Fable 5.2 as advisor. `CLAUDE_CODE_DISABLE_ADVISOR_TOOL=1` turns the advisor off.
-- basicly configures no advisor. Turn it on for the hard problem, then turn it off with `/advisor off`.
+- basicly configures no advisor by default. Turn it on for the hard problem, then turn it off with `/advisor off`. To keep one for every session on a machine, run `basicly claude-user --advisor <alias>`.
 
 ## Known exception
 

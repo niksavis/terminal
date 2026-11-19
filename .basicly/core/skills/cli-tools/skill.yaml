@@ -4,7 +4,7 @@ token_cost:
   listing: 59
 name: cli-tools
 invocation: model
-description: "Picks the shell tool and its flags: rg, fd, jq, yq, curl, shellcheck, sd, ast-grep, typos, git, uv or tmux. Use to find files that mention a word, list files, read a JSON or YAML field, call an HTTP endpoint and show the response, or replace text."
+description: "Picks the shell tool and its flags: rg, fd, jq, yq, curl, shellcheck, sd, ast-grep, typos, git, uv or tmux. Use to find files that mention a word, list files, read a JSON or YAML field, call an HTTP endpoint or replace text."
 resource_technologies:
   references/starship.md: [starship]
   references/tmux.md: [tmux]

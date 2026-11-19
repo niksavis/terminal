@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 86
-  codex: 86
-  copilot: 86
+  claude: 128
+  codex: 128
+  copilot: 128
 id: quality-gate
 description: How to verify a change before you report it done.
 category: project
@@ -18,3 +18,4 @@ body: |
   - While editing, run the tests affected by the change. Continuous integration runs the full suite.
   - Keep all required gates enabled. Report what ran, what failed and what did not run.
   - After a failed check, or for a release candidate, read the `harness-loop` skill's verification reference.
+  - CI never reads tracker records, because the tracker is agent memory and a work list, not the product. Mark a check that reads records `local_only = true`; CI runs `basicly verify --mode full --ci`.

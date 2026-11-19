@@ -216,7 +216,10 @@ Output from the executor agent. Located at `<run-dir>/outputs/metrics.json`.
 
 Wall clock timing for a run. Located at `<run-dir>/timing.json`.
 
-**How to capture:** When a subagent task completes, the task notification includes `total_tokens` and `duration_ms`. Save these immediately — they are not persisted anywhere else and cannot be recovered after the fact.
+**How to capture:** Save actual host metrics when available, from a completion notice or run metadata.
+For sequential runs, record measured elapsed time. Mark unavailable metrics as unknown in the report.
+Preserve these numeric fields when measurements exist. Do not substitute zero for an unavailable measurement.
+A cost comparison with unknown token counts is incomplete.
 
 ```json
 {

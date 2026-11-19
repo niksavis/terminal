@@ -185,8 +185,12 @@ output is the contract.
 
 1. **The hook copies every key of the original tool input and adds only `model`.** It does
    not remove or change other keys.
-2. **The hook adds `model` only when the tool input has none.** If the input or the
-   definition frontmatter already names a model, the hook does nothing.
+2. **The hook adds `model` only when the tool input has none.**
+   An explicit model in the input or definition remains unchanged.
+   An Agent call with `model: fable` receives a warning about the maximum tier.
+   This warning does not deny the call or rewrite its input.
+   Maximum is for advice or orchestration.
+   Worker defaults use `low`, `medium` or `high`.
 3. **The hook writes the short alias, not the full model id.** The aliases are `haiku`,
    `sonnet`, `opus` and `fable` for the tiers `low`, `medium`, `high` and `maximum`.
 4. **Since Claude Code 2.1.251, the model the hook writes outranks
@@ -217,6 +221,11 @@ $ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_typ
   nothing and returns a `systemMessage` warning that names the variable, the value and the
   allowed values. The host shows that warning to you. It does not show the stderr of a hook
   that exits 0.
+- The resolver applies the same worker restriction to environment defaults and `--default-tier`.
+  It returns no model and exits with failure for an invalid default.
+  The CLI reason matches the hook warning.
+  Explicit tiers and tiers declared by an agent outrank the default.
+  An explicit `--tier maximum` therefore remains available for advice or orchestration.
 
 ## Debug an injection
 

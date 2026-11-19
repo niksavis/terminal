@@ -29,6 +29,7 @@ snapshot = _load("snapshot.py", "basicly_tracker_kit_snapshot")
 holders = _load("holders.py", "basicly_tracker_kit_holders")
 templates = _load("templates.py", "basicly_tracker_kit_templates")
 values = _load("values.py", "basicly_tracker_kit_values")
+vault_pending = _load("vault_pending.py", "basicly_tracker_kit_vault_pending")
 events = differential.events
 
 
@@ -46,7 +47,9 @@ def folded(directory: Path | str) -> dict[str, Any]:
 
 def read_record(directory: Path | str, record: str) -> dict[str, object] | None:
     state = folded(directory).get(record)
-    return None if state is None else snapshot.record_to_dict(state)
+    return (
+        None if state is None else vault_pending.annotate(directory, snapshot.record_to_dict(state))
+    )
 
 
 def query_records(
@@ -74,7 +77,7 @@ def query_records(
         and (wanted is None or records[key].status in wanted)
         and (not needle or needle in _search_text(records[key]))
     ]
-    return matched if limit is None else matched[:limit]
+    return vault_pending.annotate(directory, matched if limit is None else matched[:limit])
 
 
 def _search_text(state: Any) -> str:
@@ -138,7 +141,9 @@ def ready(directory: Path | str, limit: int | None = None, mine: str = "") -> di
             "holder": held,
         })
     rows = rows if limit is None else rows[:limit]
-    return {"schema": order.schema, "sort": order.sort, "count": len(rows), "records": rows}
+    return vault_pending.annotate(
+        ledger, {"schema": order.schema, "sort": order.sort, "count": len(rows), "records": rows}
+    )
 
 
 def blocked(directory: Path | str) -> dict[str, object]:
@@ -162,7 +167,7 @@ def blocked(directory: Path | str) -> dict[str, object]:
             "blocked_by": _open_blockers(view, views, vocabulary),
             "children": differential.open_children(record, views, children, vocabulary),
         })
-    return {"count": len(rows), "records": rows}
+    return vault_pending.annotate(directory, {"count": len(rows), "records": rows})
 
 
 def _open_blockers(view: Any, views: Mapping[str, Any], vocabulary: Any) -> list:
@@ -192,11 +197,14 @@ def stats(directory: Path | str) -> dict[str, object]:
         if state.status == "closed":
             resolution = str(state.fields.get("close_resolution") or "historical")
             by_resolution[resolution] = by_resolution.get(resolution, 0) + 1
-    return {
-        "records": len(folded) - tombstoned,
-        "tombstoned": tombstoned,
-        "by_status": dict(sorted(by_status.items())),
-        "by_resolution": dict(sorted(by_resolution.items())),
-        "ready": ready(ledger)["count"],
-        "blocked": blocked(ledger)["count"],
-    }
+    return vault_pending.annotate(
+        ledger,
+        {
+            "records": len(folded) - tombstoned,
+            "tombstoned": tombstoned,
+            "by_status": dict(sorted(by_status.items())),
+            "by_resolution": dict(sorted(by_resolution.items())),
+            "ready": ready(ledger)["count"],
+            "blocked": blocked(ledger)["count"],
+        },
+    )

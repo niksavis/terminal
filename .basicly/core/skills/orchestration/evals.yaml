@@ -1,0 +1,32 @@
+schema_version: 1
+trigger:
+  positive:
+    - prompt: "as the orchestrator, decide whether the app session may edit the CI workflow for the migration"
+    - prompt: "relay the person's approval for the push to the library session"
+    - prompt: "order the app session to rehearse the migration runbook"
+  negative:
+    - prompt: "split this epic into child tasks with acceptance criteria"
+      owner: decompose-plan
+    - prompt: "claim the record and start work on it"
+      owner: work-tracker
+tasks:
+  - query: "As the orchestrator, decide the app session's ask-first item: it wants to delete one line from .github/workflows/gates.yml in its repository for record app-12."
+    expected_behavior:
+      - "Writes the decision on the orchestration record before it sends the message"
+      - "Quotes the rule that lets the orchestrator decide ask-first items, with its date"
+      - "Names the record, the entry stamp, the exact diff and the target repository"
+      - "Maps each named risk to a check in the action, or asks the person"
+  - query: "The person said 'push it' at 09:12 UTC. Relay this to the library session for its release tag."
+    expected_behavior:
+      - "Quotes the person's words and a UTC time taken from a clock call"
+      - "Names the tracker record, the exact push command and the target repository"
+      - "Does not turn the approval into an orchestrator decision"
+  - query: "Order the app session to rehearse the storage migration runbook before the live run."
+    expected_behavior:
+      - "Orders a scratch copy with a local stand-in for the remote"
+      - "Includes a fresh clone and CI run locally with no credentials"
+      - "Gives each step a rollback and a stop on a count mismatch"
+  - query: "Ask the web session which commit its main branch is on."
+    expected_behavior:
+      - "Reads the commit with a read-only git command instead of asking"
+      - "Names the command in the message that uses the fact"

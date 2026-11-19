@@ -5,19 +5,92 @@ description: Use the append-only work tracker as this repository's issue tracker
 
 # The work tracker
 
-The tracker is an append-only event ledger in `.basicly/ledger/`, committed with the code.
-Every command takes the ledger directory as its first argument and prints one JSON object.
+Before implementation after clone or pull, run the committed machine bootstrap:
+
+```sh
+uv run --no-project --python '>=3.14' python .basicly/tracker-bootstrap.py
+```
+
+It reuses a suitable tracker or provisions the pinned user tool with uv.
+An explicit repository sandbox uses its committed bundle.
+If setup or vault access fails, stop implementation and follow the named remedy.
+Do not repeat repository migration or replace unrelated machine settings.
+
+The tracker stores append-only work events.
+With `.basicly-tracker.toml`, the private vault holds shared history for the configured project.
+`.basicly/ledger` can be a frozen guard file. Never replace it with a directory.
+Without vault configuration, `.basicly/ledger/` holds events committed with the code.
+Commands print JSON. Vault claim, comment, sync and integrity commands use their native forms below.
 `.basicly/kit/tracker/REFERENCE.md` lists every command with one example.
+
+## Agent tools
+
+The installed tracker includes an MCP server and the CLI.
+MCP lets an agent discover tools and their input fields.
+Run the server with an explicit repository root.
+
+```sh
+basicly-tracker mcp --repository REPOSITORY-ROOT
+```
+
+A repository sandbox uses its bundled script instead.
+
+```sh
+python3 .basicly/tracker.pyz mcp --repository REPOSITORY-ROOT
+```
+
+Print client registration before changing its settings.
+The default scope is the user. Use `--scope project` for repository configuration.
+
+```sh
+basicly-tracker mcp-config --client codex --repository REPOSITORY-ROOT
+```
+
+Merge its server entry into the named destination and preserve unrelated settings.
+Codex needs the generated `env_vars` field to forward tracker identity and state selection into MCP.
+Use the same state location for the server and Git hooks.
+The foreground launcher gives each new client a distinct tracker session.
+
+```sh
+basicly-tracker agent -- codex --no-daemon
+```
+
+Use `--no-daemon` to isolate Codex from an existing shared server.
+Use the client's supported environment configuration for desktop or already-running servers.
+
+Set `BASICLY_HOLDER` to your chosen holder name.
+Set `BASICLY_TRACKER_SESSION` to your unique agent session before launching the server and Git hooks.
+Use separate session values for concurrent agents.
+Tools cannot change the repository, vault, project prefix or session identity.
+Reconnect after changing tracker configuration.
+
+Use `tracker_ready`, `tracker_show` and `tracker_create` to choose and shape work.
+Use `tracker_review` before claiming larger work.
+Only a settled successful `tracker_claim` authorizes work.
+In vault mode, then use `tracker_update` to set `status` to `in_progress`.
+Use `tracker_confirm` with observed evidence before `tracker_close`.
+Read `isError`, `exit_code` and the complete tracker report after every call.
+A queued write or pending claim does not prove canonical acceptance.
+
+Vault CLI forms use the configured vault from the repository root.
+
+```sh
+python3 .basicly/kit/tracker/cli.py claim RECORD-ID
+python3 .basicly/kit/tracker/cli.py update .basicly/ledger RECORD-ID --status in_progress
+python3 .basicly/kit/tracker/cli.py comment RECORD-ID --text "What changed"
+python3 .basicly/kit/tracker/cli.py sync
+python3 .basicly/kit/tracker/cli.py fsck
+```
 
 ## Rules
 
 - **Many people share this tracker. Never take a story that someone holds.** `ready` names
   the holder of each reserved story. `assign` and `claim` refuse a held story and name the
   holder; `--take` is for an agreed handover only.
-- **Reserve a story before you plan it, and push at once.** Run `assign` when you plan to
+- **Reserve a story before you plan it.** In ledger mode, run `assign` when you plan to
   work on a story, even days ahead, then commit and push the ledger. Others see a
   reservation only after they pull. Run `claim` when you start, and `unassign` when you
-  drop it.
+  drop it. In vault mode, use the canonical claim and inspect its settlement report.
 - **Read `ready` before you propose work.** Take the top row that nobody holds. Do not
   invent a task.
 - **Run `dor` before you build.** `ready` leaves out every record labelled `refine` or
@@ -33,9 +106,10 @@ Every command takes the ledger directory as its first argument and prints one JS
 - **Claim a record before you change code for it.** The `commit-msg` hook refuses a commit
   that changes files outside the ledger unless you hold a record it names in progress (or
   closed). Filing and closing commits that touch only the ledger pass.
-- **Stage the claim with its code.** The commit hook reads the Git index, not unsaved
+- **In ledger mode, stage the claim with its code.** The commit hook reads the Git index, not unsaved
   ledger changes. In a shared-ledger worktree, publish the claim on the base and update
   the lane from that committed base before committing its code.
+  In vault mode, hooks check canonical claims. Keep the same session identity through the commit.
 - **File what you notice.** A defect that you do not file is invisible to everyone else.
 
 ## Read
@@ -57,12 +131,17 @@ not a complete original contract. Source loss is reported; a longer read cannot 
 text already truncated by its writer. Preserve decisions, blockers, evidence, process
 ownership and next actions that cannot be derived; skip unchanged handover narration.
 
+These stale-holder and fork-resolution rules apply to ledger mode.
 A `holder` marked `stale` had no event for `stale_days` (14 by default); ask the holder
 before you take it. A story marked `contested` was reserved by two people on different
 branches; the two agree who keeps it, then run `resolve` to keep the current holder, or
 `claim --take` to change it.
 
 ## Write
+
+These directory forms describe ledger mode.
+For vault claims and comments, use the native forms under Agent tools.
+Create, update, review, confirm and close keep the `.basicly/ledger` argument in either mode.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix <p> --title "<what>" \
@@ -269,8 +348,10 @@ and leave the label on.
 
 ## What it refuses
 
-Every refusal exits 1, names the reason and the fix, and writes nothing. Read it and fix the
-cause. It refuses:
+Ledger admission refusals exit 1 and name their cause.
+Vault protocol commands retain their native exit codes and settlement reports.
+A pending claim can remain queued without granting ownership. Inspect its report before retrying.
+The tracker refuses:
 
 - a record id that the ledger does not hold, and an edge that makes a cycle;
 - a status outside `open`, `in_progress`, `blocked`, `deferred`, `closed`;
@@ -293,6 +374,10 @@ python3 .basicly/kit/tracker/cli.py board .basicly/ledger --out tracker-board.ht
 where a person reads, creates and edits records: see the `tracker-board` skill.
 
 ## Merges and the log
+
+These shard and Git rules apply only to ledger mode.
+Vault writes queue outside the project. Run `sync` to share them and inspect the result.
+Never compact or edit the frozen guard or archive.
 
 - A write appends to `pending-<branch>.jsonl`, and `merge=union` in `.gitattributes` keeps
   both sides of a merge. A merge needs nothing from you. If a merge conflicts on the log,

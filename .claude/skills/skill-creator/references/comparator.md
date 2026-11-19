@@ -212,5 +212,5 @@ If no expectations were provided, omit the `expectation_results` field entirely.
 - **Be decisive**: Choose a winner unless outputs are genuinely equivalent.
 - **Output quality first**: Assertion scores are secondary to overall task completion.
 - **Be objective**: Don't favor outputs based on style preferences; focus on correctness and completeness.
-- **Explain your reasoning**: The reasoning field should make it clear why you chose the winner.
+- **Justify the winner**: Give a short evidence-based justification in the existing `reasoning` field.
 - **Handle edge cases**: If both outputs fail, pick the one that fails less badly. If both are excellent, pick the one that's marginally better.

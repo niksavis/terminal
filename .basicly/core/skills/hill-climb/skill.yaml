@@ -1,10 +1,10 @@
 # yaml-language-server: $schema=../../schemas/skill.schema.json
 schema_version: 1
 token_cost:
-  listing: 65
+  listing: 50
 name: hill-climb
 invocation: model
-description: "Improves a plan, design, code or skill in graded rounds: fresh reviewers grade fixed properties 0 to 10, the author revises, and a script decides when to stop. Use when asked to hill-climb, iterate to a better version or improve something in rounds."
+description: "Improves a plan, design, code or skill in rounds graded by fresh reviewers until a script says stop. Use when asked to hill-climb, iterate to a better version or improve something in rounds."
 instructions: |
   # Hill Climb
 
@@ -27,12 +27,21 @@ instructions: |
      python3 -B ${CLAUDE_SKILL_DIR}/../swarm/scripts/swarm.py climb-round --state DIR/climb.json --lenses a,b,c --dir DIR/rN --refuted 0
      ```
 
-     Set `--refuted` to the number of important findings Verify refuted. The script prints the grade table and the decision; [rounds](references/rounds.md) lists what it refuses.
+     Set `--refuted` to the number of important findings Verify refuted.
+     Supply host usage with `--usage DIR/rN/usage.json` when available.
+     Follow [measurements](references/measurements.md) for the manifest and its limits.
+     Missing usage stays unknown.
+     The script prints the decision, grades, finding counts and reported usage.
+     [Rounds](references/rounds.md) lists the existing stop rules and refusals.
   4. **Revise or stop.** On continue, revise the artifact from the findings, note what changed, and go to step 2. On stop, report.
-  5. **Report.** Give the grade table, the final version, the changes per round and the open decisions, each with one recommendation.
+  5. **Report.** Give the final version, changes, grades, finding counts, reported usage and open decisions.
+     Name which verified finding or unresolved decision each revision addressed.
+     Give one recommendation for each open decision.
+     Report missing measurements and cost estimates explicitly.
 
   ## Rules
 
+  - Grades and citation counts do not prove usefulness or consumer readiness. Verify findings through the existing swarm steps.
   - The author never grades its own version. Grades come only from reviewer replies.
   - The properties stay the same after round 0. For a new property, start a new climb.
   - The script owns the stop rule. Run past a stop only when the user asks, with `--past-stop` on each extra round, and say so in the report.

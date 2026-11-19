@@ -65,6 +65,15 @@
       "items": {"type": "string", "minLength": 1},
       "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal."
     },
+    "requires": {
+      "type": "array",
+      "items": {"enum": ["orchestration"]},
+      "description": "Features a workspace must enable in basicly.toml before this agent is projected; absent means always projected."
+    },
+    "codex_role": {
+      "type": "boolean",
+      "description": "Also project the agent as a Codex role file under .agents/roles, passed to Codex as developer instructions at session start."
+    },
     "slots": {
       "type": "object",
       "additionalProperties": false,

@@ -72,10 +72,9 @@
   },
   "provenance": {
     "source_url": "https://models.dev/api.json",
-    "fetched_date": "2026-09-12",
-    "payload_sha256": "07617fe08e8038b5fa2d5018dfe896a7478d6f48f2e78af2bc308d32914c5560",
-    "payload_bytes": 4621537,
-    "etag": "\"07617fe08e8038b5fa2d5018dfe896a7\"",
+    "fetched_date": "2026-11-12",
+    "payload_sha256": "babf8232d337f0d00f80aa1573179cf0d1a97156ad5c8f7d2f3b583e6de7cb40",
+    "payload_bytes": 6103162,
     "note": "models.dev serves api.json as a CDN-cached generated artifact and publishes no git commit sha: the payload has no commit field and the response has no last-modified header. payload_sha256 plus etag is therefore the strongest available upstream identity, and no commit-sha field is claimed. Per-surface upstream_last_updated is models.dev's record date."
   },
   "tiers": {
@@ -88,73 +87,72 @@
       ],
       "vendors": {
         "anthropic": {
-          "anchor": "claude-haiku-4-5",
-          "model_name": "Claude Haiku 4.5 (latest)",
+          "anchor": "claude-haiku-5-5",
+          "model_name": "Claude Haiku 5.5",
           "family": "claude-haiku",
           "reasoning": true,
           "surfaces": {
             "anthropic": {
               "status": "available",
-              "model": "claude-haiku-4-5",
+              "model": "claude-haiku-5-5",
               "cost_usd_per_mtok": {
-                "input": 1,
-                "output": 5
+                "input": 0.1,
+                "output": 0.5
               },
               "limit_tokens": {
-                "context": 200000,
-                "output": 64000
+                "context": 1000000,
+                "output": 128000
               },
-              "upstream_last_updated": "2025-10-15"
+              "upstream_last_updated": "2026-10-07"
             },
             "github-copilot": {
               "status": "available",
-              "model": "claude-haiku-4.5",
+              "model": "claude-haiku-5.5",
               "cost_usd_per_mtok": {
-                "input": 1,
-                "output": 5
+                "input": 0.1,
+                "output": 0.5
               },
               "limit_tokens": {
-                "context": 200000,
-                "input": 136000,
-                "output": 64000
+                "context": 1000000,
+                "output": 128000
               },
-              "upstream_last_updated": "2025-10-15"
+              "upstream_last_updated": "2026-10-07"
             }
           }
         },
         "openai": {
-          "anchor": "gpt-5.6-luna",
-          "model_name": "GPT-5.6 Luna",
+          "anchor": "gpt-6-luna",
+          "model_name": "GPT-6 Luna",
           "family": "gpt-luna",
           "reasoning": true,
           "surfaces": {
             "openai": {
               "status": "available",
-              "model": "gpt-5.6-luna",
+              "model": "gpt-6-luna",
               "cost_usd_per_mtok": {
-                "input": 0.2,
-                "output": 1.2
+                "input": 0.1,
+                "output": 0.5
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-22"
             },
             "github-copilot": {
               "status": "available",
-              "model": "gpt-5.6-luna",
+              "model": "gpt-6-luna",
               "cost_usd_per_mtok": {
-                "input": 0.2,
-                "output": 1.2
+                "input": 0.1,
+                "output": 0.5
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-22"
             }
           }
         },
@@ -175,7 +173,7 @@
                 "context": 262144,
                 "output": 262144
               },
-              "upstream_last_updated": "2026-04-21"
+              "upstream_last_updated": "2026-04-20"
             },
             "github-copilot": {
               "status": "unavailable",
@@ -184,27 +182,27 @@
           }
         },
         "google": {
-          "anchor": "gemini-3.1-flash-lite",
-          "model_name": "Gemini 3.1 Flash Lite",
+          "anchor": "gemini-3.5-flash-lite",
+          "model_name": "Gemini 3.5 Flash Lite",
           "family": "gemini-flash-lite",
           "reasoning": true,
           "surfaces": {
             "google": {
               "status": "available",
-              "model": "gemini-3.1-flash-lite",
+              "model": "gemini-3.5-flash-lite",
               "cost_usd_per_mtok": {
-                "input": 0.25,
-                "output": 1.5
+                "input": 0.3,
+                "output": 2.5
               },
               "limit_tokens": {
                 "context": 1048576,
                 "output": 65536
               },
-              "upstream_last_updated": "2026-05-07"
+              "upstream_last_updated": "2026-07-21"
             },
             "github-copilot": {
               "status": "unavailable",
-              "reason": "provider 'github-copilot' serves no model named 'Gemini 3.1 Flash Lite'"
+              "reason": "provider 'github-copilot' serves no model named 'Gemini 3.5 Flash Lite'"
             }
           }
         }
@@ -219,14 +217,14 @@
       ],
       "vendors": {
         "anthropic": {
-          "anchor": "claude-sonnet-5",
-          "model_name": "Claude Sonnet 5",
+          "anchor": "claude-sonnet-5-5",
+          "model_name": "Claude Sonnet 5.5",
           "family": "claude-sonnet",
           "reasoning": true,
           "surfaces": {
             "anthropic": {
               "status": "available",
-              "model": "claude-sonnet-5",
+              "model": "claude-sonnet-5-5",
               "cost_usd_per_mtok": {
                 "input": 2,
                 "output": 10
@@ -235,11 +233,11 @@
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-06-30"
+              "upstream_last_updated": "2026-09-28"
             },
             "github-copilot": {
               "status": "available",
-              "model": "claude-sonnet-5",
+              "model": "claude-sonnet-5.5",
               "cost_usd_per_mtok": {
                 "input": 2,
                 "output": 10
@@ -248,43 +246,43 @@
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-06-30"
+              "upstream_last_updated": "2026-09-28"
             }
           }
         },
         "openai": {
-          "anchor": "gpt-5.6-terra",
-          "model_name": "GPT-5.6 Terra",
+          "anchor": "gpt-6.1-terra",
+          "model_name": "GPT-6.1 Terra",
           "family": "gpt-terra",
           "reasoning": true,
           "surfaces": {
             "openai": {
               "status": "available",
-              "model": "gpt-5.6-terra",
+              "model": "gpt-6.1-terra",
               "cost_usd_per_mtok": {
-                "input": 2,
-                "output": 12
+                "input": 1,
+                "output": 5
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-10-26"
             },
             "github-copilot": {
               "status": "available",
-              "model": "gpt-5.6-terra",
+              "model": "gpt-6.1-terra",
               "cost_usd_per_mtok": {
-                "input": 2,
-                "output": 12
+                "input": 1,
+                "output": 5
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-10-26"
             }
           }
         },
@@ -324,14 +322,14 @@
           }
         },
         "google": {
-          "anchor": "gemini-3.6-flash",
-          "model_name": "Gemini 3.6 Flash",
+          "anchor": "gemini-3.8-flash",
+          "model_name": "Gemini 3.8 Flash",
           "family": "gemini-flash",
           "reasoning": true,
           "surfaces": {
             "google": {
               "status": "available",
-              "model": "gemini-3.6-flash",
+              "model": "gemini-3.8-flash",
               "cost_usd_per_mtok": {
                 "input": 0.75,
                 "output": 3.75
@@ -340,11 +338,11 @@
                 "context": 1048576,
                 "output": 65536
               },
-              "upstream_last_updated": "2026-07-21"
+              "upstream_last_updated": "2026-09-02"
             },
             "github-copilot": {
               "status": "available",
-              "model": "gemini-3.6-flash",
+              "model": "gemini-3.8-flash",
               "cost_usd_per_mtok": {
                 "input": 0.75,
                 "output": 3.75
@@ -354,7 +352,7 @@
                 "input": 936000,
                 "output": 64000
               },
-              "upstream_last_updated": "2026-07-21"
+              "upstream_last_updated": "2026-09-02"
             }
           }
         }
@@ -369,107 +367,97 @@
       ],
       "vendors": {
         "anthropic": {
-          "anchor": "claude-opus-5",
-          "model_name": "Claude Opus 5",
+          "anchor": "claude-opus-5-5",
+          "model_name": "Claude Opus 5.5",
           "family": "claude-opus",
           "reasoning": true,
           "surfaces": {
             "anthropic": {
               "status": "available",
-              "model": "claude-opus-5",
+              "model": "claude-opus-5-5",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 25
+                "input": 4,
+                "output": 20
               },
               "limit_tokens": {
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-24"
+              "upstream_last_updated": "2026-09-22"
             },
             "github-copilot": {
               "status": "available",
-              "model": "claude-opus-5",
+              "model": "claude-opus-5.5",
               "cost_usd_per_mtok": {
-                "input": 5,
-                "output": 25
+                "input": 4,
+                "output": 20
               },
               "limit_tokens": {
                 "context": 1000000,
-                "input": 936000,
-                "output": 64000
+                "output": 128000
               },
-              "upstream_last_updated": "2026-07-24"
+              "upstream_last_updated": "2026-09-22"
             }
           }
         },
         "openai": {
-          "anchor": "gpt-5.6-sol",
-          "model_name": "GPT-5.6 Sol",
+          "anchor": "gpt-6.1-sol",
+          "model_name": "GPT-6.1 Sol",
           "family": "gpt-sol",
           "reasoning": true,
           "surfaces": {
             "openai": {
               "status": "available",
-              "model": "gpt-5.6-sol",
+              "model": "gpt-6.1-sol",
               "cost_usd_per_mtok": {
-                "input": 4,
-                "output": 20
+                "input": 2,
+                "output": 10
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-29"
             },
             "github-copilot": {
               "status": "available",
-              "model": "gpt-5.6-sol",
+              "model": "gpt-6.1-sol",
               "cost_usd_per_mtok": {
-                "input": 4,
-                "output": 20
+                "input": 2,
+                "output": 10
               },
               "limit_tokens": {
                 "context": 1050000,
                 "input": 922000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-07-09"
+              "upstream_last_updated": "2026-09-29"
             }
           }
         },
         "moonshotai": {
-          "anchor": "kimi-k3",
-          "model_name": "Kimi K3",
+          "anchor": "kimi-k3.1-pro",
+          "model_name": "Kimi K3.1 Pro",
           "family": "kimi-k3",
           "reasoning": true,
           "surfaces": {
             "moonshotai": {
               "status": "available",
-              "model": "kimi-k3",
+              "model": "kimi-k3.1-pro",
               "cost_usd_per_mtok": {
-                "input": 3,
-                "output": 15
+                "input": 2,
+                "output": 10
               },
               "limit_tokens": {
                 "context": 1048576,
-                "output": 131072
+                "output": 1048576
               },
-              "upstream_last_updated": "2026-07-16"
+              "upstream_last_updated": "2026-10-23"
             },
             "github-copilot": {
-              "status": "available",
-              "model": "kimi-k3",
-              "cost_usd_per_mtok": {
-                "input": 3,
-                "output": 15
-              },
-              "limit_tokens": {
-                "context": 1048576,
-                "output": 131072
-              },
-              "upstream_last_updated": "2026-07-16"
+              "status": "unavailable",
+              "reason": "provider 'github-copilot' serves no model named 'Kimi K3.1 Pro'"
             }
           }
         },
@@ -509,36 +497,36 @@
       ],
       "vendors": {
         "anthropic": {
-          "anchor": "claude-fable-5-1",
-          "model_name": "Claude Fable 5.1",
+          "anchor": "claude-fable-5-2",
+          "model_name": "Claude Fable 5.2",
           "family": "claude-fable",
           "reasoning": true,
           "surfaces": {
             "anthropic": {
               "status": "available",
-              "model": "claude-fable-5-1",
+              "model": "claude-fable-5-2",
               "cost_usd_per_mtok": {
-                "input": 10,
-                "output": 50
+                "input": 8,
+                "output": 40
               },
               "limit_tokens": {
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-09-01"
+              "upstream_last_updated": "2026-11-09"
             },
             "github-copilot": {
               "status": "available",
-              "model": "claude-fable-5.1",
+              "model": "claude-fable-5.2",
               "cost_usd_per_mtok": {
-                "input": 10,
-                "output": 50
+                "input": 8,
+                "output": 40
               },
               "limit_tokens": {
                 "context": 1000000,
                 "output": 128000
               },
-              "upstream_last_updated": "2026-09-01"
+              "upstream_last_updated": "2026-11-09"
             }
           }
         },
@@ -579,40 +567,31 @@
           }
         },
         "moonshotai": {
-          "anchor": "kimi-k3",
-          "model_name": "Kimi K3",
+          "anchor": "kimi-k3.1-pro",
+          "model_name": "Kimi K3.1 Pro",
           "family": "kimi-k3",
           "reasoning": true,
           "collapse": {
             "same_model_as_tier": "high",
-            "reason": "Moonshot ships a three-class ladder, so high and maximum resolve to Kimi K3. Note github-copilot serves two Moonshot models (kimi-k2.7-code and, since 2026-07-16, kimi-k3), so only the low tier resolves to unavailable on that surface rather than being quietly substituted. This sentence said \"exactly one\" and \"three of the four tiers\" until 2026-08-09: true of the map as committed, false upstream, which is the drift a re-capture exists to catch (basicly-u2hl.39)."
+            "reason": "Moonshot uses Kimi K3.1 Pro for high and maximum. Copilot does not serve this model, so those cells remain unavailable."
           },
           "surfaces": {
             "moonshotai": {
               "status": "available",
-              "model": "kimi-k3",
+              "model": "kimi-k3.1-pro",
               "cost_usd_per_mtok": {
-                "input": 3,
-                "output": 15
+                "input": 2,
+                "output": 10
               },
               "limit_tokens": {
                 "context": 1048576,
-                "output": 131072
+                "output": 1048576
               },
-              "upstream_last_updated": "2026-07-16"
+              "upstream_last_updated": "2026-10-23"
             },
             "github-copilot": {
-              "status": "available",
-              "model": "kimi-k3",
-              "cost_usd_per_mtok": {
-                "input": 3,
-                "output": 15
-              },
-              "limit_tokens": {
-                "context": 1048576,
-                "output": 131072
-              },
-              "upstream_last_updated": "2026-07-16"
+              "status": "unavailable",
+              "reason": "provider 'github-copilot' serves no model named 'Kimi K3.1 Pro'"
             }
           }
         },

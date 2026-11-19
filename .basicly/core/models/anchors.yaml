@@ -95,18 +95,18 @@ vendors:
     # The vendor's own provider first, then any broker that resells it.
     surfaces: [anthropic, github-copilot]
     tiers:
-      low: claude-haiku-4-5
-      medium: claude-sonnet-5
-      high: claude-opus-5
-      maximum: claude-fable-5-1
+      low: claude-haiku-5-5
+      medium: claude-sonnet-5-5
+      high: claude-opus-5-5
+      maximum: claude-fable-5-2
 
   - id: openai
     name: OpenAI
     surfaces: [openai, github-copilot]
     tiers:
-      low: gpt-5.6-luna
-      medium: gpt-5.6-terra
-      high: gpt-5.6-sol
+      low: gpt-6-luna
+      medium: gpt-6.1-terra
+      high: gpt-6.1-sol
       maximum: gpt-6-astra
 
   - id: moonshotai
@@ -115,25 +115,20 @@ vendors:
     tiers:
       low: kimi-k2.6
       medium: kimi-k2.7-code
-      high: kimi-k3
-      maximum: kimi-k3
+      high: kimi-k3.1-pro
+      maximum: kimi-k3.1-pro
     collapse:
       maximum: high
     collapse_reason: >-
-      Moonshot ships a three-class ladder, so high and maximum resolve to Kimi K3.
-      Note github-copilot serves two Moonshot models (kimi-k2.7-code and, since
-      2026-07-16, kimi-k3), so only the low tier resolves to unavailable on that
-      surface rather than being quietly substituted. This sentence said "exactly
-      one" and "three of the four tiers" until 2026-08-09: true of the map as
-      committed, false upstream, which is the drift a re-capture exists to catch
-      (basicly-u2hl.39).
+      Moonshot uses Kimi K3.1 Pro for high and maximum.
+      Copilot does not serve this model, so those cells remain unavailable.
 
   - id: google
     name: Google
     surfaces: [google, github-copilot]
     tiers:
-      low: gemini-3.1-flash-lite
-      medium: gemini-3.6-flash
+      low: gemini-3.5-flash-lite
+      medium: gemini-3.8-flash
       high: gemini-3.1-pro-preview
       maximum: gemini-3.1-pro-preview
     collapse:

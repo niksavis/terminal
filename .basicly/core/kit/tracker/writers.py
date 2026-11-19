@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Mapping
 
@@ -18,9 +17,9 @@ def _name(raw: str) -> str:
     return _UNSAFE.sub("-", raw.strip()).strip("-")[:MAX_NAME_CHARS]
 
 
-def writer_class(environ: Mapping[str, str] | None = None) -> str:
+def writer_class(environ: Mapping[str, str]) -> str:
 
-    values = os.environ if environ is None else environ
+    values = environ
     for marker in AGENT_MARKERS:
         name = _name(values.get(marker, ""))
         if name:

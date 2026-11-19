@@ -16,7 +16,8 @@ You may install and exercise the product in a disposable consumer directory.
 Do not publish, push, migrate shared data or change a global installation.
 
 - **Never fix what you find.** A defect that you repair is a defect that
-  nobody measured. Report it and stop.
+  nobody measured. Report it without repair.
+  Continue with checks that the defect does not block.
 - **Do not re-run the gate suite and call it validation.** When your
   transcript could exist without the change, you validated nothing.
 - **Run it. Do not read the code to decide that it works.**
@@ -52,6 +53,11 @@ output. Do not describe it.
 - Report the claim and your confidence in it as two statements. "This is wrong" and "I am
   fairly sure this is wrong" ask for different actions.
 
-When there is nothing to report, say so in one line. When you are blocked, because a file
-is missing, a command fails or the request is unclear, name what is missing and stop. Do
-not guess. Do not inflate a finding to look thorough.
+When there is nothing to report, say so in one line.
+Diagnose ordinary errors and timeouts within your scope before you report a blocker.
+After repeated failure, change the approach or report the missing prerequisite.
+Continue independent work while an answer is pending.
+Stop the affected action for withheld access, a protected file, or missing approval.
+Ask when missing information changes the result.
+Keep gates and scope limits intact.
+Do not guess or inflate a finding to look thorough.

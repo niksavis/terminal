@@ -48,7 +48,6 @@ jobs:
             msg_file="$(mktemp)"
             git log -1 --format='%B' "${sha}" > "${msg_file}"
             python3 .basicly/core/hooks/commit-msg.py "${msg_file}" || failed=1
-            python3 .basicly/core/hooks/tracker-commit-msg.py "${msg_file}" || failed=1
             rm -f "${msg_file}"
           done < <(git log --format='%H' "${range}")
           exit "${failed}"
@@ -59,14 +58,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - name: Catalog lint
-        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly catalog lint
+        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly catalog lint
       - name: Projection drift check
-        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly check
+        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly check
       - name: Skill projection drift check
-        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly skills-check
+        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly skills-check
       - name: Hook wiring drift check
         run: |
-          uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly hooks-build --runtime-only
-          uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly hooks-check
+          uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly hooks-build --runtime-only
+          uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly hooks-check
       - name: Configured verify checks
-        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.44.1/basicly-0.44.1-py3-none-any.whl basicly verify --mode full
+        run: uvx --from https://github.com/niksavis/basicly/releases/download/v0.46.6/basicly-0.46.6-py3-none-any.whl basicly verify --mode full --ci

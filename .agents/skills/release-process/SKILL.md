@@ -33,6 +33,7 @@ Each change has `changelog.d/RECORD-ID.CATEGORY.md`. Write a one-paragraph summa
 ## 3. Wait for green CI
 
 Cut only from a commit whose CI run on the release branch passed. A red or running build is a stop.
+CI reads no tracker record (the Quality Gate rule), so run the local landing verify before the cut: it runs the `local_only` record checks.
 
 ## 4. Choose the version and run the dry run
 

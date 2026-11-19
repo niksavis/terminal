@@ -1,43 +1,35 @@
 from __future__ import annotations
 
 import importlib.util
-import json
-import re
 import shutil
 import subprocess  # nosec B404
 import sys
 from pathlib import Path
+from typing import Any
 
-RELEASES = "https://github.com/niksavis/basicly/releases/download"
 INSTALL_STATE = Path(".basicly/state/install.json")
 
 
-def dist_source(repo_root: Path | None = None) -> str:
+def _engine_pin() -> Any:
+    source = Path(__file__).with_name("engine_pin.py")
+    spec = importlib.util.spec_from_file_location("basicly_hook_engine_pin", source)
+    if spec is None or spec.loader is None:
+        raise ValueError("hook runtime engine_pin.py is missing; rerun the basicly install command")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
-    state = (repo_root or Path.cwd()) / INSTALL_STATE
-    try:
-        version = json.loads(state.read_text(encoding="utf-8"))["basicly_version"]
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        raise ValueError(
-            "catalog-lint cannot read the installed version; rerun the basicly install command"
-        ) from exc
-    if not isinstance(version, str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
-        raise ValueError(
-            "catalog-lint installed version is invalid; rerun the basicly install command"
-        )
-    return f"{RELEASES}/v{version}/basicly-{version}-py3-none-any.whl"
+
+def dist_source(repo_root: Path | None = None) -> str:
+    pin = _engine_pin()
+    return pin.wheel(pin.installed_version(repo_root))
 
 
 def _cli_command() -> list[str] | None:
-    basicly = shutil.which("basicly")
-    if basicly:
-        return [basicly, "catalog", "lint"]
-    if importlib.util.find_spec("basicly") is not None:
-        return [sys.executable, "-m", "basicly.cli", "catalog", "lint"]
-    uvx = shutil.which("uvx")
-    if uvx:
-        return [uvx, "--from", dist_source(), "basicly", "catalog", "lint"]
-    return None
+    command = _engine_pin().engine_command(["catalog", "lint"])
+    if command is None and shutil.which("uvx"):
+        dist_source()
+    return command
 
 
 SKIPPED = (

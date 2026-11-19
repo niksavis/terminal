@@ -173,6 +173,11 @@ def candidates_from_events(
     collected = list(ledger_events)
     views = differential.views_from_events(collected)
     folded = events.fold(collected)
+    readiness = process.readiness_many(
+        collected,
+        {record: state.fields for record, state in folded.records.items()},
+        template=template,
+    )
     candidates: dict[str, Candidate] = {}
     for record, view in views.items():
         fields = folded.records[record].fields
@@ -186,7 +191,7 @@ def candidates_from_events(
                 fields,
                 labelled=labelled,
                 template=template,
-                process=process.readiness(collected, record, fields, template=template),
+                process=readiness[record],
             ),
         )
     return candidates

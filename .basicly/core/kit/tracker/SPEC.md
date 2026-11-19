@@ -151,8 +151,12 @@ available.
 nothing.** The kit does not read the engine's configuration, logging, session state or
 policy. It reads its own committed data and takes everything else as arguments. Redaction is
 also an argument: each entry point accepts a redactor and imports none. The kit uses only the standard
-library, with no third-party package, no network and no subprocess. It uses no syntax newer
-than Python 3.9, because a consumer's Python can be older.
+library, with no third-party package, no network and no subprocess. The one exception is
+`git_runner.py`: it alone may start `git`, through `subprocess` with an argument list. It
+checks commit ids, writer ids and URLs before git runs, allows only the `https` and `ssh`
+protocols, and stops git at a deadline. Distributed runtimes require Python 3.14 or later.
+Machine bootstrap provisions the required interpreter with uv; compatible implementation
+code does not need syntax-only changes.
 
 The `kit-boundary` commit hook enforces this direction. It ships with the kit and also runs in
 the authoring repository's full verify run. An import linter cannot enforce it. The kit is
@@ -462,6 +466,41 @@ checkpoint**. An index is justified only when a query across items cannot be ser
 **The totals are also evidence.** The total is recorded at the moment of the write. So the
 spend that an item showed when a dispatch marker was written is available without a fold. A
 snapshot of the present cannot give that.
+
+### 4.7 Vault attachment and frozen local history
+
+The standalone kit includes `ledger_freeze.py`. It protects the local ledger when a
+project switches to a vault. Engine tracker reads and writes use the same checks. A project after attachment
+keeps a tracked file at `.basicly/ledger` and its original directory at
+`.basicly/ledger-archive/`. The file blocks old tools from creating local event shards.
+The marker binds the archive fingerprint to the configured vault and prefix.
+
+For existing history, initialize the vault without `--prefix`. Import the ledger with
+`migrate --to-vault` and the chosen private-map and redaction options. Then run
+`migrate .basicly/ledger --to-vault --freeze --prefix NAME --vault ADDRESS --state STATE`.
+Use the same redaction options. Freeze checks the imported events and template before
+it moves the source. Stop old writers before this step. A busy source refuses the move.
+
+For a new project, `vault-init --yes --prefix NAME --vault ADDRESS` validates the base
+Git checkout before publication. It refuses existing configuration, history, templates,
+redirects and archives. A successful attachment installs the guard and archive before
+it reports a configured project. An empty archive includes `.keep` for Git clones.
+If attachment fails after genesis publication, the result reports that publication
+and refuses project configuration.
+
+The tracker refuses changed archives and interrupted transitions even when the vault
+configuration is missing. Preserve both paths when an old tool writes after interruption.
+Do not accept a new fingerprint without reconciling that history with the vault.
+Commit the verified marker, archive and configuration together.
+
+An existing source directory must move while its legacy writer lock stays held.
+Native Windows refuses this directory rename in the measured compatibility controls.
+Finish such a migration on a source host that supports the locked move. Native Windows
+consumers can use a verified frozen checkout without changing its marker or configuration.
+
+The engine isolates kit modules by directory and source snapshot. Sibling modules
+share their types inside that namespace. Older kits keep their original source and
+observable ledger behavior. A source or policy change gets a new namespace.
 
 ## 5. Import and coexistence with a tracker being replaced
 

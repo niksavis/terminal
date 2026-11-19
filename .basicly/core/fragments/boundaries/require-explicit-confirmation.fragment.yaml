@@ -21,7 +21,7 @@ body: |
   - force-push, rewrite history, or discard uncommitted work: `git reset --hard`, `git checkout -- <path>`, `git restore`, `git stash`, `git clean`, `rm -rf`;
   - read or write a `.env*` file;
   - delete files, branches or data outside the task;
-  - edit CI/CD, deployment, infrastructure, ignore or secrets files;
+  - edit CI/CD, deployment, infrastructure, ignore or secrets files (examples: `.github/workflows/` and `.gitignore`);
   - add, remove or upgrade a dependency;
   - make a network call outside the task.
 

@@ -8,7 +8,7 @@ Send HTTP requests with short syntax. Use it to test an API. Use curl for low-le
 - **Use `--ignore-stdin` in scripts.** Without a terminal, xh reads stdin as the body and refuses `key=value` data.
 - **Use `key:=value` for a JSON number or boolean.** `key=value` always sends a string.
 - **Write the method (`get`, `post`).** The request is then clear to read.
-- **Keep tokens out of the command line.** Use an environment variable such as `$TOKEN`.
+- **Keep tokens out of the command line.** The shell expands `$TOKEN` into process arguments. Read header values from a file with `Header:@path`.
 - **Do not map curl flags to xh flags one to one.** Many options differ.
 
 ## Commands
@@ -16,7 +16,7 @@ Send HTTP requests with short syntax. Use it to test an API. Use curl for low-le
 ```bash
 xh get httpbin.org/json
 xh post httpbin.org/post name=Alice age:=30
-xh get api.example.com Authorization:"Bearer $TOKEN"
+xh get api.example.com Authorization:@auth-header.txt
 xh --json get api.example.com
 xh --follow get example.com
 xh --print=hHbB get httpbin.org/get
@@ -26,6 +26,8 @@ xh -h get api.example.com
 xh --download get example.com/file.zip
 xh --offline --ignore-stdin post example.com name=Alice
 ```
+
+The file holds the complete header value, stays outside Git, and is not printed.
 
 ## Output
 

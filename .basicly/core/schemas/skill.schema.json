@@ -68,6 +68,11 @@
       },
       "description": "Technology scoping tags (controlled vocabulary, enforced by catalog-lint); absent means universal. basicly-internal; NOT emitted into SKILL.md frontmatter."
     },
+    "requires": {
+      "type": "array",
+      "items": {"enum": ["orchestration"]},
+      "description": "Features a workspace must enable in basicly.toml before this skill is projected; absent means always projected. basicly-internal; NOT emitted into SKILL.md frontmatter."
+    },
     "resource_technologies": {
       "type": "object",
       "minProperties": 1,

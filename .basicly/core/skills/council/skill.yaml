@@ -4,7 +4,7 @@ token_cost:
   listing: 54
 name: council
 invocation: model
-description: "Decides one closed question by independent votes of fresh agents with different stances, and reports the majority with the dissent. Use when asked to let a council, a panel or several agents vote on a choice."
+description: "Decides one closed question by independent votes of fresh agents with different stances, and reports the majority and dissent. Use to let a council, a panel or several agents vote on a choice."
 instructions: |
   # Council
 
@@ -14,7 +14,11 @@ instructions: |
 
   ## Steps
 
-  1. **Ask one question.** Write the decision, 2 to 4 option labels and the facts with sources, as [the question guide](references/question.md) says. For an open question, run `swarm` on the goal with the lenses feasibility, spec and simplicity, and take its numbered decisions as the 2 to 4 labels. A closed question with no labels: ask the user for them.
+  1. **Ask one question.** Write the decision, 2 to 4 option labels and sourced facts, following [the question guide](references/question.md).
+     For an open question, form sourced options directly unless independent option discovery is needed or requested.
+     When needed, run `swarm` with the lenses feasibility, spec and simplicity, then use its decisions as labels.
+     The preliminary swarm adds agent calls, tokens and elapsed time before voting.
+     For a closed question with no labels, ask the user for them.
   2. **Pick voters.** Choose 3 stances from [stances](assets/stances.md), one voter each. Choose 5 when the decision is hard to undo.
   3. **Vote.** Run the `swarm` steps Brief, Launch and Collect; the tally replaces the swarm Check. Each brief carries the question, the exact labels and the stance as its lens. No voter sees another vote. Rerun once each voter that is not run.
   4. **Tally.** Run:

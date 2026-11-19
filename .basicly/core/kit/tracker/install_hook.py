@@ -193,6 +193,10 @@ def _install_claim(directory: Path, body_text: str, *, dry_run: bool, stream: An
 def ensure_ledger(root: Path, ledger: Path, *, dry_run: bool, stream: Any) -> str:
 
     within = _within(ledger, root)
+    freeze = _load("ledger_freeze.py", "basicly_tracker_kit_ledger_freeze")
+    if freeze.check(ledger) is not None:
+        stream.write("tracker: preserved the frozen ledger and its archive\n")
+        return within
     if not ledger.is_dir():
         if dry_run:
             stream.write(f"tracker: would create the ledger {within}\n")
@@ -204,6 +208,9 @@ def ensure_ledger(root: Path, ledger: Path, *, dry_run: bool, stream: Any) -> st
 
 def pin_ledger(ledger: Path, *, dry_run: bool, stream: Any) -> None:
 
+    freeze = _load("ledger_freeze.py", "basicly_tracker_kit_ledger_freeze")
+    if freeze.check(ledger) is not None:
+        return
     pin = _load("pin.py", "basicly_tracker_kit_pin")
     if dry_run:
         stream.write(f"tracker: would pin the ledger to tracker {pin.KIT_VERSION}\n")
@@ -299,6 +306,19 @@ def _fold_script(root: Path, args: argparse.Namespace) -> str:
     return found
 
 
+def _frozen_install(ledger: Path, chosen: str, end_mirror: bool) -> bool:
+    freeze = _load("ledger_freeze.py", "basicly_tracker_kit_ledger_freeze")
+    try:
+        frozen = freeze.check(ledger) is not None
+    except ValueError as exc:
+        raise SystemExit(f"tracker: {exc}") from exc
+    if frozen and (chosen or end_mirror):
+        raise SystemExit(
+            "tracker: this ledger uses the vault; import history with migrate --to-vault"
+        )
+    return frozen
+
+
 def main(argv: Any = None) -> int:
 
     offer = _load("import_offer.py", "basicly_tracker_kit_import_offer")
@@ -385,16 +405,27 @@ def main(argv: Any = None) -> int:
     ledger = Path(args.ledger) if args.ledger else _HERE.parent.parent / "ledger"
     if not ledger.is_absolute():
         ledger = root / ledger
-    chosen = args.import_source or args.mirror
-    asked = offer.Install(root, ledger, chosen, args.import_command, args.dry_run, args.runner)
+    frozen = _frozen_install(ledger, args.import_source or args.mirror, args.end_mirror)
+    asked = offer.Install(
+        root,
+        ledger,
+        args.import_source or args.mirror,
+        args.import_command,
+        args.dry_run,
+        args.runner,
+    )
     try:
-        backlogs = offer.chosen_backlogs(asked)
+        backlogs = [] if frozen else offer.chosen_backlogs(asked)
     except offer.ImportOfferError as exc:
         raise SystemExit(f"tracker: {exc}") from exc
     ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
     if args.pin:
         pin_ledger(ledger, dry_run=args.dry_run, stream=sys.stdout)
-    wanted = args.dry_run or mirror.claim_wanted(ledger, args.mirror, args.end_mirror, sys.stdout)
+    wanted = (
+        frozen
+        or args.dry_run
+        or mirror.claim_wanted(ledger, args.mirror, args.end_mirror, sys.stdout)
+    )
     if not wanted:
         _uninstall_claim(hooks_dir(root, hooks), dry_run=args.dry_run)
     elif not args.command:

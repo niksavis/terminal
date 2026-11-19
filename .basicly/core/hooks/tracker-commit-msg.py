@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import subprocess  # nosec B404
 import sys
+import time
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import Any
 
 
 def _project_root() -> Path:
@@ -60,6 +63,7 @@ checkout's tracker state is committed and pulled.
 """
 
 REDIRECT_NAME = "redirect"
+VAULT_SOURCE = "the vault view"
 
 LEDGER_DIR = Path(".basicly") / "ledger"
 LEDGER_GLOBS = ("events-*.jsonl", "pending-*.jsonl")
@@ -134,9 +138,39 @@ def _unstaged_holders(ids: set[str]) -> list[tuple[str, str]]:
     ]
 
 
+def _vault_view(root: Path) -> Path | None:
+    source = Path(__file__).resolve().parent.parent / "kit/tracker/locate.py"
+    if not source.is_file():
+        raise ImportError("the tracker kit is missing; reinstall with `basicly install --force`")
+    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_locate", source)
+    if spec is None or spec.loader is None:
+        raise ImportError("the tracker kit is missing; reinstall basicly")
+    module: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    factory: Any = getattr(module, "harness", None)
+    if not callable(factory):
+        raise ImportError(
+            "the tracker kit lacks vault harness support; reinstall with `basicly install --force`"
+        )
+    harness: Any = factory()
+    return harness.harness_ledger(root, time.time)
+
+
+def _vault_ids(root: Path) -> tuple[set[str], str] | None:
+    view = _vault_view(root)
+    if view is None:
+        return None
+    ids: set[str] = set()
+    for log in sorted(view.glob("*.jsonl")):
+        ids |= _ids_from_jsonl(log, "record")
+    return ids, VAULT_SOURCE
+
+
 def _known_ids_with_source() -> tuple[set[str], str] | None:
 
     root = _project_root()
+    if (root / ".basicly-tracker.toml").is_file():
+        return _vault_ids(root)
     if _tracker_root() == root:
         staged = _staged_ledger_ids(root)
         if staged:
@@ -168,7 +202,7 @@ def validate(
 
     candidates = _candidate_ids(message, known_ids)
     if not candidates:
-        return False, NO_ID_MESSAGE
+        return (True, "") if source == VAULT_SOURCE else (False, NO_ID_MESSAGE)
 
     matched_ids = candidates & known_ids
     if not matched_ids:
@@ -192,7 +226,11 @@ def main() -> int:
     commit_msg_file = Path(sys.argv[1])
     message = commit_msg_file.read_text(encoding="utf-8").strip()
 
-    found = _known_ids_with_source()
+    try:
+        found = _known_ids_with_source()
+    except (ValueError, OSError, ImportError) as exc:
+        print(f"tracker-commit-msg: cannot read the vault view: {exc}", file=sys.stderr)
+        return 1
     known_ids, source = (None, "") if found is None else found
     is_valid, error_message = validate(message, known_ids, source or "the tracker")
 

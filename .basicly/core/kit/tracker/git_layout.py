@@ -91,7 +91,7 @@ def _followed(ledger: Path, checkout: Path | None) -> tuple[Path, Path] | None:
     except OSError as exc:
         raise RedirectError(f"the ledger redirect {marker} cannot be read: {exc}") from exc
     place = _place(ledger, checkout)
-    if not named or not (Path(named) / place).is_dir():
+    if not named or not (Path(named) / place).exists():
         raise RedirectError(
             f"the ledger redirect {marker} names {named or 'no checkout'}, which holds no "
             f"{place.as_posix()}, so nothing ran; write the base checkout's path into "

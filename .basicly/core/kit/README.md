@@ -56,12 +56,11 @@ These bind **every** kit, and each one is cited from the modules it governs.
   its own siblings, nothing else. `kit-boundary` enforces the first half; the rest is on the
   author. The one exception is the board kit: it may import `http.server`, `http` and
   `urllib.parse` to listen on loopback when a person serves it, and nothing else that
-  reaches outside.
-- **Parseable by an interpreter older than this repo's 3.14 floor**: no syntax newer than
-  3.9, and **one exception class per handler**. This repo's `ruff format` targets 3.14 and
-  will rewrite a parenthesized multi-exception `except` into syntax a consumer's Python may
-  not have — so the paren-free form the `python` skill prescribes for `src/` is
-  the wrong form here.
+  reaches outside. The tracker kit's `git_runner.py` alone may import `subprocess`, to run
+  `git` for a shared backlog.
+- **Python 3.14 or later**: the harness and distributed standalone tools share the same
+  runtime floor. Use uv or uvx to provision it. Preserve compatible code without
+  unrelated syntax refactoring.
 - **Fail closed on a question, open on a crash.** A kit that cannot answer must raise rather
   than return a plausible default; a kit that crashes in a path the consumer did not ask for
   must not take the consumer's tool down with it. Which of the two applies is the kit's own

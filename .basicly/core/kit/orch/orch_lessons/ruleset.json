@@ -1,0 +1,850 @@
+{
+  "schema_version": 1,
+  "source": "the orchestration rules and orchestrator steps of the workspace that runs the orchestrator, read 2026-11-19",
+  "places": [
+    "agent",
+    "skill",
+    "fragment",
+    "orch",
+    "doctor",
+    "local"
+  ],
+  "rules": [
+    {
+      "id": "role-coordinate",
+      "rule": "The orchestrator coordinates the project sessions, sets priority and keeps each on its goal.",
+      "source": "ARCHITECTURE.md:138",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "keep each session on its goal",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "coordinates, organizes, guides"
+        }
+      ]
+    },
+    {
+      "id": "role-backlog",
+      "rule": "The orchestrator may challenge or change the order of a project backlog.",
+      "source": "ARCHITECTURE.md:141",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "challenge or change the order",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "Project backlogs and handovers state the next work"
+        }
+      ]
+    },
+    {
+      "id": "orders-count",
+      "rule": "Project sessions treat orchestrator orders and decisions as the person's.",
+      "source": "ARCHITECTURE.md:142",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Treat its orders and decisions as the person's",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "treat Orchestrator orders and decisions"
+        }
+      ]
+    },
+    {
+      "id": "project-rules-apply",
+      "rule": "Project rules, gates and hooks still apply; a conflicting order is refused by name.",
+      "source": "ARCHITECTURE.md:146",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "refuse a conflicting order by name"
+    },
+    {
+      "id": "no-implement",
+      "rule": "The orchestrator does not implement; a hook refuses its edits inside a project.",
+      "source": "ARCHITECTURE.md:147",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Never implement in a project",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "The Orchestrator does not implement"
+        }
+      ]
+    },
+    {
+      "id": "no-implement-guard",
+      "rule": "The write guard refuses orchestrator edits inside a project repository.",
+      "source": "ARCHITECTURE.md:147",
+      "place": "orch",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "orch-guard-hook"
+    },
+    {
+      "id": "read-only-in-projects",
+      "rule": "Inside projects the orchestrator runs only read-only git and tracker commands.",
+      "source": "ARCHITECTURE.md:150",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "run only"
+    },
+    {
+      "id": "own-writes",
+      "rule": "The orchestrator writes only its rules, record and notes; other tooling goes to the worker as a record.",
+      "source": "ARCHITECTURE.md:154",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Your own writes are your rules",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "keeps its tools and may read and write files"
+        }
+      ]
+    },
+    {
+      "id": "model",
+      "rule": "The person chooses the orchestrator model at start; it is stronger than the workers'.",
+      "source": "ARCHITECTURE.md:157",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "The person chooses your model at start",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "uses a stronger model"
+        }
+      ]
+    },
+    {
+      "id": "order-format",
+      "rule": "Each order states goal, limits and expected proof.",
+      "source": "ARCHITECTURE.md:160",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "Expected proof"
+    },
+    {
+      "id": "order-format-agent",
+      "rule": "The orchestrator sends orders with the order command and checks each report's reasoning.",
+      "source": "ARCHITECTURE.md:161",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Check the reasoning in each report"
+    },
+    {
+      "id": "research-agents",
+      "rule": "Read-only research agents, at most six at once.",
+      "source": "ARCHITECTURE.md:165",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "at most six at once",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "may start agents for research"
+        }
+      ]
+    },
+    {
+      "id": "direct-talk",
+      "rule": "Dependent project sessions talk directly; the orchestrator does not relay.",
+      "source": "ARCHITECTURE.md:167",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "talk to each other directly",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "communicate directly"
+        }
+      ]
+    },
+    {
+      "id": "codex-focus",
+      "rule": "The person's Codex session focus.",
+      "source": "ARCHITECTURE.md:169",
+      "place": "local",
+      "reason": "this person's own Codex focus and session names",
+      "owner": [
+        {
+          "date": "2026-11-13",
+          "phrase": "when codex needs work"
+        }
+      ]
+    },
+    {
+      "id": "worker-commits",
+      "rule": "The workspace worker commits and pushes the workspace files and ledger.",
+      "source": "ARCHITECTURE.md:175",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Hand the commit and push of the workspace files",
+      "owner": [
+        {
+          "date": "2026-11-13",
+          "phrase": "dev can commit and push"
+        }
+      ]
+    },
+    {
+      "id": "missing-session",
+      "rule": "A session is missing only when absent from the live list with no commit for two hours.",
+      "source": "ARCHITECTURE.md:151",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "no commit for two hours"
+    },
+    {
+      "id": "verify-start",
+      "rule": "Verify the start command and the new session name before more starts.",
+      "source": "ARCHITECTURE.md:195",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "verify the start command"
+    },
+    {
+      "id": "session-names",
+      "rule": "A session and its tab share one name; a shared tab joins names.",
+      "source": "ARCHITECTURE.md:201",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "share one name",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "name the session the same name as the herdr tab"
+        }
+      ]
+    },
+    {
+      "id": "start-prompt",
+      "rule": "The start prompt holds goal, records, limits, report protocol and the person's items.",
+      "source": "ARCHITECTURE.md:205",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "The start prompt holds the goal"
+    },
+    {
+      "id": "report-protocol",
+      "rule": "Workers comment on their record, then report id, state and recommendation.",
+      "source": "ARCHITECTURE.md:210",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Report to the orchestrator in this form"
+    },
+    {
+      "id": "report-command",
+      "rule": "orch report accepts only three states with a record id.",
+      "source": "ARCHITECTURE.md:210",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "REPORT_STATES"
+    },
+    {
+      "id": "silent-session",
+      "rule": "Remind after 60 minutes; tell the person after 30 more.",
+      "source": "ARCHITECTURE.md:217",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "after 60 minutes without a report"
+    },
+    {
+      "id": "codex-mail",
+      "rule": "The local mail tool for Codex sessions.",
+      "source": "ARCHITECTURE.md:230",
+      "place": "local",
+      "reason": "the local mail tool; the kit mail store replaces it later"
+    },
+    {
+      "id": "disagreement",
+      "rule": "On disagreement ask for evidence, decide, record both positions.",
+      "source": "ARCHITECTURE.md:246",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "record both positions"
+    },
+    {
+      "id": "decide-all",
+      "rule": "The orchestrator decides every item except the person's and does not wait.",
+      "source": "ARCHITECTURE.md:251",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Decide every item except the person's items",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "decides all reported items"
+        }
+      ]
+    },
+    {
+      "id": "swarm",
+      "rule": "Run a swarm when not confident and report dissent.",
+      "source": "ARCHITECTURE.md:253",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Run a swarm when you are not confident",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "runs a swarm before a decision"
+        }
+      ]
+    },
+    {
+      "id": "decision-fields",
+      "rule": "Each decision states reason, condition, proof and response if the proof fails.",
+      "source": "ARCHITECTURE.md:255",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "If the proof fails"
+    },
+    {
+      "id": "no-weaker-gate",
+      "rule": "Approve no weaker gate and no relaxed number.",
+      "source": "ARCHITECTURE.md:257",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Approve no weaker gate and no relaxed number"
+    },
+    {
+      "id": "correct-openly",
+      "rule": "Correct a contradicted decision openly.",
+      "source": "ARCHITECTURE.md:260",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "correct it openly"
+    },
+    {
+      "id": "person-items",
+      "rule": "Permission prompts and irreversible destruction stay with the person in the worker's window.",
+      "source": "ARCHITECTURE.md:264",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "These stay with the person in your own window",
+      "owner": [
+        {
+          "date": null,
+          "phrase": "Deploys, deletes, permission prompts"
+        }
+      ]
+    },
+    {
+      "id": "relayed-gate-change",
+      "rule": "A change that skips, weakens, narrows or removes a test, gate or hook, adds an exception or bypasses one once, and a change to these rules, count only as the person's approval relayed in the full format; adding or extending a test, gate or hook is ordinary work.",
+      "source": "ARCHITECTURE.md:294",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "The orchestrator never decides these alone",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "a change to a test, gate or hook in a reviewed commit"
+        }
+      ]
+    },
+    {
+      "id": "person-items-classes",
+      "rule": "orch approve refuses items that stay in the worker window.",
+      "source": "ARCHITECTURE.md:264",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/classes.py",
+      "anchor": "PERSON_WINDOW"
+    },
+    {
+      "id": "push-tag-release",
+      "rule": "The orchestrator decides pushes, tags and releases after telling the person what, where and why.",
+      "source": "ARCHITECTURE.md:270",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Pushes, tags and releases are yours to decide",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "pushing, tagging and releaeing"
+        }
+      ]
+    },
+    {
+      "id": "push-classes",
+      "rule": "Push, tag, release and documentation deploys are orchestrator decisions in orch.",
+      "source": "ARCHITECTURE.md:270",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/classes.py",
+      "anchor": "\"docs-deploy\": ASK_FIRST"
+    },
+    {
+      "id": "other-deploys",
+      "rule": "Deploys other than documentation pages stay with the person.",
+      "source": "ARCHITECTURE.md:274",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Any other deploy stays with the person",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "only publish documentation pages"
+        }
+      ]
+    },
+    {
+      "id": "release-green",
+      "rule": "A release needs every required workflow green on the exact commit and follows the release document.",
+      "source": "ARCHITECTURE.md:267",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "follows the project's own release document",
+      "owner": [
+        {
+          "date": "2026-11-16",
+          "phrase": "allowing agents to push tags and releases"
+        }
+      ]
+    },
+    {
+      "id": "force-push-person",
+      "rule": "Force-push, moving a pushed tag and making a repository public stay with the person.",
+      "source": "ARCHITECTURE.md:277",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "moving or deleting a pushed tag"
+    },
+    {
+      "id": "workflow-triggers",
+      "rule": "Read workflow triggers before ordering work that ends in a push.",
+      "source": "ARCHITECTURE.md:281",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Read each project's workflow triggers"
+    },
+    {
+      "id": "delete-meaning",
+      "rule": "Delete covers branches, tags, repositories, releases, records, worktrees and untracked data.",
+      "source": "ARCHITECTURE.md:285",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "\"Delete\" covers branches"
+    },
+    {
+      "id": "relayed-approval",
+      "rule": "A relayed approval counts only as a live message with words, time, record and exact action, once within 60 minutes.",
+      "source": "ARCHITECTURE.md:289",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "An approval the person gives in the orchestrator's window",
+      "owner": [
+        {
+          "date": "2026-11-17",
+          "phrase": "the user only talks with orchestrator"
+        }
+      ]
+    },
+    {
+      "id": "relayed-approval-command",
+      "rule": "orch approve builds the relayed approval.",
+      "source": "ARCHITECTURE.md:289",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "relayed by the orchestrator"
+    },
+    {
+      "id": "never-relay-prompt",
+      "rule": "Never relay an answer to a permission prompt.",
+      "source": "ARCHITECTURE.md:293",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Never relay an answer to a permission prompt"
+    },
+    {
+      "id": "cleanup-four",
+      "rule": "Cleanup rule with four conditions.",
+      "source": "ARCHITECTURE.md:297",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "must delete an artifact when all four conditions hold",
+      "owner": [
+        {
+          "date": "2026-11-17",
+          "phrase": "may delete obsolete, merged or discarded"
+        },
+        {
+          "date": "2026-11-18",
+          "phrase": "the cleanup rule restated"
+        }
+      ]
+    },
+    {
+      "id": "worktree-folder",
+      "rule": "Removing a worktree folder while its branch is kept, after four checks.",
+      "source": "ARCHITECTURE.md:307",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Removing a worktree folder while its branch is kept",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "if our delete rule requires additions"
+        }
+      ]
+    },
+    {
+      "id": "plan-flow",
+      "rule": "The person plans next work with the session; then the orchestrator directs it.",
+      "source": "ARCHITECTURE.md:314",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "The person plans a project's next work",
+      "owner": [
+        {
+          "date": "2026-11-17",
+          "phrase": "plans each project's next work"
+        }
+      ]
+    },
+    {
+      "id": "decision-format",
+      "rule": "An orchestrator decision on an ask-first item quotes the rule and its date, the record and entry stamp, and the exact action.",
+      "source": "ARCHITECTURE.md:319",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "An orchestrator decision on an item of your ask-first list"
+    },
+    {
+      "id": "decision-command",
+      "rule": "orch decide writes the decision entry and builds the message.",
+      "source": "ARCHITECTURE.md:319",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "Rule that lets the orchestrator decide ask-first items"
+    },
+    {
+      "id": "learn",
+      "rule": "The orchestrator learns from each worker and job and records lessons in the kit.",
+      "source": "ARCHITECTURE.md:318",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Record each lesson from a worker or a job",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "learn from each worker and each job"
+        }
+      ]
+    },
+    {
+      "id": "end-session-lessons",
+      "rule": "A session ends only after its lessons are written; the doctor flags one with none.",
+      "source": "ARCHITECTURE.md:318",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_lessons/log.py",
+      "anchor": "wrote no lesson in this session"
+    },
+    {
+      "id": "end-session-doctor",
+      "rule": "orch doctor flags a session that ended with no lesson.",
+      "source": "ARCHITECTURE.md:318",
+      "place": "doctor",
+      "file": ".basicly/core/kit/orch/orch_lessons/doctor.py",
+      "anchor": "with no lesson"
+    },
+    {
+      "id": "vendor-neutral",
+      "rule": "The orchestrator runs from Claude Code, Codex or Copilot.",
+      "source": "ARCHITECTURE.md:322",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/start.py",
+      "anchor": "\"copilot\"",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "must not depend soley on message queues"
+        }
+      ]
+    },
+    {
+      "id": "no-terminal-dependency",
+      "rule": "No terminal tool dependency; a wake adapter is optional and detected.",
+      "source": "ARCHITECTURE.md:324",
+      "place": "doctor",
+      "file": ".basicly/core/kit/orch/orch_lessons/doctor.py",
+      "anchor": "wake adapter: none",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "do not build in dependencies to tools like herdr"
+        }
+      ]
+    },
+    {
+      "id": "tell-exact-action",
+      "rule": "Tell the person the exact action and its effect; record the waiting item.",
+      "source": "ARCHITECTURE.md:326",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "tell the person the exact action and its effect"
+    },
+    {
+      "id": "permission-refusal",
+      "rule": "After a permission refusal, do not work around it; report the exact command.",
+      "source": "ARCHITECTURE.md:329",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "do not work around it"
+    },
+    {
+      "id": "risk-first",
+      "rule": "Test the largest risk first.",
+      "source": "ARCHITECTURE.md:338",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Test the largest risk before work"
+    },
+    {
+      "id": "bound-design",
+      "rule": "Bound design work.",
+      "source": "ARCHITECTURE.md:340",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Bound design work by time"
+    },
+    {
+      "id": "one-day-cuts",
+      "rule": "Cuts of about one day, one lane, few commits.",
+      "source": "ARCHITECTURE.md:341",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "cuts of about one day",
+      "owner": [
+        {
+          "date": "2026-11-13",
+          "phrase": "1-day of work cut"
+        }
+      ]
+    },
+    {
+      "id": "ci-budget",
+      "rule": "CI under 5 minutes per workflow, release under 10; remove a test only with evidence.",
+      "source": "ARCHITECTURE.md:346",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Keep CI under 5 minutes per workflow and release checks under 10",
+      "owner": [
+        {
+          "date": "2026-11-16",
+          "phrase": "5 minutes is the max for CI"
+        }
+      ]
+    },
+    {
+      "id": "ci-budget-skill",
+      "rule": "Make CI faster first; remove a test only with evidence.",
+      "source": "ARCHITECTURE.md:346",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "remove a test only with evidence"
+    },
+    {
+      "id": "no-plugin-update",
+      "rule": "Do not update plugins inside running sessions.",
+      "source": "ARCHITECTURE.md:352",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Do not update plugins inside a running session"
+    },
+    {
+      "id": "landing-tool",
+      "rule": "Ask how the landing tool brings a lane onto main; land by cherry-pick from a new lane.",
+      "source": "ARCHITECTURE.md:354",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "how its landing tool brings a lane onto main"
+    },
+    {
+      "id": "process-aside-gates-on",
+      "rule": "Harness process set aside; hooks and gates stay on; bypass only by the person per case.",
+      "source": "ARCHITECTURE.md:365",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Hooks and gates stay on while the harness process is set aside",
+      "owner": [
+        {
+          "date": "2026-11-16",
+          "phrase": "if the basicly workflow hinders you"
+        },
+        {
+          "date": "2026-11-19",
+          "phrase": "The standing rule, until basicly hooks"
+        }
+      ]
+    },
+    {
+      "id": "bypass-agent",
+      "rule": "The orchestrator never gives a bypass; only the person does, per case.",
+      "source": "ARCHITECTURE.md:365",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "only the person gives a bypass"
+    },
+    {
+      "id": "rule-enforcement",
+      "rule": "Every rule ships with its enforcement.",
+      "source": "ARCHITECTURE.md:361",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Every rule ships with its enforcement",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "the textual rule is usually not enough"
+        }
+      ]
+    },
+    {
+      "id": "owns-codebases",
+      "rule": "The orchestrator owns the code bases it directs and maintains how the workspace runs.",
+      "source": "ARCHITECTURE.md:365",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "You own the code bases you direct",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "you are the owner of these code bases"
+        }
+      ]
+    },
+    {
+      "id": "test-inflation",
+      "rule": "Search and extend existing tests; name level, type and size in the commit body.",
+      "source": "ARCHITECTURE.md:368",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "search for an existing test of the same behaviour",
+      "owner": [
+        {
+          "date": "2026-11-18",
+          "phrase": "against test inflation"
+        },
+        {
+          "date": "2026-11-18",
+          "phrase": "the rule does not cover all tyeps of tests"
+        }
+      ]
+    },
+    {
+      "id": "quiet-window",
+      "rule": "Quiet window for measurements and landing verifies; no commit on main during a landing verify.",
+      "source": "ARCHITECTURE.md:380",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "make no commit on a main branch while its landing verify runs"
+    },
+    {
+      "id": "quiet-window-skill",
+      "rule": "The measuring session names a window and agrees it with every live session.",
+      "source": "ARCHITECTURE.md:380",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "names a time window to every live session"
+    },
+    {
+      "id": "report-to-person",
+      "rule": "Failures and corrections first; numbered decisions with recommendations.",
+      "source": "ARCHITECTURE.md:390",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "failures and corrections first"
+    },
+    {
+      "id": "measure-first",
+      "rule": "Read the record, ready sets and git logs before asking.",
+      "source": "ARCHITECTURE.md:397",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Measure each read-only fact yourself"
+    },
+    {
+      "id": "record-find",
+      "rule": "Exactly one active record whose title starts with the prefix.",
+      "source": "ARCHITECTURE.md:408",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/record.py",
+      "anchor": "exactly one must match"
+    },
+    {
+      "id": "record-find-agent",
+      "rule": "The orchestrator finds its record with orch record.",
+      "source": "ARCHITECTURE.md:408",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "with `orch record`"
+    },
+    {
+      "id": "no-secrets",
+      "rule": "Never put secrets in a record or message; the writer scans first.",
+      "source": "ARCHITECTURE.md:434",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/messages.py",
+      "anchor": "check_text(self.scan"
+    },
+    {
+      "id": "record-lifecycle",
+      "rule": "Keep the record open while its goal is open; close it with the reason.",
+      "source": "ARCHITECTURE.md:435",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Keep the record open while its goal is open"
+    },
+    {
+      "id": "clock-times",
+      "rule": "Every recorded time comes from a clock call.",
+      "source": "ARCHITECTURE.md:291",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Take every recorded time from a clock call"
+    },
+    {
+      "id": "no-placeholder",
+      "rule": "Show the person only complete checked commands.",
+      "source": "ARCHITECTURE.md:331",
+      "place": "orch",
+      "file": ".basicly/core/kit/orch/orch_relay/fields.py",
+      "anchor": "PLACEHOLDER"
+    },
+    {
+      "id": "session-start-steps",
+      "rule": "Session start: read rules, check the role, find the record, read projects, ask for state.",
+      "source": ".claude/agents/orchestrator.md:10",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "If another session holds the orchestrator role"
+    },
+    {
+      "id": "session-push-notice",
+      "rule": "Before ordering a push, tag or release, tell the person what, where and why.",
+      "source": ".claude/agents/orchestrator.md:23",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "tell the person what, where and why"
+    },
+    {
+      "id": "session-end-handover",
+      "rule": "Session end: lessons, handover, restart notice, worker commit.",
+      "source": ".claude/agents/orchestrator.md:26",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Write a handover comment on the orchestration record"
+    },
+    {
+      "id": "scratch-fresh",
+      "rule": "Make a new empty scratch folder instead of clearing one.",
+      "source": "orchestration record lesson, 2026-11-19 08:54 to 10:10 UTC",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Make a new empty scratch folder instead of clearing one"
+    }
+  ]
+}

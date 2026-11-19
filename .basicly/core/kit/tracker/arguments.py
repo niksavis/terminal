@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Callable
 from typing import Any
 
 DEFAULT_STATUS = "open"
@@ -42,16 +43,34 @@ def _listing_filters(parser: Any) -> None:
     )
 
 
+def _add_list_parser(sub: Any) -> None:
+    listing = sub.add_parser("list", help="query the records the ledger holds")
+    listing.add_argument("directory", help=DIRECTORY_HELP)
+    _listing_filters(listing)
+    all_projects_argument(listing)
+
+
 def record_view_arguments(parser: Any) -> None:
     parser.add_argument("--view", choices=("full", "current", "history"), default="full")
     parser.add_argument("--snapshot", help="refuse retrieval from a changed record snapshot")
+    parser.add_argument(
+        "--json", action="store_true", help="print the id, status, holder and links the vault holds"
+    )
 
 
-def parser() -> argparse.ArgumentParser:
+def all_projects_argument(parser: Any) -> None:
+    parser.add_argument(
+        "--all-projects", action="store_true", help="every project the vault holds, not one"
+    )
+
+
+def parser(extend: Callable[[Any], None] | None = None) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Create, read, query and advance work items in a tracker kit ledger."
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    if extend is not None:
+        extend(sub)
 
     create = sub.add_parser("create", help="mint a record id and append its first events")
     create.add_argument("directory", help=DIRECTORY_HELP)
@@ -76,9 +95,7 @@ def parser() -> argparse.ArgumentParser:
     show.add_argument("record", help="the record id")
     record_view_arguments(show)
 
-    listing = sub.add_parser("list", help="query the records the ledger holds")
-    listing.add_argument("directory", help=DIRECTORY_HELP)
-    _listing_filters(listing)
+    _add_list_parser(sub)
 
     compaction = sub.add_parser(
         "compact", help="fold every pending writer shard into the trunk log and unlink it"
@@ -127,7 +144,7 @@ def parser() -> argparse.ArgumentParser:
     gate.add_argument("directory", help=DIRECTORY_HELP)
     gate.add_argument("record", help="the record id")
 
-    _add_sync_parser(sub)
+    _add_repository_parsers(sub)
 
     bring = sub.add_parser("import", help="import a foreign tracker's backlog into this ledger")
     bring.add_argument("directory", help=DIRECTORY_HELP)
@@ -179,6 +196,7 @@ def _add_query_parsers(sub: Any) -> None:
         if name == "ready":
             view.add_argument("--limit", type=int, default=None, help="at most this many")
             view.add_argument("--mine", action="store_true", help="only records you hold")
+            all_projects_argument(view)
 
 
 def _add_write_parsers(sub: Any) -> None:
@@ -244,13 +262,19 @@ def _add_write_parsers(sub: Any) -> None:
     settle.add_argument("directory", help=DIRECTORY_HELP)
     settle.add_argument("record", help="the record id")
 
-    release = sub.add_parser("unassign", help="give a reserved record back")
-    release.add_argument("directory", help=DIRECTORY_HELP)
-    release.add_argument("record", help="the record id")
+    _add_release_parser(sub)
 
     removal = sub.add_parser("delete", help="tombstone a record; its id is never reused")
     removal.add_argument("directory", help=DIRECTORY_HELP)
     removal.add_argument("record", help="the record id")
+
+
+def _add_release_parser(sub: Any) -> None:
+    release = sub.add_parser("unassign", help="give a reserved record back")
+    release.add_argument("directory", help=DIRECTORY_HELP)
+    release.add_argument("record", help="the record id")
+    release.add_argument("--by", default="", help="who gives it back; default: git user.name")
+    release.add_argument("--take", action="store_true", help="release another holder's record")
 
 
 def _add_config_parser(sub: Any) -> None:
@@ -260,6 +284,28 @@ def _add_config_parser(sub: Any) -> None:
     setting = actions.add_parser("set", help="set one setting in its one home")
     setting.add_argument("name", help="the setting, as config lists it")
     setting.add_argument("value", help="the value; a list or a number is read as JSON")
+
+
+def _add_repository_parsers(sub: Any) -> None:
+    _add_sync_parser(sub)
+    _add_vault_parsers(sub)
+
+
+def _add_vault_parsers(sub: Any) -> None:
+    shapes = sub.add_parser("vault-check", help="sort each vault commit into valid or quarantined")
+    shapes.add_argument("vault", help="the vault repository, bare or not")
+    shapes.add_argument("--ref", default="HEAD", help="the branch or commit to read")
+    shown = sub.add_parser("vault-show", help="fold a vault and show one record's holder")
+    shown.add_argument("vault", help="the vault repository, bare or not")
+    shown.add_argument("record", help="the record id")
+    shown.add_argument("--ref", default="HEAD", help="the branch or commit to read")
+    fetched = sub.add_parser("fetch", help="clone a vault bare once, then fetch it under a lock")
+    fetched.add_argument("--vault", required=True, help="the vault URL or local repository")
+    fetched.add_argument("--state", help="the machine state folder (default: per user)")
+    fetched.add_argument("--timeout", type=float, default=30.0, help="seconds per git call")
+    status = sub.add_parser("status", help="list the queued local events a vault has not received")
+    status.add_argument("--vault", required=True, help="the vault URL or local repository")
+    status.add_argument("--state", help="the machine state folder (default: per user)")
 
 
 def _add_sync_parser(sub: Any) -> None:

@@ -16,24 +16,37 @@ _EVENTS_SOURCE = Path(__file__).resolve().parent.parent / "kit" / "tracker" / "e
 _LEDGER_DIR = Path(".basicly") / "ledger"
 
 
-def _kit_events() -> Any:
+def _kit_module(source: Path, name: str) -> Any:
 
-    if not _EVENTS_SOURCE.is_file():
+    if not source.is_file():
         return None
-    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_events", _EVENTS_SOURCE)
+    spec = importlib.util.spec_from_file_location(name, source)
     if spec is None or spec.loader is None:
         return None
     module = importlib.util.module_from_spec(spec)
-    sys.modules.setdefault("basicly_tracker_kit_events", module)
+    sys.modules.setdefault(name, module)
     spec.loader.exec_module(module)
     return module
+
+
+def _kit_events() -> Any:
+    return _kit_module(_EVENTS_SOURCE, "basicly_tracker_kit_events")
+
+
+def _kit_freeze() -> Any:
+    return _kit_module(_EVENTS_SOURCE.with_name("ledger_freeze.py"), "basicly_tracker_kit_freeze")
 
 
 def ledger_write_in_flight(repo_root: Path) -> bool:
     events = _kit_events()
     if events is None:
         return False
-    return events.locking.is_held(repo_root / _LEDGER_DIR / events.LOCK_NAME)
+    ledger = repo_root / _LEDGER_DIR
+    if ledger.is_file():
+        freeze = _kit_freeze()
+        if freeze is not None and freeze.check(ledger) is not None:
+            return False
+    return events.locking.is_held(ledger / events.LOCK_NAME)
 
 
 def _unset(sha: str) -> bool:

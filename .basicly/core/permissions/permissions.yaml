@@ -27,8 +27,8 @@
 # Fixed origin reads above leave that option subject to ordinary permission checks.
 # Tracker writes use basicly on PATH; claiming uses write -- update --status in_progress.
 # Standalone tracker consumers keep their Python CLI and its normal permission checks.
-# Remote deletion uses :** deliberately: a terminal :* is Claude's legacy prefix syntax,
-# and Bash(git *push* :*) did not deny a colon refspec in the native 2.1.312 probe.
+# Remote deletion uses :** deliberately: a terminal :* is Claude's legacy prefix syntax.
+# The comment above the colon refspec rules in remote-delete gives the reason.
 # Infix Git denies also match quoted commit-message text; this partial backstop retains
 # that conservative behavior (basicly-4uxidwg), rather than claiming argument parsing.
 #
@@ -127,6 +127,11 @@ allow:
       - "Bash(basicly verify --mode full)"
       - "Bash(basicly verify --mode staged)"
 deny:
+  - id: orchestrator-not-a-subagent
+    description: the orchestrator runs only as a main session; refuse spawning it as a subagent
+    requires: [orchestration]
+    claude:
+      - "Agent(orchestrator)"
   - id: destructive-rm
     description: block recursive force-remove of files
     claude:
@@ -146,6 +151,11 @@ deny:
       - "Bash(git push*--force*)"
       - "Bash(git *push*--force*)"
       - "Bash(git *push* -f*)"
+      # A + refspec is a force push. The rule names the remote, because the native probe on
+      # Claude Code 2.1.322 showed Bash(git *push* +*) also denies an ordinary push whose
+      # quoted argument holds " +" (basicly-f2zwd26).
+      - "Bash(git *push* origin +*)"
+      - "Bash(git *push* upstream +*)"
     copilot:
       - "shell(git push --force)"
       - "shell(git push --force-with-lease)"
@@ -154,6 +164,14 @@ deny:
     description: block deletion of remote refs and GitHub releases repositories or runs
     claude:
       - "Bash(git *push*--delete*)"
+      # -d is anchored on push or on the remote for the same reason as the + refspec rules.
+      - "Bash(git *push -d *)"
+      - "Bash(git *push* origin -d *)"
+      - "Bash(git *push* upstream -d *)"
+      # Claude Code 2.1.322 warns at session start about both colon refspec rules.
+      # The warning is accepted: in the native probe, each quiet form that denies both
+      # colon refspecs also denies ordinary pushes, and the terminal :* forms deny
+      # nothing and warn too (basicly-s3yqg13).
       - "Bash(git *push* :**)"
       - "Bash(git *push* +:**)"
       - "Bash(gh release delete*)"

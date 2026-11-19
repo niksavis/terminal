@@ -4,7 +4,7 @@ token_cost:
   listing: 44
 name: harness-loop
 invocation: model
-description: "Drives tracked work through the basicly loop, intake to ship. Use to start or resume work, or to move an issue past a checkpoint or gate."
+description: "Drives tracked development through the basicly loop. Use to intake, decompose, start, resume or advance an explicitly loop-managed issue through its next phase, checkpoint or gate."
 instructions: |
   # Harness Loop
 

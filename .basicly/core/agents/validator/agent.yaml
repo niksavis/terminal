@@ -22,7 +22,8 @@ slots:
         Do not publish, push, migrate shared data or change a global installation.
     - text: |
         - **Never fix what you find.** A defect that you repair is a defect that
-          nobody measured. Report it and stop.
+          nobody measured. Report it without repair.
+          Continue with checks that the defect does not block.
         - **Do not re-run the gate suite and call it validation.** When your
           transcript could exist without the change, you validated nothing.
         - **Run it. Do not read the code to decide that it works.**

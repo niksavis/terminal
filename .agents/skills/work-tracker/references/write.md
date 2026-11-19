@@ -30,6 +30,34 @@ The argv after `--` uses this grammar and no other. The seam refuses an invented
 replaces the value. A label selects lanes for a supervised pass
 (`basicly loop supervise --label`).
 
+### Vault mode
+
+With `.basicly-tracker.toml`, the engine and standalone kit validate against one vault
+view and queue carried events without writing local ledger events.
+
+| Class | Forms | Action |
+| --- | --- | --- |
+| Write | create, update, close, comment, review, confirm, dep, child, undep | Use the ordinary arguments and keep all admission checks. |
+| Protocol | claim, unassign | Use native canonical ownership; compatible kit ledger aliases retain its schema and exit codes. |
+| Refuse | assign, resolve, acknowledge-loss, delete | Nothing is queued; follow the named real remedy. |
+
+Claim canonically before setting `in_progress`; an engine `update --status in_progress`
+does not acquire a vault claim. Do not set `assignee` as a field. Ledger aliases refuse
+`claim --to`, `claim --take` and `unassign --by`; use the native form. Native `unassign --take`
+remains an explicit release of another session's claim.
+
+```sh
+python3 .basicly/core/kit/tracker/cli.py claim RECORD-ID
+basicly tracker write -- update RECORD-ID --status in_progress
+python3 .basicly/core/kit/tracker/cli.py sync --urgent
+```
+
+Own queued writes are visible immediately and marked `pending` until shared. A second
+clone sees them after sharing; sharing preserves one copy. An unsettled claim grants no
+ownership. Legacy raw native comments cause a counted read refusal naming basicly-pvdo68d.
+Use claim/unassign instead of assign, fsck --repair for retired conflict/loss forms, and
+close --resolution cancelled with a reason instead of delete.
+
 ### Commit the tracker state
 
 - Direct owner work: close only after the whole task is satisfied, before its resolving commit. Stage

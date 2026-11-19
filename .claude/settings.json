@@ -90,7 +90,12 @@
       "Bash(gh repo delete*)",
       "Bash(gh run delete*)",
       "Bash(git *reset*--hard*)",
-      "Bash(git *clean*-f*)"
+      "Bash(git *clean*-f*)",
+      "Bash(git *push* origin +*)",
+      "Bash(git *push* upstream +*)",
+      "Bash(git *push -d *)",
+      "Bash(git *push* origin -d *)",
+      "Bash(git *push* upstream -d *)"
     ]
   },
   "hooks": {

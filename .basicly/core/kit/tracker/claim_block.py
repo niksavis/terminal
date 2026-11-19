@@ -49,16 +49,21 @@ def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> st
         installed += [f"{agents}/skills/{name}/" for name in INSTALLED_SKILLS]
     flags = " ".join(f'--installed "{one}"' for one in installed)
     check = (
-        f'"$@" commit-check "$tracker_index/{ledger}" "$tracker_message" --stdin '
+        f'"$@" commit-check "$tracker_source" "$tracker_message" --stdin '
         f'--ledger-label "{ledger}" --runner "$tracker_typed"'
     )
     return "\n".join((
         CLAIM_BEGIN,
-        f'if [ -d "{ledger}" ] && ! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then',
+        "if [ -f .basicly-tracker.toml ] || "
+        f'{{ [ -e "{ledger}" ] && '
+        "! git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; }; then",
         '  tracker_message="$1"',
         "  tracker_check() (",
         '    tracker_index="$(mktemp -d)" || exit 1',
         "    trap 'find \"$tracker_index\" -depth -delete' 0",
+        f'    tracker_source="{ledger}"',
+        "    if [ ! -f .basicly-tracker.toml ]; then",
+        f'    tracker_source="$tracker_index/{ledger}"',
         f'    mkdir -p "$tracker_index/{ledger}" || exit 1',
         f'    git ls-files --stage -- "{ledger}/events-*.jsonl" "{ledger}/pending-*.jsonl" '
         '>"$tracker_index/modes" || exit 1',
@@ -71,6 +76,7 @@ def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> st
         '>"$tracker_index/files" || exit 1',
         '    git checkout-index --stdin -z --prefix="$tracker_index/" '
         '<"$tracker_index/files" || exit 1',
+        "    fi",
         '    git diff --cached --name-only >"$tracker_index/paths" || exit 1',
         f'    {check} {flags} <"$tracker_index/paths"',
         "  )",
@@ -78,17 +84,21 @@ def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> st
         '  tracker_python=""',
         "  for tracker_try in python3 python; do",
         '    command -v "$tracker_try" >/dev/null 2>&1 || continue',
+        '    "$tracker_try" -c "import sys; sys.exit(sys.version_info < (3, 9))" '
+        ">/dev/null 2>&1 || continue",
         '    tracker_python="$tracker_try"',
         "    break",
         "  done",
         '  if [ -n "$tracker_file" ] && [ -n "$tracker_python" ]; then',
-        '    tracker_typed="python3 $tracker_file"',
+        '    tracker_typed="$tracker_python $tracker_file"',
         '    tracker_out=$(tracker_check "$tracker_python" "$tracker_file") ||',
         '      { echo "$tracker_out" >&2; exit 1; }',
+        "    [ ! -f .basicly-tracker.toml ] || printf '%s\\n' \"$tracker_out\" >&2",
         f'  elif [ -z "$tracker_file" ] && command -v {locate.COMMAND} >/dev/null 2>&1; then',
         f'    tracker_typed="{locate.COMMAND}"',
         f"    tracker_out=$(tracker_check {locate.COMMAND}) ||",
         '      { echo "$tracker_out" >&2; exit 1; }',
+        "    [ ! -f .basicly-tracker.toml ] || printf '%s\\n' \"$tracker_out\" >&2",
         "  else",
         '    echo "$tracker_missing" >&2',
         "    exit 1",

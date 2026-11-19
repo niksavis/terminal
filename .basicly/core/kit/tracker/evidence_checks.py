@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import sys
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -120,3 +120,20 @@ def check_fault(
         ([item for item in expected if item not in held], "no check covers the criterion", ""),
     )
     return next((f"{text} {items[0]!r}{tail}" for items, text, tail in faults if items), None)
+
+
+def command_privacy_fault(
+    checks: Sequence[Mapping[str, Any]], redactor: Callable[[str], str] | None = None
+) -> str | None:
+    rules = _load("beads").MACHINE_PATH_RULES
+    if any(
+        any(pattern.search(part) for _name, pattern in rules)
+        or (redactor is not None and redactor(part) != part)
+        for check in checks
+        for part in check["command"]
+    ):
+        return (
+            "Evidence command holds a machine path or private value that redaction would change. "
+            "Use python3 on PATH and paths relative to the repository."
+        )
+    return None

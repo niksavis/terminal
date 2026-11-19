@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Writes a new skill or improves one with evals, a benchmark, graded versions and description tuning. Use when adding a new skill to the catalog, turning a workflow into a skill, comparing runs with and without a skill, or when a skill never gets picked up.
+description: Writes or improves a skill with evals, a benchmark, graded versions and description tuning. Use when adding a new skill to the catalog, turning a workflow into a skill, comparing runs with and without a skill, or when a skill never gets picked up.
 license: Apache-2.0
 metadata:
   source: anthropics/skills skills/skill-creator

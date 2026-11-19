@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import http.client
+import json
+import re
 import sys
 import tempfile
 import urllib.parse
@@ -13,6 +15,9 @@ PLATFORM = "https://platform.claude.com/docs/en/"
 CODE = "https://code.claude.com/docs/"
 
 SOURCES = {
+    "fable-prompting": (
+        f"{PLATFORM}build-with-claude/prompt-engineering/prompting-claude-fable-5-2.md"
+    ),
     "skills-best-practices": f"{PLATFORM}agents-and-tools/agent-skills/best-practices.md",
     "skills-overview": f"{PLATFORM}agents-and-tools/agent-skills/overview.md",
     "context-windows": f"{PLATFORM}build-with-claude/context-windows.md",
@@ -40,7 +45,21 @@ SOURCES = {
     "claude-code-prompt-caching": f"{CODE}en/prompt-caching.md",
     "claude-code-permissions": f"{CODE}en/permissions.md",
     "claude-code-settings": f"{CODE}en/settings.md",
+    "claude-code-model-config": f"{CODE}en/model-config.md",
+    "claude-code-advisor": f"{CODE}en/advisor.md",
     "claude-code-index": f"{CODE}llms.txt",
+    "claude-platform-index": "https://platform.claude.com/llms.txt",
+}
+
+DISCOVERY_INDEXES = ("claude-platform-index", "claude-code-index")
+DISCOVERY_LIMIT = 10
+INDEX_READ_LIMIT = 2 * 1024 * 1024
+MODEL_GUIDE_PATHS = {
+    "platform.claude.com": re.compile(
+        r"/docs/en/(?:build-with-claude/prompt-engineering/prompting-claude-[a-z0-9-]+"
+        r"|models/[a-z0-9-]+/(?:migration-guide|whats-new-[a-z0-9-]+))(?:\.md)?"
+    ),
+    "code.claude.com": re.compile(r"/docs/en/(?:model-config|advisor|effort)(?:\.md)?"),
 }
 
 TIMEOUT_S = 20.0
@@ -110,12 +129,65 @@ def out_refusal(out: Path) -> str:
     return ""
 
 
+def model_guide(url: str) -> str | None:
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except ValueError:
+        return None
+    pattern = MODEL_GUIDE_PATHS.get(parts.netloc)
+    if parts.scheme != "https" or parts.query or pattern is None:
+        return None
+    if not pattern.fullmatch(parts.path):
+        return None
+    return parts._replace(fragment="").geturl()
+
+
+def discover(out: Path) -> tuple[list[str], dict[str, str], int]:
+    listed = {url.removesuffix(".md") for url in SOURCES.values()}
+    candidates: dict[str, str] = {}
+    errors: dict[str, str] = {}
+    for name in DISCOVERY_INDEXES:
+        path = out / f"{name}.txt"
+        try:
+            if path.is_symlink():
+                errors[name] = "SymlinkedIndex"
+                continue
+            with path.open("rb") as stream:
+                raw = stream.read(INDEX_READ_LIMIT + 1)
+        except OSError as error:
+            errors[name] = type(error).__name__
+            continue
+        if len(raw) > INDEX_READ_LIMIT:
+            errors[name] = "IndexReadLimit"
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeError as error:
+            errors[name] = type(error).__name__
+            continue
+        for url in re.findall(r"\]\((https://[^\s)]+)\)", text):
+            guide = model_guide(url)
+            if guide is None:
+                continue
+            canonical = guide.removesuffix(".md")
+            if canonical not in listed and (canonical not in candidates or guide.endswith(".md")):
+                candidates[canonical] = guide
+    ordered = sorted(candidates.values())
+    return ordered[:DISCOVERY_LIMIT], errors, max(0, len(ordered) - DISCOVERY_LIMIT)
+
+
 def main(argv: list[str] | None = None, get: Fetch = fetch) -> int:
     parser = argparse.ArgumentParser(
         description="Download the current vendor pages that the best-practices audit reads."
     )
     parser.add_argument("--out", type=Path, default=default_out(), help="the directory to fill")
-    parser.add_argument("--list", action="store_true", help="print the sources and exit")
+    modes = parser.add_mutually_exclusive_group()
+    modes.add_argument("--list", action="store_true", help="print the sources and exit")
+    modes.add_argument(
+        "--discover",
+        action="store_true",
+        help="report model guides from saved indexes without fetching",
+    )
     args = parser.parse_args(argv)
     if args.list:
         for name, url in SOURCES.items():
@@ -124,6 +196,21 @@ def main(argv: list[str] | None = None, get: Fetch = fetch) -> int:
     refusal = out_refusal(args.out)
     if refusal:
         parser.error(refusal)
+    if args.discover:
+        candidates, errors, omitted = discover(args.out)
+        print(
+            json.dumps(
+                {
+                    "candidates": candidates,
+                    "failed_indexes": list(errors),
+                    "index_errors": errors,
+                    "omitted": omitted,
+                    "downloaded": False,
+                },
+                indent=2,
+            )
+        )
+        return PARTIAL if errors or omitted else COMPLETE
     fetched, failed = pull(args.out, get)
     for line in fetched:
         print(f"fetched {line}")

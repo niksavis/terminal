@@ -4,7 +4,7 @@ token_cost:
   listing: 55
 name: root-cause
 invocation: model
-description: "Finds the cause of a failure, a bug that came back or a test that fails intermittently, link by link with evidence, to a control this repository owns. Use when asked why something broke, keeps breaking or fails, and the cause is unclear."
+description: "Finds the cause of a failure, a bug that came back or a flaky test, link by link, to a control this repository owns. Use when asked why something broke, keeps breaking or fails, and the cause is unclear."
 covers:
   work_types: [bug]
   phases: [build]

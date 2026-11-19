@@ -13,6 +13,15 @@ PLACES = ((Path(".basicly") / "core" / "kit" / "tracker" / "cli.py").as_posix(),
 LOCATE = Path(__file__).resolve().parent.parent / "kit" / "tracker" / "locate.py"
 
 
+def _harness(module: Any) -> Any:
+    factory = getattr(module, "harness", None)
+    if not callable(factory):
+        raise ImportError(
+            "the tracker kit lacks vault harness support; reinstall with `basicly install --force`"
+        )
+    return factory()
+
+
 def _locate() -> Any:
     spec = importlib.util.spec_from_file_location("basicly_tracker_kit_locate", LOCATE)
     if spec is None or spec.loader is None:
@@ -38,6 +47,15 @@ def _git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.CompletedProcess[str]:
+    if (root / ".basicly-tracker.toml").is_file():
+        return subprocess.run(  # nosec B603
+            [*tracker.argv(sys.executable), "commit-check", str(root / LEDGER), message],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
     staged = _git(root, "diff", "--cached", "--name-only")
     if staged.returncode != 0:
         sys.stderr.write(f"tracker-claim: cannot read staged paths: {staged.stderr}\n")
@@ -105,6 +123,8 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
 
 
 def _exempt(root: Path, paths: list[str]) -> bool:
+    if paths and (root / ".basicly-tracker.toml").is_file():
+        return False
     if not paths or not (root / LEDGER).is_dir():
         return True
     if _git(root, "rev-parse", "-q", "--verify", "MERGE_HEAD").returncode == 0:
@@ -118,6 +138,16 @@ def _exempt(root: Path, paths: list[str]) -> bool:
 def main(argv: list[str] | None = None) -> int:
     paths = list(argv if argv is not None else sys.argv[1:])
     root = _project_root()
+    if (
+        (root / ".basicly-tracker.toml").exists()
+        or (root / LEDGER).is_file()
+        or (root / ".basicly/ledger-archive").exists()
+    ):
+        try:
+            _harness(_locate()).harness_config(root)
+        except (ValueError, OSError, ImportError) as exc:
+            sys.stderr.write(f"tracker-claim: {exc}\n")
+            return 1
     if _exempt(root, paths):
         return 0
     locate = _locate()
@@ -130,9 +160,18 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError:
         return 1
     if done.returncode == 0:
+        try:
+            report = json.loads(done.stdout)
+        except ValueError:
+            report = {}
+        if warning := report.get("warning"):
+            sys.stderr.write(f"tracker-claim: {warning}; run `{report.get('next', '')}`\n")
         return 0
     try:
-        refused = json.loads(done.stdout).get("refused") or done.stdout
+        report = json.loads(done.stdout)
+        refused = report.get("refused") or done.stdout
+        if remedy := report.get("next"):
+            refused += f"; next: {remedy}"
     except ValueError:
         refused = done.stdout + done.stderr
     sys.stderr.write(f"tracker-claim: {refused}\n")

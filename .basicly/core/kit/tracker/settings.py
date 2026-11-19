@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import shlex
 import sys
 from collections.abc import Callable, Mapping
@@ -29,6 +30,7 @@ templates = _load("templates.py", "basicly_tracker_kit_templates")
 holders = _load("holders.py", "basicly_tracker_kit_holders")
 pin = _load("pin.py", "basicly_tracker_kit_pin")
 install_hook = _load("install_hook.py", "basicly_tracker_kit_install_hook")
+vault_config = _load("vault_config.py", "basicly_tracker_kit_vault_config")
 events = holders.events
 ids = events.ids
 
@@ -116,7 +118,7 @@ def report(
         _row(name, value, LEDGER_FILE if name in held else DEFAULT_SOURCE, TEMPLATE_HOME)
         for name, value in _template_values(template).items()
     ]
-    holder, source = holders.holder_and_source(start, environ)
+    holder, source = holders.holder_and_source(start, os.environ if environ is None else environ)
     folds = _folds_on_merge(ledger)
     pinned = pin.pinned(ledger)
     rows += [
@@ -157,7 +159,8 @@ def write(directory: Path | str, name: str, raw: str) -> dict[str, object]:
 
 def create_prefix(directory: Path | str, given: str) -> str:
 
-    chosen = given or templates.load(directory).prefix
+    config = vault_config.load(Path(directory).resolve())
+    chosen = given or templates.load(directory).prefix or (config.prefix if config else "")
     if not chosen:
         raise SettingError(
             f"create needs an id prefix and {directory} sets none: pass --prefix NAME, or "

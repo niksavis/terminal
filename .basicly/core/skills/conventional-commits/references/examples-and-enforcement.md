@@ -25,7 +25,7 @@ Invalid:
 The hooks are the gate. The same scripts run as the local hook and in CI:
 
 - `.basicly/core/hooks/commit-msg.py` checks the type, the scope, the `!` and the description.
-- `.basicly/core/hooks/tracker-commit-msg.py` checks that the record ids are present and exist.
+- `.basicly/core/hooks/tracker-commit-msg.py` checks that the record ids are present and exist. It runs only in the local hook, because CI never reads tracker records.
 
 The profile is stricter than Conventional Commits 1.0.0. A subject that passes plain Conventional Commits can still fail.
 

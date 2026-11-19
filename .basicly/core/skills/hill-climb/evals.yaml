@@ -26,3 +26,13 @@ tasks:
   - query: "Record climb round 2; one of the three reviewers did not reply."
     expected_behavior:
       - "Reruns the missing lens once with the same brief, does not drop it because 2 lenses is below 3, and never records the round with the missing reply"
+  - query: "Record the climb with partial host usage and repeated cited findings."
+    expected_behavior:
+      - "Supplies available usage with reply hashes and distinct dispatch identifiers"
+      - "Keeps missing metrics unknown and CLI cost estimates labeled"
+      - "Reports exact cited identities separately from verified useful findings"
+      - "Follows the existing stop decision without treating agent seconds as elapsed time"
+  - query: "The usage manifest was saved before a reviewer reply changed."
+    expected_behavior:
+      - "Refuses the mismatched manifest without changing climb state"
+      - "Rebuilds the manifest from the matching replies and host records before recording the round"

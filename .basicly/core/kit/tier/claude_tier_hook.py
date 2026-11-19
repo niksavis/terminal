@@ -18,9 +18,17 @@ SUBAGENT_KEY = "subagent_type"
 INPUT_MODEL_KEY = "model"
 
 DEFAULT_TIER_AGENT_TYPE = "general-purpose"
-WORKER_TIERS = ("low", "medium", "high")
+MAXIMUM_ALIAS = tier_resolver.HOST_MODEL_ALIASES[HOST]["maximum"]
+MAXIMUM_NOTICE = (
+    "The maximum tier is for advice or orchestration. "
+    "Use low, medium or high for a worker. The requested model remains unchanged."
+)
 
 LOGGER = logging.getLogger("claude_tier_hook")
+
+
+class TierResolutionError(ValueError):
+    pass
 
 
 def takes_default_tier(tool_input: dict) -> bool:
@@ -32,16 +40,8 @@ def takes_default_tier(tool_input: dict) -> bool:
 
 def default_tier_setting() -> tuple[str | None, str | None]:
     raw = os.environ.get(tier_resolver.DEFAULT_TIER_ENV, "").strip()
-    if not raw:
-        return None, None
-    if raw.lower() in WORKER_TIERS:
-        return raw.lower(), None
-    allowed = ", ".join(WORKER_TIERS)
-    return None, (
-        f"{tier_resolver.DEFAULT_TIER_ENV}={raw!r} is not a worker tier, so the tier hook "
-        f"left this agent on the session model. Set it to one of {allowed} in the env "
-        "block of a Claude settings file, or remove it."
-    )
+    warning = tier_resolver.worker_default_error(raw)
+    return (None, warning) if warning else (raw.lower() or None, None)
 
 
 def resolve_alias(
@@ -55,36 +55,55 @@ def resolve_alias(
         return None, False
     wants_default = takes_default_tier(tool_input)
     fallback = default_tier if wants_default else None
-    resolver = tier_resolver.TierResolver.from_map_path(map_path, default_tier=fallback)
-    if resolver is None:
-        return None, False
     name = tool_input.get(SUBAGENT_KEY)
     definition = None
     if isinstance(name, str) and name.strip():
         definition = tier_resolver.find_definition(
             name.strip(), HOST, roots=tier_resolver.default_roots(cwd)
         )
-    if definition is None:
-        return (resolver.resolve(HOST).alias if fallback else None), wants_default
-    if tier_resolver.declared_value(definition, tier_resolver.MODEL_KEY):
+    if definition is not None and tier_resolver.declared_value(definition, tier_resolver.MODEL_KEY):
         return None, False
-    declares_tier = bool(tier_resolver.declared_value(definition, tier_resolver.TIER_KEY))
-    alias = resolver.resolve(HOST, definition=definition).alias
-    return alias, wants_default and not declares_tier
+    declared = tier_resolver.declared_tier(definition) if definition is not None else None
+    failure = TierResolutionError(
+        f"Agent {name!r} declares tier {declared!r}, but its model cannot resolve. "
+        "Repair the model map or explicitly select a supported model."
+    )
+    try:
+        resolver = tier_resolver.TierResolver.from_map_path(map_path, default_tier=fallback)
+        alias = (
+            resolver.resolve(HOST, definition=definition).alias if resolver is not None else None
+        )
+    except Exception:
+        if not declared:
+            raise
+        LOGGER.exception("model resolution failed for an explicit agent tier")
+        raise failure from None
+    if declared and alias is None:
+        raise failure
+    return alias, wants_default and not declared
 
 
 def rewrite(payload: dict) -> dict | None:
-    if payload.get("tool_name") != AGENT_TOOL:
-        return None
     tool_input = payload.get("tool_input")
-    if not isinstance(tool_input, dict):
+    if payload.get("tool_name") != AGENT_TOOL or not isinstance(tool_input, dict):
         return None
+    if tool_input.get(INPUT_MODEL_KEY) == MAXIMUM_ALIAS:
+        return {"systemMessage": MAXIMUM_NOTICE}
     raw_cwd = payload.get("cwd")
     cwd = Path(raw_cwd) if isinstance(raw_cwd, str) and raw_cwd else Path.cwd()
     default_tier, warning = (
         default_tier_setting() if takes_default_tier(tool_input) else (None, None)
     )
-    alias, default_wanted = resolve_alias(tool_input, cwd, default_tier)
+    try:
+        alias, default_wanted = resolve_alias(tool_input, cwd, default_tier)
+    except TierResolutionError as error:
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": HOOK_EVENT,
+                "permissionDecision": "deny",
+                "permissionDecisionReason": str(error),
+            }
+        }
     if alias is None:
         if warning is not None and default_wanted:
             return {"systemMessage": warning}

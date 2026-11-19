@@ -20,6 +20,7 @@ MODEL_KEY = "model"
 
 MAP_PATH_ENV = "BASICLY_MODEL_MAP"
 DEFAULT_TIER_ENV = "BASICLY_DEFAULT_TIER"
+WORKER_TIERS = ("low", "medium", "high")
 
 HOST_SURFACES: dict[str, tuple[str, str]] = {
     "claude": ("anthropic", "anthropic"),
@@ -41,6 +42,17 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _FENCE = "---"
 _MAX_FRONTMATTER_LINES = 200
 _KEY_RE = re.compile(r"^([A-Za-z0-9_-]+):[ \t]*(.*)$")
+
+
+def worker_default_error(value: str) -> str | None:
+    tier = value.strip().lower()
+    if not tier or tier in WORKER_TIERS:
+        return None
+    return (
+        f"Default tier {tier!r} is not a worker tier. "
+        f"Set {DEFAULT_TIER_ENV} or --default-tier to {', '.join(WORKER_TIERS)}, "
+        "or remove the default."
+    )
 
 
 @dataclass(frozen=True)
@@ -124,13 +136,14 @@ class TierResolver:
                 reason="no tier is declared for this spawn and no default tier is configured",
             )
         order = self.tier_order
-        if order and declared not in order:
+        problem = worker_default_error(declared) if source == "default" else None
+        if problem or (order and declared not in order):
             return Resolution(
                 tier=declared,
                 surface=surface,
                 vendor=chosen_vendor,
                 source=source,
-                reason=f"unknown tier {declared!r}; the map declares {', '.join(order)}",
+                reason=problem or f"unknown tier {declared!r}; the map declares {', '.join(order)}",
             )
         model, landed, reason, skipped = self._walk(declared, surface, vendor, default_vendor)
         return Resolution(

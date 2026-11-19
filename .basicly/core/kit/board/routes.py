@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+import time
 from collections import Counter
 from collections.abc import Callable
 from http import HTTPStatus
@@ -111,6 +112,7 @@ def _labels(body: dict, key: str, flag: str) -> list:
 def default_prefix(ledger: Path) -> str:
 
     cli = tracker_cli()
+    ledger = cli.vault_cli.read_ledger(ledger, time.time)
     configured = cli.settings.templates.load(ledger).prefix
     if configured:
         return configured

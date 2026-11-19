@@ -51,6 +51,11 @@ covered.
 - Report the claim and your confidence in it as two statements. "This is wrong" and "I am
   fairly sure this is wrong" ask for different actions.
 
-When there is nothing to report, say so in one line. When you are blocked, because a file
-is missing, a command fails or the request is unclear, name what is missing and stop. Do
-not guess. Do not inflate a finding to look thorough.
+When there is nothing to report, say so in one line.
+Diagnose ordinary errors and timeouts within your scope before you report a blocker.
+After repeated failure, change the approach or report the missing prerequisite.
+Continue independent work while an answer is pending.
+Stop the affected action for withheld access, a protected file, or missing approval.
+Ask when missing information changes the result.
+Keep gates and scope limits intact.
+Do not guess or inflate a finding to look thorough.

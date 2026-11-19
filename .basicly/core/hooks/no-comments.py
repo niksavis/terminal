@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-import os
-import subprocess  # nosec B404
+import contextlib
+import importlib.util
+import io
+import json
 import sys
 import tomllib
 from pathlib import Path
@@ -38,36 +40,59 @@ def comment_policy(root: Path) -> str:
     return policy
 
 
+def _paths(argv: list[str]) -> list[str]:
+    if argv != ["--paths-json-stdin"]:
+        if "--paths-json-stdin" in argv:
+            raise ValueError("Use --paths-json-stdin alone and send a JSON path list.")
+        return argv
+    paths = json.load(sys.stdin)
+    if not isinstance(paths, list) or any(
+        not isinstance(path, str) or not path or "\0" in path for path in paths
+    ):
+        raise ValueError("--paths-json-stdin requires a JSON list of nonempty paths without NUL.")
+    return paths
+
+
+def _load(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise ValueError("no-comments: the installed comment checker is missing")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _check(policy: str, paths: list[str]) -> tuple[int, str, str]:
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        if policy == "no-comment-ratchet":
+            checker = _load(_HERE / "comment_ratchet.py", "basicly_comments_hook_ratchet")
+            code = checker.main(["--", *paths], kit_root=_kit_cli().parent)
+        else:
+            checker = _load(_kit_cli(), "basicly_comments_hook_cli")
+            code = checker.main(["check", "--", *paths])
+    return int(code), out.getvalue(), err.getvalue()
+
+
 def main(argv: list[str] | None = None) -> int:
-    for stream in (sys.stdout, sys.stderr):
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
         reconfigure = getattr(stream, "reconfigure", None)
         if reconfigure is not None:
             reconfigure(encoding="utf-8")
     try:
         policy = comment_policy(Path.cwd())
-    except (OSError, ValueError) as err:
-        print(f"no-comments: {err}", file=sys.stderr)
+        paths = _paths(list(argv if argv is not None else sys.argv[1:]))
+        if not paths:
+            return 0
+        code, out, err = _check(policy, paths)
+    except (OSError, ValueError) as error:
+        print(f"no-comments: {error}", file=sys.stderr)
         return 1
-    paths = list(argv if argv is not None else sys.argv[1:])
-    if not paths:
+    if code == 0:
         return 0
-    command = (
-        [str(_HERE / "comment_ratchet.py"), *paths]
-        if policy == "no-comment-ratchet"
-        else [str(_kit_cli()), "check", *paths]
-    )
-    completed = subprocess.run(  # nosec B603
-        [sys.executable, "-X", "utf8", *command],
-        env={**os.environ, "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"},
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=False,
-    )
-    if completed.returncode == 0:
-        return 0
-    sys.stdout.write(completed.stdout)
-    sys.stderr.write(completed.stderr)
+    sys.stdout.write(out)
+    sys.stderr.write(err)
     sys.stderr.write(
         "no-comments: the code is the source of truth, so a code file carries no prose.\n"
         "Remove the comment, or move the fact it carries into the record, a README or a\n"

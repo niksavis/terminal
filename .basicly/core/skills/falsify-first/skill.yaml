@@ -4,7 +4,7 @@ token_cost:
   listing: 55
 name: falsify-first
 invocation: model
-description: "Tries to break a claim, invariant or measurement with a concrete counterexample. Use before it enters a plan, a design or a gate, or before a high-risk number, root cause or coverage claim enters a report."
+description: "Tries to break a claim, invariant or measurement with a concrete counterexample. Use before one enters a plan, design or gate, or a high-risk number, root cause or coverage claim enters a report."
 covers:
   work_types: [feature, epic]
   phases: [decompose]
