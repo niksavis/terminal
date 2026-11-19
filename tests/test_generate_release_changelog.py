@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.git_env import environment_without_git
+
 _SCRIPT = Path(__file__).resolve().parents[1] / ".scripts" / "generate_release_changelog.py"
 _SPEC = importlib.util.spec_from_file_location("generate_release_changelog", _SCRIPT)
 assert _SPEC is not None and _SPEC.loader is not None
@@ -35,6 +37,7 @@ def _git(repo: Path, *args: str) -> None:
         cwd=repo,
         check=True,
         capture_output=True,
+        env=environment_without_git(),
     )
 
 
@@ -59,6 +62,7 @@ def _generate(repo: Path) -> subprocess.CompletedProcess[str]:
         check=False,
         capture_output=True,
         text=True,
+        env=environment_without_git(),
     )
 
 
@@ -105,3 +109,29 @@ def test_a_second_run_keeps_the_highlights_of_the_section(tmp_path: Path) -> Non
     text = (repo / "CHANGELOG.md").read_text(encoding="utf-8")
     assert text.count("### Highlights") == 1
     assert "### Highlights\n\n- Add a thing.\n\n### Commit delta" in text
+
+
+def test_a_release_repo_ignores_the_git_variables_of_a_running_hook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    decoy = tmp_path / "decoy"
+    decoy.mkdir()
+    subprocess.run(
+        ["git", "init", "-q"],
+        cwd=decoy,
+        check=True,
+        capture_output=True,
+        env=environment_without_git(),
+    )
+    before = (decoy / ".git" / "config").read_text(encoding="utf-8")
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    monkeypatch.setenv("GIT_DIR", str(decoy / ".git"))
+    monkeypatch.setenv("GIT_WORK_TREE", str(snapshot))
+
+    repo = _release_repo(tmp_path, {"term-a1.added.md": "- Add a thing.\n"})
+    result = _generate(repo)
+
+    assert (decoy / ".git" / "config").read_text(encoding="utf-8") == before
+    assert (repo / ".git").is_dir()
+    assert result.returncode == 0, result.stderr
