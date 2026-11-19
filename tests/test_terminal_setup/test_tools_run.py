@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import shutil
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -11,6 +12,8 @@ from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInf
 from terminal_setup.runner import Runner
 
 from .test_runner import CapturingReporter
+
+pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="the probe runs in a POSIX sh")
 
 
 def _tool(directory: Path, name: str, body: str) -> None:
