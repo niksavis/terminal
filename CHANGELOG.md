@@ -2,6 +2,28 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.21.2 - 2026-11-19
+
+Delta: v0.21.1..v0.21.2
+
+### Highlights
+
+- **Setup works on a bare Ubuntu or Debian.** Setup installs gpg, xz and libatomic with the shell tools, so the WezTerm and Node.js steps no longer fail on a machine without them. On Debian 12, delta comes from its release because apt has no package. A failed step in unattended mode names the last lines of its error output (term-dxusgy).
+- **`Setup complete.` means every tool runs.** After the installs, setup runs each tool's version command and counts a tool that is missing or does not start as a failed step (term-dxusgy).
+- **Setup finds Codex on Windows.** Setup now looks in `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`, where the Codex installer puts it, so a re-run no longer installs Codex again and the report no longer calls it missing (term-dxusgy).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for v0-21-2 (term-ahizq0) (e2c694c)
+- fix(tests): run the posix probe tests only on posix hosts (term-14v4ep) (c2c900d)
+- chore(tracker): record closed records (term-dxusgy) (0158ad1)
+- fix(setup): find codex on windows and name a present node (term-dxusgy) (4d29f86)
+- fix(setup): install libatomic and check that each tool runs (term-dxusgy) (cdc6137)
+- fix(setup): install gpg and xz on bare linux and show step errors (term-dxusgy) (3e9964b)
+- chore(tracker): record the v0-21-1 release (term-kc9nbf) (5578f99)
+- fix(ci): install the documented wget prerequisite in the container job (term-3osnol) (9edcc2d)
+- ci(e2e): prove the bare linux install in fresh containers (term-3osnol) (03a5872)
+
 ## v0.21.1 - 2026-11-19
 
 Delta: v0.21.0..v0.21.1

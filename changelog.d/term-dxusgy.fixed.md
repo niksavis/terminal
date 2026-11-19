@@ -1,3 +1,0 @@
-- **Setup works on a bare Ubuntu or Debian.** Setup installs gpg, xz and libatomic with the shell tools, so the WezTerm and Node.js steps no longer fail on a machine without them. On Debian 12, delta comes from its release because apt has no package. A failed step in unattended mode names the last lines of its error output (term-dxusgy).
-- **`Setup complete.` means every tool runs.** After the installs, setup runs each tool's version command and counts a tool that is missing or does not start as a failed step (term-dxusgy).
-- **Setup finds Codex on Windows.** Setup now looks in `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`, where the Codex installer puts it, so a re-run no longer installs Codex again and the report no longer calls it missing (term-dxusgy).
