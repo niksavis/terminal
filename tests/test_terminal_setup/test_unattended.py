@@ -104,6 +104,24 @@ def test_unattended_windows_host_installs_system_packages_as_wsl_root() -> None:
     assert "sudo" not in script
 
 
+def test_unattended_setup_upgrades_the_distro_only_with_update() -> None:
+    plain = _unattended_runner()
+    upgrading = _unattended_runner()
+    with (
+        mock.patch.object(prerequisites, "missing_wsl_system_packages", return_value=["zsh"]),
+        mock.patch.object(prerequisites, "is_running_in_wsl", return_value=False),
+    ):
+        prerequisites.ensure_wsl_system_packages(
+            plain, _windows_platform(), allow_sudo=True, assume_yes=False
+        )
+        prerequisites.ensure_wsl_system_packages(
+            upgrading, _windows_platform(), allow_sudo=True, assume_yes=False, upgrade=True
+        )
+
+    assert "apt-get upgrade" not in " ".join(plain.commands[0])
+    assert "apt-get upgrade -y" in " ".join(upgrading.commands[0])
+
+
 def test_unattended_inside_wsl_uses_passwordless_sudo() -> None:
     runner = _unattended_runner()
 
