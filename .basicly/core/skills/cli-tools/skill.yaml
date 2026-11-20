@@ -43,6 +43,13 @@ instructions: |
 
   To give every repo on this machine this skill and its references, run `basicly skills-user cli-tools`. Run it again after each upgrade, because a stale personal copy hides the project skill.
 
+  ## Code Mode scripts
+
+  - **Read a file with the Read tool before `edit()` or `write()` on it.** `file().text()`, `cat` and `sed` do not count as a read.
+  - **Never `pkill -f` or `pgrep -f` a plain pattern.** The pattern is also in your own shell's command line, so it kills that shell (Exit code 144). Write `'[m]argin'` or kill by PID. A hook refuses the plain form.
+  - **Make a new scratch folder; do not clear an old one in a script.** The classifier refuses the clear.
+  - **Wait with Poll or `gh run watch`, never a sleep loop in a REPL script.** A script stops at 600 s.
+
   ## Rules
 
   - **Never start an interactive tool.** `fzf`, `lazygit`, `tmux` and `wezterm` wait for a person; use only the forms their references mark as safe.

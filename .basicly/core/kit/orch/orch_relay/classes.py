@@ -5,6 +5,7 @@ from orch_lessons.log import RefusedError
 ASK_FIRST = "ask-first"
 PERSON_APPROVES = "person-approves"
 PERSON_WINDOW = "person-window"
+COUNCIL_DECIDES = "council-decides"
 
 ITEMS: dict[str, str] = {
     "ci-edit": ASK_FIRST,
@@ -23,12 +24,12 @@ ITEMS: dict[str, str] = {
     "reversible-delete": PERSON_APPROVES,
     "permission-prompt": PERSON_WINDOW,
     "classifier-refusal": PERSON_WINDOW,
-    "test-weakening": PERSON_APPROVES,
-    "gate-weakening": PERSON_APPROVES,
-    "hook-weakening": PERSON_APPROVES,
-    "gate-exception": PERSON_APPROVES,
-    "gate-bypass": PERSON_APPROVES,
-    "hook-bypass": PERSON_APPROVES,
+    "test-weakening": COUNCIL_DECIDES,
+    "gate-weakening": COUNCIL_DECIDES,
+    "hook-weakening": COUNCIL_DECIDES,
+    "gate-exception": COUNCIL_DECIDES,
+    "gate-bypass": COUNCIL_DECIDES,
+    "hook-bypass": COUNCIL_DECIDES,
     "irreversible-destruction": PERSON_WINDOW,
     "private-data-exposure": PERSON_WINDOW,
     "rule-change": PERSON_APPROVES,
@@ -38,6 +39,9 @@ ROUTE = {
     ASK_FIRST: "an ask-first item; the orchestrator decides it with orch decide",
     PERSON_APPROVES: (
         "an item the person approves in the orchestrator window; relay it with orch approve"
+    ),
+    COUNCIL_DECIDES: (
+        "a test, gate or hook change; the orchestrator decides it with orch decide --council"
     ),
     PERSON_WINDOW: (
         "an item that stays with the person in the worker's own window; "
@@ -53,7 +57,7 @@ def item_class(item: str) -> str:
     return ITEMS[item]
 
 
-def require_class(item: str, wanted: str, command: str) -> None:
+def require_class(item: str, wanted: str | frozenset[str], command: str) -> None:
     found = item_class(item)
-    if found != wanted:
+    if found not in ({wanted} if isinstance(wanted, str) else wanted):
         raise RefusedError(f"{command} refuses {item!r}: it is {ROUTE[found]}")

@@ -127,7 +127,9 @@ def chosen_backlogs(install: Install) -> tuple[Backlog, ...]:
 
 def _runner(install: Install) -> str:
 
-    return install.runner or f"python3 {_shown(_HERE / 'cli.py', install.root)}"
+    return install.runner or _load("locate.py", "basicly_tracker_kit_locate").typed_in(
+        _HERE / "cli.py", install.root
+    )
 
 
 def _how_to_import(install: Install, backlog: Backlog) -> str:

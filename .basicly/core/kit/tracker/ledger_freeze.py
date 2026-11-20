@@ -236,6 +236,7 @@ def freeze(
         }
         try:
             if locked and source == directory and directory.exists():
+                _drop_caches(directory)
                 directory.rename(archive)
             with directory.open("x", encoding="utf-8") as target:
                 target.write(json.dumps(marker, indent=2, sort_keys=True) + "\n")
@@ -253,7 +254,21 @@ def freeze(
             raise FreezeError(
                 "ledger freeze was interrupted; preserve ledger-archive and inspect both paths"
             ) from exc
+    _drop_lock(directory.with_name(ARCHIVE))
     return {"frozen": True, "archive": str(LEDGER.with_name(ARCHIVE)), "files": len(expected)}
+
+
+def _drop_caches(directory: Path) -> None:
+    snapshot = _load("snapshot")
+    for path in (snapshot.snapshot_path(directory), *snapshot.checkpoint_paths(directory)):
+        if path.is_file() and not path.is_symlink():
+            path.unlink()
+
+
+def _drop_lock(archive: Path) -> None:
+    lock = archive / _load("locking").LEDGER_LOCK_NAME
+    if lock.is_file() and not lock.is_symlink():
+        lock.unlink(missing_ok=True)
 
 
 def check_source(directory: Path) -> Path | None:

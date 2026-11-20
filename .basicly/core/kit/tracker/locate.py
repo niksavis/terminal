@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import shutil
 import sys
 from collections.abc import Callable, Sequence
@@ -64,6 +65,14 @@ def locate(
             return Tracker(relative, "")
     found = which(COMMAND)
     return Tracker("", found) if found else None
+
+
+def typed_in(cli: Path, start: Path) -> str:
+    here = start.resolve()
+    root = next((one for one in (here, *here.parents) if (one / ".git").exists()), here)
+    if not cli.resolve().is_relative_to(root):
+        return COMMAND
+    return f"python3 {Path(os.path.relpath(cli.resolve(), here)).as_posix()}"
 
 
 def install_command(version: str | None) -> str:

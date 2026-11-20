@@ -35,7 +35,17 @@ Each change has `changelog.d/RECORD-ID.CATEGORY.md`. Write a one-paragraph summa
 Cut only from a commit whose CI run on the release branch passed. A red or running build is a stop.
 CI reads no tracker record (the Quality Gate rule), so run the local landing verify before the cut: it runs the `local_only` record checks.
 
-## 4. Choose the version and run the dry run
+## 4. Prove the release in each consumer
+
+When `basicly.toml` names `[[release.consumers]]`, run the proof on the exact commit you cut from:
+
+```sh
+uv run basicly consumer-proof
+```
+
+It builds a wheel of HEAD and, in a fresh clone of each consumer, runs install, a real commit through the consumer's own hooks, and the consumer's own CI commands. `basicly release` refuses a cut while no passing proof of HEAD is recorded. A failure names the consumer and its log; fix the cause in this repository, commit, and prove again.
+
+## 5. Choose the version and run the dry run
 
 ```sh
 uv run basicly release VERSION --issue RECORD-ID --dry-run
@@ -43,7 +53,7 @@ uv run basicly release VERSION --issue RECORD-ID --dry-run
 
 You choose major, minor or patch. The dry run writes nothing and lists every refusal at once; [refusals](references/refusals.md) gives each fix.
 
-## 5. Cut the release
+## 6. Cut the release
 
 ```sh
 uv run basicly release VERSION --issue RECORD-ID
@@ -51,7 +61,7 @@ uv run basicly release VERSION --issue RECORD-ID
 
 It bumps the version, regenerates projections, rewrites install pins, assembles the changelog, commits and tags. What else it does and the flags are in [procedure](references/procedure.md).
 
-## 6. Push and confirm
+## 7. Push and confirm
 
 ```sh
 git push origin main

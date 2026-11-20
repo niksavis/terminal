@@ -71,7 +71,7 @@ The engine and standalone kit use the same admission and write adapter.
 
 | Class | Forms | Vault behavior |
 | --- | --- | --- |
-| Ordinary writes | `create`, `child`, `update`, `close`, `comment`, `review`, `confirm`, `dep`, `undep` | Keep their ledger-form arguments and existing checks. |
+| Ordinary writes | `create`, `child`, `update`, `close`, `comment`, `review`, `confirm`, `dep`, `undep`, `mark-ready` | Keep their ledger-form arguments and existing checks. |
 | Canonical protocol | `claim`, `unassign` | Compatible ledger aliases use the native handler, report schema and exit codes. |
 | Refused | `assign`, `resolve`, `acknowledge-loss`, `delete` | Write nothing and name a real remedy. |
 
@@ -232,6 +232,46 @@ python3 .basicly/kit/tracker/cli.py unassign .basicly/ledger acme-a1b2
 python3 .basicly/kit/tracker/cli.py unassign .basicly/ledger acme-a1b2 --take
 ```
 
+### refine-sheet
+
+Write a sheet of the open records that still miss acceptance criteria or a context: one block per
+record with its id, title, context and its `acceptance:` list, which holds the record's criteria or
+one empty line. The sheet goes inside the
+repository's git folder, so it is never committed; `--out FILE` names another file. It refuses a
+file that exists, and writes no file when no record owes criteria.
+An import of a backlog names this command when records still need criteria.
+
+```sh
+python3 .basicly/kit/tracker/cli.py refine-sheet .basicly/ledger
+```
+
+### apply-sheet
+
+Apply a filled refine sheet in one command. Each line that starts with a dash under `acceptance:` is
+one criterion.
+It refuses the whole sheet, naming each id, when an acceptance list is still empty or an id is not
+in the ledger, or when the sheet names no record. A task, bug or chore with exactly one criterion
+gets `size=small`. The report lists the records the sheet shaped, the ones the scheduler now ranks
+ready (a blocked, deferred or parent record is shaped but not ready), and the records that still
+owe a section, such as a review. A sheet that applied is removed.
+
+```sh
+python3 .basicly/kit/tracker/cli.py apply-sheet .basicly/ledger
+```
+
+### mark-ready
+
+Record that an in_progress record is built and waits for delivery. Only its holder marks it
+(`--to`, default: your holder name); a record that is not in_progress, held by someone else
+or already marked is refused by name. `--again` marks it again after a change and `--clear`
+removes the mark. The ready time is the time of the marking event:
+`list --ready-for-delivery` prints it, oldest first.
+
+```sh
+python3 .basicly/kit/tracker/cli.py mark-ready .basicly/ledger acme-a1b2
+python3 .basicly/kit/tracker/cli.py list .basicly/ledger --ready-for-delivery
+```
+
 ### vault-check
 
 Sort every commit on a vault's first-parent chain into a genesis, format, batch or archive
@@ -369,7 +409,8 @@ python3 .basicly/kit/tracker/cli.py sync --vault path/to/vault.git
 ### ready
 
 The ranked records that can be worked on now. It leaves out a record labelled `refine`,
-and a record created under the current rule that fails `dor`. Each row names its `holder`
+a record created under the current rule that fails `dor`, and an `in_progress` record that no
+one holds, which someone else may be working on. Each row names its `holder`
 when someone has reserved it, with `stale` when the record had no event for `stale_days`
 (14 by default, set in `template.json`) and `contested` when two people reserved it on
 different branches. `--mine` lists only the records you hold.
@@ -380,7 +421,9 @@ python3 .basicly/kit/tracker/cli.py ready .basicly/ledger --limit 10
 
 ### blocked
 
-Each record that is not ready, and what holds it.
+Each record that is not ready, and what holds it. An `in_progress` record that no one holds
+shows `in_progress_elsewhere`: since when it is in progress, and the `claim` command that adopts
+it.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py blocked .basicly/ledger
@@ -501,6 +544,11 @@ agent writer removes it, and only when `dor` passes.
 ```sh
 python3 .basicly/kit/tracker/cli.py refine .basicly/ledger
 ```
+
+### migrate
+
+Import a ledger, beads, br or beans backlog into a vault, or export one prefix. The steps, the
+preview, the private map and the redaction rules are in [the vault migration guide](VAULT-MIGRATION.md).
 
 ### migrate-fields
 

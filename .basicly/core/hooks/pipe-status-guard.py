@@ -142,6 +142,8 @@ _ADVICE = (
     "  <cmd> > out.txt 2>&1; echo $?; tail -5 out.txt   # no pipe to mis-read\n"
     "  set -o pipefail; <cmd> | tail -5                 # leftmost failure wins\n"
     "  <cmd> | tail -5; <next>                          # status not needed: ; not &&\n"
+    "In a Code Mode REPL script, cut the output in JavaScript so .exitCode stays the command's:\n"
+    "  const r = await $`<cmd>`.nothrow(); [r.exitCode, r.stdout.split('\\n').slice(-5)]\n"
     "Then confirm the result from the explicit pass/fail summary line, not from the "
     "exit code alone — truncated output hides failures."
 )

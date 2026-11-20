@@ -160,11 +160,78 @@ def _snapshot(
     if stage == "pre-push" and not pushed:
         return None, root
     state = module.prepare(root, directory, pushed)
-    env.update(state.env)
+    for key in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE"):
+        env.pop(key, None)
+    env.update(module.job_env(state, stage))
     return ((module, state) if stage == "pre-commit" else None), state.tree
 
 
+CORE_KEYS = ("core.worktree", "core.bare")
+
+
+def _clean_env() -> dict[str, str]:
+    return {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+
+
+def common_config(root: Path) -> Path:
+    found = subprocess.run(  # nosec B603 B607
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=root,
+        env=_clean_env(),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    )
+    return Path(found.stdout.strip()) / "config"
+
+
+def core_settings(config: Path) -> dict[str, str]:
+    values = {}
+    for key in CORE_KEYS:
+        read = subprocess.run(  # nosec B603 B607
+            ["git", "config", "--file", str(config), "--get", key],
+            cwd=config.anchor,
+            env=_clean_env(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        if read.returncode == 0:
+            values[key] = read.stdout.strip()
+    return values
+
+
+def changed_core(stage: str, config: Path, before: dict[str, str]) -> int:
+    after = core_settings(config)
+    changed = [key for key in CORE_KEYS if before.get(key) != after.get(key)]
+    for key in changed:
+        old = before.get(key)
+        repair = (
+            f"git config --file {config} --unset {key}"
+            if old is None
+            else f"git config --file {config} {key} {old}"
+        )
+        print(
+            f"basicly hook: the {stage} hook run changed {key} in {config} to "
+            f"{after.get(key)!r}; a job ran git with the hook's GIT_ variables. "
+            f"Repair it with: {repair}",
+            file=sys.stderr,
+        )
+    return 1 if changed else 0
+
+
 def launch(manager: str, stage: str, arguments: list[str]) -> int:
+    if manager != "git":
+        return _launch(manager, stage, arguments)
+    config = common_config(project_root())
+    before = core_settings(config)
+    code = _launch(manager, stage, arguments)
+    return changed_core(stage, config, before) or code
+
+
+def _launch(manager: str, stage: str, arguments: list[str]) -> int:
     root = project_root()
     suffix = ".exe" if os.name == "nt" else ""
     binary = root / ".basicly/bin" / f"lefthook{suffix}"

@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import argparse
 import fnmatch
 import json
+import os
 import re
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import runner as kit_runner
-from orch_state import herdr
+from orch_relay import record
+from orch_state import commands, herdr, relay_guard, reporter, store
 
 from orch_lessons import log
 
@@ -21,7 +25,10 @@ COPILOT_PERMISSIONS = Path(".copilot/permissions-config.json")
 RULES_DOC_ENV = "ORCH_RULES_DOC"
 RULESET_ENV = "ORCH_RULESET"
 BUNDLED_RULESET = Path(__file__).with_name("ruleset.json")
-OWNER_LINE = re.compile(r'(?<!")\bOwner (?:rule|answer|addition)\b(?:[^.:"]*?(\d{4}-\d{2}-\d{2}))?')
+OWNER_LINE = re.compile(
+    r'(?<!")(?:\bOwner (?:rule|answer|addition)\b|\bWorking rule\b|\(lesson\b)'
+    r'(?:[^.:"]*?(\d{4}-\d{2}-\d{2}))?'
+)
 
 Runner = Callable[[list[str]], str]
 
@@ -224,13 +231,135 @@ def lesson_lines(cwd: Path, environ: dict[str, str]) -> tuple[list[str], bool]:
     return lines, bool(old) or bool(empty)
 
 
+RELAY_PREFIXES = ("[approval ", "[decision ")
+
+
+def _entries(tracker: record.Tracker) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for prefix in RELAY_PREFIXES:
+        for name in tracker.matching(prefix.strip()):
+            found.extend((name, text) for text in tracker.comments(name) if text.startswith(prefix))
+    return list(dict.fromkeys(found))
+
+
+def relay_lines(
+    cwd: Path, environ: dict[str, str], tracker: record.Tracker | None = None
+) -> tuple[list[str], bool]:
+    root = store.find(cwd, environ)
+    if root is None:
+        return ["relay entries: not checked, no orchestrator store"], False
+    try:
+        tracker = tracker or record.Tracker(log.repo_root(cwd))
+        entries = _entries(tracker)
+    except log.RefusedError as error:
+        return [f"relay entries: not checked, {error}"], False
+    known = relay_guard.registered(root)
+    live = relay_guard.live_orchestrators(root)
+    foreign = [
+        (name, text.splitlines()[0])
+        for name, text in entries
+        if not any(line in known for line in text.splitlines()[1:3])
+    ]
+    lines = [f"relay entries: {len(entries)} approval or decision entries checked"]
+    if len(live) > 1:
+        lines.append(
+            f"relay entries: {len(live)} live sessions are named Orchestrator: {', '.join(live)}"
+        )
+    lines += [
+        f"relay entries: {name}: {first} was not written by the Orchestrator session"
+        for name, first in foreign
+    ]
+    return lines, bool(foreign) or len(live) > 1
+
+
+SELF_TEST_ORCHESTRATOR = "self-test-orchestrator"
+SELF_TEST_WORKER = "self-test-worker"
+
+
+def _refuses(probe: Callable[[], object]) -> bool:
+    try:
+        probe()
+    except log.RefusedError:
+        return True
+    return False
+
+
+def _claim(work: Path) -> object:
+    args = argparse.Namespace(
+        name=relay_guard.ORCHESTRATOR, now=None, next=None, waiting=None, state=None, session=None
+    )
+    environ = {relay_guard.HARNESS_ENV: SELF_TEST_WORKER}
+    return commands.set_state(args, work, environ, store.utc_now)
+
+
+def _forged_start(work: Path) -> object:
+    event: dict[str, object] = {
+        "hook_event_name": "SessionStart",
+        "session_title": relay_guard.ORCHESTRATOR,
+        "session_id": SELF_TEST_WORKER,
+        "cwd": str(work),
+    }
+    reporter.write_state(event, {}, store.utc_now)
+    path = store.session_path(work / ".orchestrator", SELF_TEST_WORKER)
+    if relay_guard.reserved(store.read(path).get("name")):
+        return "registered"
+    raise log.RefusedError("second Orchestrator refused")
+
+
+def guard_self_test() -> tuple[bool, str]:
+    with tempfile.TemporaryDirectory() as folder:
+        work = Path(folder)
+        lessons = work / ".orchestrator" / "lessons"
+        lessons.mkdir(parents=True)
+        (lessons / log.MARKER).write_text("", encoding="utf-8")
+        sessions = work / ".orchestrator" / store.SESSIONS
+        sessions.mkdir()
+        live = {"pid": os.getpid(), "pid_start": store.started(os.getpid())}
+        for session, record in (
+            (SELF_TEST_ORCHESTRATOR, {"name": relay_guard.ORCHESTRATOR, **live}),
+            (SELF_TEST_WORKER, {"name": "worker"}),
+        ):
+            (sessions / f"{session}.json").write_text(json.dumps(record), encoding="utf-8")
+        harness = relay_guard.HARNESS_ENV
+        probes: dict[str, Callable[[], object]] = {
+            "a wrong id": lambda: relay_guard.check("approve", work, {harness: SELF_TEST_WORKER}),
+            "a missing id": lambda: relay_guard.check("approve", work, {}),
+            "an ORCH_SESSION_ID spoof": lambda: relay_guard.check(
+                "approve", work, {"ORCH_SESSION_ID": SELF_TEST_ORCHESTRATOR}
+            ),
+            "an orch state set --name Orchestrator claim": lambda: _claim(work),
+            "a forged SessionStart payload": lambda: _forged_start(work),
+        }
+        missed = [label for label, probe in probes.items() if not _refuses(probe)]
+        accepted = not _refuses(
+            lambda: relay_guard.check("approve", work, {harness: SELF_TEST_ORCHESTRATOR})
+        )
+    if missed or not accepted:
+        why = ", ".join(missed) if missed else "the Orchestrator session itself"
+        return False, f"orch approve guard: self-test FAILED on {why}; the deny rule is required"
+    return True, (
+        f"orch approve guard: self-test refused all {len(probes)} probes and accepted the "
+        "Orchestrator session; no deny rule is needed"
+    )
+
+
 def run(cwd: Path, environ: dict[str, str], runner: Runner = run_codex) -> Report:
     repo = log.repo_root(cwd)
+    guarded, guard_line = guard_self_test()
+    settings_checks = (
+        [([guard_line], False)]
+        if guarded
+        else [
+            ([guard_line], False),
+            claude_lines(settings_files(repo, environ)),
+            codex_lines(repo, environ, runner),
+            copilot_lines(repo, environ),
+        ]
+    )
     checks = [
-        claude_lines(settings_files(repo, environ)),
-        codex_lines(repo, environ, runner),
-        copilot_lines(repo, environ),
+        *settings_checks,
         rule_parity_lines(environ),
+        relay_lines(cwd, environ),
     ]
     unchecked = [] if environ.get("HOME") else ["user settings: not checked, HOME is not set"]
     lessons, stale = lesson_lines(cwd, environ)

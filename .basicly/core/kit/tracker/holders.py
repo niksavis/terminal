@@ -27,8 +27,11 @@ def _load(file_name: str, module_name: str) -> Any:
 
 events = _load("events.py", "basicly_tracker_kit_events")
 fields = _load("fields.py", "basicly_tracker_kit_fields")
+locate = _load("locate.py", "basicly_tracker_kit_locate")
 
 HOLDER_FIELD = events.HOLDER_FIELD
+READY_FIELD = "ready_for_delivery"
+READY_MARK = "ready"
 TAKE_KEY = events.TAKE_KEY
 HOLDER_VARIABLE = "BASICLY_HOLDER"
 NAME_VARIABLES = ("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME")
@@ -139,20 +142,15 @@ def refuse_a_release_by_another(state: Any, record: str, by: str, take: bool) ->
 IN_PROGRESS = "in_progress"
 
 
-def _kit_cli() -> str:
-
-    script = _HERE / "cli.py"
-    try:
-        return script.relative_to(Path.cwd().resolve()).as_posix()
-    except ValueError:
-        return script.as_posix()
+def kit_cli() -> str:
+    return locate.typed_in(_HERE / "cli.py", Path.cwd())
 
 
 def refuse_a_claim_on_a_closed_record(state: Any, ledger: Path, record: str) -> None:
 
     if state.status != events.CLOSING_STATUS:
         return
-    reopen = f"python3 {_kit_cli()} update {ledger.as_posix()} {record} --status open"
+    reopen = f"{kit_cli()} update {ledger.as_posix()} {record} --status open"
     raise fields.RefusedFieldError(
         f"{record} is closed, and a claim never reopens a closed record; reopen it on "
         f"purpose with `{reopen}`, then claim it"

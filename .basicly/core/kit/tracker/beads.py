@@ -150,7 +150,25 @@ def normalize(raw: Mapping[str, object]) -> tuple[dict[str, object] | None, str]
         if mapped is None:
             return None, _value_refusal(raw.get("id"), source, name, value)
         record[name] = mapped
-    return record, ""
+    return _shaped(record), ""
+
+
+SMALL_TYPES = ("task", "bug", "chore")
+
+
+def _has_context(description: str) -> bool:
+    return any(line.strip() == "## Context" for line in description.splitlines())
+
+
+def _shaped(record: dict[str, object]) -> dict[str, object]:
+    description = record.get("description")
+    if isinstance(description, str) and description.strip() and not _has_context(description):
+        record["description"] = f"## Context\n{description.strip()}"
+    accepted = record.get("acceptance_criteria")
+    lines = accepted.splitlines() if isinstance(accepted, str) else []
+    if record.get(TYPE_FIELD) in SMALL_TYPES and len([one for one in lines if one.strip()]) == 1:
+        record["size"] = "small"
+    return record
 
 
 CONFIG_FILE = "config.yaml"

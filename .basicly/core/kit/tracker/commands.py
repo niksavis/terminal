@@ -407,3 +407,4 @@ record_process = review.process.record_process
 assign = holder_writes.assign
 claim = holder_writes.claim
 unassign = holder_writes.unassign
+mark_ready = holder_writes.mark_ready

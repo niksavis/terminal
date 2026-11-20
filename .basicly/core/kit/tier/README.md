@@ -7,7 +7,7 @@ third-party package and no network.
 | File | What it does |
 | --- | --- |
 | `tier_resolver.py` | tells which model a tier means for one host surface |
-| `claude_tier_hook.py` | rewrites a Claude Code spawn to use that model |
+| `claude_tier_hook.py` | refuses a Claude Code spawn with no model and names the model to pass |
 | `install_hook.py` | writes the hook into the host settings |
 | `model-map.json` | the data that all three files read; `init` vendors it beside them |
 
@@ -19,7 +19,7 @@ behaves and where it stops.
 
 | Host | How the kit applies a tier |
 | --- | --- |
-| Claude Code | At spawn time. A `PreToolUse` hook adds the resolved model to the `Agent` tool input. |
+| Claude Code | At spawn time. A `PreToolUse` hook denies an `Agent` call with no model and names the model to pass. |
 | Copilot CLI | The kit does not apply it. The installer declines and gives the reason below. |
 | Codex | The resolver answers for the `openai` surface. The installer has no Codex host. |
 
@@ -181,21 +181,26 @@ isolated mode (`-I`). It checks that the kit needs no basicly. Your harness read
 `alias` where the surface uses the short name, and sets the model in its own way. The JSON
 output is the contract.
 
-## How the hook changes a spawn
+## How the hook applies a tier to a spawn
 
-1. **The hook copies every key of the original tool input and adds only `model`.** It does
-   not remove or change other keys.
-2. **The hook adds `model` only when the tool input has none.**
+1. **The hook never changes the tool input.** Auto mode can deny a call whose input a hook
+   changed, and that denial can also refuse the other calls in the same response. The hook
+   denies the call instead, with this exact reason:
+   `call Agent again with model: "opus" (tier high, model-map.json)`.
+   The caller sends the call again with that model, and auto mode reviews it as written.
+2. **The hook denies only when the tool input has no `model`.**
    An explicit model in the input or definition remains unchanged.
    An Agent call with `model: fable` receives a warning about the maximum tier.
    This warning does not deny the call or rewrite its input.
    Maximum is for advice or orchestration.
    Worker defaults use `low`, `medium` or `high`.
-3. **The hook writes the short alias, not the full model id.** The aliases are `haiku`,
+3. **The hook names the short alias, not the full model id.** The aliases are `haiku`,
    `sonnet`, `opus` and `fable` for the tiers `low`, `medium`, `high` and `maximum`.
-4. **Since Claude Code 2.1.251, the model the hook writes outranks
+4. **Since Claude Code 2.1.251, the `model` of the call outranks
    `CLAUDE_CODE_SUBAGENT_MODEL`.** The variable is then the host default for a spawn that the
    hook leaves alone. On an older Claude Code the variable wins, so examine it first there.
+   A default-tier spawn passes with no deny when the variable already names the default
+   tier's alias.
 5. **The host loads a hook in a new directory only when the CLI process starts.** See the
    restart notice in [Install the spawn hook](#install-the-spawn-hook). A dry run or a run
    that changes nothing does not print the notice, because there is nothing to reload.
@@ -208,8 +213,8 @@ that has none:
 ```console
 $ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"general-purpose","prompt":"x"}}' \
     | BASICLY_DEFAULT_TIER=medium python3 .basicly/kit/tier/claude_tier_hook.py
-{"hookSpecificOutput": {"hookEventName": "PreToolUse",
- "updatedInput": {"model": "sonnet", "prompt": "x", "subagent_type": "general-purpose"}}}
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+ "permissionDecisionReason": "call Agent again with model: \"sonnet\" (tier medium, model-map.json)"}}
 ```
 
 - **The default applies only to a `general-purpose` spawn, or to a spawn with no
@@ -234,8 +239,8 @@ Give the hook a `PreToolUse` payload on stdin, as the host does:
 ```console
 $ printf '%s' '{"tool_name":"Agent","cwd":"'"$PWD"'","tool_input":{"subagent_type":"my-agent","prompt":"x"}}' \
     | python3 .basicly/kit/tier/claude_tier_hook.py
-{"hookSpecificOutput": {"hookEventName": "PreToolUse",
- "updatedInput": {"model": "haiku", "prompt": "x", "subagent_type": "my-agent"}}}
+{"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+ "permissionDecisionReason": "call Agent again with model: \"haiku\" (tier low, model-map.json)"}}
 ```
 
 **No output is a valid answer, and it is the usual one.** The hook exits 0 with no output,

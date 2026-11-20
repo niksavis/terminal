@@ -98,6 +98,7 @@ TABLE = (
     Field("external_ref", OPTIONAL, "the engine, which binds a record to its worktree"),
     Field("provenance", WRITER, "the importer and the fold; the writer sets it"),
     Field("shaped_under", WRITER, "the definition of ready; create sets it"),
+    Field("ready_for_delivery", WRITER, "the delivery order, oldest first; mark-ready sets it"),
     Field("import_digest", IMPORTED, "the importer, which skips a record it already holds"),
     Field("imported_from", IMPORTED, "the importer and the derived dates"),
     Field("created_at", IMPORTED, "the derived created date of an imported record"),

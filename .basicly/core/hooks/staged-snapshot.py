@@ -179,6 +179,14 @@ def prepare(root: Path, directory: Path, commit: str | None = None) -> Snapshot:
     return Snapshot(root, snapshot, temporary_index, before, env, original_tree)
 
 
+JOB_DROPPED = ("GIT_DIR", "GIT_WORK_TREE")
+
+
+def job_env(state: Snapshot, stage: str) -> dict[str, str]:
+    dropped = (*JOB_DROPPED, "GIT_INDEX_FILE") if stage == "pre-push" else JOB_DROPPED
+    return {key: value for key, value in state.env.items() if key not in dropped}
+
+
 def publish(state: Snapshot) -> None:
     root, snapshot, temporary_index = state.root, state.tree, state.index
     before, env, old = state.before, state.env, state.original_tree

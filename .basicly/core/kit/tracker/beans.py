@@ -254,4 +254,24 @@ def import_backlog(
         )
         if adopted:
             report["prefix"] = adopted
-    return report
+    return {**report, **_ready_summary(snapshot, report.get("imported") or [], directory)}
+
+
+def _ready_summary(snapshot: Any, imported: list, directory: Path | str) -> dict[str, object]:
+    wanted = set(imported)
+    small, owing, elsewhere = [], [], []
+    for record in snapshot.records:
+        if not isinstance(record, dict) or record.get("id") not in wanted:
+            continue
+        if record.get("status") == "in_progress" and not record.get(migrate.events.HOLDER_FIELD):
+            elsewhere.append(record["id"])
+        if record.get("size") == "small":
+            small.append(record["id"])
+        elif record.get("status") != "closed" and not record.get("acceptance_criteria"):
+            owing.append(record["id"])
+    return {
+        "small": sorted(small),
+        "needs_criteria": sorted(owing),
+        "in_progress_elsewhere": sorted(elsewhere),
+        "next": f"refine-sheet {directory}" if owing else "ready",
+    }

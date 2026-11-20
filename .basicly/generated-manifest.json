@@ -2,13 +2,14 @@
   "version": "1",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:991db8c5d3fcff9bd420446059cd3813db92ab842a0df0ac609be59888b7e0f0",
+      "hash": "sha256:ec6988dec47f01d253b922e0ee19a0f21583b180cfa4815ee6d6e598c56bf1cc",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",
         "secure-coding",
         "require-explicit-confirmation",
         "project-defaults",
+        "agentic-kanban",
         "claude-quirks",
         "overlay-authoring",
         "quality-gate-rendered",
@@ -26,19 +27,20 @@
       ]
     },
     ".claude/rules/python-style.md": {
-      "hash": "sha256:94c0bfe4713c206594d787d3012abfad8eadc5ed70d224697ce58b029094032b",
+      "hash": "sha256:cbd5d106b8fa80db06f1a9f61d9b3abd01d6b2744faa8d0b6e6e0835db2a13d3",
       "source_fragments": [
         "python-style"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:177ca45645f98bf631a3d26cdb3e6bf965366ffa95fa8dddbd9e679f239df7e9",
+      "hash": "sha256:bcb9271d66df67b934b9aa4a8de21e64a390bac8341aaf07d6cfe3a48b9e1b7f",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",
         "secure-coding",
         "require-explicit-confirmation",
         "project-defaults",
+        "agentic-kanban",
         "overlay-authoring",
         "quality-gate-rendered",
         "quirks",
@@ -56,13 +58,14 @@
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:535f1793398605c40f71866cddda8a70b9c129634a86d6e12db9b669ec91be95",
+      "hash": "sha256:93f5bc791a767652d034c0adf8674205279a863eb787a9768a2d3089bd84cdac",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",
         "secure-coding",
         "require-explicit-confirmation",
         "project-defaults",
+        "agentic-kanban",
         "overlay-authoring",
         "quality-gate-rendered",
         "quirks",

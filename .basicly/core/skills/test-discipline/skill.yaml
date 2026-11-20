@@ -27,6 +27,9 @@ instructions: |
     limit set from a local run fails on a slower runner.
   - **Watch a regression test fail before the fix.** Then you know that it exercises the
     defect.
+  - **A test that runs git clears the GIT_ variables.** A hook runs tests with GIT_DIR set,
+    and git in a temporary folder then acts on the real repository. Pass an env built
+    without the keys that start with GIT_.
 
   ## Read when needed
 

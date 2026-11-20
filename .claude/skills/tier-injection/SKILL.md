@@ -12,6 +12,7 @@ A subagent definition declares a portable `tier`: `low`, `medium`, `high` or `ma
 
 - **Set `CLAUDE_CODE_SUBAGENT_MODEL` as a machine-wide fallback.** The [model selection order](#model-selection-order) defines when it applies.
 - **Relaunch the whole CLI process after a first install.** The host does not watch a directory that did not exist at startup. `/clear` reloads neither hooks nor agents.
+- **Pass `model` on every Agent call: the alias of the agent's tier.** A call with no `model` is denied with the exact remedy, `call Agent again with model: "opus" (tier high, model-map.json)`. Send the call again with that model. The hook never changes a call, because auto mode can deny a changed call and the other calls in the same response.
 - **Remove a `model` pin to let the tier decide.** The hook leaves a definition that pins its own `model`, and a spawn that names one.
 - **Commit `.basicly/core/models/model-map.json` in the repository.** A repository with no map in its own tree gets no rewrite.
 
@@ -44,7 +45,7 @@ It exits 0 with a `model` and an `alias`, or exits 1 with the `reason` that noth
 
 ## Behaviour to expect
 
-- The hook writes an alias such as `opus`, not a model id. The `model` field of the Agent tool takes an alias. The frontmatter of a definition takes a full model id.
+- The hook names an alias such as `opus`, not a model id. The `model` field of the Agent tool takes an alias. The frontmatter of a definition takes a full model id.
 - An unresolved tier declared by an agent refuses its spawn where this kit has an installed model map.
   Repair the map or explicitly select a supported model.
   An optional default does not block a spawn.

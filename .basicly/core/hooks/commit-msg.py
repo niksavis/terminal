@@ -114,6 +114,12 @@ def main() -> int:
                 "numbers, filenames, and proper-noun capitalization in the commit body.",
                 file=sys.stderr,
             )
+            if "." in bad:
+                print(
+                    "A record id goes only in the trailing (id) of the subject, for example "
+                    "(basicly-x1y2.3); name other records and versions in the body.",
+                    file=sys.stderr,
+                )
     return 1
 
 

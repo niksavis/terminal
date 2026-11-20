@@ -11,6 +11,10 @@ instructions: |
 
   Checklists for the orchestrator session. The rules are in the orchestrator agent and the always-on files; this skill does not add authority. A project session that loads it uses it only to check what it receives.
 
+  ## The queue
+
+  Order the queue by the Agentic Kanban rules in the always-on instructions: the oldest waiting item first, and act on any wait over 2 hours.
+
   ## Before you ask
 
   1. Measure each read-only fact yourself: git state, tracker state, a file, a version. Ask a project session or the person only for a fact you cannot read.
@@ -73,4 +77,4 @@ instructions: |
 
   ## Lessons
 
-  When a worker or a job shows a missing rule, record it with `orch lesson add`. Name the rule that would have prevented it and its check: a test, a hook, a gate or a tool refusal. At the end of each session, run `orch lessons end-session`; it refuses a session that wrote no lesson, and `orch doctor` flags a session that ended with none.
+  When a worker or a job shows a missing rule, record it with `orch lesson add --scope local|basicly`. Name the rule that would have prevented it and its check: a test, a hook, a gate or a tool refusal. Give `--scope basicly` when the fix changes a file that basicly install writes, and `--scope local` otherwise; only basicly-scope lessons are exported. At the end of each session, run `orch lessons end-session`; it refuses a session that wrote no lesson, and `orch doctor` flags a session that ended with none.

@@ -18,6 +18,9 @@ SOURCES = {
     "fable-prompting": (
         f"{PLATFORM}build-with-claude/prompt-engineering/prompting-claude-fable-5-2.md"
     ),
+    "opus-prompting": (
+        f"{PLATFORM}build-with-claude/prompt-engineering/prompting-claude-opus-5-5.md"
+    ),
     "skills-best-practices": f"{PLATFORM}agents-and-tools/agent-skills/best-practices.md",
     "skills-overview": f"{PLATFORM}agents-and-tools/agent-skills/overview.md",
     "context-windows": f"{PLATFORM}build-with-claude/context-windows.md",

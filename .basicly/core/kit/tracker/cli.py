@@ -48,6 +48,7 @@ pin = _load("pin.py", "basicly_tracker_kit_pin")
 mirror = _load("mirror.py", "basicly_tracker_kit_mirror")
 settings = _load("settings.py", "basicly_tracker_kit_settings")
 beans = _load("beans.py", "basicly_tracker_kit_beans")
+refine_sheet = _load("refine_sheet.py", "basicly_tracker_kit_refine_sheet")
 events = snapshot.events
 ids = events.ids
 
@@ -135,6 +136,9 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
     "unassign": lambda a, c: commands.unassign(
         a.directory, a.record, _releaser(a), take=a.take, context=c
     ),
+    "mark-ready": lambda a, c: commands.mark_ready(
+        a.directory, a.record, _holder(a), mode=a.mode, context=c
+    ),
     "resolve": lambda a, c: commands.resolve(a.directory, a.record, context=c),
     "acknowledge-loss": lambda a, c: fsck.recovery.acknowledge(
         a.directory,
@@ -177,6 +181,15 @@ _VIEWS: dict[str, Callable[[argparse.Namespace, Any], dict[str, object]]] = {
         beans.Source(a.source_format, Path(a.export), a.source or None),
         redact=c.redactor,
         dry_run=a.dry_run,
+    ),
+    "refine-sheet": lambda a, _r: refine_sheet.write(
+        a.directory, refine_sheet.sheet_path(a.directory, a.out)
+    ),
+    "apply-sheet": lambda a, c: refine_sheet.apply(
+        a.directory,
+        refine_sheet.sheet_path(a.directory, a.sheet),
+        context=c,
+        view=lambda: vault_cli.view_of(a, c.clock),
     ),
     "sync": lambda a, _r: mirror.sync(a.directory, a.root, dry_run=a.dry_run),
     "scaffold": lambda a, _r: record_view.scaffold_of(a.directory, a.type),
@@ -252,8 +265,7 @@ def _commit_check(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
     states = events.fold(found).records
     committer = commands.holders.default_holder(Path.cwd(), os.environ)
     ledger = Path(args.directory).resolve()
-    here = Path(__file__).resolve()
-    runner = args.runner or f"python3 {_relative(here)}"
+    runner = args.runner or commands.holders.kit_cli()
     shown = args.ledger_label or _relative(ledger)
     context = commands.claims.CommitContext(committer, shown, runner, tuple(args.installed))
     if unreadable:
@@ -271,21 +283,6 @@ _REFUSABLE: dict[str, Callable[[argparse.Namespace, Callable[[], float]], tuple[
     "dor": lambda a, _c: _dor(a),
     "fsck": lambda a, _c: _fsck(a),
 }
-
-
-def _refuse_vault_ledger_form(args: argparse.Namespace) -> None:
-    if args.command not in {"assign", "resolve", "acknowledge-loss", "delete"}:
-        return
-    ledger = commands.git_layout.shared_ledger(args.directory)
-    config = vault_config.load(ledger.resolve())
-    if config is None or commands._is_repository(ledger):
-        return
-    records = getattr(args, "record", getattr(args, "parent", []))
-    records = [records] if isinstance(records, str) else records
-    for record in records:
-        directory = ledger.resolve().relative_to(config.path.parent).as_posix()
-        refusal = vault_refusal.ledger_form(args.command, record, directory)
-        raise commands.TrackerCommandError(commands.vault_write.redact.text(refusal))
 
 
 def _migration(
@@ -323,7 +320,7 @@ def _run_command(
                 vault_refusal.message(code, report)
             )
         return code, report
-    _refuse_vault_ledger_form(args)
+    vault_refusal.refuse_ledger_form(args, commands, vault_config)
     starts = args.command in _STARTS_A_LEDGER and not getattr(args, "dry_run", False)
     args.directory = commands.resolve_ledger(args.directory, starts=starts)
     pin.require(args.directory)
@@ -362,9 +359,7 @@ def _run_command(
             "appended": bool(appended),
             **_owed_of(vault_cli.view_of(args, clock), record),
         }
-    records = query_records(
-        args.directory, status=args.status, limit=args.limit, query=args.query, summary=args.summary
-    )
+    records = queries.listed(args)
     return EXIT_OK, {"count": len(records), "records": records}
 
 
@@ -390,6 +385,11 @@ def invoke(args: argparse.Namespace, redact: Callable[[str], str] | None = None)
     return code, {"schema": f"{SCHEMA_PREFIX}.{args.command}.v{version}", **report}
 
 
+def command_names() -> list[str]:
+    parser = arguments.parser(refine_sheet.add_parsers)
+    return sorted(next(one.choices for one in parser._actions if isinstance(one.choices, dict)))
+
+
 def main(argv: Sequence[str] | None = None, *, redact: Callable[[str], str] | None = None) -> int:
 
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -399,7 +399,7 @@ def main(argv: Sequence[str] | None = None, *, redact: Callable[[str], str] | No
     verb = argv[0] if argv else ""
     routed = "--vault" in argv or verb in vault_arguments.VAULT_ONLY
     form = vault_arguments.FORMS.get(verb) if routed else None
-    parser = form() if form else arguments.parser(vault_migration_cli.add_parser)
+    parser = form() if form else arguments.parser(refine_sheet.add_parsers)
     args = parser.parse_args(argv)
     code, report = invoke(args, redact)
     reconfigure = getattr(sys.stdout, "reconfigure", None)

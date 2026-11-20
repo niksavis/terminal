@@ -13,6 +13,7 @@ Isolate a change in a sibling Git worktree, then merge it from the main checkout
 ```sh
 basicly worktree create NAME [--base BRANCH]          # add and provision .venv, node_modules and hooks
 basicly worktree merge NAME --bead RECORD-ID          # from the main checkout; --bead is the old flag name for the record id
+basicly worktree merge NAME --bead RECORD-ID --mode ci  # prove on GitHub runners instead of a local full verify
 basicly worktree cleanup NAME                         # remove the worktree and its merged branch
 ```
 

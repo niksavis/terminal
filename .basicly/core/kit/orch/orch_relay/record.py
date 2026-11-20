@@ -41,6 +41,16 @@ class Tracker:
         records = json.loads(self.runner(argv)).get("records", [])
         return [record for record in records if isinstance(record, dict)]
 
+    def matching(self, query: str) -> list[str]:
+        argv = [*self.base, "list", self.ledger, "--query", query, "--summary"]
+        records = json.loads(self.runner(argv)).get("records", [])
+        return [str(item.get("record")) for item in records if isinstance(item, dict)]
+
+    def comments(self, record: str) -> list[str]:
+        shown = json.loads(self.runner([*self.base, "show", self.ledger, record]))
+        found = shown.get("comments", []) if isinstance(shown, dict) else []
+        return [text for text in found if isinstance(text, str)]
+
     def comment(self, record: str, text: str) -> None:
         self.runner([*self.base, "comment", self.ledger, record, text])
 

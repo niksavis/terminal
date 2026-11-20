@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import fnmatch
 import importlib.util
 import json
+import os
 import subprocess  # nosec B404
 import sys
 import tempfile
@@ -11,6 +13,7 @@ from typing import Any
 LEDGER = Path(".basicly") / "ledger"
 PLACES = ((Path(".basicly") / "core" / "kit" / "tracker" / "cli.py").as_posix(),)
 LOCATE = Path(__file__).resolve().parent.parent / "kit" / "tracker" / "locate.py"
+LEDGER_FILES = ("events-*.jsonl", "pending-*.jsonl")
 
 
 def _harness(module: Any) -> Any:
@@ -22,14 +25,19 @@ def _harness(module: Any) -> Any:
     return factory()
 
 
-def _locate() -> Any:
-    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_locate", LOCATE)
+def _kit_module(name: str) -> Any:
+    path = LOCATE.parent / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(f"basicly_tracker_kit_{name}", path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"the tracker kit's locate.py is missing at {LOCATE}")
+        raise ImportError(f"the tracker kit's {name}.py is missing at {path}")
     module = importlib.util.module_from_spec(spec)
-    sys.modules["basicly_tracker_kit_locate"] = module
+    sys.modules[f"basicly_tracker_kit_{name}"] = module
     spec.loader.exec_module(module)
     return module
+
+
+def _locate() -> Any:
+    return _kit_module("locate")
 
 
 def _project_root() -> Path:
@@ -101,25 +109,80 @@ def _check_staged_claim(root: Path, message: str, tracker: Any) -> subprocess.Co
         if exported.returncode != 0:
             sys.stderr.write(f"tracker-claim: cannot read staged ledger: {exported.stderr}\n")
             raise ValueError("could not read staged Git state")
-        check = [
-            "commit-check",
-            str(snapshot),
-            message,
-            "--stdin",
-            "--ledger-label",
-            LEDGER.as_posix(),
-            "--runner",
-            tracker.typed(),
-        ]
-        return subprocess.run(  # nosec B603
-            [*tracker.argv(sys.executable), *check],
-            input=staged.stdout,
-            cwd=root,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            check=False,
-        )
+        return _commit_check(root, tracker, snapshot, message, staged.stdout)
+
+
+def _commit_check(
+    root: Path, tracker: Any, snapshot: Path, message: str, staged: str
+) -> subprocess.CompletedProcess[str]:
+    check = [
+        "commit-check",
+        str(snapshot),
+        message,
+        "--stdin",
+        "--ledger-label",
+        LEDGER.as_posix(),
+        "--runner",
+        tracker.typed(),
+    ]
+    return subprocess.run(  # nosec B603
+        [*tracker.argv(sys.executable), *check],
+        input=staged,
+        cwd=root,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+
+
+def _target_git(target: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    return subprocess.run(  # nosec B603 B607
+        ["git", *args],
+        cwd=target,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+
+
+def _check_redirect_claim(
+    root: Path, message: str, tracker: Any
+) -> subprocess.CompletedProcess[str] | None:
+    if not (root / LEDGER / "redirect").is_file():
+        return None
+    layout = _kit_module("git_layout")
+    try:
+        target = layout.redirect_target(root / LEDGER, root)
+    except layout.RedirectError as exc:
+        sys.stderr.write(f"tracker-claim: {exc}\n")
+        raise ValueError("the ledger redirect is broken") from exc
+    if target is None:
+        return None
+    listed = _target_git(target, "ls-tree", "-z", "HEAD", "--", f"{LEDGER.as_posix()}/")
+    staged = _git(root, "diff", "--cached", "--name-only")
+    if listed.returncode != 0 or staged.returncode != 0:
+        sys.stderr.write(f"tracker-claim: cannot read the ledger of {target} at HEAD\n")
+        raise ValueError("could not read the redirect target")
+    with tempfile.TemporaryDirectory(prefix="basicly-redirect-ledger-") as scratch:
+        snapshot = Path(scratch) / LEDGER
+        snapshot.mkdir(parents=True)
+        for entry in filter(None, listed.stdout.split("\0")):
+            info, _, path = entry.partition("\t")
+            name = Path(path).name
+            if not any(fnmatch.fnmatch(name, glob) for glob in LEDGER_FILES):
+                continue
+            if info.startswith("120000 "):
+                sys.stderr.write("tracker-claim: the redirect target ledger holds a symlink\n")
+                raise ValueError("the redirect target ledger contains a symlink")
+            shown = _target_git(target, "show", f"HEAD:{path}")
+            if shown.returncode != 0:
+                raise ValueError("could not read the redirect target")
+            (snapshot / name).write_text(shown.stdout, encoding="utf-8")
+        return _commit_check(root, tracker, snapshot, message, staged.stdout)
 
 
 def _exempt(root: Path, paths: list[str]) -> bool:
@@ -157,6 +220,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     try:
         done = _check_staged_claim(root, paths[0], tracker)
+        if done.returncode != 0:
+            shared = _check_redirect_claim(root, paths[0], tracker)
+            done = shared if shared is not None and shared.returncode == 0 else done
     except ValueError:
         return 1
     if done.returncode == 0:
