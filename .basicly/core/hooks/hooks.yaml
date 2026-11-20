@@ -126,6 +126,12 @@ hooks:
     stage: pre-commit
     always_run: true
     pass_filenames: false
+  - id: git-env-check
+    description: "Refuse an added test line that runs git with the inherited GIT_ variables (basicly-qpr2xmr.3.26)."
+    script: git-env-check.py
+    stage: pre-commit
+    files: (^|/)(test_[^/]*|[^/]*_test|conftest)\.py$
+    pass_filenames: true
   - id: commit-msg-script
     description: "Validate conventional commit message format."
     script: commit-msg.py
@@ -174,6 +180,18 @@ hooks:
     stage: pretooluse
     manager: claude
     matcher: Bash
+  - id: pkill-self-match
+    description: "Refuse pkill -f or pgrep -f whose pattern matches the command's own shell (PreToolUse, pm1dzrp)."
+    script: pkill-self-match.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  - id: lefthook-guard
+    description: "Refuse a bare lefthook run or install that rewrites the shared git hooks (PreToolUse, qpr2xmr.3.32)."
+    script: lefthook-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
   # zsh does not word-split an unquoted expansion, so `W="uv run x --"; $W a b` looks for
   # one command literally named `uv run x --`, exits 127, and lets the chain run on. A
   # consumer who had read the always-on rule first still hit it eight times in a row
@@ -198,6 +216,12 @@ hooks:
   - id: rg-replace-guard
     description: "Refuse an `rg` short-flag cluster that swallows `-r`'s replacement value."
     script: rg-replace-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  - id: discard-guard
+    description: "Refuse a shell command that discards uncommitted work unless it names a fresh approval (basicly-qpr2xmr.3.24)."
+    script: discard-guard.py
     stage: pretooluse
     manager: claude
     matcher: Bash

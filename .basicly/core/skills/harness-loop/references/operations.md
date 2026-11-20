@@ -152,6 +152,8 @@ Record full gate evidence in CI from the base checkout only after landing:
 basicly verify --mode full --issue <id>
 ```
 
+A landing by `basicly worktree merge --mode ci` records the destination as `ci-verified` from its GitHub run, so it needs no local destination verify; see `worktree-isolation`.
+
 A dirty worktree, or a branch with no commit, blocks the landing with "commit the work on `<branch>` before landing".
 
 ## Gates and rework

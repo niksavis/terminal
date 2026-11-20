@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from orch_relay.record import Tracker
 
 VALID_FOR_MINUTES = 60
+UNTIL_LANDED = "Good for this exact diff until it lands; any change to the diff voids it."
 REPORT_STATES = ("done", "blocked", "needs-decision")
 RULE_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
@@ -55,6 +56,7 @@ class Decision:
     condition: str
     proof: str
     if_proof_fails: str
+    council: str = ""
 
 
 @dataclass(frozen=True)
@@ -62,6 +64,7 @@ class Writer:
     tracker: Tracker
     scan: Scan
     clock: Clock = utc_now
+    session: str = ""
 
     def _record_and_send(self, record: str, comment: str) -> str:
         check_text(self.scan, [comment])
@@ -86,12 +89,23 @@ class Writer:
         fields.require(given, "orch decide")
         if not RULE_DATE.fullmatch(rule_date.strip()):
             raise RefusedError("orch decide refuses --rule-date: write it as YYYY-MM-DD")
-        classes.require_class(act.item, classes.ASK_FIRST, "orch decide")
+        classes.require_class(
+            act.item, frozenset({classes.ASK_FIRST, classes.COUNCIL_DECIDES}), "orch decide"
+        )
+        council = why.council.strip()
+        if classes.item_class(act.item) == classes.COUNCIL_DECIDES and not council:
+            raise RefusedError(
+                f"orch decide refuses {act.item!r} without --council: name the council run "
+                'that decided it (at least three blind voters) and its result, "<run id>: <result>"'
+            )
+        if council:
+            given["council"] = council
         fields.no_placeholder(given, "orch decide")
         parsed = fields.risks(act.risks, act.action)
         now = stamp(self.clock)
         text = "\n".join([
             f"[decision {now}] Orchestrator decision on an ask-first item.",
+            *([self.session] if self.session else []),
             f'Rule that lets the orchestrator decide ask-first items ({rule_date}): "{rule}"',
             f"Entry stamp: {now}",
             *_action_lines(act, parsed),
@@ -99,11 +113,12 @@ class Writer:
             f"Condition: {condition}",
             f"Proof command: {proof}",
             f"If the proof fails: {if_proof_fails}",
+            *([f"Council run: {council}"] if council else []),
             f"Good for one use, within {VALID_FOR_MINUTES} minutes of {now}.",
         ])
         return self._record_and_send(act.record, text)
 
-    def approve(self, act: Action, words: str) -> str:
+    def approve(self, act: Action, words: str, diff: bool = False) -> str:
         given = {
             "item": act.item,
             "record": act.record,
@@ -118,9 +133,12 @@ class Writer:
         now = stamp(self.clock)
         text = "\n".join([
             f"[approval {now}] The person's approval, relayed by the orchestrator.",
+            *([self.session] if self.session else []),
             f'The person\'s words at {now}: "{words}"',
             *_action_lines(act, parsed),
-            f"Good for one use, within {VALID_FOR_MINUTES} minutes of {now}.",
+            UNTIL_LANDED
+            if diff
+            else f"Good for one use, within {VALID_FOR_MINUTES} minutes of {now}.",
         ])
         return self._record_and_send(act.record, text)
 

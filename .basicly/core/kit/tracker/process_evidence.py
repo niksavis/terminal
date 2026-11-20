@@ -60,7 +60,7 @@ MANAGED_FIELDS = frozenset({REVIEW_FIELD, CONFIRMATION_FIELD})
 NO_REVIEW = "no review is recorded; run review --evidence"
 
 
-class ProcessEvidenceError(events.LedgerError):
+class ProcessEvidenceError(evidence_checks.NextStepsError, events.LedgerError):
     pass
 
 
@@ -351,7 +351,9 @@ def confirmation_draft(
     report = confirmation_report(found, record, template=template)
     if report["owed"]:
         raise ProcessEvidenceError(
-            "confirm requires a current review: " + ", ".join(str(part) for part in report["owed"])
+            "confirm requires a current review: " + ", ".join(str(part) for part in report["owed"]),
+            record,
+            ("review", "confirm"),
         )
     state = events.fold(found).records[record]
     if not isinstance(payload, dict) or set(payload) != {"checks"}:
@@ -427,13 +429,16 @@ def record_process(
         commands._require(ledger, record)
         found = events.read_events(ledger)[0]
         builder = confirmation_draft if completed else review_draft
-        draft = builder(
-            found,
-            record,
-            evidence,
-            commands.writers.writer_class(os.environ),
-            template=commands.templates.load(ledger),
-        )
+        try:
+            draft = builder(
+                found,
+                record,
+                evidence,
+                commands.writers.writer_class(os.environ),
+                template=commands.templates.load(ledger),
+            )
+        except ProcessEvidenceError as error:
+            raise error.at(Path(directory)) from None
         if isinstance(redact, commands.vault_write.WriteContext) and redact.target is not None:
             saved = json.loads(draft.payload["value"])
             _safe_commands(saved["checks"], commands.vault_write.effective_redactor(redact))

@@ -334,11 +334,11 @@
     },
     {
       "id": "relayed-gate-change",
-      "rule": "A change that skips, weakens, narrows or removes a test, gate or hook, adds an exception or bypasses one once, and a change to these rules, count only as the person's approval relayed in the full format; adding or extending a test, gate or hook is ordinary work.",
+      "rule": "A change that skips, weakens, narrows or removes a test, gate or hook, adds an exception or bypasses one once counts as an orchestrator decision that names its council run (at least three blind voters); a change to these rules counts only as the person's approval relayed in the full format; adding or extending a test, gate or hook is ordinary work.",
       "source": "ARCHITECTURE.md:294",
       "place": "fragment",
       "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
-      "anchor": "The orchestrator never decides these alone",
+      "anchor": "names the council run that decided it",
       "owner": [
         {
           "date": "2026-11-19",
@@ -365,6 +365,18 @@
         {
           "date": "2026-11-19",
           "phrase": "pushing, tagging and releaeing"
+        },
+        {
+          "date": "2026-11-19",
+          "phrase": "a standing push order for landings"
+        },
+        {
+          "date": "2026-11-19",
+          "phrase": "exactly becaus 'go' is ambigous"
+        },
+        {
+          "date": "2026-11-19",
+          "phrase": "An approval that states an exact diff or commit stays good"
         }
       ]
     },
@@ -430,7 +442,7 @@
     },
     {
       "id": "relayed-approval",
-      "rule": "A relayed approval counts only as a live message with words, time, record and exact action, once within 60 minutes.",
+      "rule": "A relayed approval counts only as a live message with words, time, record and exact action; an exact diff stays good until it lands, a command or bypass once within 60 minutes.",
       "source": "ARCHITECTURE.md:289",
       "place": "fragment",
       "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
@@ -735,12 +747,18 @@
       ]
     },
     {
-      "id": "quiet-window",
-      "rule": "Quiet window for measurements and landing verifies; no commit on main during a landing verify.",
-      "source": "ARCHITECTURE.md:380",
+      "id": "core-split",
+      "rule": "Landing verify on cores 0-15, other tests on 16-31 with at most 4 workers, git config writes wait, full-core loads announce a window.",
+      "source": "ARCHITECTURE.md, Working rule 2026-11-19",
       "place": "fragment",
       "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
-      "anchor": "make no commit on a main branch while its landing verify runs"
+      "anchor": "Share the machine by the core split",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "the machine has 32 cores and 23 GB"
+        }
+      ]
     },
     {
       "id": "quiet-window-skill",
@@ -845,6 +863,108 @@
       "place": "fragment",
       "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
       "anchor": "Make a new empty scratch folder instead of clearing one"
+    },
+    {
+      "id": "kanban-done-delivered",
+      "rule": "Done means delivered: on main, pushed, released where it applies; built or in a lane is work in progress.",
+      "source": "ARCHITECTURE.md, Flow (Agentic Kanban)",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/project/agentic-kanban.fragment.yaml",
+      "anchor": "Done means delivered.",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "value exists only when it is delivered"
+        }
+      ]
+    },
+    {
+      "id": "kanban-finish-first",
+      "rule": "Stop starting, start finishing: no new item while a built item waits, a review is owed or a release is half done.",
+      "source": "ARCHITECTURE.md, Flow (Agentic Kanban)",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/project/agentic-kanban.fragment.yaml",
+      "anchor": "Stop starting, start finishing."
+    },
+    {
+      "id": "kanban-limits",
+      "rule": "At most 2 items in progress and 1 built item waiting per agent; at most 6 waiting per repository.",
+      "source": "ARCHITECTURE.md, Flow (Agentic Kanban)",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/project/agentic-kanban.fragment.yaml",
+      "anchor": "Limit work in progress."
+    },
+    {
+      "id": "kanban-oldest-first",
+      "rule": "The oldest waiting item lands first; one that waited over 2 hours goes before newer items.",
+      "source": "ARCHITECTURE.md, Flow (Agentic Kanban)",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/project/agentic-kanban.fragment.yaml",
+      "anchor": "Oldest first."
+    },
+    {
+      "id": "kanban-stop-the-line",
+      "rule": "A red main, a broken repository or a failed release stops new deliveries until it is fixed.",
+      "source": "ARCHITECTURE.md, Flow (Agentic Kanban)",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/project/agentic-kanban.fragment.yaml",
+      "anchor": "Stop the line."
+    },
+    {
+      "id": "clean-up-after-delivery",
+      "rule": "Done also means cleaned up: remove the item's branches, worktrees and temporary files.",
+      "source": "ARCHITECTURE.md, Orchestration rules",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Done means delivered and cleaned up"
+    },
+    {
+      "id": "state-line",
+      "rule": "Each session keeps its state line current, so orch status shows its item, state and age.",
+      "source": "ARCHITECTURE.md, Orchestration rules",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Keep your state line current with"
+    },
+    {
+      "id": "settings-in-own-window",
+      "rule": "Settings, hooks.json, CLAUDE.md and AGENTS.md edits are confirmed by the person in the worker's own window.",
+      "source": "ARCHITECTURE.md, Orchestration rules",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "cannot be relayed: the person confirms it in your own window",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "(lesson 2026-11-19 17:05"
+        },
+        {
+          "date": "2026-11-19",
+          "phrase": "(lesson 2026-11-19 18:04"
+        }
+      ]
+    },
+    {
+      "id": "reread-on-rule-change",
+      "rule": "A running session rereads a changed rule when the orchestrator tells it to, and confirms.",
+      "source": "ARCHITECTURE.md, Orchestration rules",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "reread the changed section and confirm",
+      "owner": [
+        {
+          "date": "2026-11-19",
+          "phrase": "(lesson 2026-11-19 18:18"
+        }
+      ]
+    },
+    {
+      "id": "large-work-on-disk",
+      "rule": "Work over 500 MB goes to a folder on the disk, never to /tmp.",
+      "source": "ARCHITECTURE.md, Orchestration rules",
+      "place": "fragment",
+      "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
+      "anchor": "Work over 500 MB goes to a folder on the disk"
     }
   ]
 }

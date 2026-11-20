@@ -39,7 +39,16 @@ Vault checkouts and linked worktrees always refuse, even when ignored.
 An existing file requires `--overwrite-private-map`.
 The tool never edits ignore files.
 
-Add `--redact-name NAME` for each exact, case-sensitive name that must become `contributor`.
+By default the tool redacts the git `user.name`, `user.email`, the "Name <email>" form, the login name and the host name of the machine that runs it.
+Before it publishes, it scans the prepared events for those values and the home path, and refuses with the count per kind when any remains.
+A preview reports the same counts as `personal_data`.
+The tool reads `user.name` and `user.email` from the source repository and refuses when either does not resolve.
+It also replaces every email address whose domain is not example.invalid, example.com, users.noreply.github.com or github.com with `<redacted:email>`, including an address that an earlier redaction only partly replaced; the scan counts any such address that remains as `other email`.
+A login or host name shorter than 4 characters is not redacted, because it would replace common words.
+The tool knows only the current identity: names from older commits or other contributors stay unless you add each one with `--redact-name`.
+List them with `git log --format='%an%n%ae%n%cn%n%ce' | sort -u`.
+A rerun refuses when the vault's earlier copy of this source still holds personal data.
+Add `--redact-name NAME` for each further exact, case-sensitive name that must become `contributor`.
 The rule applies to imported holder history and template text too.
 An empty name list removes no names.
 Secrets and machine paths still use the standard redactor.
@@ -62,7 +71,8 @@ python3 .basicly/core/kit/tracker/cli.py migrate --to-vault --preview --from br 
 ```
 
 An import is a one-time operation.
-Repeating the same source against the same vault refuses before another publication.
+Repeating the same source against the same vault publishes nothing and reports "already migrated" with exit code 0.
+A source that the vault holds only in part refuses before another publication.
 Identical input and rules produce identical canonical bytes and event ids.
 Git commit hashes depend on destination history and are outside that comparison.
 The tool checks source accounting, public digests and unchanged ledger integrity before publishing.

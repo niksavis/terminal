@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import shlex
 from collections.abc import Mapping
+from typing import Any
+
+REFUSED_FORMS = frozenset({"assign", "resolve", "acknowledge-loss", "delete"})
 
 
 def _plain(value: object) -> str:
@@ -59,3 +62,18 @@ def ledger_form(verb: str, record: str, directory: str, text: str = "") -> str:
         f"{subject} and has no vault form yet; nothing was written, follow basicly-bebeo6k "
         f"and run `{read}` to inspect the record"
     )
+
+
+def refuse_ledger_form(args: Any, commands: Any, vault_config: Any) -> None:
+    if args.command not in REFUSED_FORMS:
+        return
+    ledger = commands.git_layout.shared_ledger(args.directory)
+    config = vault_config.load(ledger.resolve())
+    if config is None or commands._is_repository(ledger):
+        return
+    records = getattr(args, "record", getattr(args, "parent", []))
+    records = [records] if isinstance(records, str) else records
+    for record in records:
+        directory = ledger.resolve().relative_to(config.path.parent).as_posix()
+        refusal = ledger_form(args.command, record, directory)
+        raise commands.TrackerCommandError(commands.vault_write.redact.text(refusal))

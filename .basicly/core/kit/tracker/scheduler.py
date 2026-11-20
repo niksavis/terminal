@@ -180,14 +180,16 @@ def candidates_from_events(
     )
     candidates: dict[str, Candidate] = {}
     for record, view in views.items():
-        fields = folded.records[record].fields
+        state = folded.records[record]
+        fields = state.fields
         title = fields.get(TITLE_FIELD)
         labelled = shaping.REFINE_LABEL in label_shape.labels_of(fields.get("labels"))
         candidates[record] = Candidate(
             view=view,
             priority=_priority(fields),
             title=title if isinstance(title, str) else "",
-            held=shaping.held_from_ready(
+            held=elsewhere(state)
+            or shaping.held_from_ready(
                 fields,
                 labelled=labelled,
                 template=template,
@@ -195,6 +197,10 @@ def candidates_from_events(
             ),
         )
     return candidates
+
+
+def elsewhere(state: Any) -> bool:
+    return state.status == "in_progress" and not str(state.fields.get(events.HOLDER_FIELD) or "")
 
 
 def ranking(directory: Path | str, *, limit: int | None = None, vocabulary: Any = None) -> Ranking:

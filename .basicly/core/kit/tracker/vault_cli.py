@@ -62,6 +62,7 @@ READS = frozenset({
     "stats",
     "board",
     "refine",
+    "refine-sheet",
     "dor",
     "fields",
     "scaffold",
@@ -294,6 +295,17 @@ def harness_ledger(root: Path, clock: Clock) -> Path | None:
     return presented(
         config.path.parent / ledger_freeze.LEDGER, clock, all_projects=False, asked=""
     )[0]
+
+
+def harness_queue_text(root: Path) -> str:
+    config = harness_config(root)
+    if config is None:
+        raise vault_config.ConfigError("no vault is configured here")
+    folder = vault_clone.locate(_state_root(), config.vault).folder
+    if not folder.is_dir():
+        raise OSError(f"the vault clone folder {folder.name} is missing")
+    queue = folder / vault_queue.QUEUE_NAME
+    return queue.read_text(encoding="utf-8") if queue.exists() else ""
 
 
 def presented(ledger: Path, clock: Clock, *, all_projects: bool, asked: str) -> Any:

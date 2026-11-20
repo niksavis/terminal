@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import importlib.util
 import json
+import platform
 import re
 import sys
 from collections.abc import Callable
@@ -25,6 +27,8 @@ def _load(name: str) -> Any:
 
 migrate = _load("vault_migrate")
 config = _load("vault_config")
+git_runner = _load("git_runner")
+vault_personal = _load("vault_personal")
 ledger_freeze = _load("ledger_freeze")
 
 
@@ -74,10 +78,92 @@ def add_parser(sub: Any) -> None:
     )
 
 
+def _git_value(key: str, cwd: Path) -> str:
+    try:
+        return git_runner.run(["config", "--get", key], cwd).strip()
+    except git_runner.GitRunnerError, git_runner.GitValueError, OSError:
+        return ""
+
+
+def _login() -> str:
+    try:
+        return getpass.getuser()
+    except KeyError, OSError:
+        return ""
+
+
+def _repository(source: Path) -> Path:
+    folder = source if source.is_dir() else source.parent
+    return folder if folder.exists() else Path.cwd()
+
+
+def identity(cwd: Path) -> dict[str, str]:
+    name, email = _git_value("user.name", cwd), _git_value("user.email", cwd)
+    if not name.strip() or not email.strip():
+        raise ValueError(
+            "git user.name or user.email does not resolve in "
+            "the source repository, so migrate cannot redact them; "
+            "set both with git config user.name and git config user.email, then preview again"
+        )
+    host = platform.node().split(".")[0]
+    found = {
+        "name and email": f"{name} <{email}>",
+        "email": email,
+        "name": name,
+        "login": _login(),
+        "host": host,
+        "home": str(Path.home()),
+    }
+    short = {"login", "host"}
+    return {
+        label: value
+        for label, value in found.items()
+        if value.strip()
+        and (label not in short or len(value) >= vault_personal.MIN_IDENTITY_LENGTH)
+    }
+
+
+HANDLE = r"(?<!github\.com/)(?<!github\.com:)"
+HOME_FORM = re.compile(r"(?<![\w.-])[/\\]?(?:home|Users)[/\\](?!contributor\b)[A-Za-z0-9._-]+")
+HOME_MARKER = "<redacted:home-path>"
+STACKED = re.compile(r"(?:<redacted:[a-z][a-z0-9-]*>){2,}")
+
+
+def _one_marker(found: re.Match[str]) -> str:
+    text = found.group(0)
+    return HOME_MARKER if "home-path>" in text else text[: text.index(">") + 1]
+
+
+def _bounded(value: str, label: str = "") -> re.Pattern[str]:
+    keep = HANDLE if label == "login" else ""
+    return re.compile(keep + r"(?<!\w)" + re.escape(value) + r"(?!\w)")
+
+
+def scanner(found: dict[str, str]) -> Callable[[Any], dict[str, int]]:
+    patterns = {label: _bounded(value, label) for label, value in found.items()}
+
+    def scan(lines: Any) -> dict[str, int]:
+        text = vault_personal.decoded(lines)
+        found = {label: len(pattern.findall(text)) for label, pattern in patterns.items()}
+        found["other email"] = vault_personal.count_emails(text)
+        if "home" in found:
+            found["home"] += len(HOME_FORM.findall(text))
+        return found
+
+    return scan
+
+
 def _redactor(
-    args: argparse.Namespace, inherited: Callable[[str], str] | None
+    args: argparse.Namespace,
+    inherited: Callable[[str], str] | None,
+    defaults: dict[str, str] | None = None,
 ) -> Callable[[str], str]:
-    names = sorted(set(args.redact_name), key=lambda value: (-len(value), value))
+    login = (defaults or {}).get("login", "")
+    chosen = [
+        *args.redact_name,
+        *(v for k, v in (defaults or {}).items() if k not in {"home", "login"}),
+    ]
+    names = sorted(set(chosen), key=lambda value: (-len(value), value))
     if any(not name.strip() for name in names):
         raise ValueError("--redact-name is empty; supply a name or omit the option")
     pattern = (
@@ -86,9 +172,13 @@ def _redactor(
         else None
     )
 
+    own = _bounded(login, "login") if login.strip() else None
+
     def apply(value: str) -> str:
-        text = value if inherited is None else inherited(value)
-        return text if pattern is None else pattern.sub("contributor", text)
+        text = vault_personal.redact_emails(value if inherited is None else inherited(value))
+        text = STACKED.sub(_one_marker, HOME_FORM.sub(HOME_MARKER, text))
+        text = text if pattern is None else pattern.sub("contributor", text)
+        return text if own is None else own.sub("contributor", text)
 
     return apply
 
@@ -143,12 +233,15 @@ def run(
     if args.overwrite_private_map and args.private_map is None:
         raise ValueError("--overwrite-private-map requires --private-map FILE")
     found, template = _source(args)
-    rule = _redactor(args, inherited)
+    personal = identity(_repository(Path(args.source or args.directory).resolve()))
+    rule = _redactor(args, inherited, personal)
+    scan = scanner(personal)
     if args.preview:
         prepared = migrate.prepare(found, template, rule, redact_holders=True)
         shown = migrate.view_events(prepared.lines, migrate.EVERY_PROJECT)
         return {
             "preview": True,
+            "personal_data": scan(prepared.lines),
             "records": len({event.record for event in found}),
             "events": len(found),
             "canonical_events": len(prepared.result.events),
@@ -167,6 +260,7 @@ def run(
         _clone(args, state_root),
         clock,
         True,
+        scan,
         rule,
         args.private_map,
         args.overwrite_private_map,
@@ -211,7 +305,10 @@ def _freeze(
         raise ValueError(
             "source history changed during freeze preflight; stop writers and try again"
         )
-    prepared = migrate.prepare(found, template, _redactor(args, inherited), redact_holders=True)
+    personal = identity(_repository(ledger))
+    prepared = migrate.prepare(
+        found, template, _redactor(args, inherited, personal), redact_holders=True
+    )
     clone = _clone(args, state_root)
     migrate.vault_clone.fetch(clone, clock=clock)
     valid = migrate.vault_clone.valid_events(clone)

@@ -16,6 +16,8 @@ HOOK_EVENT = "PreToolUse"
 
 SUBAGENT_KEY = "subagent_type"
 INPUT_MODEL_KEY = "model"
+SUBAGENT_MODEL_ENV = "CLAUDE_CODE_SUBAGENT_MODEL"
+REMEDY = 'call Agent again with model: "{alias}" (tier {tier}, model-map.json)'
 
 DEFAULT_TIER_AGENT_TYPE = "general-purpose"
 MAXIMUM_ALIAS = tier_resolver.HOST_MODEL_ALIASES[HOST]["maximum"]
@@ -104,13 +106,20 @@ def rewrite(payload: dict) -> dict | None:
                 "permissionDecisionReason": str(error),
             }
         }
+    if default_wanted and alias == os.environ.get(SUBAGENT_MODEL_ENV, "").strip():
+        alias = None
     if alias is None:
-        if warning is not None and default_wanted:
-            return {"systemMessage": warning}
-        return None
-    updated = dict(tool_input)
-    updated[INPUT_MODEL_KEY] = alias
-    return {"hookSpecificOutput": {"hookEventName": HOOK_EVENT, "updatedInput": updated}}
+        return {"systemMessage": warning} if warning is not None and default_wanted else None
+    tier = next(
+        name for name, value in tier_resolver.HOST_MODEL_ALIASES[HOST].items() if value == alias
+    )
+    return {
+        "hookSpecificOutput": {
+            "hookEventName": HOOK_EVENT,
+            "permissionDecision": "deny",
+            "permissionDecisionReason": REMEDY.format(alias=alias, tier=tier),
+        }
+    }
 
 
 def main() -> int:

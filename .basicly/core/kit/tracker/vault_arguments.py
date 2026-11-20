@@ -3,11 +3,20 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import NoReturn
 
 
-def _form(verb: str, text: str, command: str) -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog=f"cli.py {verb}", description=text)
-    parser.add_argument("verb", choices=[verb])
+class _Form(argparse.ArgumentParser):
+    example = ""
+
+    def error(self, message: str) -> NoReturn:
+        hint = f"; the form is: {self.example}" if self.example else ""
+        self.exit(2, f"{self.format_usage()}{self.prog}: error: {message}{hint}\n")
+
+
+def _form(verb: str, text: str, command: str) -> _Form:
+    parser = _Form(prog=f"cli.py {verb}", description=text)
+    parser.add_argument("verb", choices=[verb], help=argparse.SUPPRESS)
     parser.add_argument("--vault", required=True, help="the vault URL or local repository")
     parser.add_argument("--state", help="the machine state folder (default: per user)")
     parser.set_defaults(command=command)
@@ -16,6 +25,7 @@ def _form(verb: str, text: str, command: str) -> argparse.ArgumentParser:
 
 def comment() -> argparse.ArgumentParser:
     parser = _form("comment", "queue a vault comment", "comment-vault")
+    parser.example = "cli.py comment RECORD --vault URL --text TEXT"
     parser.add_argument("record", help="the record id")
     parser.add_argument("--text", required=True, help="the comment, redacted before it is queued")
     return parser
@@ -78,7 +88,7 @@ def protect() -> argparse.ArgumentParser:
         prog="cli.py vault-protect",
         description="Install the vault push guard in an existing clone.",
     )
-    parser.add_argument("verb", choices=["vault-protect"])
+    parser.add_argument("verb", choices=["vault-protect"], help=argparse.SUPPRESS)
     parser.add_argument("--repository", type=Path, required=True, help="the existing vault clone")
     parser.set_defaults(command="protect-vault")
     return parser
@@ -88,7 +98,7 @@ def init() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="cli.py vault-init", description="push the genesis into an empty vault repository"
     )
-    parser.add_argument("verb", choices=["vault-init"])
+    parser.add_argument("verb", choices=["vault-init"], help=argparse.SUPPRESS)
     parser.add_argument("--vault", help="the git address of an empty repository; asked if absent")
     parser.add_argument("--prefix", help="the project prefix to write into .basicly-tracker.toml")
     parser.add_argument(

@@ -108,11 +108,11 @@ slots:
           decisions with a recommendation and how each can fail.
         - Keep the record open while its goal is open; close it with the
           reason when the goal is met.
-        - Record each lesson from a worker or a job with `orch lesson add`.
+        - Record each lesson from a worker or a job with `orch lesson add --scope local|basicly`.
   output_contract:
     - text: |
         At the end of a session:
-        1. Write each lesson of the session with `orch lesson add`, then run
+        1. Write each lesson of the session with `orch lesson add --scope local|basicly`, then run
            `orch lessons end-session`; it refuses a session with no lesson.
         2. Write a handover comment on the orchestration record with the goal,
            the session map, each open decision, each item that waits for the

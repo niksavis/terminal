@@ -47,13 +47,13 @@ class Canonical:
     reminted: int
 
 
-def _walk(value: Any, rule: Callable[[str], str]) -> Any:
+def walk(value: Any, rule: Callable[[str], str]) -> Any:
     if isinstance(value, str):
         return rule(value)
     if isinstance(value, dict):
-        return {rule(key): _walk(item, rule) for key, item in value.items()}
+        return {rule(key): walk(item, rule) for key, item in value.items()}
     if isinstance(value, list):
-        return [_walk(item, rule) for item in value]
+        return [walk(item, rule) for item in value]
     return value
 
 
@@ -90,7 +90,7 @@ def _payload(
             raise CanonicalError(
                 "template redaction merges fields; choose a name list without collisions"
             )
-        payload[public_key] = _walk(value, rule)
+        payload[public_key] = walk(value, rule)
     if event.kind == events.KIND_FIELD and isinstance(event.payload.get("name"), str):
         payload["name"] = names.get(event.payload["name"], payload.get("name"))
     if not redact_holders:
@@ -303,7 +303,7 @@ def canonicalize(
         )
         if actor != one.actor:
             changed.append("actor")
-        extra = _walk(dict(one.extra), rule)
+        extra = walk(dict(one.extra), rule)
         if extra != one.extra:
             changed.append("extra")
         touched.update(changed)

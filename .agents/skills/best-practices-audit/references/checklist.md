@@ -96,6 +96,12 @@ A vendor recommendation is not an interface requirement.
 | Separate recoverable errors from permission and access blockers. | Recommendation | fable-prompting |
 | Review repeated delegation, accumulated cautions, and instructions from earlier models. | Recommendation | fable-prompting |
 | Change prompts separately and measure their effects. | Recommendation | fable-prompting |
+| Remove instructions that ask the model to write its reasoning in the reply; ask for a short explanation or a summary instead. | Recommendation | opus-prompting |
+| Remove instructions written for earlier models that tell the model to think carefully before it answers. | Recommendation | opus-prompting |
+| Treat a text-only end of turn as a report, and keep the parts of a long task in a checklist the model updates. | Recommendation | opus-prompting |
+| Name the early stops the model should avoid, and the stops it should make. | Recommendation | opus-prompting |
+| Keep a confirmation step for risky or irreversible actions in unattended runs. | Recommendation | opus-prompting |
+| Mark pasted text with an opening and a closing tag that share one random id. | Recommendation | opus-prompting |
 
 ## API only
 

@@ -33,7 +33,7 @@ REVIEW_LABEL = shaping.REFINE_LABEL
 IN_PROGRESS = "in_progress"
 
 
-class UnreviewedError(events.LedgerError):
+class UnreviewedError(process.evidence_checks.NextStepsError, events.LedgerError):
     pass
 
 
@@ -73,6 +73,11 @@ def _unreviewed(record: str, owed: Sequence[str], debt: Sequence[str]) -> str:
     return told + ", then ".join(steps) + f", then remove {REVIEW_LABEL}"
 
 
+def _closing_steps(missing: Sequence[str]) -> tuple[str, ...]:
+    owes_review = any(heading != process.COMPLETION_HEADING for heading in missing)
+    return ("review", "confirm", "close") if owes_review else ("confirm", "close")
+
+
 def refuse(
     states: Mapping[str, Any],
     drafts: Sequence[Any],
@@ -108,7 +113,9 @@ def refuse(
             why += f" ({note})" if note else ""
             raise UnreviewedError(
                 f"{record} cannot start: {why}; an agent reviews it and fills the missing "
-                f"detail first"
+                f"detail first",
+                record,
+                ("review", "claim"),
             )
 
         closing = any(
@@ -144,5 +151,7 @@ def refuse(
                 if missing:
                     raise UnreviewedError(
                         f"{record} cannot complete: it owes {', '.join(missing)}; "
-                        f"{shaping.remedy(missing)}"
+                        f"{shaping.remedy(missing)}",
+                        record,
+                        _closing_steps(missing),
                     )

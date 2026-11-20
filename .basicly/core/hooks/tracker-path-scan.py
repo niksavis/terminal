@@ -3,6 +3,7 @@ from __future__ import annotations
 import getpass
 import importlib.util
 import json
+import os
 import re
 import subprocess  # nosec B404
 import sys
@@ -21,10 +22,12 @@ _RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _IDENTITY_RULE = "machine-username"
-_MIN_IDENTITY_LENGTH = 4
 _FIELD_KIND = "field"
 _CREATED_KIND = "created"
+_CLAIM_KIND = "claim"
+_CLAIM_HOLDER = "name"
 _HOLDER_FIELD = "assignee"
+_CONTESTED = "contested"
 
 
 def _harness(module: Any) -> Any:
@@ -55,13 +58,59 @@ def vault_ledger() -> Path | None:
     return _harness(module).harness_ledger(root, time.time)
 
 
+def vault_queue_text() -> str:
+    source = Path(__file__).resolve().parent.parent / "kit/tracker/locate.py"
+    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_locate", source)
+    if spec is None or spec.loader is None:
+        raise ImportError("the tracker kit is missing; reinstall basicly")
+    module: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    reader = getattr(_harness(module), "harness_queue_text", None)
+    if not callable(reader):
+        raise ImportError("the tracker kit lacks the vault queue reader")
+    return str(reader(Path.cwd()))
+
+
+def vault_findings(vault: Path) -> list[tuple[str, int, str]]:
+    try:
+        return findings("vault/queue.jsonl", vault_queue_text())
+    except ValueError, OSError, ImportError:
+        return [
+            finding
+            for path in sorted(vault.glob("*.jsonl"))
+            for finding in findings(f"vault/{path.name}", path.read_text(encoding="utf-8"))
+        ]
+
+
+def configured_holder() -> str:
+    source = Path(__file__).resolve().parent.parent / "kit/tracker/holders.py"
+    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_holders", source)
+    if not source.is_file() or spec is None or spec.loader is None:
+        return ""
+    module: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return str(module.chosen_holder(Path.cwd(), dict(os.environ)) or "")
+
+
+def _min_identity_length() -> int:
+    source = Path(__file__).resolve().parent.parent / "kit/tracker/vault_personal.py"
+    spec = importlib.util.spec_from_file_location("basicly_tracker_kit_vault_personal", source)
+    if not source.is_file() or spec is None or spec.loader is None:
+        raise ImportError(
+            "the tracker kit lacks vault_personal.py; reinstall with `basicly install --force`"
+        )
+    module: Any = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return int(module.MIN_IDENTITY_LENGTH)
+
+
 def identity_pattern() -> re.Pattern[str] | None:
 
     try:
         name = getpass.getuser()
     except KeyError, OSError:
         return None
-    if len(name) < _MIN_IDENTITY_LENGTH:
+    if len(name) < _min_identity_length():
         return None
     return re.compile(rf"\b{re.escape(name)}\b")
 
@@ -101,12 +150,29 @@ def _holder_key(event: object) -> str | None:
         return "value"
     if event.get("kind") == _CREATED_KIND and _HOLDER_FIELD in payload:
         return _HOLDER_FIELD
+    if event.get("kind") == _CLAIM_KIND and _CLAIM_HOLDER in payload:
+        return _CLAIM_HOLDER
     return None
 
 
-def _outside_holder(event: object) -> object:
+def _outside_snapshot_holder(record: dict[str, Any], holder: str) -> object:
+    fields = record.get("fields")
+    kept = dict(record)
+    if isinstance(fields, dict) and fields.get(_HOLDER_FIELD) == holder:
+        kept["fields"] = {k: v for k, v in fields.items() if k != _HOLDER_FIELD}
+    contested = record.get(_CONTESTED)
+    if isinstance(contested, list):
+        kept[_CONTESTED] = [name for name in contested if name != holder]
+    return kept
+
+
+def _outside_holder(event: object, holder: str) -> object:
+    if not holder or not isinstance(event, dict):
+        return event
+    if "payload" not in event and "kind" not in event:
+        return _outside_snapshot_holder(event, holder)
     key = _holder_key(event)
-    if key is None or not isinstance(event, dict):
+    if key is None or event["payload"].get(key) != holder:
         return event
     return {**event, "payload": {k: v for k, v in event["payload"].items() if k != key}}
 
@@ -127,6 +193,7 @@ def rule_hit(
 
 def findings(path: str, content: str) -> list[tuple[str, int, str]]:
     identity = identity_pattern()
+    holder = configured_holder() if identity is not None else ""
     hits: list[tuple[str, int, str]] = []
     for lineno, line in enumerate(content.splitlines(), start=1):
         if not line.strip():
@@ -136,7 +203,7 @@ def findings(path: str, content: str) -> list[tuple[str, int, str]]:
         except json.JSONDecodeError:
             event = line
         texts = _strings(event)
-        if rule := rule_hit(texts, identity, _strings(_outside_holder(event))):
+        if rule := rule_hit(texts, identity, _strings(_outside_holder(event, holder))):
             hits.append((path, lineno, rule))
     return hits
 
@@ -148,11 +215,7 @@ def main() -> int:
         print(f"tracker-path-scan: {exc}", file=sys.stderr)
         return 1
     hits = (
-        [
-            finding
-            for path in sorted(vault.glob("*.jsonl"))
-            for finding in findings(f"vault/{path.name}", path.read_text(encoding="utf-8"))
-        ]
+        vault_findings(vault)
         if vault is not None
         else [
             finding

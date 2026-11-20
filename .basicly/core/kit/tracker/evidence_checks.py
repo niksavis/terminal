@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
+import os
 import re
+import shlex
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
@@ -72,6 +75,48 @@ def observed_text(value: object) -> bool:
 
 PLANNED_CHECK_KEYS = ("criterion", "command", "expected")
 COMPLETED_CHECK_KEYS = ("criterion", "command", "result", "exit_code")
+_SAMPLE = {
+    "criterion": "the criterion text",
+    "command": ["uv", "run", "pytest", "-q"],
+    "expected": "what the command shows when it passes",
+    "result": "what the command printed",
+    "exit_code": 0,
+}
+_EVIDENCE = {"review": PLANNED_CHECK_KEYS, "confirm": COMPLETED_CHECK_KEYS}
+
+
+def _shown(path: Path) -> str:
+    try:
+        return os.path.relpath(path)
+    except ValueError:
+        return str(path)
+
+
+class NextStepsError(Exception):
+    def __init__(
+        self, text: str, record: str = "", steps: Sequence[str] = (), ledger: Path | None = None
+    ) -> None:
+        told = f"{text}; {next_commands(record, steps, ledger)}" if steps else text
+        super().__init__(told)
+        self.text, self.record, self.steps = text, record, tuple(steps)
+
+    def at(self, ledger: Path) -> NextStepsError:
+        return type(self)(self.text, self.record, self.steps, ledger)
+
+
+def next_commands(record: str, verbs: Sequence[str], ledger: Path | None = None) -> str:
+    tool = _load("locate").typed_in(_HERE / "cli.py", Path.cwd()).split(" ")
+    place = _shown(ledger) if ledger is not None else ".basicly/ledger"
+    shown = []
+    for verb in verbs:
+        words = [*tool, verb, place, record]
+        if verb in _EVIDENCE:
+            check = {key: _SAMPLE[key] for key in _EVIDENCE[verb]}
+            words += ["--evidence", json.dumps({"checks": [check]})]
+        if verb == "close":
+            words += ["--reason", "what was delivered"]
+        shown.append(shlex.join(words))
+    return "next: " + ", then ".join(shown)
 
 
 def check_shape(*, completed: bool = False) -> str:

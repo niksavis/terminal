@@ -100,3 +100,46 @@ def unassign(
             payload[holders.TAKE_KEY] = True
         drafts = [events.Draft(record, events.KIND_FIELD, payload)]
         return commands._append(ledger, drafts, context, lock)
+
+
+def _ready_refusal(state: Any, record: str, by: str, *, again: bool, clear: bool) -> str:
+    holder = str(state.fields.get(holders.HOLDER_FIELD) or "")
+    marked = str(state.fields.get(holders.READY_FIELD) or "")
+    if state.status != holders.IN_PROGRESS:
+        return (
+            f"{record} is {state.status}; only an in_progress record waits for delivery; "
+            f"claim it first"
+        )
+    if holder != by:
+        return f"{record} is held by {holder or 'nobody'}, not by {by}; only its holder marks it"
+    if clear and not marked:
+        return f"{record} carries no ready mark; nothing to clear"
+    if marked and not again and not clear:
+        return (
+            f"{record} is ready since {marked}; pass --again to mark it again after a change, "
+            f"or --clear to remove the mark"
+        )
+    return ""
+
+
+def mark_ready(
+    directory: Path | str,
+    record: str,
+    by: str,
+    *,
+    mode: str = "",
+    context: Any = None,
+) -> list:
+
+    commands = _load("commands")
+    admitted, context = vault_write.admission(directory, context, commands.environment())
+    ledger = commands._ledger(admitted)
+    with events.LedgerLock(ledger) as lock:
+        state = commands._require(ledger, record)
+        clear = mode == "clear"
+        if refused := _ready_refusal(state, record, by, again=mode == "again", clear=clear):
+            raise commands.TrackerCommandError(refused)
+        value = "" if clear else holders.READY_MARK
+        payload = {"name": holders.READY_FIELD, "value": value}
+        drafts = [events.Draft(record, events.KIND_FIELD, payload)]
+        return commands._append(ledger, drafts, context, lock)

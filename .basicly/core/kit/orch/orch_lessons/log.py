@@ -18,6 +18,7 @@ ROOT_ENV = "ORCH_LESSONS_ROOT"
 MEMBER_ENV = "ORCH_MEMBER"
 STALE_AFTER = timedelta(days=14)
 SESSION_END = "session-end"
+SCOPES = ("local", "basicly")
 
 Clock = Callable[[], datetime]
 
@@ -40,6 +41,7 @@ class Lesson:
     enforcement: str
     record: str
     closed_by: str | None
+    scope: str | None = None
 
 
 def repo_root(start: Path) -> Path:
@@ -116,7 +118,14 @@ class Writer:
     member: str
     clock: Clock = utc_now
 
-    def add(self, what: str, requirement: str, enforcement: str, record: str) -> str:
+    def add(
+        self, what: str, requirement: str, enforcement: str, record: str, scope: str | None
+    ) -> str:
+        if scope not in SCOPES:
+            raise RefusedError(
+                "a lesson needs --scope local or --scope basicly: basicly when its fix "
+                "changes a file that basicly install writes, local otherwise"
+            )
         check_text(self.scan, [what, requirement, enforcement, record])
         lesson_id = secrets.token_hex(4)
         append(
@@ -130,6 +139,7 @@ class Writer:
                 "requirement": requirement,
                 "enforcement": enforcement,
                 "record": record,
+                "scope": scope,
             },
         )
         return lesson_id
@@ -139,7 +149,7 @@ class Writer:
         if added == 0:
             raise RefusedError(
                 f"{self.member} wrote no lesson in this session; record each lesson with "
-                "orch lesson add, then run orch lessons end-session again"
+                "orch lesson add --scope local|basicly, then run orch lessons end-session again"
             )
         stamp = self.clock().isoformat(timespec="seconds")
         append(
@@ -157,6 +167,26 @@ class Writer:
         stamp = self.clock().isoformat(timespec="seconds")
         event = {"event": "close", "id": lesson_id, "time": stamp, "member": self.member}
         append(self.root, {**event, "change": change})
+
+    def scope(self, lesson_id: str, scope: str) -> None:
+        if lesson_id not in {lesson.id for lesson in lessons(self.root)}:
+            raise RefusedError(
+                f"no lesson {lesson_id!r}; list them with: orch lessons export --out -"
+            )
+        if scope not in SCOPES:
+            raise RefusedError(
+                "a lesson scope is local or basicly: basicly when its fix changes a file that "
+                "basicly install writes, local otherwise"
+            )
+        stamp = self.clock().isoformat(timespec="seconds")
+        event = {"event": "scope", "id": lesson_id, "time": stamp, "member": self.member}
+        append(self.root, {**event, "scope": scope})
+
+
+def unscoped(root: Path) -> list[str]:
+    return [
+        lesson.id for lesson in lessons(root) if lesson.closed_by is None and lesson.scope is None
+    ]
 
 
 def lessons(root: Path) -> list[Lesson]:
@@ -176,7 +206,11 @@ def lessons(root: Path) -> list[Lesson]:
                 event["enforcement"],
                 event["record"],
                 None,
+                event.get("scope"),
             )
+        elif event.get("event") == "scope" and event.get("id") in found:
+            old = found[event["id"]]
+            found[event["id"]] = Lesson(**{**old.__dict__, "scope": event["scope"]})
         elif event.get("event") == "close" and event.get("id") in found:
             old = found[event["id"]]
             found[event["id"]] = Lesson(**{**old.__dict__, "closed_by": event["change"]})
@@ -211,7 +245,9 @@ def empty_session_ends(root: Path) -> list[dict[str, object]]:
 
 
 def export(root: Path, scan: Callable[[str], str | None], target: Path, relative: str) -> str:
-    open_lessons = [lesson for lesson in lessons(root) if lesson.closed_by is None]
+    open_lessons = [
+        lesson for lesson in lessons(root) if lesson.closed_by is None and lesson.scope == "basicly"
+    ]
     added = [
         f"- {lesson.requirement} Enforced by: {lesson.enforcement}\n" for lesson in open_lessons
     ]

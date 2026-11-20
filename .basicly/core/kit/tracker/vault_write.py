@@ -161,7 +161,10 @@ def _refused(ledger: Path, drafts: Sequence[Any], actor: str) -> Sequence[Any]:
             and draft.payload.get("status") == "in_progress"
         )
     ]
-    review.refuse(states, review_drafts, actor, template, found=found)
+    try:
+        review.refuse(states, review_drafts, actor, template, found=found)
+    except review.UnreviewedError as error:
+        raise error.at(ledger) from None
     return drafts
 
 

@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from mermaid import council_diagram, swarm_diagram
 from round_report import print_rounds, round_metrics
 
 SEVERITIES = ("important", "nit", "pre-existing")
@@ -159,6 +160,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         if item.get("fix"):
             print(f"  fix: {item['fix']}")
     missing = [report.lens for report in reports if report.status != "ok"]
+    print(f"\n{swarm_diagram(args.dir, reports, bool(missing))}")
     if missing:
         print(
             f"\nincomplete: {', '.join(missing)} not run or malformed; "
@@ -207,6 +209,7 @@ def cmd_tally(args: argparse.Namespace) -> int:
     winner = next(
         (option for option, names in counts.items() if len(names) * 2 > len(voters)), None
     )
+    print(f"\n{council_diagram(args.dir, votes, options, winner)}")
     if winner is None:
         print("\ndecision: none; no option has a majority of all voters, so the user decides")
         return 2
