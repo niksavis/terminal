@@ -56,7 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Never prompt: answer 'no' to every question, keep system versions, and install "
             "missing WSL system packages as root through 'wsl -u root' or passwordless sudo, "
-            "or print the command when neither works."
+            "or print the command when neither works. The whole distro is upgraded only "
+            "with --update."
         ),
     )
     run.add_argument(
@@ -741,6 +742,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                     platform_info,
                     allow_sudo=not no_sudo,
                     assume_yes=system_install,
+                    upgrade=update,
                 ),
             )
             prerequisites.ensure_wsl_tools(

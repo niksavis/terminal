@@ -1695,8 +1695,14 @@ def test_podman_docker_is_left_out_when_docker_is_present(
     assert "podman" in missing
 
 
-def test_system_packages_command_updates_and_upgrades_before_installing() -> None:
+def test_system_packages_command_installs_only_the_missing_packages_by_default() -> None:
     assert wsl_system_packages_command(["zsh", "podman"]) == (
+        "sudo apt-get update && sudo apt-get install -y zsh podman"
+    )
+
+
+def test_system_packages_command_upgrades_the_distro_only_when_asked() -> None:
+    assert wsl_system_packages_command(["zsh", "podman"], upgrade=True) == (
         "sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y zsh podman"
     )
 

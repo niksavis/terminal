@@ -1,0 +1,1 @@
+- **Setup upgrades the WSL distro only with `--update`.** When WSL system packages are missing, setup now updates the package lists and installs only those packages. Before, it also ran `apt-get upgrade -y` on every installed package without being asked. With `--update`, setup still upgrades the whole distro (term-x7lq0b).

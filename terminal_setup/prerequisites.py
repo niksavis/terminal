@@ -1507,60 +1507,80 @@ def missing_wsl_system_packages(runner: Runner, *, wsl_distro: str | None) -> li
     return missing
 
 
-def _apt_system_package_steps(packages: list[str]) -> list[str]:
-    return ["apt-get update", "apt-get upgrade -y", f"apt-get install -y {' '.join(packages)}"]
+def _apt_system_package_steps(packages: list[str], *, upgrade: bool) -> list[str]:
+    return [
+        "apt-get update",
+        *(["apt-get upgrade -y"] if upgrade else []),
+        f"apt-get install -y {' '.join(packages)}",
+    ]
 
 
-def wsl_system_packages_command(packages: list[str]) -> str:
-    return " && ".join(f"sudo {step}" for step in _apt_system_package_steps(packages))
+def _apt_system_package_label(packages: list[str], *, upgrade: bool) -> str:
+    verb = "apt update, upgrade and install" if upgrade else "apt update and install"
+    return f"{verb} {' '.join(packages)}"
 
 
-def wsl_system_packages_root_script(packages: list[str]) -> str:
+def wsl_system_packages_command(packages: list[str], *, upgrade: bool = False) -> str:
+    return " && ".join(
+        f"sudo {step}" for step in _apt_system_package_steps(packages, upgrade=upgrade)
+    )
+
+
+def wsl_system_packages_root_script(packages: list[str], *, upgrade: bool = False) -> str:
     return "export DEBIAN_FRONTEND=noninteractive; " + " && ".join(
-        _apt_system_package_steps(packages)
+        _apt_system_package_steps(packages, upgrade=upgrade)
     )
 
 
 def _install_wsl_system_packages_unattended(
-    runner: Runner, missing: list[str], *, distro: str
+    runner: Runner, missing: list[str], *, distro: str, upgrade: bool
 ) -> bool:
     command = root_shell_command(
-        runner, wsl_system_packages_root_script(missing), wsl_distro=distro
+        runner, wsl_system_packages_root_script(missing, upgrade=upgrade), wsl_distro=distro
     )
     if command is None:
         runner.reporter.warn(
             "Unattended mode cannot install the system packages: sudo needs a password."
         )
         return False
-    runner.run(
-        command, interactive=True, label=f"apt update, upgrade and install {' '.join(missing)}"
-    )
+    runner.run(command, interactive=True, label=_apt_system_package_label(missing, upgrade=upgrade))
     return True
 
 
-def _print_system_packages_command(runner: Runner, missing: list[str], *, distro: str) -> None:
-    runner.reporter.step(f"To add them, run this in WSL: {wsl_system_packages_command(missing)}")
+def _print_system_packages_command(
+    runner: Runner, missing: list[str], *, distro: str, upgrade: bool
+) -> None:
+    runner.reporter.step(
+        f"To add them, run this in WSL: {wsl_system_packages_command(missing, upgrade=upgrade)}"
+    )
     if is_running_in_wsl():
         return
-    script = wsl_system_packages_root_script(missing)
+    script = wsl_system_packages_root_script(missing, upgrade=upgrade)
     runner.reporter.step(
         f"Or in PowerShell, with no password: wsl.exe -d {distro} -u root -- sh -c '{script}'"
     )
 
 
 def ensure_wsl_system_packages(
-    runner: Runner, platform: PlatformInfo, *, allow_sudo: bool, assume_yes: bool
+    runner: Runner,
+    platform: PlatformInfo,
+    *,
+    allow_sudo: bool,
+    assume_yes: bool,
+    upgrade: bool = False,
 ) -> None:
     distro = _wsl_distro(platform)
     missing = missing_wsl_system_packages(runner, wsl_distro=distro)
     if not missing:
         runner.reporter.info(f"System packages present: {', '.join(WSL_SYSTEM_PACKAGES)}.")
         return
-    command = wsl_system_packages_command(missing)
+    command = wsl_system_packages_command(missing, upgrade=upgrade)
     runner.reporter.warn(f"WSL is missing system packages: {', '.join(missing)}.")
     if allow_sudo and runner.unattended:
-        if not _install_wsl_system_packages_unattended(runner, missing, distro=distro):
-            _print_system_packages_command(runner, missing, distro=distro)
+        if not _install_wsl_system_packages_unattended(
+            runner, missing, distro=distro, upgrade=upgrade
+        ):
+            _print_system_packages_command(runner, missing, distro=distro, upgrade=upgrade)
         return
     run_now = allow_sudo and (
         assume_yes
@@ -1568,18 +1588,22 @@ def ensure_wsl_system_packages(
         or (
             sys.stdin.isatty()
             and runner.confirm(
-                "Update the package lists, upgrade installed packages and install "
-                f"{', '.join(missing)} with sudo apt now?"
+                (
+                    "Update the package lists, upgrade installed packages and install "
+                    if upgrade
+                    else "Update the package lists and install "
+                )
+                + f"{', '.join(missing)} with sudo apt now?"
             )
         )
     )
     if not run_now:
-        _print_system_packages_command(runner, missing, distro=distro)
+        _print_system_packages_command(runner, missing, distro=distro, upgrade=upgrade)
         return
     _run_shell_command(
         runner,
         command,
-        label=f"apt update, upgrade and install {' '.join(missing)}",
+        label=_apt_system_package_label(missing, upgrade=upgrade),
         wsl_distro=distro,
     )
 
@@ -2071,6 +2095,7 @@ def _ensure_wezterm_user_install(
     base_url = "https://github.com/wezterm/wezterm/releases/download"
     script = (
         "$ErrorActionPreference = 'Stop'; "
+        "$ProgressPreference = 'SilentlyContinue'; "
         f"{_powershell_latest_release('wezterm/wezterm')}"
         f"{_powershell_skip_when_current('WezTerm', current)}"
         f"$url = '{base_url}/' + $release + '/WezTerm-windows-' + $release + '.zip'; "
