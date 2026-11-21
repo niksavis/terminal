@@ -51,6 +51,11 @@ jobs:
         run: |
           export PATH="${HOME}/.local/bin:${PATH}"
           agents status
+      - name: Run terminal status
+        shell: bash
+        run: |
+          export PATH="${HOME}/.local/bin:${PATH}"
+          terminal status
 
   linux-container:
     runs-on: ubuntu-latest
@@ -132,6 +137,11 @@ jobs:
         run: |
           & (Join-Path $env:USERPROFILE '.local\bin\agents.cmd') status
           if ($LASTEXITCODE -ne 0) { throw "agents status failed with exit code $LASTEXITCODE" }
+      - name: Run terminal status on Windows and in WSL
+        shell: pwsh
+        run: |
+          & (Join-Path $env:USERPROFILE '.local\bin\terminal.cmd') status
+          if ($LASTEXITCODE -ne 0) { throw "terminal status failed with exit code $LASTEXITCODE" }
       - name: Check that the setup copy replaced the winget ripgrep
         if: steps.winget.outcome == 'success'
         shell: powershell
