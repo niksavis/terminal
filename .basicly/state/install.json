@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.47.0",
+  "basicly_version": "0.47.1",
   "core": {
     "agents/architect/agent.yaml": "sha256:a46f63a842d1992485ab7f6538f19a7a703a16ea9e5e8e90f6986a8636fe8489",
     "agents/auditor/agent.yaml": "sha256:b68326d319210c5c25785033879e5ac3ab3ed1f7a46e506d94537921250608cc",
@@ -179,7 +179,7 @@
     "kit/tracker/migrate.py": "sha256:8362e46826a13d5bd57e659cd9857dc4e13132bc2faf26229681901b95c0b5d0",
     "kit/tracker/mirror.py": "sha256:b1907afcba7494b7fd5cb95230ab487304e0706cf1830b4616ffac989ba2ffd6",
     "kit/tracker/parent_progress.py": "sha256:39dd81be2e829276b52ecb3bbded0a3f9a5819627ec3bb78ed2585d987fc45db",
-    "kit/tracker/pin.py": "sha256:fe7944dd4135370567098ec7826228e5d78356f905a27728db2ed89059d42082",
+    "kit/tracker/pin.py": "sha256:fe7fc4245f8177cb6b4545642592e7d053c35d0b53fc1b49fbaadc4241576bfd",
     "kit/tracker/process_evidence.py": "sha256:b1e932d2d5c9f744ecbc8ba5d9d68bb3cb26d69448d989e73ba941b72b1911bf",
     "kit/tracker/provenance.py": "sha256:5800d8eda460d3e7179e7e920738ef50e04fad0ee15ada48db49e3243e99fc59",
     "kit/tracker/queries.py": "sha256:366f794f3b0e69828580df17ea615fe310a8a41f5c7beb6ce54e0352e4ba1606",
@@ -434,6 +434,6 @@
     "templates/common/baseline.j2": "sha256:9cf48abf7d79710eca8d929127e5e9bcfc3fa70248e892c44c94edc234bf09ef",
     "templates/copilot/copilot_instructions_md.j2": "sha256:1646ed61a35551fcdf17c6335cbdac3a7991a8dd736fa57275bf04dd66c83a89"
   },
-  "installed_at": "2026-11-20T14:40:31.728875+00:00",
+  "installed_at": "2026-11-21T11:31:42.952392+00:00",
   "schema_version": 1
 }

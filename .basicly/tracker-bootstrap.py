@@ -8,7 +8,7 @@ from pathlib import Path
 
 BOOTSTRAP_OWNER = "basicly-tracker"
 SOURCE = (
-    "https://github.com/niksavis/basicly/releases/download/v0.47.0/basicly-0.47.0-py3-none-any.whl"
+    "https://github.com/niksavis/basicly/releases/download/v0.47.1/basicly-0.47.1-py3-none-any.whl"
 )
 TOOL = "basicly"
 MINIMUM_PYTHON = (3, 14)
