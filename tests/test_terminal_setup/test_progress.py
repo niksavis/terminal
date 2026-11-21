@@ -99,6 +99,9 @@ def test_the_log_holds_every_detail_and_command_output(tmp_path: Path) -> None:
         ("error", "install fd failed", "failed"),
         ("info", "write file /x", "detail"),
         ("success", "Setup complete.", "detail"),
+        ("warn", "install yq failed: yq: download failed: HTTP Error 502 (continuing)", "failed"),
+        ("error", "Setup finished with 1 failed step:", "notice"),
+        ("error", "  - install yq", "notice"),
     ],
 )
 def test_each_message_lands_in_one_count(level: str, message: str, kind: str) -> None:

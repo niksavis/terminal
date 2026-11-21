@@ -2137,7 +2137,7 @@ def wezterm_start_hint(platform: PlatformInfo, location: str) -> str:
     if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
         return (
             "Start WezTerm the first time from Windows Terminal or PowerShell, then pin it "
-            f"to the taskbar: & {_powershell_literal(location)}"
+            f"to the taskbar: & {_powershell_literal(str(location))}"
         )
     return f"WezTerm is installed at {location}"
 

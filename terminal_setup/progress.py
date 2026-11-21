@@ -20,6 +20,7 @@ _UPDATED = re.compile(
     r"^(?:installed|updated|upgraded) (?P<name>[\w.+-]+)(?: (?P<version>v?\d[\w.+-]*))?"
 )
 _MANAGED = ("machine-wide", "keeps ")
+_FINAL_FAILURES = "Setup finished with "
 _CURRENT = (" is up to date", " is already up to date", " is present")
 
 
@@ -86,7 +87,9 @@ def _updated_name(found: re.Match[str]) -> str:
 
 
 def classify(level: str, message: str) -> tuple[str, str]:
-    if level == "error":
+    if level == "error" and (message.startswith(_FINAL_FAILURES) or message.startswith("  - ")):
+        return "notice", message
+    if level == "error" or (level == "warn" and message.endswith(" (continuing)")):
         return "failed", message
     if any(word in message for word in _MANAGED):
         return "managed", message.split(":", 1)[0].strip()
@@ -295,7 +298,9 @@ class PhasedReporter:
         self._write(level, message)
         kind, item = classify(level, message)
         phase = self._current
-        if kind == "failed":
+        if kind == "notice":
+            self._display.line("error", message)
+        elif kind == "failed":
             if phase is not None:
                 phase.failed.append(item)
             self._display.line("error", message)
