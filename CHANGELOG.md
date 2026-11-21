@@ -2,6 +2,18 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.24.2 - 2026-11-21
+
+Delta: v0.24.1..v0.24.2
+
+### Highlights
+
+- **`terminal update` no longer reruns setup or reinstalls agents that are current.** The Windows status reads the release that setup recorded in `%LOCALAPPDATA%\terminal-setup\releases`, so a tool such as sd, whose binary prints another version than its release tag, shows ok. Setup runs an agent's installer or updater only when that agent is not current. After setup runs, `terminal update` checks again and names what changed, or says that nothing changed; every path ends with a summary line. The agents table shows the Codex daemon under codex (term-vj6sv8).
+
+### Commit delta (auto-generated)
+
+- No user-visible changes.
+
 ## v0.24.1 - 2026-11-21
 
 Delta: v0.24.0..v0.24.1
