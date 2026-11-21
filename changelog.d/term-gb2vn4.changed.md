@@ -1,1 +1,0 @@
-- **The README and the cheat sheet name `terminal status`, `terminal update` and the `agents` command.** A move from a release older than v0.24.0 uses the install command once (term-gb2vn4).

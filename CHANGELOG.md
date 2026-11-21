@@ -2,6 +2,23 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.24.1 - 2026-11-21
+
+Delta: v0.24.0..v0.24.1
+
+### Highlights
+
+- **The README and the cheat sheet name `terminal status`, `terminal update` and the `agents` command.** A move from a release older than v0.24.0 uses the install command once (term-gb2vn4).
+- **`terminal update` checks first and runs only what is not up to date.** It runs the setup install only for a newer setup release or a tool that needs it, and updates only the agents that need it. When everything is current it prints one line and runs no updater. Each step shows its name, its own output and a result line; on Windows, the setup and agents output now reaches the console, and a failed step now exits with code 1. `terminal status` shows progress while it runs, reads the release that setup recorded on Windows too, and shows a machine-wide copy as `managed` instead of `update` (term-wtgqas).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-p61wg5) (10809f3)
+- test(update): read the side name instead of assuming wsl (term-wtgqas) (d0366de)
+- fix(update): check first and run only what is not up to date (term-wtgqas) (48ffa48)
+- docs(readme): keep the update line within the readme limits (term-gb2vn4) (f592167)
+- docs(readme): name the terminal and agents commands for updates (term-gb2vn4) (cbc588c)
+
 ## v0.24.0 - 2026-11-21
 
 Delta: v0.23.0..v0.24.0
