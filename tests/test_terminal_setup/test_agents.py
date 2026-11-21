@@ -912,3 +912,23 @@ def test_agents_status_leaves_out_its_heading_under_terminal_status(tmp_path: Pa
 
     assert "==> " in re.sub(r"\x1b\[[0-9;]*m", "", plain.stdout)
     assert "==> " not in re.sub(r"\x1b\[[0-9;]*m", "", bare.stdout)
+
+
+@needs_bash4
+def test_agents_update_under_terminal_update_prints_only_agents_that_need_action(
+    tmp_path: Path,
+) -> None:
+    _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.170.0", "copilot": "1.0.5"})
+
+    result = _run_agents(tmp_path, "update", AGENTS_CHANGES_ONLY="1", AGENTS_NO_HEADING="1")
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    rows = [
+        line.split()[0]
+        for line in plain.splitlines()
+        if re.match(r"^\s*(claude|codex|daemon|copilot) ", line)
+    ]
+    assert "codex" in rows
+    assert "claude" not in rows
+    assert "ok, up to date" not in plain
+    assert re.search(r"^==> (WSL|Linux|macOS)$", plain, re.MULTILINE) is None

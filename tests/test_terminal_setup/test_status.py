@@ -1033,3 +1033,42 @@ def test_terminal_ps1_unknown_argument_names_a_newer_release(tmp_path: Path) -> 
     assert result.returncode == 2
     assert "terminal v99.0.0 is available" in result.stdout
     assert "/download/v99.0.0/install.ps1 | iex" in result.stdout
+
+
+def test_terminal_update_status_shows_only_rows_that_need_action(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    monkeypatch.setenv(cli.STATUS_SIDE_ENV, "windows")
+    monkeypatch.setenv(cli.STATUS_CHANGES_ONLY_ENV, "1")
+    items = [
+        status.Installed("rg", "C:/tools/rg.exe", "ripgrep 15.1.0"),
+        status.Installed("fd", "C:/tools/fd.exe", "fd 10.3.0"),
+    ]
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_status_windows", return_value=items),
+    ):
+        cli.print_status(runner, _windows_platform(), FAKE)
+
+    out = capsys.readouterr().out
+    assert "fd " in out
+    assert "rg " not in out
+
+
+def test_terminal_update_status_prints_no_table_when_every_row_is_ok(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    monkeypatch.setenv(cli.STATUS_SIDE_ENV, "windows")
+    monkeypatch.setenv(cli.STATUS_CHANGES_ONLY_ENV, "1")
+    items = [status.Installed("rg", "C:/tools/rg.exe", "ripgrep 15.1.0")]
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_status_windows", return_value=items),
+    ):
+        cli.print_status(runner, _windows_platform(), FAKE)
+
+    assert "==> " not in capsys.readouterr().out

@@ -169,10 +169,25 @@ check_all() {
   done
 }
 
+changes_only() { [[ -n "${AGENTS_CHANGES_ONLY:-}" ]]; }
+any_not_ok() {
+  local name
+  for name in "${NAMES[@]}"; do
+    [[ "${ST[$name]}" != ok ]] && return 0
+  done
+  return 1
+}
+
 print_table() {
   local name color
+  if changes_only && ! any_not_ok; then
+    return
+  fi
   printf '%-8s %-12s %-12s %s\n' agent installed latest state
   for name in "${NAMES[@]}"; do
+    if changes_only && [[ "${ST[$name]}" == ok ]]; then
+      continue
+    fi
     case "${ST[$name]}" in
       ok) color=32 ;;
       unknown) color=31 ;;
@@ -236,7 +251,7 @@ maybe() {
     step "$label" "$action" "$agent"
     report "updated $agent"
   else
-    echo "$label: ok, up to date (${CUR[$agent]})"
+    changes_only || echo "$label: ok, up to date (${CUR[$agent]})"
     report "ok $agent"
   fi
 }
@@ -253,7 +268,9 @@ run_local() {
       ;;
     update)
       check_all
-      say "$SIDE"
+      if [[ -z "${AGENTS_NO_HEADING:-}" ]]; then
+        say "$SIDE"
+      fi
       print_table
       maybe claude update_agent
       maybe codex update_agent

@@ -53,8 +53,8 @@ def test_plain_mode_prints_one_line_per_phase_and_a_summary(tmp_path: Path) -> N
         "[1/2] WSL tools: 1 ok, 1 updated (sd 1.1.0) (14 s)",
         "[2/2] Windows tools...",
         "[2/2] Windows tools: 1 ok, 1 managed (starship) (9 s)",
-        "summary WSL: updated sd 1.1.0; ok 1; managed -; failed -",
-        "summary Windows: updated -; ok 1; managed starship; failed -",
+        "summary WSL: updated sd 1.1.0; ok 1 tools; managed -; failed -",
+        "summary Windows: updated -; ok 1 tools; managed starship; failed -",
         f"Done in 23 s. Full log: {tmp_path / 'setup.log'}",
         "Next: See which tools need an update anytime with: terminal status",
     ]
@@ -72,7 +72,7 @@ def test_warnings_and_errors_print_as_their_own_lines(tmp_path: Path) -> None:
     assert "warning: Restart the WSL session for the updated PATH to take effect." in lines
     assert "error: install fd failed: exit code 1" in lines
     assert "[1/1] Tools: 1 warning, 1 failed (0 s)" in lines
-    assert "summary Linux: updated -; ok 0; managed -; failed Tools" in lines
+    assert "summary Linux: updated -; ok 0 tools; managed -; failed Tools" in lines
 
 
 def test_the_log_holds_every_detail_and_command_output(tmp_path: Path) -> None:
@@ -187,3 +187,40 @@ def test_rich_is_used_only_for_a_terminal_without_no_color(monkeypatch: pytest.M
     assert progress.use_rich(io.StringIO()) is False
     monkeypatch.setenv("NO_COLOR", "1")
     assert progress.use_rich(Tty()) is False
+
+
+def test_the_summary_counts_only_tool_phases_and_names_managed_copies(tmp_path: Path) -> None:
+    reporter, stream, _clock = _plain(tmp_path, total=3)
+
+    reporter.phase("Windows tools", "Windows")
+    reporter.success("rg 15.2.0 is up to date")
+    reporter.info("Node.js v26.1.0 at C:/Program Files/nodejs/node.exe is installed machine-wide")
+    reporter.phase("Agents and commands", "Windows")
+    reporter.success("claude 2.1.330 is up to date on Windows")
+    reporter.success("codex 0.171.0 is up to date on Windows")
+    reporter.phase("Configuration", "Windows")
+    reporter.finish()
+
+    assert "summary Windows: updated -; ok 1 tools; managed Node.js; failed -" in (
+        stream.getvalue().splitlines()
+    )
+
+
+def test_a_phase_note_replaces_its_counts(tmp_path: Path) -> None:
+    reporter, stream, _clock = _plain(tmp_path, total=1)
+
+    reporter.phase("Run checks", "Linux")
+    reporter.note("skipped, nothing changed")
+    reporter.finish()
+
+    assert "[1/1] Run checks: skipped, nothing changed (0 s)" in stream.getvalue().splitlines()
+
+
+def test_a_run_changed_something_only_after_an_update_or_a_failure(tmp_path: Path) -> None:
+    reporter, _stream, _clock = _plain(tmp_path, total=2)
+
+    reporter.phase("Tools", "Linux")
+    reporter.success("rg 15.2.0 is up to date")
+    assert reporter.changed() is False
+    reporter.info("installed sd 1.1.0 into /x/sd")
+    assert reporter.changed() is True

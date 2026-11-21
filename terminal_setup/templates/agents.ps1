@@ -132,8 +132,11 @@ function Check-All {
   }
 }
 function Print-Table {
+  $only = [bool]$env:AGENTS_CHANGES_ONLY
+  if ($only -and -not @($Names | Where-Object { $script:St[$_] -ne "ok" }).Count) { return }
   "{0,-8} {1,-12} {2,-12} {3}" -f "agent", "installed", "latest", "state" | Write-Host
   foreach ($n in $Names) {
+    if ($only -and $script:St[$n] -eq "ok") { continue }
     $color = switch ($script:St[$n]) { "ok" { "Green" } "unknown" { "Red" } default { "Yellow" } }
     $c = if ($script:Cur[$n]) { $script:Cur[$n] } else { "-" }
     $l = if ($script:New[$n]) { $script:New[$n] } else { "?" }
@@ -208,14 +211,17 @@ function Uninstall-Agent($n) {
 function Maybe($n, [scriptblock]$block) {
   $title = "$($Label[$n]) (Windows)"
   if (Needs $n) { Step $title $block; Report "updated $n" }
-  else { Write-Host "$($title): ok, up to date ($($script:Cur[$n]))"; Report "ok $n" }
+  else {
+    if (-not $env:AGENTS_CHANGES_ONLY) { Write-Host "$($title): ok, up to date ($($script:Cur[$n]))" }
+    Report "ok $n"
+  }
 }
 
 function Run-Windows {
   switch ($Cmd) {
     "status" { Check-All; if (-not $env:AGENTS_NO_HEADING) { Say "Windows" }; Print-Table }
     "update" {
-      Check-All; Say "Windows"; Print-Table
+      Check-All; if (-not $env:AGENTS_NO_HEADING) { Say "Windows" }; Print-Table
       Maybe claude { Update-Agent claude }
       Maybe codex { Update-Agent codex }
       Maybe daemon { Update-Daemon }

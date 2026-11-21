@@ -67,8 +67,11 @@ class Phase:
     warnings: list[str] = field(default_factory=list)
     failed: list[str] = field(default_factory=list)
     seconds: int = 0
+    note: str = ""
 
     def summary(self) -> str:
+        if self.note:
+            return self.note
         parts = []
         if self.ok:
             parts.append(f"{self.ok} ok")
@@ -106,7 +109,7 @@ def classify(level: str, message: str) -> tuple[str, str]:
     if level == "error" or (level == "warn" and message.endswith(" (continuing)")):
         return "failed", message
     if any(word in message for word in _MANAGED):
-        return "managed", message.split(":", 1)[0].strip()
+        return "managed", message.split(maxsplit=1)[0].rstrip(":")
     if level == "warn":
         return "warning", message
     found = _UPDATED.match(message) if level in {"info", "success"} else None
@@ -380,10 +383,18 @@ class PhasedReporter:
         with self._display.pause():
             yield
 
+    def changed(self) -> bool:
+        return any(phase.updated or phase.failed for phase in self._phases)
+
+    def note(self, text: str) -> None:
+        if self._current is not None:
+            self._current.note = text
+            self._write("note", text)
+
     def finish(self) -> None:
         self._close_phase()
         sides: dict[str, dict[str, str]] = {}
-        for phase in self._phases:
+        for phase in (phase for phase in self._phases if phase.name.lower().endswith("tools")):
             side = sides.setdefault(
                 phase.side, {"updated": "", "ok": "0", "managed": "", "failed": ""}
             )
@@ -393,6 +404,8 @@ class PhasedReporter:
                 filter(None, [side["failed"], phase.name if phase.failed else ""])
             )
             side["ok"] = str(int(side["ok"]) + phase.ok)
+        for side in sides.values():
+            side["ok"] = f"{side['ok']} tools"
         self._display.summary({
             name: {key: value or "-" for key, value in side.items()} for name, side in sides.items()
         })

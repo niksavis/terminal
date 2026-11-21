@@ -102,7 +102,9 @@ function Read-Plan($quiet) {
     $env:TERMINAL_STATUS_QUIET = "1"
     & $script:Uvx --from "__SETUP_SOURCE__" terminal-setup --only status *> $null
   } else {
+    $env:TERMINAL_STATUS_CHANGES_ONLY = "1"
     Run-Step "status check" { & $script:Uvx --from "__SETUP_SOURCE__" terminal-setup --only status }
+    Remove-Item Env:TERMINAL_STATUS_CHANGES_ONLY -ErrorAction SilentlyContinue
   }
   Remove-Item Env:TERMINAL_STATUS_PLAN, Env:TERMINAL_STATUS_SIDE, Env:TERMINAL_STATUS_QUIET -ErrorAction SilentlyContinue
   $script:PlanLines = @(Get-Content $plan -ErrorAction SilentlyContinue)
@@ -164,8 +166,10 @@ function Update-Windows {
     $report = [IO.Path]::GetTempFileName()
     $env:AGENTS_REPORT = $report
     $env:AGENTS_NESTED = "1"
+    $env:AGENTS_CHANGES_ONLY = "1"
+    $env:AGENTS_NO_HEADING = "1"
     Run-Step "agents update" { & $agents update "--win" }
-    Remove-Item Env:AGENTS_REPORT, Env:AGENTS_NESTED -ErrorAction SilentlyContinue
+    Remove-Item Env:AGENTS_REPORT, Env:AGENTS_NESTED, Env:AGENTS_CHANGES_ONLY, Env:AGENTS_NO_HEADING -ErrorAction SilentlyContinue
     $done = @(Get-Content $report -ErrorAction SilentlyContinue)
     Remove-Item $report -ErrorAction SilentlyContinue
     $agentsCount = @($done | Where-Object { $_ -match '^(ok|updated) (claude|codex|copilot)$' }).Count

@@ -1,0 +1,1 @@
+- **`terminal update` shows only what needs action, and setup skips the run checks when nothing changed.** The status check and the agents step list only rows that are not ok; when everything is current each side prints one line. The setup summary counts tools in the same unit on both sides and lists managed copies by name (term-uuvvl7).

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import os
 import subprocess
 import sys
@@ -9,6 +10,7 @@ from unittest import mock
 
 import pytest
 
+from terminal_setup import progress
 from terminal_setup.cli import build_parser, main, run_setup
 from terminal_setup.platform import (
     OperatingSystem,
@@ -17,6 +19,7 @@ from terminal_setup.platform import (
     path_without_own_environment,
     windows_powershell_module_path,
 )
+from terminal_setup.runner import Runner
 
 
 @pytest.fixture(autouse=True)
@@ -692,3 +695,52 @@ def test_run_setup_on_linux_installs_img_zoom_natively_only() -> None:
     )
     zoom_wsl.assert_not_called()
     zoom_native.assert_called_once()
+
+
+@pytest.mark.parametrize(("changed", "runs"), [(False, False), (True, True)])
+def test_setup_skips_the_run_checks_when_nothing_changed(
+    tmp_path: Path, changed: bool, runs: bool
+) -> None:
+    reporter = progress.PhasedReporter(progress.PlainDisplay(io.StringIO()), tmp_path / "log", 6)
+    reporter.phase("Tools", "Windows")
+    if changed:
+        reporter.info("installed sd 1.1.0 into C:/x/sd.exe")
+    runner = Runner(reporter=reporter)
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm"),
+        mock.patch("terminal_setup.cli.windows_tools.ensure_windows_tools"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_python"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_uv_windows"),
+        mock.patch("terminal_setup.cli.agents.ensure_agents"),
+        mock.patch("terminal_setup.cli.agents.report_daemon_lag"),
+        mock.patch("terminal_setup.cli.agents.installed_agents", return_value=()),
+        mock.patch("terminal_setup.cli.terminal_command.deploy_terminal_command"),
+        mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
+        mock.patch("terminal_setup.cli.prerequisites.wezterm_location", return_value=None),
+        mock.patch("terminal_setup.cli.configs.deploy_all"),
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
+        mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
+        mock.patch("terminal_setup.cli.verify_tools_run") as checks,
+    ):
+        run_setup(
+            _windows_platform(),
+            runner,
+            skip_vscode=True,
+            skip_starship=True,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=False,
+            system_install=False,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+
+    assert checks.called is runs

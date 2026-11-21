@@ -709,6 +709,7 @@ def print_setup_report(
 STATUS_SIDE_ENV = "TERMINAL_STATUS_SIDE"
 STATUS_PLAN_ENV = "TERMINAL_STATUS_PLAN"
 STATUS_QUIET_ENV = "TERMINAL_STATUS_QUIET"
+STATUS_CHANGES_ONLY_ENV = "TERMINAL_STATUS_CHANGES_ONLY"
 
 
 def _status_say(line: str) -> None:
@@ -793,8 +794,12 @@ def _print_status_side(
         **tool_status.latest_versions(commands, lookups),
     }
     table_rows = tool_status.rows(items, commands, latest, NO_VERSION)
-    for line in tool_status.table(side, table_rows):
-        _status_say(line)
+    shown = table_rows
+    if os.environ.get(STATUS_CHANGES_ONLY_ENV):
+        shown = [row for row in table_rows if row.state not in {"ok", tool_status.MANAGED}]
+    if shown:
+        for line in tool_status.table(side, shown):
+            _status_say(line)
     plan = os.environ.get(STATUS_PLAN_ENV)
     if plan:
         with Path(plan).open("a", encoding="utf-8") as handle:
@@ -1033,7 +1038,16 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             wsl_terminal_cwd=wsl_terminal_cwd,
         )
 
-    if not config_only and not runner.dry_run:
+    reporter = runner.reporter
+    if (
+        not config_only
+        and not runner.dry_run
+        and isinstance(reporter, progress.PhasedReporter)
+        and not reporter.changed()
+    ):
+        reporter.phase("Run checks", host_side)
+        reporter.note("skipped, nothing changed")
+    elif not config_only and not runner.dry_run:
         _phase(runner, "Run checks", host_side)
         verify_tools_run(
             runner,

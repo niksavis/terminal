@@ -141,7 +141,7 @@ update_local() {
   fi
   echo "setup: installed $INSTALLED_REF, target $target"
   plan="$(mktemp)"
-  if ! run_step "status check" env TERMINAL_STATUS_PLAN="$plan" uvx --from "$SETUP_SOURCE" terminal-setup --only status; then
+  if ! run_step "status check" env TERMINAL_STATUS_PLAN="$plan" TERMINAL_STATUS_CHANGES_ONLY=1 uvx --from "$SETUP_SOURCE" terminal-setup --only status; then
     rm -f "$plan"
     print_summary "$target" "" 0 "" 0 ""
     return
@@ -194,7 +194,7 @@ update_local() {
       side="--wsl"
     fi
     report="$(mktemp)"
-    run_step "agents update" env AGENTS_REPORT="$report" AGENTS_NESTED=1 agents update ${side:+"$side"} || true
+    run_step "agents update" env AGENTS_REPORT="$report" AGENTS_NESTED=1 AGENTS_CHANGES_ONLY=1 AGENTS_NO_HEADING=1 agents update ${side:+"$side"} || true
     agents_count="$(grep -cE '^(ok|updated) (claude|codex|copilot)$' "$report" || true)"
     agents_updated="$(sed -n 's/^updated //p' "$report" | sed 's/^daemon$/codex daemon/' | tr '\n' ' ' | sed 's/ *$//')"
     rm -f "$report"
