@@ -9,6 +9,11 @@ hooks:
     script: tracker-fold.py
     stage: post-merge
     always_run: true
+  - id: orch-commit-note
+    description: Write the new commit's record and subject to the orchestrator session state.
+    script: orch-commit-note.py
+    stage: post-commit
+    always_run: true
   - id: tier-injection
     description: Resolve a Claude spawn's declared model tier.
     script: ../kit/tier/claude_tier_hook.py

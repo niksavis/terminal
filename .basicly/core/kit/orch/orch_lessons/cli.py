@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import shlex
 import sys
 from pathlib import Path
@@ -11,8 +12,21 @@ from orch_state import commands, relay_guard
 from orch_lessons import doctor, log
 
 
-def parser() -> argparse.ArgumentParser:
+def version() -> str:
+    try:
+        return f"orch {importlib.metadata.version('basicly-orch')}"
+    except importlib.metadata.PackageNotFoundError:
+        return "orch from a kit folder, not an installed package"
+
+
+def _top() -> argparse.ArgumentParser:
     top = argparse.ArgumentParser(prog="orch")
+    top.add_argument("--version", action="version", version=version())
+    return top
+
+
+def parser() -> argparse.ArgumentParser:
+    top = _top()
     groups = top.add_subparsers(dest="group", required=True)
     lesson = groups.add_parser("lesson").add_subparsers(dest="action", required=True)
     add = lesson.add_parser("add")

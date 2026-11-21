@@ -112,6 +112,7 @@ slots:
   output_contract:
     - text: |
         At the end of a session:
+
         1. Write each lesson of the session with `orch lesson add --scope local|basicly`, then run
            `orch lessons end-session`; it refuses a session with no lesson.
         2. Write a handover comment on the orchestration record with the goal,

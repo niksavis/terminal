@@ -2,7 +2,7 @@
   "version": "1",
   "outputs": {
     ".claude/CLAUDE.md": {
-      "hash": "sha256:43e6ab5390bc25ddc152ecf0889882d5c59ee84c3b2001dd360afec5ef27a0cd",
+      "hash": "sha256:2bafcc0e12b14f82e324cf1197d8b4d88c33cc3c5a9d5d6501732cfc04ad56e0",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",
@@ -27,13 +27,13 @@
       ]
     },
     ".claude/rules/python-style.md": {
-      "hash": "sha256:facecb16c6226a289089594c5b3177a0e3617001c6d5a12996310b932b6e9a17",
+      "hash": "sha256:df20392e580b97b59093fb757f86478e681f51b77504928a6cd5bc262399589c",
       "source_fragments": [
         "python-style"
       ]
     },
     "AGENTS.md": {
-      "hash": "sha256:468a57deceb6bec2e12d27bac05a32f4985b100f7803a761c7b88855c84061dd",
+      "hash": "sha256:51f1a6388cdaf1189d67c6868d17dfdc1ee6424c2fa418ac28c365a0301ce2a0",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",
@@ -58,7 +58,7 @@
       ]
     },
     ".github/copilot-instructions.md": {
-      "hash": "sha256:90cd79137ca30ec4603788e2cee27ad7d1fb60dd98bbfda45b852a0617595e0e",
+      "hash": "sha256:f70991e7240489cde8b9848dab2adeb3ea539a448926bace9ecf746c6445b4b1",
       "source_fragments": [
         "code-is-authoritative",
         "no-user-path-leakage",

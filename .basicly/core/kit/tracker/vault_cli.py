@@ -236,6 +236,23 @@ def _init_vault(args: argparse.Namespace, _clock: Clock) -> dict[str, object]:
     return shown
 
 
+def _orch_note(**fields: object) -> None:
+    source = _HERE.parent / "orch" / "orch_state" / "note.py"
+    if not source.is_file():
+        return
+    spec = importlib.util.spec_from_file_location("basicly_orch_note", source)
+    if spec is None or spec.loader is None:
+        return
+    module = sys.modules.get("basicly_orch_note") or importlib.util.module_from_spec(spec)
+    try:
+        if "basicly_orch_note" not in sys.modules:
+            spec.loader.exec_module(module)
+            sys.modules["basicly_orch_note"] = module
+        module.note(Path.cwd(), os.environ, **fields)
+    except OSError, ValueError, ImportError:
+        return
+
+
 def _claim_vault(args: argparse.Namespace, clock: Clock) -> dict[str, object]:
     ask = vault_claim.Ask(
         _clone(args),
@@ -246,6 +263,8 @@ def _claim_vault(args: argparse.Namespace, clock: Clock) -> dict[str, object]:
         name=vault_write.holders.chosen_holder(Path.cwd(), os.environ),
     )
     shown = vault_claim.claim(ask, deadline=args.deadline)
+    if shown.get("exit") == vault_claim.LANDED:
+        _orch_note(item=args.record, last=f"claimed {args.record}")
     if shown.get("exit") == vault_claim.UNREACHABLE and vault_init.no_genesis(args.vault):
         return {
             "exit": vault_init.NO_GENESIS,

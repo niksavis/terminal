@@ -139,6 +139,43 @@ def run_foreign_hook(root: Path, arguments: list[str], raw: bytes | None) -> int
     ).returncode
 
 
+def adds_commits(root: Path, refs: str) -> bool:
+    if not refs.strip():
+        return True
+    for line in refs.splitlines():
+        parts = line.split()
+        if len(parts) != 4:
+            return True
+        local, remote = parts[1], parts[3]
+        if set(local) == {"0"} or local == remote:
+            continue
+        found = subprocess.run(  # nosec B603 B607
+            ["git", "rev-list", "--max-count=1", local, "--not", "--remotes"],
+            cwd=root,
+            env=_clean_env(),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            check=False,
+        )
+        if found.returncode != 0 or found.stdout.strip():
+            return True
+    return False
+
+
+def orch_note(root: Path, **fields: object) -> None:
+    source = Path(__file__).resolve().parents[1] / "kit" / "orch" / "orch_state" / "note.py"
+    spec = importlib.util.spec_from_file_location("basicly_orch_note", source)
+    if spec is None or spec.loader is None or not source.is_file():
+        return
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+        module.note(root, os.environ, **fields)
+    except OSError, ValueError, ImportError:
+        return
+
+
 def runtime_module(name: str):
     source = Path(__file__).with_name(f"{name}.py")
     spec = importlib.util.spec_from_file_location(f"basicly_{name}", source)
@@ -231,6 +268,31 @@ def launch(manager: str, stage: str, arguments: list[str]) -> int:
     return changed_core(stage, config, before) or code
 
 
+def _finish_git(
+    launch: tuple[list[str], Path, dict[str, str], bytes | None],
+    code: int,
+    result_path: Path,
+    snapshot_state: Any,
+    hook: tuple[str, Path],
+) -> int:
+    command, run_root, env, raw = launch
+    stage, root = hook
+    if code == 0 and not result_path.is_file():
+        command[3:3] = ["--force", "--job", "basicly-dispatch"]
+        code = subprocess.run(  # nosec B603
+            command, cwd=run_root, env=env, input=raw, check=False
+        ).returncode
+    if code == 0 and not result_path.is_file():
+        print("managed Git dispatcher did not run; run `basicly hooks-build`", file=sys.stderr)
+        return 2
+    if snapshot_state is not None and code == 0:
+        module, state = snapshot_state
+        module.publish(state)
+    if code == 0 and stage == "pre-push":
+        orch_note(root, last="pushing: the pre-push checks passed")
+    return code
+
+
 def _launch(manager: str, stage: str, arguments: list[str]) -> int:
     root = project_root()
     suffix = ".exe" if os.name == "nt" else ""
@@ -248,6 +310,12 @@ def _launch(manager: str, stage: str, arguments: list[str]) -> int:
     raw = sys.stdin.buffer.read() if agent or stage == "pre-push" else None
     if stage == "pre-push" and raw is not None:
         env["BASICLY_PUSH_REFS"] = raw.decode("utf-8", "replace")
+        if not agent and not adds_commits(root, env["BASICLY_PUSH_REFS"]):
+            print(
+                "basicly hook: pre-push skipped: the push only deletes refs or adds no commit",
+                file=sys.stderr,
+            )
+            return 0
     if not agent:
         foreign_code = run_foreign_hook(root, arguments, raw)
         if foreign_code:
@@ -268,20 +336,13 @@ def _launch(manager: str, stage: str, arguments: list[str]) -> int:
             check=False,
         )
         if not agent:
-            if proc.returncode == 0 and not result_path.is_file():
-                command[3:3] = ["--force", "--job", "basicly-dispatch"]
-                proc = subprocess.run(  # nosec B603
-                    command, cwd=run_root, env=env, input=raw, check=False
-                )
-            if proc.returncode == 0 and not result_path.is_file():
-                print(
-                    "managed Git dispatcher did not run; run `basicly hooks-build`", file=sys.stderr
-                )
-                return 2
-            if snapshot_state is not None and proc.returncode == 0:
-                module, state = snapshot_state
-                module.publish(state)
-            return proc.returncode
+            return _finish_git(
+                (command, run_root, env, raw),
+                proc.returncode,
+                result_path,
+                snapshot_state,
+                (stage, root),
+            )
         if not result_path.is_file():
             sys.stderr.buffer.write(proc.stdout + proc.stderr)
             print(
