@@ -448,6 +448,9 @@ irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | 
 &amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report</code></pre>
 <pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report</code></pre>
+<p>Show and update the coding agents and the Codex daemon in WSL and on Windows (installed with <code>--agents</code>):</p>
+<pre class="code-block" data-language="bash"><code>agents status
+agents update</code></pre>
 </div></section>
 <section class="collapsed" id="wezterm-shortcuts-project-custom">
 <div class="section-header" title="Click to expand/collapse">
