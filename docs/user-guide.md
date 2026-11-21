@@ -200,9 +200,12 @@ Setup installs the `terminal` command on every run. `terminal status` prints one
 
 ```bash
 terminal status
+terminal update
 ```
 
-In WSL, the command also prints the Windows side, and on Windows it also prints the WSL side. Add `--wsl` or `--win` to print only one side. In WSL and on Linux it is `~/.local/bin/terminal`. On Windows it is `terminal.cmd` and `terminal.ps1` in `%USERPROFILE%\.local\bin`. It runs the setup release that installed it, through `uvx`. When another command named `terminal` is already on PATH, setup does not install it and names that command's path.
+In WSL, the command also prints the Windows side, and on Windows it also prints the WSL side. Add `--wsl` or `--win` to print only one side.
+
+`terminal update` prints the setup release that installed the command and the target release, then runs the install script of the latest terminal release with no options, so every tool that setup installed updates the same way as on a new install. After that it runs `agents update`, which also updates the Codex app-server daemon. Add `--pinned` to run the installed release instead of the latest. When the latest release cannot be read, the command stops and names `terminal update --pinned`. In WSL, the command hands the update to Windows, because a run on Windows also updates WSL; `--wsl` updates only WSL. It does not upgrade the WSL distro packages; for that, run the install with `--update`. In WSL and on Linux it is `~/.local/bin/terminal`. On Windows it is `terminal.cmd` and `terminal.ps1` in `%USERPROFILE%\.local\bin`. It runs the setup release that installed it, through `uvx`. When another command named `terminal` is already on PATH, setup does not install it and names that command's path.
 
 ### The agents command
 

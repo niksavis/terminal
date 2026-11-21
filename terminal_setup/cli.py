@@ -925,6 +925,11 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
         agents.ensure_agents(runner, platform_info, selected_agents, update=True)
+        prerequisites.attempt(
+            runner,
+            "check the Codex app-server daemon",
+            partial(agents.report_daemon_lag, runner, platform_info),
+        )
         if selected_agents or agents.installed_agents(runner, platform_info):
             prerequisites.attempt(
                 runner,
@@ -1018,7 +1023,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 "The Windows host was not changed. To install the Windows tools, run in "
                 f"PowerShell: {platform.WINDOWS_BOOTSTRAP}"
             )
-    runner.reporter.step(f"Verify anytime with: {setup_command('--only report')}")
+    runner.reporter.step("See which tools need an update anytime with: terminal status")
     return 0
 
 

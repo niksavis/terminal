@@ -10,7 +10,7 @@ from unittest import mock
 
 import pytest
 
-from terminal_setup import cli, status, terminal_command
+from terminal_setup import agents, cli, status, terminal_command
 from terminal_setup.cli import build_parser
 from terminal_setup.platform import SETUP_ARCHIVES, OperatingSystem
 
@@ -205,13 +205,35 @@ needs_bash = pytest.mark.skipif(
 )
 
 
-def _run_terminal(tmp_path: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+_FAKE_CURL = r"""for arg in "$@"; do url="$arg"; done
+case "$url" in
+  */releases/latest)
+    [ -n "$TERMINAL_TEST_TAG" ] || exit 22
+    base=https://github.com/niksavis/terminal/releases/tag
+    printf 'HTTP/2 302\r\nlocation: %s/%s\r\n' "$base" "$TERMINAL_TEST_TAG" ;;
+  */install.sh)
+    printf '%s\n' 'echo "bootstrap ref=$TERMINAL_SETUP_REF" >> "$TERMINAL_TEST_LOG"' \
+      'exit "$TERMINAL_TEST_BOOT"' ;;
+  *) exit 22 ;;
+esac"""
+
+
+def _run_terminal(
+    tmp_path: Path, *arguments: str, **extra: str
+) -> subprocess.CompletedProcess[str]:
+    if not (tmp_path / "stubs" / "curl").exists():
+        _stub(tmp_path / "stubs" / "curl", _FAKE_CURL)
+    if not (tmp_path / "stubs" / "uvx").exists():
+        _stub(tmp_path / "stubs" / "uvx", "exit 0")
     script = tmp_path / "terminal"
     script.write_text(terminal_command.render_terminal_command("terminal"), encoding="utf-8")
     env = {
         "HOME": str(tmp_path / "home"),
         "PATH": f"{tmp_path / 'stubs'}:/usr/bin:/bin",
         "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
+        "TERMINAL_TEST_TAG": "",
+        "TERMINAL_TEST_BOOT": "0",
+        **extra,
     }
     return subprocess.run(
         ["bash", str(script), *arguments], check=False, capture_output=True, text=True, env=env
@@ -243,7 +265,9 @@ def test_terminal_status_without_agents_runs_only_setup(tmp_path: Path) -> None:
 
 
 @needs_bash
-@pytest.mark.parametrize("arguments", [(), ("update",), ("status", "--all")])
+@pytest.mark.parametrize(
+    "arguments", [(), ("upgrade",), ("status", "--all"), ("status", "--pinned")]
+)
 def test_terminal_refuses_a_wrong_command_with_the_usage(
     tmp_path: Path, arguments: tuple[str, ...]
 ) -> None:
@@ -252,7 +276,7 @@ def test_terminal_refuses_a_wrong_command_with_the_usage(
     result = _run_terminal(tmp_path, *arguments)
 
     assert result.returncode == 2
-    assert "usage: terminal status [--wsl|--win]" in result.stderr
+    assert "usage: terminal <status|update> [--wsl|--win] [--pinned]" in result.stderr
 
 
 @pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
@@ -413,3 +437,164 @@ def test_setup_refuses_another_terminal_command_in_wsl_by_name(tmp_path: Path) -
         ),
     ):
         terminal_command.deploy_terminal_command(runner, platform_info)
+
+
+def _bootstrap_calls(tmp_path: Path) -> list[str]:
+    log = tmp_path / "calls.log"
+    lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+    return [line for line in lines if not line.startswith("curl ")]
+
+
+@needs_bash
+def test_terminal_update_runs_the_latest_release_bootstrap_then_agents_update(
+    tmp_path: Path,
+) -> None:
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "exit 0")
+
+    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"setup: installed {terminal_command.setup_ref()}, target v9.9.9" in result.stdout
+    calls = _bootstrap_calls(tmp_path)
+    assert calls[0] == "bootstrap ref=v9.9.9"
+    assert calls[1].startswith("agents update")
+    log = (tmp_path / "calls.log").read_text(encoding="utf-8")
+    assert f"{terminal_command.RELEASES}/download/v9.9.9/install.sh" in log
+
+
+@needs_bash
+def test_terminal_update_pinned_keeps_the_installed_release(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TERMINAL_SETUP_REF", "v0.1.0")
+
+    result = _run_terminal(tmp_path, "update", "--wsl", "--pinned", TERMINAL_TEST_TAG="v9.9.9")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "target v0.1.0" in result.stdout
+    assert _bootstrap_calls(tmp_path)[0] == "bootstrap ref=v0.1.0"
+
+
+@needs_bash
+@pytest.mark.parametrize("tag", ["", "v1.2", "v1.2.3;rm", "latest"])
+def test_terminal_update_stops_when_the_latest_release_cannot_be_read(
+    tmp_path: Path, tag: str
+) -> None:
+    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG=tag)
+
+    assert result.returncode == 1
+    assert "could not be read" in result.stdout
+    assert "terminal update --pinned" in result.stdout
+    assert _bootstrap_calls(tmp_path) == []
+
+
+@needs_bash
+def test_terminal_update_names_a_failed_setup_run(tmp_path: Path) -> None:
+    result = _run_terminal(
+        tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_BOOT="3"
+    )
+
+    assert result.returncode == 1
+    assert "!! the setup run of v9.9.9 failed" in result.stdout
+
+
+@needs_bash
+def test_terminal_update_names_a_failed_agents_update(tmp_path: Path) -> None:
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "exit 1")
+
+    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9")
+
+    assert result.returncode == 1
+    assert "!! agents update failed" in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("output", "lag"),
+    [
+        ("codex-cli 0.171.0\n0.170.0-x86_64-unknown-linux-musl\n", ("0.171.0", "0.170.0")),
+        ("codex-cli 0.171.0\n0.171.0-x86_64-unknown-linux-musl\n", None),
+        ("codex-cli 0.171.0\n", None),
+        ("", None),
+    ],
+)
+def test_setup_names_agents_update_for_an_older_codex_daemon(
+    output: str, lag: tuple[str, str] | None
+) -> None:
+    assert agents._daemon_lag(output) == lag
+
+
+def test_setup_ends_with_the_terminal_status_hint() -> None:
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+
+    assert "terminal status" in source
+    assert "Verify anytime with" not in source
+
+
+_PS_UPDATE_WRAPPER = r"""
+function Invoke-WebRequest {
+  if (-not $env:TERMINAL_TEST_TAG) { throw "offline" }
+  $base = "https://github.com/niksavis/terminal/releases/tag"
+  [pscustomobject]@{ Headers = @{ Location = "$base/$env:TERMINAL_TEST_TAG" } }
+}
+function Invoke-RestMethod {
+  $line = 'bootstrap ref=$env:TERMINAL_SETUP_REF url=' + "$args"
+  return "Add-Content -Path `$env:TERMINAL_TEST_LOG -Value `"$line`""
+}
+$script = $args[0]
+$rest = @($args | Select-Object -Skip 1)
+& $script @rest
+exit $LASTEXITCODE
+"""
+
+
+def _run_ps_update(tmp_path: Path, *arguments: str, tag: str) -> subprocess.CompletedProcess[str]:
+    profile = tmp_path / "profile"
+    agents_ps1 = profile / ".local" / "bin" / "agents.ps1"
+    agents_ps1.parent.mkdir(parents=True, exist_ok=True)
+    agents_ps1.write_text(
+        'Add-Content -Path $env:TERMINAL_TEST_LOG -Value "agents $args"; exit 0\n', encoding="utf-8"
+    )
+    script = tmp_path / "terminal.ps1"
+    script.write_text(terminal_command.render_terminal_command("terminal.ps1"), encoding="utf-8")
+    wrapper = tmp_path / "wrapper.ps1"
+    wrapper.write_text(_PS_UPDATE_WRAPPER, encoding="utf-8")
+    pwsh = str(shutil.which("pwsh"))
+    env = {
+        **os.environ,
+        "USERPROFILE": str(profile),
+        "HOME": str(profile),
+        "PATH": str(Path(pwsh).parent),
+        "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
+        "TERMINAL_TEST_TAG": tag,
+    }
+    return subprocess.run(
+        [pwsh, "-NoProfile", "-NonInteractive", "-File", str(wrapper), str(script), *arguments],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
+def test_terminal_ps1_update_runs_the_release_bootstrap_then_agents_update(tmp_path: Path) -> None:
+    result = _run_ps_update(tmp_path, "update", "--win", tag="v9.9.9")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "target v9.9.9" in result.stdout
+    calls = (tmp_path / "calls.log").read_text(encoding="utf-8", errors="replace").splitlines()
+    assert calls[0].startswith("bootstrap ref=v9.9.9")
+    assert "/download/v9.9.9/install.ps1" in calls[0]
+    assert calls[1] == "agents update --win"
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
+@pytest.mark.parametrize("tag", ["", "v1.2.3;rm"])
+def test_terminal_ps1_update_stops_when_the_latest_release_cannot_be_read(
+    tmp_path: Path, tag: str
+) -> None:
+    result = _run_ps_update(tmp_path, "update", "--win", tag=tag)
+
+    assert result.returncode == 1
+    assert "terminal update --pinned" in result.stdout
+    assert not (tmp_path / "calls.log").exists()
