@@ -445,8 +445,10 @@ def test_setup_refuses_another_terminal_command_in_wsl_by_name(tmp_path: Path) -
 
 
 _UVX_STATUS = (
-    'if [ -n "$TERMINAL_STATUS_PLAN" ]; then '
-    'printf "%b" "$TERMINAL_TEST_PLAN" > "$TERMINAL_STATUS_PLAN"; fi'
+    'plan="$TERMINAL_TEST_PLAN"; '
+    'if [ -n "$TERMINAL_STATUS_QUIET" ] && [ -n "${TERMINAL_TEST_PLAN_AFTER+set}" ]; then '
+    'plan="$TERMINAL_TEST_PLAN_AFTER"; fi; '
+    'if [ -n "$TERMINAL_STATUS_PLAN" ]; then printf "%b" "$plan" > "$TERMINAL_STATUS_PLAN"; fi'
 )
 _AGENTS_UPDATE = (
     'echo "agents $*" >> "$TERMINAL_TEST_LOG"; '
@@ -510,13 +512,60 @@ def test_terminal_update_runs_no_updater_when_everything_is_up_to_date(tmp_path:
 
 @needs_bash
 def test_terminal_update_runs_the_bootstrap_only_for_an_outdated_tool(tmp_path: Path) -> None:
-    result = _update(tmp_path, TERMINAL_TEST_PLAN="checked WSL 28\noutdated WSL fd\n")
+    result = _update(
+        tmp_path,
+        TERMINAL_TEST_PLAN="checked WSL 28\noutdated WSL fd\n",
+        TERMINAL_TEST_PLAN_AFTER="checked WSL 28\n",
+    )
 
     assert result.returncode == 0, result.stdout + result.stderr
     ref = terminal_command.setup_ref()
     assert _bootstrap_calls(tmp_path) == [f"bootstrap ref={ref}"]
     assert "because of not up to date: fd" in result.stdout
-    assert _summary(result) == f"updated setup {ref}"
+    assert _summary(result) == "updated fd"
+
+
+@needs_bash
+def test_terminal_update_says_nothing_changed_when_setup_fixed_nothing(tmp_path: Path) -> None:
+    result = _update(
+        tmp_path,
+        TERMINAL_TEST_PLAN="checked WSL 28\noutdated WSL fd\n",
+        TERMINAL_TEST_PLAN_AFTER="checked WSL 28\noutdated WSL fd\n",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    ref = terminal_command.setup_ref()
+    assert _summary(result) == f"setup {ref} ran; nothing changed (still not up to date: fd)"
+
+
+@needs_bash
+def test_terminal_update_names_a_new_setup_release_as_the_change(tmp_path: Path) -> None:
+    result = _update(
+        tmp_path, TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_PLAN_AFTER="checked WSL 28\n"
+    )
+
+    ref = terminal_command.setup_ref()
+    assert _summary(result) == f"updated setup {ref} -> v9.9.9"
+
+
+@needs_bash
+def test_terminal_update_ends_with_a_summary_when_the_release_lookup_fails(tmp_path: Path) -> None:
+    result = _update(tmp_path, TERMINAL_TEST_TAG="")
+
+    assert result.returncode == 1
+    assert _summary(result) == "failed: release lookup"
+
+
+@needs_bash
+def test_terminal_update_ends_with_a_summary_when_the_status_check_fails(tmp_path: Path) -> None:
+    _stub(tmp_path / "stubs" / "uvx", "exit 4")
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", _AGENTS_UPDATE)
+    values = {"TERMINAL_TEST_TAG": terminal_command.setup_ref(), "TERMINAL_TEST_AGENTS_EXIT": "0"}
+
+    result = _run_terminal(tmp_path, "update", "--wsl", **values)
+
+    assert result.returncode == 1
+    assert _summary(result) == "failed: status check"
 
 
 @needs_bash
@@ -661,15 +710,21 @@ def _ps_stub_uvx(stubs: Path) -> None:
     stubs.mkdir(parents=True, exist_ok=True)
     posix = stubs / "uvx"
     posix.write_text(
-        '#!/bin/sh\nif [ -n "$TERMINAL_STATUS_PLAN" ]; then '
-        'printf "%b" "$TERMINAL_TEST_PLAN" > "$TERMINAL_STATUS_PLAN"; fi\n',
+        '#!/bin/sh\necho "status table line"\nplan="$TERMINAL_TEST_PLAN"\n'
+        'if [ -n "$TERMINAL_STATUS_QUIET" ] && [ -n "${TERMINAL_TEST_PLAN_AFTER+set}" ]; then '
+        'plan="$TERMINAL_TEST_PLAN_AFTER"; fi\n'
+        'if [ -n "$TERMINAL_STATUS_PLAN" ]; then '
+        'printf "%b" "$plan" > "$TERMINAL_STATUS_PLAN"; fi\n',
         encoding="utf-8",
     )
     posix.chmod(0o755)
     (stubs / "uvx.cmd").write_text(
-        "@echo off\r\nif defined TERMINAL_STATUS_PLAN "
-        'powershell -NoProfile -Command "[IO.File]::WriteAllText($env:TERMINAL_STATUS_PLAN, '
-        "$env:TERMINAL_TEST_PLAN.Replace('|', [char]10))\"\r\nexit /b 0\r\n",
+        "@echo off\r\necho status table line\r\nif defined TERMINAL_STATUS_PLAN "
+        'powershell -NoProfile -Command "$p = $env:TERMINAL_TEST_PLAN; '
+        "if ($env:TERMINAL_STATUS_QUIET -and (Test-Path Env:TERMINAL_TEST_PLAN_AFTER)) "
+        "{ $p = $env:TERMINAL_TEST_PLAN_AFTER }; "
+        "[IO.File]::WriteAllText($env:TERMINAL_STATUS_PLAN, $p.Replace('|', [char]10))\"\r\n"
+        "exit /b 0\r\n",
         encoding="utf-8",
     )
 
@@ -775,9 +830,11 @@ def test_terminal_ps1_update_streams_the_bootstrap_and_agents_output(tmp_path: P
     ref = terminal_command.setup_ref()
     assert _ps_bootstraps(tmp_path)[0].startswith(f"bootstrap ref={ref}")
     assert f"/download/{ref}/install.ps1" in _ps_bootstraps(tmp_path)[0]
+    assert "status table line" in result.stdout
     assert "bootstrap says hello" in result.stdout
     assert "agents table line" in result.stdout
-    assert f"Windows: updated setup {ref}" in result.stdout
+    assert "ran; nothing changed (still not up to date: sd)" in result.stdout
+    assert "terminal update: done (Windows)" in result.stdout
 
 
 @needs_pwsh
@@ -790,3 +847,131 @@ def test_terminal_ps1_update_stops_when_the_latest_release_cannot_be_read(
     assert result.returncode == 1
     assert "terminal update --pinned" in result.stdout
     assert _ps_bootstraps(tmp_path) == []
+
+
+def _plan_row(command: str, state: str) -> status.Row:
+    return status.Row(command, "1.0.0", "1.0.0", state)
+
+
+def test_the_update_plan_names_only_what_setup_can_update() -> None:
+    table_rows = [
+        _plan_row("rg", "ok"),
+        _plan_row("fd", "update"),
+        _plan_row("bat", "missing"),
+        _plan_row("herdr", "missing"),
+        _plan_row("zsh", "update"),
+        _plan_row("starship", status.MANAGED),
+        _plan_row("shellcheck", "unknown"),
+    ]
+
+    assert status.plan_lines("WSL", table_rows) == [
+        "checked WSL 7",
+        "outdated WSL fd",
+        "outdated WSL bat",
+        "apt WSL zsh",
+    ]
+
+
+def test_a_machine_wide_copy_shows_managed_instead_of_update() -> None:
+    path = "C:/Program Files/starship/bin/starship.exe"
+    items = [status.Installed("starship", path, "1.26.0", managed=True)]
+
+    table_rows = status.rows(items, ["starship"], {"starship": "v1.27.0"})
+
+    assert table_rows[0].state == status.MANAGED
+
+
+def test_windows_status_reads_the_recorded_release_and_the_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
+    releases = tmp_path / "terminal-setup" / "releases"
+    releases.mkdir(parents=True)
+    (releases / "sd.exe").write_text("1.1.0 1.0.0\n", encoding="utf-8")
+    info = {
+        "sd": ("C:/Users/u/.local/bin/sd.exe", "sd 1.0.0", "user profile"),
+        "starship": (
+            "C:/Program Files/starship/bin/starship.exe",
+            "starship 1.26.0",
+            "machine-wide",
+        ),
+    }
+
+    with (
+        mock.patch.object(
+            cli, "_windows_tool_info", side_effect=lambda _r, _p, command: info.get(command)
+        ),
+        mock.patch.object(cli.release_install, "STATE_DIR", tmp_path / "shell-releases"),
+    ):
+        found = cli._status_windows(runner, _windows_platform())
+    items = {item.command: item for item in found if item}
+
+    assert items["sd"].version == "1.1.0"
+    assert not items["sd"].managed
+    assert items["starship"].managed
+    assert status.rows([items["sd"]], ["sd"], {"sd": "v1.1.0"})[0].state == "ok"
+
+
+def test_a_tool_printing_another_version_than_its_tag_stays_ok_in_wsl(tmp_path: Path) -> None:
+    (tmp_path / "sd").write_text("1.1.0 1.0.0\n", encoding="utf-8")
+    version = cli._release_state_version("sd", "sd 1.0.0", tmp_path)
+    item = status.Installed("sd", "/home/u/.local/bin/sd", version)
+
+    assert status.rows([item], ["sd"], {"sd": "v1.1.0"})[0].state == "ok"
+
+
+def test_status_writes_the_update_plan_when_asked(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    plan = tmp_path / "plan"
+    monkeypatch.setenv(cli.STATUS_PLAN_ENV, str(plan))
+    monkeypatch.setenv(cli.STATUS_SIDE_ENV, "windows")
+    item = [status.Installed("rg", "C:/tools/rg.exe", "ripgrep 14.0.0")]
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_status_windows", return_value=item),
+    ):
+        cli.print_status(runner, _windows_platform(), FAKE)
+
+    capsys.readouterr()
+    lines = plan.read_text(encoding="utf-8").splitlines()
+    assert lines == ["checked Windows 1", "outdated Windows rg"]
+
+
+def test_quiet_status_writes_only_the_plan(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    plan = tmp_path / "plan"
+    monkeypatch.setenv(cli.STATUS_PLAN_ENV, str(plan))
+    monkeypatch.setenv(cli.STATUS_QUIET_ENV, "1")
+    monkeypatch.setenv(cli.STATUS_SIDE_ENV, "windows")
+    item = [status.Installed("rg", "C:/tools/rg.exe", "ripgrep 14.0.0")]
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_status_windows", return_value=item),
+    ):
+        cli.print_status(runner, _windows_platform(), FAKE)
+
+    assert capsys.readouterr().out == ""
+    assert plan.read_text(encoding="utf-8").splitlines() == [
+        "checked Windows 1",
+        "outdated Windows rg",
+    ]
+
+
+@needs_pwsh
+def test_terminal_ps1_update_names_the_tool_that_setup_fixed(tmp_path: Path) -> None:
+    after = "checked Windows 19\n"
+    result = _run_ps_update(
+        tmp_path,
+        plan="checked Windows 19\noutdated Windows sd\n",
+        TERMINAL_TEST_PLAN_AFTER=after.replace("\n", "|") if sys.platform == "win32" else after,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Windows: updated sd" in result.stdout

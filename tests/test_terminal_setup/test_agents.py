@@ -398,7 +398,9 @@ def _calls(tmp_path: Path) -> list[str]:
 
 def _row(output: str, agent: str) -> list[str]:
     plain = re.sub(r"\x1b\[[0-9;]*m", "", output)
-    return next(line.split() for line in plain.splitlines() if line.startswith(f"{agent} "))
+    return next(
+        line.split() for line in plain.splitlines() if line.lstrip().startswith(f"{agent} ")
+    )
 
 
 @needs_bash4
@@ -859,3 +861,43 @@ def test_a_nested_agents_ps1_run_leaves_the_done_line_to_its_parent(tmp_path: Pa
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "All done." not in result.stdout
+
+
+@pytest.mark.parametrize(
+    ("printed", "latest", "runs"),
+    [
+        ("codex-cli 0.171.0", "0.171.0", False),
+        ("codex-cli 0.170.0", "0.171.0", True),
+        ("codex-cli 0.171.0", "", True),
+    ],
+)
+def test_setup_runs_an_agent_updater_only_when_the_agent_is_not_current(
+    monkeypatch: pytest.MonkeyPatch, printed: str, latest: str, runs: bool
+) -> None:
+    monkeypatch.setattr(agents, "latest_agent_version", lambda _agent: latest)
+    reporter = CapturingReporter()
+    runner = agents.Runner(dry_run=False, reporter=reporter)
+    commands: list[str] = []
+
+    def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        script = command[-1]
+        commands.append(script)
+        out = printed if "--version" in script else ""
+        return subprocess.CompletedProcess(command, 0, stdout=out, stderr="")
+
+    monkeypatch.setattr(runner, "run", run)
+
+    agents._ensure_shell_agent(runner, "codex", update=True, wsl_distro=None)
+
+    assert any(script.endswith("codex update") for script in commands) is runs
+
+
+@needs_bash4
+def test_the_agents_table_shows_the_daemon_under_codex(tmp_path: Path) -> None:
+    _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
+
+    result = _run_agents(tmp_path, "status")
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).splitlines()
+    codex = next(index for index, line in enumerate(plain) if line.startswith("codex "))
+    assert plain[codex + 1].startswith("  daemon ")

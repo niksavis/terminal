@@ -100,19 +100,34 @@ plan_field() {
   sed -n "s/^$1 [^ ]* //p" "$2" | tr '\n' ' ' | sed 's/ *$//'
 }
 
+print_summary() {
+  local target="$1" checked="$2" agents_count="$3" updated="$4" setup_ran="$5" still="$6"
+  if ((FAILED)); then
+    echo "$SIDE_NAME: failed: $FAILED_STEPS${updated:+; updated: $updated}"
+  elif [[ -n "$updated" ]]; then
+    echo "$SIDE_NAME: updated $updated"
+  elif ((setup_ran)); then
+    echo "$SIDE_NAME: setup $target ran; nothing changed${still:+ (still not up to date: $still)}"
+  else
+    echo "$SIDE_NAME: Everything is up to date (setup $target, ${checked:-0} tools, $agents_count agents)"
+  fi
+}
+
 update_local() {
-  local target plan outdated apt checked reasons="" updated="" report agents_count=0 agents_updated=""
+  local target="" plan outdated apt checked="" reasons="" updated="" report agents_count=0 agents_updated="" still="" setup_ran=0 after word
   echo "$SIDE_NAME: checking the setup release, the tools and the agents..."
   if ! target="$(target_ref)"; then
     echo "!! the latest terminal release could not be read from $RELEASES/latest, so terminal does not update. To update with the installed release, run: terminal update --pinned"
     FAILED=1
     FAILED_STEPS="release lookup"
+    print_summary "$INSTALLED_REF" "" 0 "" 0 ""
     return
   fi
   echo "setup: installed $INSTALLED_REF, target $target"
   plan="$(mktemp)"
   if ! run_step "status check" env TERMINAL_STATUS_PLAN="$plan" uvx --from "$SETUP_SOURCE" terminal-setup --only status; then
     rm -f "$plan"
+    print_summary "$target" "" 0 "" 0 ""
     return
   fi
   outdated="$(plan_field outdated "$plan")"
@@ -129,10 +144,29 @@ update_local() {
     echo "setup $target: ok, every tool is up to date"
   else
     echo "setup $target runs, because of $reasons"
+    local step_ok=0
     if [[ "$target" =~ $TAG_PATTERN ]]; then
-      run_step "setup $target" bootstrap_release "$target" && updated="setup $target"
+      run_step "setup $target" bootstrap_release "$target" && step_ok=1
     else
-      run_step "setup $target" bootstrap_ref "$target" && updated="setup $target"
+      run_step "setup $target" bootstrap_ref "$target" && step_ok=1
+    fi
+    if ((step_ok)); then
+      setup_ran=1
+      echo "checking what setup changed..."
+      plan="$(mktemp)"
+      TERMINAL_STATUS_QUIET=1 TERMINAL_STATUS_PLAN="$plan" uvx --from "$SETUP_SOURCE" terminal-setup --only status >/dev/null 2>&1 || true
+      after=" $(plan_field outdated "$plan") "
+      rm -f "$plan"
+      if [[ "$target" != "$INSTALLED_REF" ]]; then
+        updated="setup $INSTALLED_REF -> $target"
+      fi
+      for word in $outdated; do
+        if [[ "$after" == *" $word "* ]]; then
+          still="${still:+$still }$word"
+        else
+          updated="${updated:+$updated, }$word"
+        fi
+      done
     fi
   fi
   if [[ -n "$apt" ]]; then
@@ -152,13 +186,7 @@ update_local() {
   if [[ -n "$agents_updated" ]]; then
     updated="${updated:+$updated, }$agents_updated"
   fi
-  if ((FAILED)); then
-    echo "$SIDE_NAME: failed: $FAILED_STEPS${updated:+; updated: $updated}"
-  elif [[ -z "$updated" ]]; then
-    echo "$SIDE_NAME: Everything is up to date (setup $target, ${checked:-0} tools, $agents_count agents)"
-  else
-    echo "$SIDE_NAME: updated $updated"
-  fi
+  print_summary "$target" "$checked" "$agents_count" "$updated" "$setup_ran" "$still"
 }
 
 windows_ps1() {

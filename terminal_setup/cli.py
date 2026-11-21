@@ -679,10 +679,18 @@ def print_setup_report(
 
 STATUS_SIDE_ENV = "TERMINAL_STATUS_SIDE"
 STATUS_PLAN_ENV = "TERMINAL_STATUS_PLAN"
+STATUS_QUIET_ENV = "TERMINAL_STATUS_QUIET"
 
 
-def _release_state_version(command: str, version: str, state_dir: Path) -> str:
-    recorded = state_dir / command
+def _status_say(line: str) -> None:
+    if not os.environ.get(STATUS_QUIET_ENV):
+        print(line, flush=True)
+
+
+def _release_state_version(
+    command: str, version: str, state_dir: Path, name: str | None = None
+) -> str:
+    recorded = state_dir / (name or command)
     if not version or not recorded.is_file():
         return version
     tag, _, printed = recorded.read_text(encoding="utf-8").strip().partition(" ")
@@ -724,7 +732,9 @@ def _status_windows(
         if info is None:
             items.append(tool_status.Installed(command, "", ""))
             continue
-        version = _release_state_version(command, info[1], release_install.STATE_DIR)
+        version = _release_state_version(
+            command, info[1], platform_info.setup_data_dir / "releases", f"{command}.exe"
+        )
         managed = info[2].startswith("machine-wide")
         items.append(tool_status.Installed(command, info[0], version, managed))
     return items
@@ -748,14 +758,14 @@ def _print_status_side(
     lookups: tool_status.Lookups,
 ) -> None:
     commands = [item.command for item in items if item is not None]
-    print(f"{side}: looking up the latest releases of {len(commands)} tools...", flush=True)
+    _status_say(f"{side}: looking up the latest releases of {len(commands)} tools...")
     latest = {
         **_apt_latest(runner, platform_info, side),
         **tool_status.latest_versions(commands, lookups),
     }
     table_rows = tool_status.rows(items, commands, latest, NO_VERSION)
     for line in tool_status.table(side, table_rows):
-        print(line, flush=True)
+        _status_say(line)
     plan = os.environ.get(STATUS_PLAN_ENV)
     if plan:
         with Path(plan).open("a", encoding="utf-8") as handle:
@@ -771,12 +781,12 @@ def print_status(
     in_wsl = is_running_in_wsl()
     windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
     if windows_host:
-        print("Windows: reading the installed tool versions...", flush=True)
+        _status_say("Windows: reading the installed tool versions...")
         _print_status_side(
             runner, platform_info, "Windows", _status_windows(runner, platform_info), lookups
         )
         if os.environ.get(STATUS_SIDE_ENV) != "windows":
-            print("WSL: reading the installed tool versions...", flush=True)
+            _status_say("WSL: reading the installed tool versions...")
             _print_status_side(
                 runner, platform_info, "WSL", _status_wsl(runner, platform_info), lookups
             )
@@ -784,7 +794,7 @@ def print_status(
     side = "WSL" if in_wsl else "Linux"
     if platform_info.os == platform.OperatingSystem.MACOS:
         side = "macOS"
-    print(f"{side}: reading the installed tool versions...", flush=True)
+    _status_say(f"{side}: reading the installed tool versions...")
     _print_status_side(runner, platform_info, side, _status_host(runner), lookups)
     return 0
 

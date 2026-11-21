@@ -48,3 +48,8 @@ def guarded_system_path(*first: Path) -> str:
         "",
     )
     return os.pathsep.join([*(str(path) for path in first), guard, "/usr/bin", "/bin"])
+
+
+@pytest.fixture(autouse=True)
+def no_agent_version_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("terminal_setup.agents.latest_agent_version", lambda _agent: "")

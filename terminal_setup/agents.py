@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess  # nosec B404
-from functools import partial
+from collections.abc import Callable
+from functools import cache, partial
 from pathlib import Path
 
+from . import release_install
 from .platform import (
     OperatingSystem,
     PlatformInfo,
@@ -23,7 +26,7 @@ from .prerequisites import (
     report_machine_scope,
 )
 from .runner import Runner
-from .status import version_of
+from .status import Installed, state, version_of
 
 AGENTS = ("claude", "copilot", "codex")
 NPM_PACKAGES = {
@@ -92,6 +95,47 @@ def windows_codex_command(*, unattended: bool) -> list[str]:
     return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script]
 
 
+@cache
+def latest_agent_version(agent: str) -> str:
+    try:
+        if agent == "copilot":
+            text = release_install.latest_tag("github/copilot-cli")
+        elif agent == "codex":
+            text = str(
+                json.loads(release_install.fetch(LATEST_VERSION_URLS["codex"])).get("tag_name", "")
+            )
+        else:
+            text = release_install.fetch(f"{LATEST_VERSION_URLS['claude']}/latest").decode()
+    except OSError, ValueError, AttributeError, release_install.InstallError:
+        return ""
+    return version_of(text)
+
+
+def _reports_current(
+    runner: Runner, agent: str, where: str, read_version: Callable[[], str]
+) -> bool:
+    latest = latest_agent_version(agent)
+    if not latest:
+        return False
+    printed = read_version()
+    if not version_of(printed) or state(Installed(agent, agent, printed), latest) != "ok":
+        return False
+    runner.reporter.success(f"{agent} {version_of(printed)} is up to date {where}")
+    return True
+
+
+def _shell_version(runner: Runner, agent: str, wsl_distro: str | None) -> str:
+    return str(_run_shell_read(runner, version_query(agent), wsl_distro=wsl_distro).stdout or "")
+
+
+def _windows_version(runner: Runner, found: str) -> str:
+    return str(runner.run([found, "--version"], check=False, dry_run_safe=True).stdout or "")
+
+
+def version_query(agent: str) -> str:
+    return f"{_LOCAL_PATH}{agent} --version 2>/dev/null | head -n 1"
+
+
 def shell_update_script(agent: str) -> str:
     return f"{_LOCAL_PATH}{agent} update"
 
@@ -113,6 +157,8 @@ def _ensure_shell_agent(
         return
     if not update:
         runner.reporter.success(f"{agent} is present {where}")
+        return
+    if _reports_current(runner, agent, where, lambda: _shell_version(runner, agent, wsl_distro)):
         return
     _run_shell_command(
         runner, shell_update_script(agent), label=f"update {agent} {where}", wsl_distro=wsl_distro
@@ -142,6 +188,29 @@ def _windows_npm(runner: Runner) -> str:
     return npm
 
 
+def _install_windows_agent(runner: Runner, platform: PlatformInfo, agent: str) -> None:
+    if agent == "claude":
+        runner.run(
+            ["powershell", "-NoProfile", "-Command", CLAUDE_INSTALL_PS1],
+            interactive=True,
+            label="install claude on Windows",
+        )
+        _add_to_user_path(runner, platform.home / ".local" / "bin")
+        return
+    if agent == "codex":
+        runner.run(
+            windows_codex_command(unattended=runner.unattended),
+            interactive=True,
+            label="install codex on Windows",
+        )
+        return
+    runner.run(
+        [_windows_npm(runner), "install", "-g", NPM_PACKAGES[agent]],
+        interactive=True,
+        label=f"install {agent} on Windows",
+    )
+
+
 def _ensure_windows_agent(
     runner: Runner, platform: PlatformInfo, agent: str, *, update: bool, install: bool = True
 ) -> None:
@@ -149,32 +218,15 @@ def _ensure_windows_agent(
     if found is None and not install:
         return
     if found is None:
-        if agent == "claude":
-            runner.run(
-                ["powershell", "-NoProfile", "-Command", CLAUDE_INSTALL_PS1],
-                interactive=True,
-                label="install claude on Windows",
-            )
-            _add_to_user_path(runner, platform.home / ".local" / "bin")
-            return
-        if agent == "codex":
-            runner.run(
-                windows_codex_command(unattended=runner.unattended),
-                interactive=True,
-                label="install codex on Windows",
-            )
-            return
-        runner.run(
-            [_windows_npm(runner), "install", "-g", NPM_PACKAGES[agent]],
-            interactive=True,
-            label=f"install {agent} on Windows",
-        )
+        _install_windows_agent(runner, platform, agent)
         return
     if not update:
         runner.reporter.success(f"{agent} is present on Windows ({found})")
         return
     if not is_user_scope(found, platform):
         report_machine_scope(runner, agent, "", found, minimum=None)
+        return
+    if _reports_current(runner, agent, "on Windows", lambda: _windows_version(runner, found)):
         return
     try:
         runner.run([found, "update"], interactive=True, label=f"update {agent} on Windows")

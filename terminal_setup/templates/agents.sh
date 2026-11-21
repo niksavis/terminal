@@ -178,7 +178,11 @@ print_table() {
       unknown) color=31 ;;
       *) color=33 ;;
     esac
-    printf '%-8s %-12s %-12s \033[%sm%s\033[0m\n' "$name" "${CUR[$name]:--}" "${NEW[$name]:-?}" "$color" "${ST[$name]}"
+    local shown="$name"
+    if [[ "$name" == daemon ]]; then
+      shown="  daemon"
+    fi
+    printf '%-8s %-12s %-12s \033[%sm%s\033[0m\n' "$shown" "${CUR[$name]:--}" "${NEW[$name]:-?}" "$color" "${ST[$name]}"
   done
 }
 

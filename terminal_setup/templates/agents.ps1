@@ -137,7 +137,8 @@ function Print-Table {
     $color = switch ($script:St[$n]) { "ok" { "Green" } "unknown" { "Red" } default { "Yellow" } }
     $c = if ($script:Cur[$n]) { $script:Cur[$n] } else { "-" }
     $l = if ($script:New[$n]) { $script:New[$n] } else { "?" }
-    Write-Host ("{0,-8} {1,-12} {2,-12} " -f $n, $c, $l) -NoNewline
+    $shown = if ($n -eq "daemon") { "  daemon" } else { $n }
+    Write-Host ("{0,-8} {1,-12} {2,-12} " -f $shown, $c, $l) -NoNewline
     Write-Host $script:St[$n] -ForegroundColor $color
   }
 }

@@ -64,32 +64,61 @@ function Plan-Field($lines, $kind) {
   @($lines | Where-Object { $_ -like "$kind *" } | ForEach-Object { ($_ -split ' ', 3)[2] })
 }
 
+function Print-Summary($release, $checked, $agentsCount, $setupRan, $still) {
+  if ($script:FailedSteps.Count) {
+    $tail = if ($script:Updated.Count) { "; updated: $($script:Updated -join ', ')" } else { "" }
+    Write-Host "Windows: failed: $($script:FailedSteps -join ', ')$tail" -ForegroundColor Red
+  } elseif ($script:Updated.Count) {
+    Write-Host "Windows: updated $($script:Updated -join ', ')" -ForegroundColor Green
+  } elseif ($setupRan) {
+    $tail = if ($still.Count) { " (still not up to date: $($still -join ' '))" } else { "" }
+    Write-Host "Windows: setup $release ran; nothing changed$tail"
+  } else {
+    Write-Host "Windows: Everything is up to date (setup $release, $(if ($checked) { $checked } else { 0 }) tools, $agentsCount agents)" -ForegroundColor Green
+  }
+}
+
+function Read-Plan($quiet) {
+  $plan = [IO.Path]::GetTempFileName()
+  $env:TERMINAL_STATUS_PLAN = $plan
+  $env:TERMINAL_STATUS_SIDE = "windows"
+  if ($quiet) {
+    $env:TERMINAL_STATUS_QUIET = "1"
+    & $script:Uvx --from "__SETUP_SOURCE__" terminal-setup --only status *> $null
+  } else {
+    Run-Step "status check" { & $script:Uvx --from "__SETUP_SOURCE__" terminal-setup --only status }
+  }
+  Remove-Item Env:TERMINAL_STATUS_PLAN, Env:TERMINAL_STATUS_SIDE, Env:TERMINAL_STATUS_QUIET -ErrorAction SilentlyContinue
+  $script:PlanLines = @(Get-Content $plan -ErrorAction SilentlyContinue)
+  Remove-Item $plan -ErrorAction SilentlyContinue
+}
+
 function Update-Windows {
   Write-Host "Windows: checking the setup release, the tools and the agents..."
   $release = Target-Ref
   if (-not $release) {
     Write-Host "!! the latest terminal release could not be read from $Releases/latest, so terminal does not update. To update with the installed release, run: terminal update --pinned"
     $script:FailedSteps += "release lookup"
+    Print-Summary $InstalledRef "" 0 $false @()
     return
   }
   Write-Host "setup: installed $InstalledRef, target $release"
-  $uvx = Find-Uvx
+  $script:Uvx = Find-Uvx
+  $uvx = $script:Uvx
   if (-not $uvx) {
     Write-Host "!! uvx is not on the PATH, so terminal cannot check the tools. Run the terminal setup again to install uv."
     $script:FailedSteps += "status check"
+    Print-Summary $release "" 0 $false @()
     return
   }
-  $plan = [IO.Path]::GetTempFileName()
-  $env:TERMINAL_STATUS_PLAN = $plan
-  $env:TERMINAL_STATUS_SIDE = "windows"
-  Run-Step "status check" { & $uvx --from "__SETUP_SOURCE__" terminal-setup --only status }
-  Remove-Item Env:TERMINAL_STATUS_PLAN, Env:TERMINAL_STATUS_SIDE -ErrorAction SilentlyContinue
-  $lines = @(Get-Content $plan -ErrorAction SilentlyContinue)
-  Remove-Item $plan -ErrorAction SilentlyContinue
-  if (-not $script:StepOk) { return }
+  Read-Plan $false
+  $lines = $script:PlanLines
+  if (-not $script:StepOk) { Print-Summary $release "" 0 $false @(); return }
   $outdated = Plan-Field $lines "outdated"
   $checked = (Plan-Field $lines "checked") | Select-Object -First 1
   $reasons = @()
+  $setupRan = $false
+  $still = @()
   if ($release -ne $InstalledRef) { $reasons += "setup $InstalledRef -> $release" }
   if ($outdated.Count) { $reasons += "not up to date: $($outdated -join ' ')" }
   if (-not $reasons.Count) {
@@ -102,7 +131,16 @@ function Update-Windows {
     } else {
       Run-Step "setup $release" { & $uvx --python 3.14 --refresh-package terminal --from "__SETUP_SOURCE__" terminal-setup }
     }
-    if ($script:StepOk) { $script:Updated += "setup $release" }
+    if ($script:StepOk) {
+      $setupRan = $true
+      Write-Host "checking what setup changed..."
+      Read-Plan $true
+      $after = Plan-Field $script:PlanLines "outdated"
+      if ($release -ne $InstalledRef) { $script:Updated += "setup $InstalledRef -> $release" }
+      foreach ($tool in $outdated) {
+        if ($after -contains $tool) { $still += $tool } else { $script:Updated += $tool }
+      }
+    }
   }
   $agentsCount = 0
   $agents = Join-Path $H ".local\bin\agents.ps1"
@@ -119,13 +157,7 @@ function Update-Windows {
       if ($line -like "updated *") { $script:Updated += (($line -split ' ', 2)[1] -replace '^daemon$', 'codex daemon') }
     }
   }
-  if ($script:FailedSteps.Count) {
-    Write-Host "Windows: failed: $($script:FailedSteps -join ', ')" -ForegroundColor Red
-  } elseif (-not $script:Updated.Count) {
-    Write-Host "Windows: Everything is up to date (setup $release, $(if ($checked) { $checked } else { 0 }) tools, $agentsCount agents)" -ForegroundColor Green
-  } else {
-    Write-Host "Windows: updated $($script:Updated -join ', ')" -ForegroundColor Green
-  }
+  Print-Summary $release $checked $agentsCount $setupRan $still
 }
 
 function Update-Wsl {
@@ -141,6 +173,8 @@ if ($Cmd -eq "update") {
   if ($Target -ne "wsl") { Update-Windows }
   if ($Target -ne "win") { Update-Wsl }
   if ($script:FailedSteps.Count) { Write-Host "terminal update failed: $($script:FailedSteps -join ', ')" -ForegroundColor Red; exit 1 }
+  $sides = if ($Target -eq "win") { "Windows" } elseif ($Target -eq "wsl") { "WSL" } else { "Windows and WSL" }
+  Write-Host "terminal update: done ($sides)" -ForegroundColor Green
   exit 0
 }
 
