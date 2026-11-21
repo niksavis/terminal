@@ -32,7 +32,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 | Option | What it does |
 | --- | --- |
-| `--update` | update each tool that is out of date |
+| `--update` | also upgrade the WSL distro packages; every run already updates the tools that setup installed |
 | `--unattended` | never ask a question and take the safe answer |
 | `--agents all` | also install Claude Code, Copilot CLI and Codex, or name some: `--agents claude,codex` |
 | `--herdr` | also install herdr in WSL, on Linux and on macOS. With `--agents`, also link herdr to each named agent |

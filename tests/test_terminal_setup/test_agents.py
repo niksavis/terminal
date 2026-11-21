@@ -114,19 +114,36 @@ def test_shell_skips_a_present_agent() -> None:
     assert ("success", "codex is present on this host") in runner.reporter.messages  # type: ignore[attr-defined]
 
 
-def test_shell_update_runs_the_self_update_of_each_named_present_agent() -> None:
+def test_shell_update_runs_the_self_update_of_each_present_agent() -> None:
     runner = _run_shell(("claude", "codex"), update=True, outputs={})
 
     scripts = [command[-1] for command in runner.commands]
     assert shell_update_script("claude") in scripts
     assert shell_update_script("codex") in scripts
+    assert shell_update_script("copilot") in scripts
+
+
+def test_an_agent_that_is_not_named_is_updated_when_present_and_never_installed() -> None:
+    runner = _run_shell((), update=True, outputs=_absent("copilot"))
+
+    scripts = [command[-1] for command in runner.commands]
+    assert shell_update_script("claude") in scripts
+    assert shell_update_script("codex") in scripts
+    assert shell_install_script("copilot") not in scripts
     assert shell_update_script("copilot") not in scripts
 
 
-def test_an_agent_that_is_not_named_is_neither_installed_nor_updated() -> None:
-    runner = _run_shell((), update=True, outputs=_absent("copilot"))
+def test_without_update_an_agent_that_is_not_named_is_left_alone() -> None:
+    runner = _run_shell((), update=False, outputs={})
 
     assert runner.commands == []
+
+
+def test_installed_agents_lists_the_present_agents() -> None:
+    runner = RecordingRunner(reporter=CapturingReporter(), outputs=_absent("copilot"))
+
+    with mock.patch.object(agents, "is_running_in_wsl", return_value=True):
+        assert agents.installed_agents(runner, _linux_platform()) == ("claude", "codex")
 
 
 def test_the_shell_installers_are_the_vendor_scripts() -> None:

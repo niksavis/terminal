@@ -37,34 +37,27 @@ class UvRunner(RecordingRunner):
         return self.uv_path if command == "uv" else None
 
 
-def _run_uv(uv: str | None, *, update: bool) -> UvRunner:
+def _run_uv(uv: str | None) -> UvRunner:
     runner = UvRunner(reporter=CapturingReporter())
     runner.uv_path = uv
-    ensure_uv_windows(runner, replace(_windows_platform(), home=HOME), update=update)
+    ensure_uv_windows(runner, replace(_windows_platform(), home=HOME))
     return runner
 
 
-def test_update_never_runs_uv_self_update_under_its_own_uv(
+def test_setup_never_runs_uv_self_update_under_its_own_uv(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv(prerequisites.BOOTSTRAP_MARKER, raising=False)
-    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=True)
+    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe")
 
     assert runner.commands == []
-    assert any(
-        level == "info" and "install.ps1" in message and "uv self update" in message
-        for level, message in runner.reporter.messages  # type: ignore[attr-defined]
-    )
-
-
-def test_without_update_a_user_scope_uv_is_only_reported() -> None:
-    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=False)
-
-    assert runner.commands == []
+    messages = [message for _, message in runner.reporter.messages]  # type: ignore[attr-defined]
+    assert any("install.ps1" in message for message in messages)
+    assert not any("uv self update" in message for message in messages)
 
 
 def test_a_machine_wide_uv_is_left_and_named() -> None:
-    runner = _run_uv("C:/Program Files/uv/uv.exe", update=True)
+    runner = _run_uv("C:/Program Files/uv/uv.exe")
 
     assert runner.commands == []
     assert any(
@@ -75,7 +68,7 @@ def test_a_machine_wide_uv_is_left_and_named() -> None:
 
 def test_a_missing_uv_names_the_bootstrap() -> None:
     with pytest.raises(RuntimeError, match=r"install\.ps1"):
-        _run_uv(None, update=True)
+        _run_uv(None)
 
 
 def test_machine_scope_warning_names_software_center() -> None:
@@ -97,6 +90,6 @@ def test_machine_scope_warning_names_software_center() -> None:
 def test_bootstrap_run_does_not_repeat_the_uv_hint(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(prerequisites.BOOTSTRAP_MARKER, "1")
 
-    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe", update=True)
+    runner = _run_uv("C:/Users/Dev/.local/bin/uv.exe")
 
     assert not [message for level, message in runner.reporter.messages if level == "info"]  # type: ignore[attr-defined]

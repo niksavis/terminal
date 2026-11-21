@@ -8,7 +8,7 @@ The bootstrap script installs [uv](https://docs.astral.sh/uv/) user-locally when
 
 Setup installs each of these only when it is missing: uv, Python 3.14 (with `uv python install`), Node.js 26, and the coding agents that you name with `--agents` (Claude Code, GitHub Copilot CLI, OpenAI Codex). It skips a Python 3.14 or newer and a Node.js 26 or newer that is already on PATH.
 
-A rerun is safe. A missing tool installs, and a tool at its latest release is skipped. An older tool is reported, and `--update` installs the latest release. Only lazygit and the tools from a package manager (apt, Homebrew, pacman, dnf) ask `y/n` before an update. `--unattended` answers `no`.
+A rerun is safe. A missing tool installs, a tool at its latest release is skipped, and a tool that setup installed in your user profile and that is older is updated to its latest release. Only lazygit and the tools from a package manager (apt, Homebrew, pacman, dnf) ask `y/n` before an update. `--unattended` answers `no`.
 
 The `irm | iex` form reads its options from `TERMINAL_SETUP_ARGS` instead, for example `$env:TERMINAL_SETUP_ARGS = '--unattended'`. The script clears the variable after it reads it, so the next run starts without options.
 
@@ -30,7 +30,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 When `~/.zshrc`, `~/.tmux.conf`, `~/.config/starship.toml` or `~/.config/micro/settings.json` differs from the template, setup keeps the old file as `<file>.terminal-setup.bak` and names it in the output. Put your own shell lines in `~/.zshrc.local`, which setup never overwrites.
 
-Update every user-local tool, uv, Python, Node.js, and the coding agents that you name with `--agents`, when they are older than their latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)):
+Run the install again to update every tool that setup installed in your user profile, uv, Python, Node.js, herdr and the coding agents that are installed, when they are older than their latest release (machine-wide Windows tools are left alone, see [Managed Windows machines](#managed-windows-machines)). Add `--update` to also upgrade every installed package of the WSL distro:
 
 ```powershell
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
@@ -85,7 +85,7 @@ Setup never runs as administrator. On Windows it changes only what is in your us
 | Tool is | Setup does |
 | --- | --- |
 | missing | installs it in your user profile |
-| installed by setup in your user profile | `--update` updates it: `uv python install --upgrade`, the Node.js zip, the WezTerm release zip, the tools in `%LOCALAPPDATA%\Programs\terminal-tools\bin`, and `claude update`, `copilot update`, `codex update` for the agents named in `--agents`. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` runs `uv self update` first when its options hold `--update` |
+| installed by setup in your user profile | every run updates it: `uv python install --upgrade`, the Node.js zip, the WezTerm release zip, the tools in `%LOCALAPPDATA%\Programs\terminal-tools\bin`, and `claude update`, `copilot update`, `codex update` for the installed agents. A running WezTerm does not block its update: setup renames the files in use and removes them on a later run. uv cannot replace itself while it runs setup, so `install.ps1` updates it first with the uv installer (`irm https://astral.sh/uv/install.ps1 \| iex`), never with `uv self update`, because a group policy can block the script file that `uv self update` runs |
 | installed by winget in your user profile | asks per tool, or follows `--winget-versions replace` or `keep`. See [Tools that are already on Windows](what-gets-installed.md#tools-that-are-already-on-windows) |
 | machine-wide, new enough | prints one info line and changes nothing |
 | machine-wide, too old | prints one warning with the version and the path: ask IT or use Software Center for a newer version |
@@ -340,8 +340,8 @@ Add options to any setup command. Each command below runs as copied, without a c
 | `--report` | run setup, then print the verification report |
 | `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
 | `--agents claude,codex` | also install these coding agents when missing; `all` installs all three. Setup never installs or updates an agent that you do not name |
-| `--herdr` | also install herdr in WSL, on Linux and on macOS, and its integration for each agent named in `--agents`. With `--update`, setup updates herdr only with this option |
-| `--update` | update every user-local tool, Python and Node.js that is out of date, and the agents named in `--agents` |
+| `--herdr` | also install herdr in WSL, on Linux and on macOS, and its integration for each agent named in `--agents`. An herdr that is already installed is updated without this option |
+| `--update` | also upgrade every installed package of the WSL distro (`apt-get upgrade`). Every run already updates the tools that setup installed in your user profile |
 | `--skip-vscode` | skip the VS Code settings and extensions |
 | `--skip-starship` | skip the starship prompt |
 | `--skip-claude` | skip the Claude Code status line and skills |

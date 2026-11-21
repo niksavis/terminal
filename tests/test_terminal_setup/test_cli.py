@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 from unittest import mock
 
@@ -314,11 +315,13 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
 
 
 @pytest.mark.parametrize("update", [False, True])
-def test_run_setup_passes_update_to_starship_and_wezterm(update: bool) -> None:
+def test_a_plain_run_updates_owned_tools_and_only_update_upgrades_the_distro(
+    update: bool,
+) -> None:
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_tools"),
-        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages"),
+        mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_system_packages") as mock_system,
         mock.patch("terminal_setup.cli.prerequisites.ensure_wsl_cli_extras"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_wezterm") as mock_wezterm,
         mock.patch("terminal_setup.cli.windows_tools.ensure_windows_tools"),
@@ -351,8 +354,9 @@ def test_run_setup_passes_update_to_starship_and_wezterm(update: bool) -> None:
         )
 
     assert result == 0
-    assert mock_wezterm.call_args.kwargs["update"] is update
-    assert mock_starship.call_args.kwargs["update"] is update
+    assert mock_wezterm.call_args.kwargs["update"] is True
+    assert mock_starship.call_args.kwargs["update"] is True
+    assert mock_system.call_args.kwargs["upgrade"] is update
 
 
 def test_run_setup_reports_where_wezterm_is_installed() -> None:
@@ -431,6 +435,85 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
     if herdr:
         assert mock_integrations.call_args.args[2] == ("claude",)
     assert mock_deploy.call_args.kwargs["herdr"] is herdr
+
+
+def _plain_windows_run(**patches: object) -> dict[str, mock.Mock]:
+    names = {
+        "ensure_herdr": "terminal_setup.cli.prerequisites.ensure_herdr",
+        "integrations": "terminal_setup.cli.agents.ensure_herdr_integrations",
+        "deploy_agents": "terminal_setup.cli.agents.deploy_agents_command",
+    }
+    fixed = [
+        "terminal_setup.cli.prerequisites.ensure_wsl_tools",
+        "terminal_setup.cli.prerequisites.ensure_wsl_system_packages",
+        "terminal_setup.cli.prerequisites.ensure_wsl_cli_extras",
+        "terminal_setup.cli.prerequisites.ensure_wezterm",
+        "terminal_setup.cli.windows_tools.ensure_windows_tools",
+        "terminal_setup.cli.prerequisites.ensure_python",
+        "terminal_setup.cli.prerequisites.ensure_uv_windows",
+        "terminal_setup.cli.agents.ensure_agents",
+        "terminal_setup.cli.prerequisites.ensure_node",
+        "terminal_setup.cli.prerequisites.ensure_starship",
+        "terminal_setup.cli.configs.deploy_all",
+        "terminal_setup.cli.configs.install_img_zoom_wsl",
+        "terminal_setup.cli.configs.install_img_zoom_native",
+        "terminal_setup.cli.terminal_command.deploy_terminal_command",
+    ]
+    with ExitStack() as stack:
+        stack.enter_context(mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False))
+        for target in fixed:
+            stack.enter_context(mock.patch(target))
+        for target, value in patches.items():
+            stack.enter_context(mock.patch(target, return_value=value))
+        mocks = {key: stack.enter_context(mock.patch(path)) for key, path in names.items()}
+        run_setup(
+            _windows_platform(),
+            mock.Mock(failures=[]),
+            skip_vscode=True,
+            skip_starship=True,
+            skip_claude=True,
+            no_nerd_font=False,
+            config_only=False,
+            system_install=False,
+            user_install=False,
+            no_sudo=False,
+            uninstall_system_versions=False,
+            keep_system_versions=False,
+            report=False,
+            windows_terminal_cwd=None,
+            wsl_terminal_cwd=None,
+        )
+    return mocks
+
+
+def test_a_plain_run_updates_an_installed_herdr_without_the_option() -> None:
+    mocks = _plain_windows_run(**{
+        "terminal_setup.cli.prerequisites.herdr_installed": True,
+        "terminal_setup.cli.agents.installed_agents": (),
+    })
+
+    assert mocks["ensure_herdr"].call_args.kwargs["update"] is True
+    assert not mocks["integrations"].called
+
+
+def test_a_plain_run_deploys_the_agents_command_when_an_agent_is_installed() -> None:
+    mocks = _plain_windows_run(**{
+        "terminal_setup.cli.prerequisites.herdr_installed": False,
+        "terminal_setup.cli.agents.installed_agents": ("codex",),
+    })
+
+    assert mocks["deploy_agents"].called
+    assert not mocks["ensure_herdr"].called
+
+
+def test_a_plain_run_without_agents_or_herdr_installs_neither() -> None:
+    mocks = _plain_windows_run(**{
+        "terminal_setup.cli.prerequisites.herdr_installed": False,
+        "terminal_setup.cli.agents.installed_agents": (),
+    })
+
+    assert not mocks["deploy_agents"].called
+    assert not mocks["ensure_herdr"].called
 
 
 def _windows_platform() -> PlatformInfo:

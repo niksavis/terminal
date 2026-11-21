@@ -65,8 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "Never prompt: answer 'no' to every question, keep system versions, and install "
             "missing WSL system packages as root through 'wsl -u root' or passwordless sudo, "
-            "or print the command when neither works. The whole distro is upgraded only "
-            "with --update."
+            "or print the command when neither works. The WSL distro packages are upgraded "
+            "only with --update."
         ),
     )
     run.add_argument(
@@ -132,8 +132,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--update",
         action="store_true",
         help=(
-            "Install the latest release of each user-local tool, Python and Node that is out of "
-            "date; without it, setup only reports which ones are."
+            "Also upgrade every installed package of the WSL distro (apt upgrade). Without it, "
+            "setup still updates every tool it installed in your user profile."
         ),
     )
     install.add_argument(
@@ -143,7 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="NAMES",
         help=(
             "Install these coding agents when they are absent: a comma list of claude, "
-            "copilot and codex, or all. With --update, setup updates only these agents."
+            "copilot and codex, or all. Setup also updates the agents that are already "
+            "installed."
         ),
     )
     install.add_argument(
@@ -151,7 +152,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Install herdr, the runtime that keeps coding agents running, in WSL, on Linux "
-            "and on macOS. With --update, setup updates herdr only with this option."
+            "and on macOS. Setup also updates an herdr that is already installed."
         ),
     )
     install.add_argument(
@@ -860,7 +861,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 runner,
                 platform_info,
                 no_sudo=effective_no_sudo,
-                update=update,
+                update=True,
                 uninstall_system_versions=uninstall_system_versions,
                 keep_system_versions=keep_system_versions,
             )
@@ -877,12 +878,12 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             prerequisites.attempt(
                 runner,
                 "install img-zoom in WSL",
-                partial(configs.install_img_zoom_wsl, runner, platform_info, update=update),
+                partial(configs.install_img_zoom_wsl, runner, platform_info, update=True),
             )
         prerequisites.attempt(
             runner,
             "install img-zoom",
-            partial(configs.install_img_zoom_native, runner, platform_info, update=update),
+            partial(configs.install_img_zoom_native, runner, platform_info, update=True),
         )
 
         prerequisites.attempt(
@@ -893,7 +894,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 runner,
                 platform_info,
                 no_sudo=effective_no_sudo,
-                update=update,
+                update=True,
             ),
         )
 
@@ -901,30 +902,30 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             windows_tools.ensure_windows_tools(
                 runner,
                 platform_info,
-                update=update,
+                update=True,
                 policy=winget_versions,
                 include_starship=not skip_starship,
             )
             prerequisites.attempt(
                 runner,
                 "check uv on Windows",
-                partial(prerequisites.ensure_uv_windows, runner, platform_info, update=update),
+                partial(prerequisites.ensure_uv_windows, runner, platform_info),
             )
 
         prerequisites.attempt(
             runner,
             "install Python",
-            partial(prerequisites.ensure_python, runner, platform_info, update=update),
+            partial(prerequisites.ensure_python, runner, platform_info, update=True),
         )
 
         prerequisites.attempt(
             runner,
             "install Node.js",
-            partial(prerequisites.ensure_node, runner, platform_info, update=update),
+            partial(prerequisites.ensure_node, runner, platform_info, update=True),
         )
 
-        agents.ensure_agents(runner, platform_info, selected_agents, update=update)
-        if selected_agents:
+        agents.ensure_agents(runner, platform_info, selected_agents, update=True)
+        if selected_agents or agents.installed_agents(runner, platform_info):
             prerequisites.attempt(
                 runner,
                 "install the agents command",
@@ -936,19 +937,20 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             partial(terminal_command.deploy_terminal_command, runner, platform_info),
         )
 
-        if herdr:
+        if herdr or prerequisites.herdr_installed(runner, platform_info):
             prerequisites.attempt(
                 runner,
-                "install herdr",
-                partial(prerequisites.ensure_herdr, runner, platform_info, update=update),
+                "install herdr" if herdr else "update herdr",
+                partial(prerequisites.ensure_herdr, runner, platform_info, update=True),
             )
+        if herdr:
             agents.ensure_herdr_integrations(runner, platform_info, selected_agents)
 
         if not skip_starship:
             prerequisites.attempt(
                 runner,
                 "install starship",
-                partial(prerequisites.ensure_starship, runner, platform_info, update=update),
+                partial(prerequisites.ensure_starship, runner, platform_info, update=True),
             )
 
     runner.reporter.step("Deploying configuration")

@@ -43,7 +43,7 @@ Install herdr too, in WSL, on Linux and on macOS (from Windows, setup installs i
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --herdr
 ```
 
-Update everything, then check what is installed:
+Update everything (run the install again; `--update` also upgrades the WSL distro packages), then check what is installed:
 
 ```powershell
 & ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update

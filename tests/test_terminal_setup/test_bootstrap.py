@@ -54,11 +54,15 @@ def test_a_user_doc_never_tells_a_user_to_install_from_main(doc: str) -> None:
     assert commands == []
 
 
-def test_powershell_bootstrap_updates_uv_before_uvx_runs() -> None:
+def test_powershell_bootstrap_updates_uv_inline_before_uvx_runs() -> None:
     text = (ROOT / "install.ps1").read_text(encoding="utf-8")
+    update = "& { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression }"
+    block = text[text.index("releases/latest") : text.index("uvx --python")]
 
-    assert text.index("uv self update") < text.index("uvx --python")
-    assert "$setupArgs -contains '--update'" in text
+    assert "uv self update" not in text
+    assert update in block
+    assert "ExecutionPolicy" not in block
+    assert "--update" not in text
 
 
 def test_powershell_bootstrap_clears_its_arguments_variable() -> None:

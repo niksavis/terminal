@@ -443,7 +443,7 @@ irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | 
 <p>Install herdr too, in WSL, on Linux and on macOS (from Windows, setup installs it in WSL):</p>
 <pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --herdr</code></pre>
 <pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --herdr</code></pre>
-<p>Update everything, then check what is installed:</p>
+<p>Update everything (run the install again; <code>--update</code> also upgrades the WSL distro packages), then check what is installed:</p>
 <pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
 &amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report</code></pre>
 <pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update
