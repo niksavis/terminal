@@ -82,7 +82,9 @@ jobs:
         run: |
           set -o pipefail
           sh ./install.sh --unattended --agents "${AGENTS}" 2>&1 | tee "${RUNNER_TEMP}/first.log"
-          grep -q "Setup complete." "${RUNNER_TEMP}/first.log"
+          log="$(sed -n 's/^Done in .* Full log: //p' "${RUNNER_TEMP}/first.log" | tail -n 1)"
+          test -f "${log}" || { echo "setup named no log file"; exit 1; }
+          grep -q "Setup complete." "${log}"
       - name: Check the version lines
         shell: bash
         run: |
@@ -98,7 +100,8 @@ jobs:
         run: |
           set -o pipefail
           sh ./install.sh --unattended --agents "${AGENTS}" 2>&1 | tee "${RUNNER_TEMP}/second.log"
-          log="${RUNNER_TEMP}/second.log"
+          log="$(sed -n 's/^Done in .* Full log: //p' "${RUNNER_TEMP}/second.log" | tail -n 1)"
+          test -f "${log}" || { echo "setup named no log file"; exit 1; }
           grep -q "Setup complete." "${log}"
           grep -Eq "Python 3\.14\.[0-9]+ is present" "${log}" || { echo "Python was not reported as present"; exit 1; }
           grep -Eq "Node\.js v26\.[0-9.]+ is (present|up to date)" "${log}" || { echo "Node.js was not reported as present or up to date"; exit 1; }
