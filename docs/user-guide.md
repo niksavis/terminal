@@ -214,6 +214,8 @@ agents uninstall
 
 In WSL, the command also runs the Windows side, and on Windows it also runs the WSL side. Add `--wsl` or `--win` to run only one side.
 
+`agents.cmd` runs `agents.ps1` with PowerShell 7 (`pwsh`), and with Windows PowerShell 5.1 when PowerShell 7 is missing. A group policy that sets the execution policy to `Restricted` stops Windows PowerShell 5.1 from running the script, even with `-ExecutionPolicy Bypass`. On such a machine, install PowerShell 7.
+
 A Codex daemon update stops running Codex work, so the command prints a warning first. When the daemon updater cannot start on Windows, the command runs the Codex installer with `CODEX_INSTALL_DAEMON_ONLY=1` instead.
 
 The command does not change an agent that npm or Homebrew installed. It prints the command to use instead, for example `npm install -g @anthropic-ai/claude-code@latest` or `brew upgrade claude-code`. Setup installs Copilot CLI on Windows with npm, so for that copy the command runs `npm install -g @github/copilot@latest` itself.
