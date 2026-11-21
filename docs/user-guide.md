@@ -194,6 +194,16 @@ See [`terminal-cheat-sheet.md`](../terminal-cheat-sheet.md) for the full command
 
 WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
 
+### The terminal command
+
+Setup installs the `terminal` command on every run. `terminal status` prints one table for each side: each tool that setup installs, its installed version, its latest release and a state: `ok`, `update`, `missing` or `unknown` (the latest version could not be read). After the tools, it prints the `agents status` table when the `agents` command is installed.
+
+```bash
+terminal status
+```
+
+In WSL, the command also prints the Windows side, and on Windows it also prints the WSL side. Add `--wsl` or `--win` to print only one side. In WSL and on Linux it is `~/.local/bin/terminal`. On Windows it is `terminal.cmd` and `terminal.ps1` in `%USERPROFILE%\.local\bin`. It runs the setup release that installed it, through `uvx`. When another command named `terminal` is already on PATH, setup does not install it and names that command's path.
+
 ### The agents command
 
 With `--agents`, setup also installs the `agents` command. It shows and updates Claude Code, Codex, the Codex app-server daemon and Copilot CLI in one step. In WSL and on Linux it is `~/.local/bin/agents`. On Windows it is `agents.cmd` and `agents.ps1` in `%USERPROFILE%\.local\bin`. Setup does not install it on macOS, because the command needs bash 4.

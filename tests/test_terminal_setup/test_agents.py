@@ -545,7 +545,7 @@ def test_setup_writes_the_windows_agents_command_and_the_wsl_copy(tmp_path: Path
     staged = tmp_path / ".local" / "share" / "terminal" / "agents"
     assert staged.read_text(encoding="utf-8") == _rendered("agents")
     assert any(
-        command[:2] == ["wsl", "-d"] and command[-1] == str(staged) for command in runner.commands
+        command[:2] == ["wsl", "-d"] and str(staged) in command for command in runner.commands
     )
 
 

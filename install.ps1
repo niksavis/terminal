@@ -2,6 +2,7 @@
     $ErrorActionPreference = 'Stop'
     $ref = if ($env:TERMINAL_SETUP_REF) { $env:TERMINAL_SETUP_REF } else { 'main' }
     $sourceUrl = "https://github.com/niksavis/terminal/archive/$ref.zip"
+    $env:TERMINAL_SETUP_REF = $ref
     $setupArgs = @($args | Where-Object { $_ })
     if ($env:TERMINAL_SETUP_ARGS) {
         $setupArgs += @($env:TERMINAL_SETUP_ARGS -split '\s+' | Where-Object { $_ })
