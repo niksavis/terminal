@@ -39,6 +39,11 @@ jobs:
       - name: Install as a consumer
         shell: bash
         run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
+      - name: Run agents status
+        shell: bash
+        run: |
+          export PATH="${HOME}/.local/bin:${PATH}"
+          agents status
 
   linux-container:
     runs-on: ubuntu-latest
@@ -115,6 +120,11 @@ jobs:
         run: |
           $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
           powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --herdr --winget-versions replace --report
+      - name: Run agents status on Windows and in WSL
+        shell: pwsh
+        run: |
+          & (Join-Path $env:USERPROFILE '.local\bin\agents.cmd') status
+          if ($LASTEXITCODE -ne 0) { throw "agents status failed with exit code $LASTEXITCODE" }
       - name: Check that the setup copy replaced the winget ripgrep
         if: steps.winget.outcome == 'success'
         shell: powershell
