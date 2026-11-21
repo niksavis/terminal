@@ -206,17 +206,8 @@ def ensure_ledger(root: Path, ledger: Path, *, dry_run: bool, stream: Any) -> st
     return within
 
 
-def pin_ledger(ledger: Path, *, dry_run: bool, stream: Any) -> None:
-
-    freeze = _load("ledger_freeze.py", "basicly_tracker_kit_ledger_freeze")
-    if freeze.check(ledger) is not None:
-        return
-    pin = _load("pin.py", "basicly_tracker_kit_pin")
-    if dry_run:
-        stream.write(f"tracker: would pin the ledger to tracker {pin.KIT_VERSION}\n")
-        return
-    pin.write(ledger)
-    stream.write(f"tracker: pinned the ledger to tracker {pin.KIT_VERSION}\n")
+def pin_ledger(ledger: Path, **options: Any) -> None:
+    _load("settings.py", "basicly_tracker_kit_settings").pin_ledger(ledger, **options)
 
 
 NO_FOLD = (
@@ -418,9 +409,11 @@ def main(argv: Any = None) -> int:
         backlogs = [] if frozen else offer.chosen_backlogs(asked)
     except offer.ImportOfferError as exc:
         raise SystemExit(f"tracker: {exc}") from exc
-    ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
+    within = ensure_ledger(root, ledger, dry_run=args.dry_run, stream=sys.stdout)
     if args.pin:
-        pin_ledger(ledger, dry_run=args.dry_run, stream=sys.stdout)
+        pin_ledger(
+            ledger, dry_run=args.dry_run, stream=sys.stdout, named=(root, within, args.runner)
+        )
     wanted = (
         frozen
         or args.dry_run

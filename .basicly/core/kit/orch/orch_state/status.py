@@ -8,6 +8,7 @@ from orch_state.store import clean
 
 WIDTH = 40
 QUIET_AFTER = timedelta(minutes=15)
+NUDGE_AFTER = timedelta(minutes=30)
 STALE_AFTER = timedelta(hours=2)
 ASK_STALE_AFTER = timedelta(hours=24)
 NAME = 9
@@ -59,17 +60,36 @@ def state(record: dict[str, object], now: datetime, alive: Alive) -> str:
         return "needs you"
     if record.get("state") == "working" and now - updated < QUIET_AFTER:
         return "working"
+    if now - updated >= NUDGE_AFTER:
+        return "nudge"
     return "quiet"
 
 
-def _doing(record: dict[str, object], now: datetime) -> str:
+def _now(record: dict[str, object], now: datetime) -> str:
     text = record.get("now")
     said = _when(record.get("now_at"))
     if not isinstance(text, str) or not text or said is None:
-        return "-"
+        return ""
     if now - said >= QUIET_AFTER:
         return f"{age(now - said)} ago: {clean(text)}"
     return clean(text)
+
+
+def _last(record: dict[str, object]) -> str:
+    text = record.get("last")
+    if not isinstance(text, str) or not text:
+        return ""
+    return f"last {'ok' if record.get('last_ok') is not False else 'failed'}: {clean(text)}"
+
+
+def _doing(record: dict[str, object], now: datetime) -> str:
+    item = record.get("item")
+    parts = [
+        clean(item) if isinstance(item, str) and item else "",
+        _now(record, now),
+        _last(record),
+    ]
+    return " | ".join(part for part in parts if part) or "-"
 
 
 def row(record: dict[str, object], now: datetime, alive: Alive, columns: int = WIDTH) -> str:
@@ -107,4 +127,7 @@ def render(
     columns: int = WIDTH,
 ) -> list[str]:
     ordered = sorted(records, key=lambda r: str(r.get("name") or r.get("id") or ""))
-    return [*header(asks, now), *(row(r, now, alive, columns) for r in ordered)]
+    live = [r for r in ordered if state(r, now, alive) != "dead"]
+    dead = len(ordered) - len(live)
+    folded = [f"{dead} dead session(s) not shown"] if dead else []
+    return [*header(asks, now), *(row(r, now, alive, columns) for r in live), *folded]

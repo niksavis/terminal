@@ -169,6 +169,32 @@ def create_prefix(directory: Path | str, given: str) -> str:
     return chosen
 
 
+FALLBACK_PREFIX = "work"
+PREFIX_LENGTH = 12
+
+
+def derived_prefix(name: str) -> str:
+    kept = "".join(one for one in name.lower() if one.isascii() and one.isalnum())
+    kept = kept.lstrip("0123456789")[:PREFIX_LENGTH]
+    return kept if kept and ids.PREFIX_PATTERN.match(kept) else FALLBACK_PREFIX
+
+
+def name_prefix(ledger: Path, root: Path, shown: str, runner: str, *, dry_run: bool) -> str:
+    try:
+        create_prefix(ledger, "")
+    except SettingError:
+        chosen = derived_prefix(root.name)
+        if not dry_run:
+            write(ledger, "prefix", chosen)
+        command = runner or "basicly-tracker"
+        return (
+            f"tracker: the id prefix is {chosen}, from the folder name {root.name!r}; change it "
+            f"with `{command} config {shown} set prefix NAME`, "
+            f"or pass --prefix NAME to create\n"
+        )
+    return ""
+
+
 def adopt_prefix(ledger: Path, found: str | None, source: str, *, dry_run: bool) -> dict[str, str]:
 
     if found is None:
@@ -185,3 +211,20 @@ def adopt_prefix(ledger: Path, found: str | None, source: str, *, dry_run: bool)
     if not dry_run:
         write(ledger, "prefix", found)
     return {"outcome": "would set" if dry_run else "set", "source": found, "from": source}
+
+
+def pin_ledger(
+    ledger: Path, *, dry_run: bool, stream: Any, named: tuple[Path, str, str] | None = None
+) -> None:
+
+    freeze = _load("ledger_freeze.py", "basicly_tracker_kit_ledger_freeze")
+    if freeze.check(ledger) is not None:
+        return
+    if named is not None:
+        stream.write(name_prefix(ledger, *named, dry_run=dry_run))
+    pin = _load("pin.py", "basicly_tracker_kit_pin")
+    if dry_run:
+        stream.write(f"tracker: would pin the ledger to tracker {pin.KIT_VERSION}\n")
+        return
+    pin.write(ledger)
+    stream.write(f"tracker: pinned the ledger to tracker {pin.KIT_VERSION}\n")

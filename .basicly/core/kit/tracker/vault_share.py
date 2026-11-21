@@ -37,6 +37,7 @@ vault_queue = _load("vault_queue.py", "basicly_tracker_kit_vault_queue")
 SEGMENT_BYTES = 1 << 20
 BULK_ATTEMPTS = 5
 BATCH_QUIET = 0.1
+PUSH_REASON_MAX = 200
 SHARE_LOCK = "share"
 SHARED_AT = "shared.at"
 PROGRESS_NAME = "share.progress"
@@ -223,6 +224,15 @@ def _budget(plan: Plan, started: float, clock: Callable[[], float]) -> float:
     return left
 
 
+def _push_failure(exc: Exception, attempt: int, queued: int) -> str:
+    left = f"{queued} events stay queued; run sync again"
+    if isinstance(exc, git_runner.GitTimeoutError):
+        return f"the share push timed out on attempt {attempt}; {left}"
+    said = " ".join(str(getattr(exc, "stderr", "") or exc).split())[:PUSH_REASON_MAX]
+    reason = vault_queue.redact.text(said) or "git gave no reason"
+    return f"the vault refused the share {attempt} times; git said: {reason}; {left}"
+
+
 def _again(plan: Plan, attempt: int, started: float, clock: Callable[[], float]) -> bool:
     if plan.urgent:
         return clock() - started < plan.deadline_s
@@ -358,8 +368,7 @@ def share(
                 if _again(plan, attempt, started, clock):
                     continue
                 raise (DeadlineError if plan.urgent else ShareError)(
-                    f"the vault refused the share {attempt} times; "
-                    f"{len(batch)} events stay queued; run sync again"
+                    _push_failure(exc, attempt, len(batch))
                 ) from None
             vault_clone.durable(clone.folder / SHARED_AT, f"{plan.wall()}\n")
             budget = _budget(plan, started, clock)

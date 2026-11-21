@@ -51,6 +51,11 @@ class Tracker:
         found = shown.get("comments", []) if isinstance(shown, dict) else []
         return [text for text in found if isinstance(text, str)]
 
+    def notes(self, record: str) -> list[dict[str, object]]:
+        shown = json.loads(self.runner([*self.base, "show", self.ledger, record]))
+        found = shown.get("comment_log", []) if isinstance(shown, dict) else []
+        return [note for note in found if isinstance(note, dict)]
+
     def comment(self, record: str, text: str) -> None:
         self.runner([*self.base, "comment", self.ledger, record, text])
 

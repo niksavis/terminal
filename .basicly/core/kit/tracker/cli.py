@@ -321,7 +321,8 @@ def _run_command(
             )
         return code, report
     vault_refusal.refuse_ledger_form(args, commands, vault_config)
-    starts = args.command in _STARTS_A_LEDGER and not getattr(args, "dry_run", False)
+    setting = args.command == "config" and getattr(args, "config_action", "") == "set"
+    starts = (args.command in _STARTS_A_LEDGER or setting) and not getattr(args, "dry_run", False)
     args.directory = commands.resolve_ledger(args.directory, starts=starts)
     pin.require(args.directory)
     if args.command in vault_cli.READS and not (

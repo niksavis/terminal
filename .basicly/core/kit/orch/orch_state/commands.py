@@ -11,6 +11,7 @@ from orch_state import relay_guard, status, store
 
 SESSION_ENVS = ("ORCH_SESSION_ID", "CLAUDE_CODE_SESSION_ID")
 NAME_ENV = "ORCH_MEMBER"
+ITEM_MAX = 200
 RELAY_TEXT = {
     "report": "report {state} {record}",
     "decide": "decided {item} {record}",
@@ -25,10 +26,16 @@ NO_STORE = (
 def add_parsers(groups: argparse._SubParsersAction) -> None:
     state = groups.add_parser("state").add_subparsers(dest="action", required=True)
     put = state.add_parser("set")
-    for flag in ("--now", "--next", "--waiting", "--name", "--session"):
+    for flag in ("--now", "--next", "--waiting", "--name", "--session", "--item", "--last"):
         put.add_argument(flag)
+    put.add_argument("--failed", action="store_true")
     put.add_argument("--state", choices=store.STATES)
     groups.add_parser("status")
+    groups.add_parser("brief")
+    accept = groups.add_parser("accept")
+    for flag in ("--record", "--repo", "--action"):
+        accept.add_argument(flag, required=True)
+    accept.add_argument("--file", default="-")
     ask = groups.add_parser("ask")
     ask.add_argument("--record")
     ask.add_argument("--question")
@@ -88,6 +95,12 @@ def set_state(
         changes["now_at"] = store.stamp(clock)
     if args.state is not None:
         changes["state_at"] = store.stamp(clock)
+    if args.item is not None:
+        changes["item"] = store.clean(args.item, ITEM_MAX)
+    if args.last is not None:
+        changes["last"] = store.clean(args.last, ITEM_MAX)
+        changes["last_at"] = store.stamp(clock)
+        changes["last_ok"] = not args.failed
     record = store.save(root, chosen, changes, clock)
     return f"state saved for {record.get('name') or record['id']}"
 
@@ -118,6 +131,17 @@ def run(
     if args.group == "ask":
         return run_ask(args, base(cwd, environ), clock)
     return None
+
+
+def session_lines(
+    cwd: Path, environ: dict[str, str], clock: store.Clock = store.utc_now
+) -> list[str]:
+    root = store.find(cwd, environ)
+    if root is None:
+        return []
+    return status.render(
+        store.sessions(root), store.asks(root), clock(), store.alive, 2 * status.WIDTH
+    )
 
 
 def after_relay(

@@ -30,6 +30,11 @@ shaping = _load("shaping")
 _PLACEHOLDER = re.compile(r"(?:todo|tbd|tbc|fixme)", re.IGNORECASE)
 _LIST_MARKER = re.compile(r"^(?:[-*]|\d+[.)])\s+(?:\[[ xX]\]\s*)?")
 _REDACTION = re.compile(r"<redacted:[a-z][a-z0-9-]*>")
+_NOT_RUN = re.compile(
+    r"\b(?:pending|not\s+(?:yet\s+)?run|not\s+yet|has\s+not\s+run|did\s+not\s+run|"
+    r"will\s+(?:be\s+)?run|to\s+be\s+run|verified\s+after)\b",
+    re.IGNORECASE,
+)
 
 
 def filled_text(value: object) -> bool:
@@ -136,6 +141,10 @@ def entry_fault(check: object, keys: set[str], completed: bool) -> str | None:
         (not filled_text(check["criterion"]), "has no criterion text"),
         (not filled_command(check["command"]), "command is not a filled argv list of strings"),
         (completed and not observed_text(check["result"]), "has no observed result text"),
+        (
+            completed and bool(_NOT_RUN.search(str(check["result"]))),
+            "result says the check has not run; run the command and record what it printed",
+        ),
         (
             completed and (type(check["exit_code"]) is not int or check["exit_code"] != 0),
             "exit_code is not the integer 0",

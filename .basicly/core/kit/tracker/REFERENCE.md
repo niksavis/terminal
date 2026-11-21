@@ -99,7 +99,7 @@ python3 .basicly/kit/tracker/cli.py sync --urgent --vault path/to/vault.git
 
 Mint a record id and append its first events. `owed` in the output names what the record
 still needs before `dor` passes. `--prefix` names the id prefix. Without it, `create` uses
-the ledger's `prefix` setting, and refuses when the ledger sets none.
+the ledger's `prefix` setting, and refuses when the ledger sets none. `basicly-tracker init` sets that setting from the repository folder name when the ledger has none, and prints the command that changes it.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix acme --title "Keep comments on export" --description "When an export holds a comment, I want it kept, so I can import it back." --acceptance "- The importer shall keep every comment line" --requirements "- Standard library only"
@@ -648,6 +648,7 @@ The tracker computes revisions and writer identities; these keys cannot be suppl
 ### confirm
 
 Confirmation uses the `confirm` command and the completion JSON shape in `GUIDANCE.md`.
+Each check's `result` is what the command printed. `confirm` refuses a result that says the check has not run, such as `pending` or `will run after landing`.
 
 `close <ledger> <id> --reason "<delivered outcome>"` defaults to completed and requires
 current review and confirmation. `--resolution cancelled` records reasoned abandonment,
