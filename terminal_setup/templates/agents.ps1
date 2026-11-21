@@ -17,6 +17,7 @@ $Label = @{ claude = "Claude Code"; codex = "Codex"; daemon = "Codex daemon"; co
 $NpmPackage = @{ claude = "__NPM_CLAUDE__"; codex = "__NPM_CODEX__"; copilot = "__NPM_COPILOT__" }
 $script:Failed = @()
 $script:NpmRoots = $null
+$Nested = [bool]$env:AGENTS_NESTED
 
 function Say($m) { Write-Host ""; Write-Host "==> $m" -ForegroundColor Cyan }
 function SemVer($s) { if ("$s" -match '\d+\.\d+\.\d+(-(alpha|beta|rc)(\.\d+)*)?') { $Matches[0] } else { "" } }
@@ -234,11 +235,11 @@ function Run-Windows {
 }
 
 function Run-Wsl {
-  Say "WSL"
-  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { "wsl.exe is not on the PATH, so agents skips WSL."; return }
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { "WSL: wsl.exe is not on the PATH, so agents skips WSL."; return }
   $forward = @($Cmd, "--wsl")
   if ($Force) { $forward += "--force" }
-  $env:WSLENV = if ($env:WSLENV) { "AGENTS_CONFIRMED:$($env:WSLENV)" } else { "AGENTS_CONFIRMED" }
+  $env:AGENTS_NESTED = "1"
+  $env:WSLENV = if ($env:WSLENV) { "AGENTS_CONFIRMED:AGENTS_NESTED:$($env:WSLENV)" } else { "AGENTS_CONFIRMED:AGENTS_NESTED" }
   & wsl.exe --exec bash -c 'p=~/.local/bin/agents; test -x $p || { echo agents is not in WSL, so agents skips WSL. To add it, run the terminal setup with --agents all.; exit 0; }; exec $p $@' agents @forward
   if ($LASTEXITCODE -ne 0) { $script:Failed += "WSL" }
 }
@@ -252,6 +253,8 @@ if ($Target -ne "wsl") { Run-Windows }
 if ($Target -ne "win") { Run-Wsl }
 
 if ($script:Failed.Count) { Write-Host ""; Write-Host "Failed: $($script:Failed -join ', ')" -ForegroundColor Red; exit 1 }
-Write-Host ""
-Write-Host "All done." -ForegroundColor Green
+if (-not $Nested) {
+  Write-Host ""
+  Write-Host "All done." -ForegroundColor Green
+}
 exit 0
