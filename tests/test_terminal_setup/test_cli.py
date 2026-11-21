@@ -359,10 +359,12 @@ def test_a_plain_run_updates_owned_tools_and_only_update_upgrades_the_distro(
     assert mock_system.call_args.kwargs["upgrade"] is update
 
 
-def test_run_setup_reports_where_wezterm_is_installed() -> None:
+def test_run_setup_ends_with_the_command_that_starts_wezterm_on_windows() -> None:
     runner = mock.Mock(failures=[])
     location = "C:\\Users\\test\\AppData\\Local\\Programs\\WezTerm\\wezterm-gui.exe"
     with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.wezterm_location", return_value=location),
         mock.patch("terminal_setup.cli.configs.deploy_all"),
     ):
@@ -385,7 +387,8 @@ def test_run_setup_reports_where_wezterm_is_installed() -> None:
         )
 
     assert result == 0
-    assert mock.call(f"WezTerm is installed at {location}") in runner.reporter.step.call_args_list
+    steps = [call.args[0] for call in runner.reporter.step.call_args_list]
+    assert any(step.endswith(f"& '{location}'") for step in steps)
 
 
 @pytest.mark.parametrize("herdr", [False, True])

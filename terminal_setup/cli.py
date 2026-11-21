@@ -1051,7 +1051,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     runner.reporter.success("Setup complete.")
     wezterm = prerequisites.wezterm_location(runner, platform_info)
     if wezterm:
-        runner.reporter.step(f"WezTerm is installed at {wezterm}")
+        runner.reporter.step(prerequisites.wezterm_start_hint(platform_info, wezterm))
     if config_only:
         runner.reporter.step("Reload your shell or WezTerm to pick up the new configuration.")
     else:

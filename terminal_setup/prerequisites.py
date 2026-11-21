@@ -2133,6 +2133,15 @@ def wezterm_location(runner: Runner, platform: PlatformInfo) -> str | None:
     return runner.which("wezterm-gui") or runner.which("wezterm")
 
 
+def wezterm_start_hint(platform: PlatformInfo, location: str) -> str:
+    if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():
+        return (
+            "Start WezTerm the first time from Windows Terminal or PowerShell, then pin it "
+            f"to the taskbar: & {_powershell_literal(location)}"
+        )
+    return f"WezTerm is installed at {location}"
+
+
 def _ensure_wezterm_start_menu_entry(runner: Runner, platform: PlatformInfo) -> None:
     gui = _wezterm_user_gui(platform)
     if not gui.is_file():

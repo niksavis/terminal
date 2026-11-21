@@ -96,7 +96,7 @@ Setup does not install a second copy beside a machine-wide one, because Windows 
 
 ### Windows
 
-After installation, start WezTerm from the Start menu or run the command below. At the end of the install, setup prints where WezTerm is installed:
+After installation, start WezTerm from the Start menu or run the command below. At the end of the install on Windows, setup prints a command that starts WezTerm; copy it into Windows Terminal or PowerShell, run it once, then pin WezTerm to the taskbar:
 
 ```powershell
 wezterm
