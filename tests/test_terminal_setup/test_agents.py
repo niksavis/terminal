@@ -452,8 +452,10 @@ def test_agents_update_prints_one_line_for_a_current_agent_and_reports_each_agen
     result = _run_agents(tmp_path, "update", AGENTS_REPORT=str(report))
 
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
-    assert "Claude Code (WSL): ok, up to date (2.1.0)" in plain
-    assert "==> Claude Code (WSL)" not in plain
+    assert re.search(
+        r"^Claude Code \((WSL|Linux|macOS)\): ok, up to date \(2\.1\.0\)$", plain, re.M
+    )
+    assert "==> Claude Code" not in plain
     lines = report.read_text(encoding="utf-8").splitlines()
     assert {"ok claude", "updated codex", "ok copilot"} <= set(lines)
 

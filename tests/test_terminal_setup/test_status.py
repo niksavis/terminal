@@ -468,6 +468,12 @@ def _update(tmp_path: Path, *arguments: str, **extra: str) -> subprocess.Complet
     return _run_terminal(tmp_path, "update", "--wsl", *arguments, **values)
 
 
+def _summary(result: subprocess.CompletedProcess[str]) -> str:
+    side, _, text = result.stdout.splitlines()[-1].partition(": ")
+    assert side in {"WSL", "Linux", "macOS"}
+    return text
+
+
 def _bootstrap_calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "calls.log"
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
@@ -480,7 +486,7 @@ def test_terminal_update_exits_1_and_names_a_failed_setup_run(tmp_path: Path) ->
 
     assert result.returncode == 1
     assert "!! setup v9.9.9: failed" in result.stdout
-    assert result.stdout.splitlines()[-1].startswith("WSL: failed: setup v9.9.9")
+    assert _summary(result).startswith("failed: setup v9.9.9")
 
 
 @needs_bash
@@ -489,7 +495,7 @@ def test_terminal_update_exits_1_and_names_a_failed_agents_update(tmp_path: Path
 
     assert result.returncode == 1
     assert "!! agents update: failed" in result.stdout
-    assert result.stdout.splitlines()[-1] == "WSL: failed: agents update"
+    assert _summary(result) == "failed: agents update"
 
 
 @needs_bash
@@ -499,9 +505,7 @@ def test_terminal_update_runs_no_updater_when_everything_is_up_to_date(tmp_path:
     assert result.returncode == 0, result.stdout + result.stderr
     assert _bootstrap_calls(tmp_path) == []
     ref = terminal_command.setup_ref()
-    assert result.stdout.splitlines()[-1] == (
-        f"WSL: Everything is up to date (setup {ref}, 28 tools, 3 agents)"
-    )
+    assert _summary(result) == f"Everything is up to date (setup {ref}, 28 tools, 3 agents)"
 
 
 @needs_bash
@@ -512,7 +516,7 @@ def test_terminal_update_runs_the_bootstrap_only_for_an_outdated_tool(tmp_path: 
     ref = terminal_command.setup_ref()
     assert _bootstrap_calls(tmp_path) == [f"bootstrap ref={ref}"]
     assert "because of not up to date: fd" in result.stdout
-    assert result.stdout.splitlines()[-1] == f"WSL: updated setup {ref}"
+    assert _summary(result) == f"updated setup {ref}"
 
 
 @needs_bash
@@ -533,7 +537,7 @@ def test_terminal_update_names_only_the_agent_that_was_updated(tmp_path: Path) -
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert _bootstrap_calls(tmp_path) == []
-    assert result.stdout.splitlines()[-1] == "WSL: updated codex codex daemon"
+    assert _summary(result) == "updated codex codex daemon"
 
 
 @needs_bash
