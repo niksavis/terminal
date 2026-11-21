@@ -596,8 +596,11 @@ def test_terminal_update_shows_a_line_before_each_slow_step(tmp_path: Path) -> N
 
     assert process.returncode == 0
     names = [line for _, line in stamps]
-    assert names.index("==> status check") < names.index("status check: done (1 s)")
-    assert names.index("==> agents update") < names.index("agents update: done (1 s)")
+    done = {
+        line.split(": done (")[0]: index for index, line in enumerate(names) if ": done (" in line
+    }
+    assert names.index("==> status check") < done["status check"]
+    assert names.index("==> agents update") < done["agents update"]
     gaps = [later[0] - earlier[0] for earlier, later in itertools.pairwise(stamps)]
     assert stamps[0][0] < 1.0
     assert max(gaps) < 2.0
