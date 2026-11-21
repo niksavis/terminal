@@ -82,11 +82,11 @@ update_local() {
     FAILED=1
   fi
   if command -v agents >/dev/null 2>&1; then
-    local side=()
+    local side=""
     if ((IS_WSL)); then
-      side=(--wsl)
+      side="--wsl"
     fi
-    if ! AGENTS_NESTED=1 agents update "${side[@]}"; then
+    if ! AGENTS_NESTED=1 agents update ${side:+"$side"}; then
       echo "!! agents update failed"
       FAILED=1
     fi
