@@ -813,6 +813,12 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
         agents.ensure_agents(runner, platform_info, selected_agents, update=update)
+        if selected_agents:
+            prerequisites.attempt(
+                runner,
+                "install the agents command",
+                partial(agents.deploy_agents_command, runner, platform_info),
+            )
 
         if herdr:
             prerequisites.attempt(

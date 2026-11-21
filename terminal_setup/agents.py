@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import re
 import subprocess  # nosec B404
 from functools import partial
+from pathlib import Path
 
 from .platform import (
     OperatingSystem,
@@ -23,7 +25,11 @@ from .prerequisites import (
 from .runner import Runner
 
 AGENTS = ("claude", "copilot", "codex")
-NPM_PACKAGES = {"copilot": "@github/copilot"}
+NPM_PACKAGES = {
+    "claude": "@anthropic-ai/claude-code",
+    "codex": "@openai/codex",
+    "copilot": "@github/copilot",
+}
 SHELL_INSTALL_SCRIPTS = {
     "claude": "curl -fsSL https://claude.ai/install.sh | bash",
     "copilot": "curl -fsSL https://gh.io/copilot-install | bash",
@@ -32,6 +38,19 @@ SHELL_INSTALL_SCRIPTS = {
 CLAUDE_INSTALL_PS1 = "irm https://claude.ai/install.ps1 | iex"
 CODEX_INSTALL_PS1 = "irm https://chatgpt.com/codex/install.ps1 | iex"
 CODEX_NON_INTERACTIVE = "CODEX_NON_INTERACTIVE=1"
+CODEX_DAEMON_ONLY = "CODEX_INSTALL_DAEMON_ONLY=1"
+LATEST_VERSION_URLS = {
+    "claude": "https://downloads.claude.ai/claude-code-releases",
+    "codex": "https://releases.openai.com/codex/channels/latest",
+    "copilot": "https://github.com/github/copilot-cli/releases/latest",
+}
+AGENTS_COMMAND_TEMPLATES = {
+    "agents": "agents.sh",
+    "agents.ps1": "agents.ps1",
+    "agents.cmd": "agents.cmd",
+}
+_TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
+_PLACEHOLDER = re.compile(r"__[A-Z0-9_]+__")
 _LOCAL_PATH = 'PATH="$HOME/.local/bin:$PATH"; '
 _HERDR_RUN = 'PATH="$HOME/.local/bin:/opt/homebrew/bin:$PATH"; exec herdr "$@"'
 _HERDR_INTEGRATION_INSTALL = (
@@ -187,6 +206,74 @@ def ensure_agents(
                 f"{verb} {agent} on Windows",
                 partial(_ensure_windows_agent, runner, platform, agent, update=update),
             )
+
+
+def codex_daemon_install_script() -> str:
+    return SHELL_INSTALL_SCRIPTS["codex"].replace(
+        "| sh", f"| {CODEX_DAEMON_ONLY} {CODEX_NON_INTERACTIVE} sh"
+    )
+
+
+def _agents_command_values() -> dict[str, str]:
+    return {
+        "__CLAUDE_INSTALL__": SHELL_INSTALL_SCRIPTS["claude"],
+        "__CODEX_INSTALL__": shell_install_script("codex", unattended=True),
+        "__COPILOT_INSTALL__": SHELL_INSTALL_SCRIPTS["copilot"],
+        "__CODEX_DAEMON_INSTALL__": codex_daemon_install_script(),
+        "__CLAUDE_INSTALL_PS1__": CLAUDE_INSTALL_PS1,
+        "__CODEX_INSTALL_PS1__": CODEX_INSTALL_PS1,
+        "__CLAUDE_LATEST_URL__": LATEST_VERSION_URLS["claude"],
+        "__CODEX_LATEST_URL__": LATEST_VERSION_URLS["codex"],
+        "__COPILOT_LATEST_URL__": LATEST_VERSION_URLS["copilot"],
+        "__NPM_CLAUDE__": NPM_PACKAGES["claude"],
+        "__NPM_CODEX__": NPM_PACKAGES["codex"],
+        "__NPM_COPILOT__": NPM_PACKAGES["copilot"],
+    }
+
+
+def render_agents_command(name: str) -> str:
+    text = (_TEMPLATE_DIR / AGENTS_COMMAND_TEMPLATES[name]).read_text(encoding="utf-8")
+    for placeholder, value in _agents_command_values().items():
+        text = text.replace(placeholder, value)
+    leftover = _PLACEHOLDER.search(text)
+    if leftover is not None:
+        raise RuntimeError(f"{AGENTS_COMMAND_TEMPLATES[name]} keeps {leftover.group()}")
+    if name.endswith(".cmd"):
+        text = text.replace("\n", "\r\n")
+    return text
+
+
+_WSL_AGENTS_INSTALL = (
+    'src=$(wslpath -u "$1") && mkdir -p "$HOME/.local/bin" && '
+    'cp -f "$src" "$HOME/.local/bin/agents" && chmod 755 "$HOME/.local/bin/agents"'
+)
+
+
+def _write_executable(runner: Runner, path: Path, content: str) -> None:
+    runner.write_text(path, content)
+    if not runner.dry_run:
+        path.chmod(0o755)
+
+
+def deploy_agents_command(runner: Runner, platform: PlatformInfo) -> None:
+    if platform.os == OperatingSystem.MACOS:
+        runner.reporter.info("The agents command needs bash 4, so setup skips it on macOS.")
+        return
+    bin_dir = platform.home / ".local" / "bin"
+    if platform.os != OperatingSystem.WINDOWS or is_running_in_wsl():
+        _write_executable(runner, bin_dir / "agents", render_agents_command("agents"))
+        return
+    for name in ("agents.ps1", "agents.cmd"):
+        runner.write_text(bin_dir / name, render_agents_command(name))
+    _add_to_user_path(runner, bin_dir)
+    staged = platform.home / ".local" / "share" / "terminal" / "agents"
+    runner.write_text(staged, render_agents_command("agents"))
+    runner.run(
+        wsl_exec_command(
+            _wsl_distro(platform), ["sh", "-c", _WSL_AGENTS_INSTALL, "sh", str(staged)]
+        ),
+        label="install the agents command in WSL",
+    )
 
 
 def _herdr_command(platform: PlatformInfo, *arguments: str, script: str = _HERDR_RUN) -> list[str]:

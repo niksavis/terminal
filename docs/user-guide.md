@@ -194,6 +194,30 @@ See [`terminal-cheat-sheet.md`](../terminal-cheat-sheet.md) for the full command
 
 WezTerm and tmux shortcuts in this guide are project-defined keybindings from [`terminal_setup/templates/wezterm.lua`](../terminal_setup/templates/wezterm.lua) and [`terminal_setup/templates/tmux.conf`](../terminal_setup/templates/tmux.conf). They are intentionally included in the cheat sheet alongside native Linux commands.
 
+### The agents command
+
+With `--agents`, setup also installs the `agents` command. It shows and updates Claude Code, Codex, the Codex app-server daemon and Copilot CLI in one step. In WSL and on Linux it is `~/.local/bin/agents`. On Windows it is `agents.cmd` and `agents.ps1` in `%USERPROFILE%\.local\bin`. Setup does not install it on macOS, because the command needs bash 4.
+
+```bash
+agents status
+agents update
+agents install
+agents uninstall
+```
+
+| Command | What it does |
+| --- | --- |
+| `agents status` | prints the installed and the latest version of each agent, with a state: `ok`, `update`, `missing` or `unknown` (the latest version could not be read) |
+| `agents update` | runs the updater of each agent that is not `ok`, and installs a missing agent. With `--force`, it runs every updater |
+| `agents install` | installs each missing agent. With `--force`, it installs all of them again |
+| `agents uninstall` | asks you to type `yes`, then removes the agent programs. It keeps `~/.claude`, `~/.codex` and `~/.copilot` |
+
+In WSL, the command also runs the Windows side, and on Windows it also runs the WSL side. Add `--wsl` or `--win` to run only one side.
+
+A Codex daemon update stops running Codex work, so the command prints a warning first. When the daemon updater cannot start on Windows, the command runs the Codex installer with `CODEX_INSTALL_DAEMON_ONLY=1` instead.
+
+The command does not change an agent that npm or Homebrew installed. It prints the command to use instead, for example `npm install -g @anthropic-ai/claude-code@latest` or `brew upgrade claude-code`. Setup installs Copilot CLI on Windows with npm, so for that copy the command runs `npm install -g @github/copilot@latest` itself.
+
 ### herdr
 
 [herdr](https://herdr.dev/) keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Install it with `--herdr`. To install herdr with all three coding agents and link them, add `--herdr --agents all` to the install command. Setup installs it in WSL, on Linux and on macOS, and not on the Windows host, because herdr on Windows has more limits.

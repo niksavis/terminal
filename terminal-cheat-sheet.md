@@ -55,6 +55,13 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
 ```
 
+Show and update the coding agents and the Codex daemon in WSL and on Windows (installed with `--agents`):
+
+```bash
+agents status
+agents update
+```
+
 ## WezTerm Shortcuts (project custom)
 
 `Ctrl + Shift + Space` is a leader key with a 3-second timeout: press and release it, then press the second key. Plain `Ctrl + Space` is deliberately left free — it is the tmux prefix — and `Ctrl + A`/`Ctrl + E` keep their shell meanings (beginning/end of line).
