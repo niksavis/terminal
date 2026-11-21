@@ -1,0 +1,1 @@
+- **The `cli-tools` skill comes from basicly v0.47.1.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.47.1 release, and the repository harness is basicly 0.47.1 (term-uai89y).
