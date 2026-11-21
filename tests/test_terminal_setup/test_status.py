@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import itertools
 import os
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import replace
 from pathlib import Path
 from unittest import mock
@@ -131,8 +133,10 @@ def test_status_prints_one_table_for_the_linux_host(
         assert cli.print_status(runner, platform_info, FAKE) == 0
 
     lines = capsys.readouterr().out.splitlines()
-    assert lines[0] == "==> Linux"
-    rows = {line.split()[0]: line.split() for line in lines[2:]}
+    assert lines[0] == "Linux: reading the installed tool versions..."
+    assert lines[1].startswith("Linux: looking up the latest releases of ")
+    assert lines[2] == "==> Linux"
+    rows = {line.split()[0]: line.split() for line in lines[4:]}
     assert rows["rg"] == ["rg", "15.1.0", "15.1.0", "ok"]
     assert rows["fd"] == ["fd", "10.3.0", "10.4.0", "update"]
     assert rows["bat"] == ["bat", "-", "?", "missing"]
@@ -440,27 +444,96 @@ def test_setup_refuses_another_terminal_command_in_wsl_by_name(tmp_path: Path) -
         terminal_command.deploy_terminal_command(runner, platform_info)
 
 
+_UVX_STATUS = (
+    'if [ -n "$TERMINAL_STATUS_PLAN" ]; then '
+    'printf "%b" "$TERMINAL_TEST_PLAN" > "$TERMINAL_STATUS_PLAN"; fi'
+)
+_AGENTS_UPDATE = (
+    'echo "agents $*" >> "$TERMINAL_TEST_LOG"; '
+    'printf "%b" "$TERMINAL_TEST_AGENTS" >> "$AGENTS_REPORT"; exit "$TERMINAL_TEST_AGENTS_EXIT"'
+)
+_ALL_OK_AGENTS = "ok claude\nok codex\nok daemon\nok copilot\n"
+
+
+def _update(tmp_path: Path, *arguments: str, **extra: str) -> subprocess.CompletedProcess[str]:
+    _stub(tmp_path / "stubs" / "uvx", _UVX_STATUS)
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", _AGENTS_UPDATE)
+    values = {
+        "TERMINAL_TEST_TAG": terminal_command.setup_ref(),
+        "TERMINAL_TEST_PLAN": "checked WSL 28\n",
+        "TERMINAL_TEST_AGENTS": _ALL_OK_AGENTS,
+        "TERMINAL_TEST_AGENTS_EXIT": "0",
+        **extra,
+    }
+    return _run_terminal(tmp_path, "update", "--wsl", *arguments, **values)
+
+
 def _bootstrap_calls(tmp_path: Path) -> list[str]:
     log = tmp_path / "calls.log"
     lines = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
-    return [line for line in lines if not line.startswith("curl ")]
+    return [line for line in lines if line.startswith("bootstrap")]
 
 
 @needs_bash
-def test_terminal_update_runs_the_latest_release_bootstrap_then_agents_update(
-    tmp_path: Path,
-) -> None:
-    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "exit 0")
+def test_terminal_update_exits_1_and_names_a_failed_setup_run(tmp_path: Path) -> None:
+    result = _update(tmp_path, TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_BOOT="3")
 
-    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9")
+    assert result.returncode == 1
+    assert "!! setup v9.9.9: failed" in result.stdout
+    assert result.stdout.splitlines()[-1].startswith("WSL: failed: setup v9.9.9")
+
+
+@needs_bash
+def test_terminal_update_exits_1_and_names_a_failed_agents_update(tmp_path: Path) -> None:
+    result = _update(tmp_path, TERMINAL_TEST_AGENTS_EXIT="1")
+
+    assert result.returncode == 1
+    assert "!! agents update: failed" in result.stdout
+    assert result.stdout.splitlines()[-1] == "WSL: failed: agents update"
+
+
+@needs_bash
+def test_terminal_update_runs_no_updater_when_everything_is_up_to_date(tmp_path: Path) -> None:
+    result = _update(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert f"setup: installed {terminal_command.setup_ref()}, target v9.9.9" in result.stdout
-    calls = _bootstrap_calls(tmp_path)
-    assert calls[0] == "bootstrap ref=v9.9.9"
-    assert calls[1].startswith("agents update")
+    assert _bootstrap_calls(tmp_path) == []
+    ref = terminal_command.setup_ref()
+    assert result.stdout.splitlines()[-1] == (
+        f"WSL: Everything is up to date (setup {ref}, 28 tools, 3 agents)"
+    )
+
+
+@needs_bash
+def test_terminal_update_runs_the_bootstrap_only_for_an_outdated_tool(tmp_path: Path) -> None:
+    result = _update(tmp_path, TERMINAL_TEST_PLAN="checked WSL 28\noutdated WSL fd\n")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    ref = terminal_command.setup_ref()
+    assert _bootstrap_calls(tmp_path) == [f"bootstrap ref={ref}"]
+    assert "because of not up to date: fd" in result.stdout
+    assert result.stdout.splitlines()[-1] == f"WSL: updated setup {ref}"
+
+
+@needs_bash
+def test_terminal_update_runs_the_bootstrap_for_a_new_setup_release(tmp_path: Path) -> None:
+    result = _update(tmp_path, TERMINAL_TEST_TAG="v9.9.9")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _bootstrap_calls(tmp_path) == ["bootstrap ref=v9.9.9"]
     log = (tmp_path / "calls.log").read_text(encoding="utf-8")
     assert f"{terminal_command.RELEASES}/download/v9.9.9/install.sh" in log
+
+
+@needs_bash
+def test_terminal_update_names_only_the_agent_that_was_updated(tmp_path: Path) -> None:
+    agents_report = "ok claude\nupdated codex\nupdated daemon\nok copilot\n"
+
+    result = _update(tmp_path, TERMINAL_TEST_AGENTS=agents_report)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert _bootstrap_calls(tmp_path) == []
+    assert result.stdout.splitlines()[-1] == "WSL: updated codex codex daemon"
 
 
 @needs_bash
@@ -469,11 +542,13 @@ def test_terminal_update_pinned_keeps_the_installed_release(
 ) -> None:
     monkeypatch.setenv("TERMINAL_SETUP_REF", "v0.1.0")
 
-    result = _run_terminal(tmp_path, "update", "--wsl", "--pinned", TERMINAL_TEST_TAG="v9.9.9")
+    result = _update(
+        tmp_path, "--pinned", TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_PLAN="outdated WSL fd\n"
+    )
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "target v0.1.0" in result.stdout
-    assert _bootstrap_calls(tmp_path)[0] == "bootstrap ref=v0.1.0"
+    assert _bootstrap_calls(tmp_path) == ["bootstrap ref=v0.1.0"]
 
 
 @needs_bash
@@ -481,7 +556,7 @@ def test_terminal_update_pinned_keeps_the_installed_release(
 def test_terminal_update_stops_when_the_latest_release_cannot_be_read(
     tmp_path: Path, tag: str
 ) -> None:
-    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG=tag)
+    result = _update(tmp_path, TERMINAL_TEST_TAG=tag)
 
     assert result.returncode == 1
     assert "could not be read" in result.stdout
@@ -490,23 +565,38 @@ def test_terminal_update_stops_when_the_latest_release_cannot_be_read(
 
 
 @needs_bash
-def test_terminal_update_names_a_failed_setup_run(tmp_path: Path) -> None:
-    result = _run_terminal(
-        tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_BOOT="3"
+def test_terminal_update_shows_a_line_before_each_slow_step(tmp_path: Path) -> None:
+    _stub(tmp_path / "stubs" / "uvx", "sleep 1; " + _UVX_STATUS)
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "sleep 1; " + _AGENTS_UPDATE)
+    script = tmp_path / "terminal"
+    script.write_text(terminal_command.render_terminal_command("terminal"), encoding="utf-8")
+    if not (tmp_path / "stubs" / "curl").exists():
+        _stub(tmp_path / "stubs" / "curl", _FAKE_CURL)
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "PATH": guarded_system_path(tmp_path / "stubs"),
+        "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
+        "TERMINAL_TEST_TAG": terminal_command.setup_ref(),
+        "TERMINAL_TEST_BOOT": "0",
+        "TERMINAL_TEST_PLAN": "checked WSL 28\n",
+        "TERMINAL_TEST_AGENTS": _ALL_OK_AGENTS,
+        "TERMINAL_TEST_AGENTS_EXIT": "0",
+    }
+    process = subprocess.Popen(
+        ["bash", str(script), "update", "--wsl"], stdout=subprocess.PIPE, text=True, env=env
     )
+    assert process.stdout is not None
+    started = time.monotonic()
+    stamps = [(time.monotonic() - started, line.rstrip()) for line in process.stdout]
+    process.wait()
 
-    assert result.returncode == 1
-    assert "!! the setup run of v9.9.9 failed" in result.stdout
-
-
-@needs_bash
-def test_terminal_update_names_a_failed_agents_update(tmp_path: Path) -> None:
-    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "exit 1")
-
-    result = _run_terminal(tmp_path, "update", "--wsl", TERMINAL_TEST_TAG="v9.9.9")
-
-    assert result.returncode == 1
-    assert "!! agents update failed" in result.stdout
+    assert process.returncode == 0
+    names = [line for _, line in stamps]
+    assert names.index("==> status check") < names.index("status check: done (1 s)")
+    assert names.index("==> agents update") < names.index("agents update: done (1 s)")
+    gaps = [later[0] - earlier[0] for earlier, later in itertools.pairwise(stamps)]
+    assert stamps[0][0] < 1.0
+    assert max(gaps) < 2.0
 
 
 @pytest.mark.parametrize(
@@ -538,38 +628,95 @@ function Invoke-WebRequest {
   [pscustomobject]@{ Headers = @{ Location = "$base/$env:TERMINAL_TEST_TAG" } }
 }
 function Invoke-RestMethod {
-  $line = 'bootstrap ref=$env:TERMINAL_SETUP_REF url=' + "$args"
-  return "Add-Content -Path `$env:TERMINAL_TEST_LOG -Value `"$line`""
+  $url = "$args"
+  $log = 'Add-Content -Path $env:TERMINAL_TEST_LOG -Value '
+  $log += '("bootstrap ref=" + $env:TERMINAL_SETUP_REF'
+  $first = $log + ' + " url=' + $url + '")'
+  $lines = @($first, "Write-Output 'bootstrap says hello'")
+  if ($env:TERMINAL_TEST_BOOT -ne "0") { $lines += "throw 'bootstrap broke'" }
+  return ($lines -join "; ")
 }
 $script = $args[0]
 $rest = @($args | Select-Object -Skip 1)
 & $script @rest
 exit $LASTEXITCODE
 """
+_PS_AGENTS = r"""
+Add-Content -Path $env:TERMINAL_TEST_LOG -Value "agents $args"
+Write-Output "agents table line"
+$lines = $env:TERMINAL_TEST_AGENTS -split ','
+if ($env:AGENTS_REPORT) { Add-Content -Path $env:AGENTS_REPORT -Value $lines }
+exit [int]$env:TERMINAL_TEST_AGENTS_EXIT
+"""
 
 
-def _run_ps_update(tmp_path: Path, *arguments: str, tag: str) -> subprocess.CompletedProcess[str]:
+def _ps_stub_uvx(stubs: Path) -> None:
+    stubs.mkdir(parents=True, exist_ok=True)
+    posix = stubs / "uvx"
+    posix.write_text(
+        '#!/bin/sh\nif [ -n "$TERMINAL_STATUS_PLAN" ]; then '
+        'printf "%b" "$TERMINAL_TEST_PLAN" > "$TERMINAL_STATUS_PLAN"; fi\n',
+        encoding="utf-8",
+    )
+    posix.chmod(0o755)
+    (stubs / "uvx.cmd").write_text(
+        "@echo off\r\nif defined TERMINAL_STATUS_PLAN "
+        'powershell -NoProfile -Command "[IO.File]::WriteAllText($env:TERMINAL_STATUS_PLAN, '
+        "$env:TERMINAL_TEST_PLAN.Replace('|', [char]10))\"\r\nexit /b 0\r\n",
+        encoding="utf-8",
+    )
+
+
+def _run_ps_update(tmp_path: Path, **extra: str) -> subprocess.CompletedProcess[str]:
     profile = tmp_path / "profile"
     agents_ps1 = profile / ".local" / "bin" / "agents.ps1"
     agents_ps1.parent.mkdir(parents=True, exist_ok=True)
-    agents_ps1.write_text(
-        'Add-Content -Path $env:TERMINAL_TEST_LOG -Value "agents $args"; exit 0\n', encoding="utf-8"
-    )
+    agents_ps1.write_text(_PS_AGENTS, encoding="utf-8")
+    stubs = tmp_path / "stubs"
+    _ps_stub_uvx(stubs)
     script = tmp_path / "terminal.ps1"
     script.write_text(terminal_command.render_terminal_command("terminal.ps1"), encoding="utf-8")
     wrapper = tmp_path / "wrapper.ps1"
     wrapper.write_text(_PS_UPDATE_WRAPPER, encoding="utf-8")
     pwsh = str(shutil.which("pwsh"))
+    system = [str(Path(pwsh).parent)]
+    if sys.platform == "win32":
+        system.append(str(Path(os.environ.get("SYSTEMROOT", "C:/Windows")) / "System32"))
+        system.append(
+            str(
+                Path(os.environ.get("SYSTEMROOT", "C:/Windows"))
+                / "System32"
+                / "WindowsPowerShell"
+                / "v1.0"
+            )
+        )
+    else:
+        system += ["/usr/bin", "/bin"]
+    plan = extra.pop("plan", "checked Windows 19\n")
     env = {
         **os.environ,
         "USERPROFILE": str(profile),
         "HOME": str(profile),
-        "PATH": str(Path(pwsh).parent),
+        "PATH": os.pathsep.join([str(stubs), *system]),
         "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
-        "TERMINAL_TEST_TAG": tag,
+        "TERMINAL_TEST_TAG": terminal_command.setup_ref(),
+        "TERMINAL_TEST_BOOT": "0",
+        "TERMINAL_TEST_PLAN": plan.replace("\n", "|") if sys.platform == "win32" else plan,
+        "TERMINAL_TEST_AGENTS": "ok claude,ok codex,ok daemon,ok copilot",
+        "TERMINAL_TEST_AGENTS_EXIT": "0",
+        **extra,
     }
     return subprocess.run(
-        [pwsh, "-NoProfile", "-NonInteractive", "-File", str(wrapper), str(script), *arguments],
+        [
+            pwsh,
+            "-NoProfile",
+            "-NonInteractive",
+            "-File",
+            str(wrapper),
+            str(script),
+            "update",
+            "--win",
+        ],
         check=False,
         capture_output=True,
         text=True,
@@ -577,25 +724,62 @@ def _run_ps_update(tmp_path: Path, *arguments: str, tag: str) -> subprocess.Comp
     )
 
 
-@pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
-def test_terminal_ps1_update_runs_the_release_bootstrap_then_agents_update(tmp_path: Path) -> None:
-    result = _run_ps_update(tmp_path, "update", "--win", tag="v9.9.9")
+def _ps_bootstraps(tmp_path: Path) -> list[str]:
+    log = tmp_path / "calls.log"
+    lines = log.read_text(encoding="utf-8", errors="replace").splitlines() if log.exists() else []
+    return [line for line in lines if line.startswith("bootstrap")]
+
+
+needs_pwsh = pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
+
+
+@needs_pwsh
+def test_terminal_ps1_update_exits_1_and_names_a_failed_setup_run(tmp_path: Path) -> None:
+    result = _run_ps_update(tmp_path, TERMINAL_TEST_TAG="v9.9.9", TERMINAL_TEST_BOOT="1")
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "!! setup v9.9.9: failed" in result.stdout
+    assert "Windows: failed: setup v9.9.9" in result.stdout
+
+
+@needs_pwsh
+def test_terminal_ps1_update_exits_1_and_names_a_failed_agents_update(tmp_path: Path) -> None:
+    result = _run_ps_update(tmp_path, TERMINAL_TEST_AGENTS_EXIT="1")
+
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "!! agents update: failed" in result.stdout
+
+
+@needs_pwsh
+def test_terminal_ps1_update_runs_no_updater_when_everything_is_up_to_date(tmp_path: Path) -> None:
+    result = _run_ps_update(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "target v9.9.9" in result.stdout
-    calls = (tmp_path / "calls.log").read_text(encoding="utf-8", errors="replace").splitlines()
-    assert calls[0].startswith("bootstrap ref=v9.9.9")
-    assert "/download/v9.9.9/install.ps1" in calls[0]
-    assert calls[1] == "agents update --win"
+    assert _ps_bootstraps(tmp_path) == []
+    ref = terminal_command.setup_ref()
+    assert f"Windows: Everything is up to date (setup {ref}, 19 tools, 3 agents)" in result.stdout
 
 
-@pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
+@needs_pwsh
+def test_terminal_ps1_update_streams_the_bootstrap_and_agents_output(tmp_path: Path) -> None:
+    result = _run_ps_update(tmp_path, plan="checked Windows 19\noutdated Windows sd\n")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    ref = terminal_command.setup_ref()
+    assert _ps_bootstraps(tmp_path)[0].startswith(f"bootstrap ref={ref}")
+    assert f"/download/{ref}/install.ps1" in _ps_bootstraps(tmp_path)[0]
+    assert "bootstrap says hello" in result.stdout
+    assert "agents table line" in result.stdout
+    assert f"Windows: updated setup {ref}" in result.stdout
+
+
+@needs_pwsh
 @pytest.mark.parametrize("tag", ["", "v1.2.3;rm"])
 def test_terminal_ps1_update_stops_when_the_latest_release_cannot_be_read(
     tmp_path: Path, tag: str
 ) -> None:
-    result = _run_ps_update(tmp_path, "update", "--win", tag=tag)
+    result = _run_ps_update(tmp_path, TERMINAL_TEST_TAG=tag)
 
     assert result.returncode == 1
     assert "terminal update --pinned" in result.stdout
-    assert not (tmp_path / "calls.log").exists()
+    assert _ps_bootstraps(tmp_path) == []

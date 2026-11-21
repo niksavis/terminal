@@ -43,47 +43,104 @@ function Target-Ref {
   return $null
 }
 
-function Update-Here {
+$script:FailedSteps = @()
+$script:Updated = @()
+$script:StepOk = $true
+
+function Run-Step($name, [scriptblock]$block) {
+  Write-Host "==> $name"
+  $start = Get-Date
+  $global:LASTEXITCODE = 0
+  $ok = $true
+  try { & $block } catch { Write-Host $_.Exception.Message -ForegroundColor Red; $ok = $false }
+  if ($LASTEXITCODE -ne 0) { $ok = $false }
+  $seconds = [int]((Get-Date) - $start).TotalSeconds
+  if ($ok) { Write-Host "$($name): done ($seconds s)" }
+  else { Write-Host "!! $($name): failed ($seconds s)" -ForegroundColor Red; $script:FailedSteps += $name }
+  $script:StepOk = $ok
+}
+
+function Plan-Field($lines, $kind) {
+  @($lines | Where-Object { $_ -like "$kind *" } | ForEach-Object { ($_ -split ' ', 3)[2] })
+}
+
+function Update-Windows {
+  Write-Host "Windows: checking the setup release, the tools and the agents..."
   $release = Target-Ref
   if (-not $release) {
     Write-Host "!! the latest terminal release could not be read from $Releases/latest, so terminal does not update. To update with the installed release, run: terminal update --pinned"
-    return $false
+    $script:FailedSteps += "release lookup"
+    return
   }
   Write-Host "setup: installed $InstalledRef, target $release"
-  $ok = $true
-  $env:TERMINAL_SETUP_REF = $release
-  try {
-    if ($release -match $TagPattern) {
-      & { Invoke-RestMethod "$Releases/download/$release/install.ps1" | Invoke-Expression }
-    } else {
-      $uvx = Find-Uvx
-      if (-not $uvx) { throw "uvx is not on the PATH" }
-      & $uvx --python 3.14 --refresh-package terminal --from "__SETUP_SOURCE__" terminal-setup
-      if ($LASTEXITCODE -ne 0) { throw "exit code $LASTEXITCODE" }
-    }
-  } catch {
-    Write-Host "!! the setup run of $release failed: $($_.Exception.Message)"
-    $ok = $false
+  $uvx = Find-Uvx
+  if (-not $uvx) {
+    Write-Host "!! uvx is not on the PATH, so terminal cannot check the tools. Run the terminal setup again to install uv."
+    $script:FailedSteps += "status check"
+    return
   }
+  $plan = [IO.Path]::GetTempFileName()
+  $env:TERMINAL_STATUS_PLAN = $plan
+  $env:TERMINAL_STATUS_SIDE = "windows"
+  Run-Step "status check" { & $uvx --from "__SETUP_SOURCE__" terminal-setup --only status }
+  Remove-Item Env:TERMINAL_STATUS_PLAN, Env:TERMINAL_STATUS_SIDE -ErrorAction SilentlyContinue
+  $lines = @(Get-Content $plan -ErrorAction SilentlyContinue)
+  Remove-Item $plan -ErrorAction SilentlyContinue
+  if (-not $script:StepOk) { return }
+  $outdated = Plan-Field $lines "outdated"
+  $checked = (Plan-Field $lines "checked") | Select-Object -First 1
+  $reasons = @()
+  if ($release -ne $InstalledRef) { $reasons += "setup $InstalledRef -> $release" }
+  if ($outdated.Count) { $reasons += "not up to date: $($outdated -join ' ')" }
+  if (-not $reasons.Count) {
+    Write-Host "setup $($release): ok, every tool is up to date"
+  } else {
+    Write-Host "setup $release runs, because of $($reasons -join '; ')"
+    $env:TERMINAL_SETUP_REF = $release
+    if ($release -match $TagPattern) {
+      Run-Step "setup $release" { Invoke-RestMethod "$Releases/download/$release/install.ps1" | Invoke-Expression }
+    } else {
+      Run-Step "setup $release" { & $uvx --python 3.14 --refresh-package terminal --from "__SETUP_SOURCE__" terminal-setup }
+    }
+    if ($script:StepOk) { $script:Updated += "setup $release" }
+  }
+  $agentsCount = 0
   $agents = Join-Path $H ".local\bin\agents.ps1"
   if (Test-Path $agents) {
+    $report = [IO.Path]::GetTempFileName()
+    $env:AGENTS_REPORT = $report
     $env:AGENTS_NESTED = "1"
-    if ($Target -eq "win") { & $agents update "--win" } else { & $agents update }
-    if ($LASTEXITCODE -ne 0) { Write-Host "!! agents update failed"; $ok = $false }
-    Remove-Item Env:AGENTS_NESTED -ErrorAction SilentlyContinue
+    Run-Step "agents update" { & $agents update "--win" }
+    Remove-Item Env:AGENTS_REPORT, Env:AGENTS_NESTED -ErrorAction SilentlyContinue
+    $done = @(Get-Content $report -ErrorAction SilentlyContinue)
+    Remove-Item $report -ErrorAction SilentlyContinue
+    $agentsCount = @($done | Where-Object { $_ -match '^(ok|updated) (claude|codex|copilot)$' }).Count
+    foreach ($line in $done) {
+      if ($line -like "updated *") { $script:Updated += (($line -split ' ', 2)[1] -replace '^daemon$', 'codex daemon') }
+    }
   }
-  return $ok
+  if ($script:FailedSteps.Count) {
+    Write-Host "Windows: failed: $($script:FailedSteps -join ', ')" -ForegroundColor Red
+  } elseif (-not $script:Updated.Count) {
+    Write-Host "Windows: Everything is up to date (setup $release, $(if ($checked) { $checked } else { 0 }) tools, $agentsCount agents)" -ForegroundColor Green
+  } else {
+    Write-Host "Windows: updated $($script:Updated -join ', ')" -ForegroundColor Green
+  }
+}
+
+function Update-Wsl {
+  if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) { Write-Host "WSL: wsl.exe is not on the PATH, so terminal skips WSL."; return }
+  $forward = @("update", "--wsl")
+  if ($Pinned) { $forward += "--pinned" }
+  Write-Host "==> WSL"
+  & wsl.exe --exec bash -c 'p=~/.local/bin/terminal; test -x $p || { echo terminal is not in WSL, so terminal skips WSL. To add it, run the terminal setup.; exit 0; }; exec $p $@' terminal $forward
+  if ($LASTEXITCODE -ne 0) { $script:FailedSteps += "WSL" }
 }
 
 if ($Cmd -eq "update") {
-  if ($Target -eq "wsl") {
-    $forward = @("update", "--wsl")
-    if ($Pinned) { $forward += "--pinned" }
-    & wsl.exe --exec bash -c 'p=~/.local/bin/terminal; test -x $p || { echo terminal is not in WSL, so terminal skips WSL. To add it, run the terminal setup.; exit 0; }; exec $p $@' terminal $forward
-    if ($LASTEXITCODE -ne 0) { exit 1 }
-    exit 0
-  }
-  if (-not (Update-Here)) { exit 1 }
+  if ($Target -ne "wsl") { Update-Windows }
+  if ($Target -ne "win") { Update-Wsl }
+  if ($script:FailedSteps.Count) { Write-Host "terminal update failed: $($script:FailedSteps -join ', ')" -ForegroundColor Red; exit 1 }
   exit 0
 }
 

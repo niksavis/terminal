@@ -443,6 +443,22 @@ def test_agents_update_runs_only_the_updaters_of_outdated_agents(tmp_path: Path)
 
 
 @needs_bash4
+def test_agents_update_prints_one_line_for_a_current_agent_and_reports_each_agent(
+    tmp_path: Path,
+) -> None:
+    _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.170.0", "copilot": "1.0.5"})
+    report = tmp_path / "report"
+
+    result = _run_agents(tmp_path, "update", AGENTS_REPORT=str(report))
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+    assert "Claude Code (WSL): ok, up to date (2.1.0)" in plain
+    assert "==> Claude Code (WSL)" not in plain
+    lines = report.read_text(encoding="utf-8").splitlines()
+    assert {"ok claude", "updated codex", "ok copilot"} <= set(lines)
+
+
+@needs_bash4
 def test_agents_update_with_force_runs_every_updater(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
 

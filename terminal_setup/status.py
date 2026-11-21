@@ -16,11 +16,16 @@ RUNTIMES = ("python", "python3")
 NODE = "node"
 
 
+OPTIONAL_TOOLS = frozenset({"herdr"})
+MANAGED = "managed"
+
+
 @dataclass(frozen=True)
 class Installed:
     command: str
     path: str
     version: str
+    managed: bool = False
 
 
 @dataclass(frozen=True)
@@ -132,6 +137,8 @@ def rows(
             result.append(Row(command, installed, "-", "ok" if item and item.path else "missing"))
             continue
         now = state(item, newest) if command not in RUNTIMES else runtime_state(item)
+        if item is not None and item.managed and now != "missing":
+            now = MANAGED
         result.append(Row(command, installed, version_of(newest) or newest or "?", now))
     return result
 
@@ -146,4 +153,17 @@ def table(side: str, table_rows: Iterable[Row]) -> list[str]:
         f"{row.command:<{tool}}  {row.installed:<{have}}  {row.latest:<{newest}}  {row.state}"
         for row in listed
     ]
+    return lines
+
+
+def plan_lines(side: str, table_rows: Iterable[Row]) -> list[str]:
+    listed = list(table_rows)
+    lines = [f"checked {side} {len(listed)}"]
+    for row in listed:
+        if row.command in APT_TOOLS and row.state == "update":
+            lines.append(f"apt {side} {row.command}")
+        elif row.state == "update" or (
+            row.state == "missing" and row.command not in OPTIONAL_TOOLS
+        ):
+            lines.append(f"outdated {side} {row.command}")
     return lines

@@ -26,7 +26,9 @@ function Step($name, [scriptblock]$block) {
   $global:LASTEXITCODE = 0
   try { & $block } catch { Write-Host $_ -ForegroundColor Red; $global:LASTEXITCODE = 1 }
   if ($LASTEXITCODE -ne 0) { Write-Host "!! $name failed" -ForegroundColor Red; $script:Failed += $name }
+  else { Write-Host "$($name): done" }
 }
+function Report($line) { if ($env:AGENTS_REPORT) { Add-Content -Path $env:AGENTS_REPORT -Value $line } }
 
 function Locate($c) {
   $found = Get-Command $c -CommandType Application, ExternalScript -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -204,7 +206,8 @@ function Uninstall-Agent($n) {
 
 function Maybe($n, [scriptblock]$block) {
   $title = "$($Label[$n]) (Windows)"
-  if (Needs $n) { Step $title $block } else { Say $title; "up to date ($($script:Cur[$n]))" }
+  if (Needs $n) { Step $title $block; Report "updated $n" }
+  else { Write-Host "$($title): ok, up to date ($($script:Cur[$n]))"; Report "ok $n" }
 }
 
 function Run-Windows {
