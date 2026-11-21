@@ -31,9 +31,10 @@
             Write-Warning "The latest uv release could not be read; setup continues with uv $installed."
         }
         if ($latest -and $latest -ne $installed) {
-            powershell -NoProfile -ExecutionPolicy Bypass -Command 'irm https://astral.sh/uv/install.ps1 | iex'
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "The uv installer failed with exit code $LASTEXITCODE; setup continues with uv $installed."
+            try {
+                & { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression }
+            } catch {
+                Write-Warning "The uv installer failed ($($_.Exception.Message)); setup continues with uv $installed."
             }
         }
     }
