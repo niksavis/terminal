@@ -334,10 +334,13 @@ Add options to any setup command. Each command below runs as copied, without a c
 - Any shell with uv, one fixed release: `uvx --from https://github.com/niksavis/terminal/archive/v0.19.1.zip terminal-setup --dry-run` (take the tag from the [release page](https://github.com/niksavis/terminal/releases))
 - In a clone: `uv run python setup-terminal.py --dry-run`
 
+Setup prints one line per phase (prerequisites, tools, agents and commands, configuration, run checks), a summary per side, and the path of a log file with every step, file, command and its output. In a terminal the current phase shows a live spinner; when the output is not a terminal, or `NO_COLOR` is set, setup prints plain lines. A question pauses the live line and waits for your answer. Logs go to `%LOCALAPPDATA%\terminal-setup\logs` on Windows and `~/.local/state/terminal-setup/logs` elsewhere; setup keeps the newest 10.
+
 | Option | What it does |
 | --- | --- |
 | `--only check` | check the prerequisites, then exit |
 | `--dry-run` | print each step and change nothing |
+| `--verbose` | print every step, file and command on the screen, as before v0.24.3, instead of one line per phase |
 | `--only config` | re-apply all configs (also the Claude status line); install no packages |
 | `--only report` | print the verification report, then exit. It shows each tool with its path and version, warns about Python older than 3.14 and Node.js older than v26, and lists the herdr integrations |
 | `--report` | run setup, then print the verification report |

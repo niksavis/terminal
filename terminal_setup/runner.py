@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from . import progress
 from .platform import is_wsl_exec_command
 
 
@@ -162,20 +163,22 @@ class Runner:
                 stderr="",
             )
         if interactive and self.unattended:
-            return _run_keeping_stderr(command, check=check, cwd=cwd, env=env)
+            with progress.paused(self.reporter):
+                return _run_keeping_stderr(command, check=check, cwd=cwd, env=env)
         if interactive:
-            return subprocess.run(  # nosec B603
-                command,
-                check=check,
-                cwd=cwd,
-                env=env,
-                stdin=subprocess.DEVNULL if self.unattended else None,
-                stdout=None,
-                stderr=None,
-                text=True,
-            )
+            with progress.paused(self.reporter):
+                return subprocess.run(  # nosec B603
+                    command,
+                    check=check,
+                    cwd=cwd,
+                    env=env,
+                    stdin=subprocess.DEVNULL if self.unattended else None,
+                    stdout=None,
+                    stderr=None,
+                    text=True,
+                )
         wsl_output = is_wsl_exec_command(command)
-        return subprocess.run(  # nosec B603
+        result = subprocess.run(  # nosec B603
             command,
             check=check,
             cwd=cwd,
@@ -186,6 +189,8 @@ class Runner:
             encoding="utf-8" if wsl_output else None,
             errors="replace" if wsl_output else None,
         )
+        progress.log_output(self.reporter, (result.stdout or "") + (result.stderr or ""))
+        return result
 
     def which(self, command: str) -> str | None:
         return shutil.which(command)

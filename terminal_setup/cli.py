@@ -6,22 +6,25 @@ import shlex
 import subprocess  # nosec B404
 import sys
 from collections.abc import Sequence
+from datetime import datetime
 from functools import partial
 from pathlib import Path
 
 from . import (
+    __version__,
     agents,
     configs,
     harness,
     platform,
     prerequisites,
+    progress,
     release_install,
     terminal_command,
     windows_tools,
 )
 from . import status as tool_status
 from .platform import is_running_in_wsl, rerun_command, setup_command, wsl_exec_command
-from .runner import ConsoleReporter, Runner
+from .runner import ConsoleReporter, Reporter, Runner
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -50,6 +53,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Print the steps that would be executed without making changes.",
+    )
+    run.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print every step and file on the screen instead of one line per phase.",
     )
     run.add_argument(
         "--only",
@@ -401,7 +409,7 @@ def verify_tools_run(  # noqa: PLR0913
     herdr: bool,
     no_sudo: bool,
 ) -> None:
-    runner.reporter.step("Checking that each installed tool runs")
+    runner.reporter.info("Checking that each installed tool runs")
     in_wsl = is_running_in_wsl()
     windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
     shell_side = in_wsl or windows_host
@@ -859,8 +867,15 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             "so the flag is a no-op."
         )
 
+    host_side = _host_side(platform_info)
+    windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
     if not config_only:
-        runner.reporter.step("Installing tools")
+        _phase(
+            runner,
+            "WSL tools" if windows_host else "Tools",
+            "WSL" if windows_host else host_side,
+            "Installing tools",
+        )
         if in_wsl or platform_info.os == platform.OperatingSystem.WINDOWS:
             if in_wsl:
                 runner.reporter.info(
@@ -895,12 +910,14 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             prerequisites.ensure_shell_tools(runner, platform_info, no_sudo=effective_no_sudo)
             prerequisites.ensure_host_cli_extras(runner, platform_info, no_sudo=effective_no_sudo)
 
-        if platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl:
+        if windows_host:
             prerequisites.attempt(
                 runner,
                 "install img-zoom in WSL",
                 partial(configs.install_img_zoom_wsl, runner, platform_info, update=True),
             )
+        if windows_host:
+            _phase(runner, "Windows tools", "Windows")
         prerequisites.attempt(
             runner,
             "install img-zoom",
@@ -945,6 +962,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             partial(prerequisites.ensure_node, runner, platform_info, update=True),
         )
 
+        _phase(runner, "Agents and commands", host_side)
         agents.ensure_agents(runner, platform_info, selected_agents, update=True)
         prerequisites.attempt(
             runner,
@@ -979,7 +997,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 partial(prerequisites.ensure_starship, runner, platform_info, update=True),
             )
 
-    runner.reporter.step("Deploying configuration")
+    _phase(runner, "Configuration", host_side, "Deploying configuration")
     configs.deploy_all(
         runner,
         platform_info,
@@ -1002,6 +1020,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         )
 
     if not config_only and not runner.dry_run:
+        _phase(runner, "Run checks", host_side)
         verify_tools_run(
             runner,
             platform_info,
@@ -1048,6 +1067,18 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     return 0
 
 
+def _setup_reporter(args: argparse.Namespace) -> Reporter:
+    if args.verbose or args.only in {"check", "status", "report"}:
+        return ConsoleReporter()
+    try:
+        directory = progress.log_dir(windows_host=os.name == "nt", home=Path.home())
+        log = progress.new_log(directory, datetime.now())
+        display = progress.RichDisplay() if progress.use_rich() else progress.PlainDisplay()
+        return progress.PhasedReporter(display, log, total=0)
+    except OSError:
+        return ConsoleReporter()
+
+
 def main(argv: list[str] | None = None) -> int:
 
     os.environ["PATH"] = platform.path_without_own_environment(
@@ -1059,7 +1090,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     parser = build_parser()
     args = parser.parse_args(argv)
-    reporter = ConsoleReporter()
+    reporter = _setup_reporter(args)
     runner = Runner(dry_run=args.dry_run, reporter=reporter, unattended=args.unattended)
     try:
         harness.harness_version()
@@ -1080,6 +1111,46 @@ def main(argv: list[str] | None = None) -> int:
     except (RuntimeError, ValueError, OSError) as error:
         reporter.error(str(error))
         return 1
+    finally:
+        if isinstance(reporter, progress.PhasedReporter):
+            reporter.finish()
+
+
+def _host_side(platform_info: platform.PlatformInfo) -> str:
+    if is_running_in_wsl():
+        return "WSL"
+    if platform_info.os == platform.OperatingSystem.WINDOWS:
+        return "Windows"
+    return "macOS" if platform_info.os == platform.OperatingSystem.MACOS else "Linux"
+
+
+def setup_phases(
+    platform_info: platform.PlatformInfo, *, config_only: bool, dry_run: bool
+) -> list[str]:
+    windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not is_running_in_wsl()
+    if config_only:
+        return ["Configuration"]
+    tools = ["WSL tools", "Windows tools"] if windows_host else ["Tools"]
+    checks = [] if dry_run else ["Run checks"]
+    return ["Prerequisites", *tools, "Agents and commands", "Configuration", *checks]
+
+
+def _phase(runner: Runner, name: str, side: str, console_text: str | None = None) -> None:
+    if isinstance(runner.reporter, progress.PhasedReporter):
+        runner.reporter.phase(name, side)
+    elif console_text:
+        runner.reporter.step(console_text)
+
+
+def _start_phases(args: argparse.Namespace, runner: Runner, info: platform.PlatformInfo) -> None:
+    reporter = runner.reporter
+    if not isinstance(reporter, progress.PhasedReporter):
+        return
+    phases = setup_phases(info, config_only=args.only == "config", dry_run=args.dry_run)
+    reporter.plan(len(phases))
+    side = _host_side(info)
+    where = "Windows host + WSL" if side == "Windows" else side
+    reporter.header(f"terminal setup v{__version__} ({where})")
 
 
 def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
@@ -1102,7 +1173,9 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         return status
 
     config_only = args.only == "config"
+    _start_phases(args, runner, platform_info)
     if not config_only:
+        _phase(runner, "Prerequisites", _host_side(platform_info))
         status = run_check(platform_info, runner)
         if status != 0:
             if args.dry_run:
