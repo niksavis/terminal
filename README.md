@@ -39,7 +39,7 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 | `--only report` | show what is installed, with versions, then stop |
 | `--dry-run` | show each step and change nothing |
 
-All options are in the [User guide](docs/user-guide.md#cli-options).
+All options are in the [User guide](docs/user-guide.md#cli-options). To update later, run `terminal update` (from v0.24.0 on); `terminal status` shows what is out of date, and `agents status` and `agents update` cover the coding agents ([details](docs/user-guide.md#the-agents-command)).
 
 ## What you get
 

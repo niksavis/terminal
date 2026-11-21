@@ -443,14 +443,12 @@ irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1 | 
 <p>Install herdr too, in WSL, on Linux and on macOS (from Windows, setup installs it in WSL):</p>
 <pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --herdr</code></pre>
 <pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --herdr</code></pre>
-<p>Update everything (run the install again; <code>--update</code> also upgrades the WSL distro packages), then check what is installed:</p>
-<pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update
-&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --only report</code></pre>
-<pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update
-curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report</code></pre>
 <p>Show which installed tools have a newer release, and update them all, in WSL and on Windows:</p>
 <pre class="code-block" data-language="bash"><code>terminal status
 terminal update</code></pre>
+<p><code>terminal update</code> is new in v0.24.0. From an older release, run the install command once. Add <code>--update</code> to also upgrade the WSL distro packages:</p>
+<pre class="code-block" data-language="powershell"><code>&amp; ([scriptblock]::Create((irm https://github.com/niksavis/terminal/releases/latest/download/install.ps1))) --update</code></pre>
+<pre class="code-block" data-language="bash"><code>curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --update</code></pre>
 <p>Show and update the coding agents and the Codex daemon in WSL and on Windows (installed with <code>--agents</code>):</p>
 <pre class="code-block" data-language="bash"><code>agents status
 agents update</code></pre>
