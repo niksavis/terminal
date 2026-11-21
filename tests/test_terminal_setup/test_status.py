@@ -390,3 +390,26 @@ def test_the_terminal_command_pins_the_ref_that_setup_ran_from(
     monkeypatch.setenv("TERMINAL_SETUP_REF", ref)
 
     assert terminal_command.setup_ref() == (expected or f"v{terminal_command.__version__}")
+
+
+def test_setup_refuses_another_terminal_command_in_wsl_by_name(tmp_path: Path) -> None:
+    platform_info = replace(_windows_platform(), home=tmp_path)
+    runner = RecordingRunner(
+        reporter=CapturingReporter(),
+        outputs={
+            tuple(cli.wsl_exec_command("Ubuntu", ["sh", "-c", terminal_command._WSL_REFUSE])): (
+                3,
+                "/usr/local/bin/terminal\n",
+            )
+        },
+    )
+
+    with (
+        mock.patch.object(terminal_command, "is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._add_to_process_path"),
+        pytest.raises(
+            RuntimeError, match="another terminal command is on PATH at /usr/local/bin/terminal"
+        ),
+    ):
+        terminal_command.deploy_terminal_command(runner, platform_info)

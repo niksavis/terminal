@@ -21,7 +21,12 @@ TERMINAL_COMMAND_TEMPLATES = {
     "terminal.ps1": "terminal.ps1",
     "terminal.cmd": "terminal.cmd",
 }
-_WSL_FOUND = "command -v terminal 2>/dev/null || true"
+_WSL_OTHER = 3
+_WSL_REFUSE = (
+    "found=$(command -v terminal 2>/dev/null || true); "
+    'case "$found" in ""|"$HOME/.local/bin/terminal"|/mnt/*) exit 0;; esac; '
+    'echo "$found"; exit 3'
+)
 
 
 _REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
@@ -67,7 +72,7 @@ def deploy_terminal_command(runner: Runner, platform: PlatformInfo) -> None:
     for name in ("terminal.ps1", "terminal.cmd"):
         runner.write_text(bin_dir / name, render_terminal_command(name))
     _add_to_user_path(runner, bin_dir)
-    found = _run_shell_read(runner, _WSL_FOUND, wsl_distro=_wsl_distro(platform)).stdout.strip()
-    wsl_home = _run_shell_read(runner, 'printf %s "$HOME"', wsl_distro=_wsl_distro(platform))
-    _refuse_other(found, (Path(wsl_home.stdout.strip() or "~") / ".local" / "bin" / "terminal",))
+    probe = _run_shell_read(runner, _WSL_REFUSE, wsl_distro=_wsl_distro(platform))
+    if probe.returncode == _WSL_OTHER:
+        _refuse_other(str(probe.stdout).strip() or "terminal in WSL", ())
     install_wsl_command(runner, platform, "terminal", render_terminal_command("terminal"))
