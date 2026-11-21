@@ -96,10 +96,12 @@ def shell_update_script(agent: str) -> str:
 
 
 def _ensure_shell_agent(
-    runner: Runner, agent: str, *, update: bool, wsl_distro: str | None
+    runner: Runner, agent: str, *, update: bool, wsl_distro: str | None, install: bool = True
 ) -> None:
     where = "in WSL" if wsl_distro else "on this host"
     present = _run_shell_read(runner, present_query(agent), wsl_distro=wsl_distro).returncode == 0
+    if not present and not install:
+        return
     if not present:
         _run_shell_command(
             runner,
@@ -140,9 +142,11 @@ def _windows_npm(runner: Runner) -> str:
 
 
 def _ensure_windows_agent(
-    runner: Runner, platform: PlatformInfo, agent: str, *, update: bool
+    runner: Runner, platform: PlatformInfo, agent: str, *, update: bool, install: bool = True
 ) -> None:
     found = windows_agent_path(runner, platform, agent)
+    if found is None and not install:
+        return
     if found is None:
         if agent == "claude":
             runner.run(
@@ -186,9 +190,10 @@ def ensure_agents(
     windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
     wsl_distro = _wsl_distro(platform) if windows_host else None
     for agent in AGENTS:
-        if agent not in selected:
+        named = agent in selected
+        if not named and not update:
             continue
-        verb = "update" if update else "install"
+        verb = "install" if named and not update else "update"
         attempt(
             runner,
             f"{verb} {agent}",
@@ -198,14 +203,28 @@ def ensure_agents(
                 agent,
                 update=update,
                 wsl_distro=wsl_distro,
+                install=named,
             ),
         )
         if windows_host:
             attempt(
                 runner,
                 f"{verb} {agent} on Windows",
-                partial(_ensure_windows_agent, runner, platform, agent, update=update),
+                partial(
+                    _ensure_windows_agent, runner, platform, agent, update=update, install=named
+                ),
             )
+
+
+def installed_agents(runner: Runner, platform: PlatformInfo) -> tuple[str, ...]:
+    windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
+    wsl_distro = _wsl_distro(platform) if windows_host else None
+    found = []
+    for agent in AGENTS:
+        shell = _run_shell_read(runner, present_query(agent), wsl_distro=wsl_distro).returncode == 0
+        if shell or (windows_host and windows_agent_path(runner, platform, agent) is not None):
+            found.append(agent)
+    return tuple(found)
 
 
 def codex_daemon_install_script() -> str:

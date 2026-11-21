@@ -54,11 +54,15 @@ def test_a_user_doc_never_tells_a_user_to_install_from_main(doc: str) -> None:
     assert commands == []
 
 
-def test_powershell_bootstrap_updates_uv_before_uvx_runs() -> None:
+def test_powershell_bootstrap_updates_uv_inline_before_uvx_runs() -> None:
     text = (ROOT / "install.ps1").read_text(encoding="utf-8")
+    update = "-Command 'irm https://astral.sh/uv/install.ps1 | iex'"
 
-    assert text.index("uv self update") < text.index("uvx --python")
-    assert "$setupArgs -contains '--update'" in text
+    assert "uv self update" not in text
+    assert text.count(update) == 2
+    assert text.rindex(update) < text.index("uvx --python")
+    assert "releases/latest" in text
+    assert "--update" not in text
 
 
 def test_powershell_bootstrap_clears_its_arguments_variable() -> None:

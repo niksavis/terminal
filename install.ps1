@@ -18,10 +18,23 @@
         if ($LASTEXITCODE -ne 0) {
             throw "The uv installer failed with exit code $LASTEXITCODE."
         }
-    } elseif ($setupArgs -contains '--update' -and $uv.Source.StartsWith($env:USERPROFILE, [StringComparison]::OrdinalIgnoreCase)) {
-        uv self update
-        if ($LASTEXITCODE -ne 0) {
-            Write-Warning "uv self update failed with exit code $LASTEXITCODE; setup continues with the installed uv."
+    } elseif ($uv.Source.StartsWith($env:USERPROFILE, [StringComparison]::OrdinalIgnoreCase)) {
+        $installed = if ((& $uv.Source --version) -match '\d+\.\d+\.\d+') { $Matches[0] } else { '' }
+        $latest = ''
+        try {
+            $request = [System.Net.WebRequest]::Create('https://github.com/astral-sh/uv/releases/latest')
+            $request.Method = 'HEAD'
+            $response = $request.GetResponse()
+            if ($response.ResponseUri.AbsoluteUri -match '/tag/v?(\d+\.\d+\.\d+)') { $latest = $Matches[1] }
+            $response.Close()
+        } catch {
+            Write-Warning "The latest uv release could not be read; setup continues with uv $installed."
+        }
+        if ($latest -and $latest -ne $installed) {
+            powershell -NoProfile -ExecutionPolicy Bypass -Command 'irm https://astral.sh/uv/install.ps1 | iex'
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning "The uv installer failed with exit code $LASTEXITCODE; setup continues with uv $installed."
+            }
         }
     }
 
