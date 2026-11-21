@@ -2,6 +2,18 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.25.1 - 2026-11-21
+
+Delta: v0.25.0..v0.25.1
+
+### Highlights
+
+- **`terminal update` shows only what needs action, and setup skips the run checks when nothing changed.** The status check and the agents step list only rows that are not ok; when everything is current each side prints one line. The setup summary counts tools in the same unit on both sides and lists managed copies by name (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- fix(update): show only rows that need action and skip unneeded run checks (term-uuvvl7) (c15039a)
+
 ## v0.25.0 - 2026-11-21
 
 Delta: v0.24.2..v0.25.0
