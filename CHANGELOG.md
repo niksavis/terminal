@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.23.0 - 2026-11-21
+
+Delta: v0.22.0..v0.23.0
+
+### Highlights
+
+- **`terminal status` shows which tools need an update.** Setup installs the `terminal` command on every run. `terminal status` prints a table for WSL and for Windows with each tool, its installed version, its latest release and a state: `ok`, `update`, `missing` or `unknown`. It also prints the `agents status` table when the agents command is installed. `terminal-setup --only status` prints the same tool table (term-jim1nd).
+- **Running the install again updates every tool that setup installed.** A plain install now updates each tool that setup put in your user profile to its latest release, and the agents and herdr that are already installed, without `--update`. Machine-wide copies and copies from other installers stay as they are. `--update` now only adds the upgrade of every installed WSL distro package. Setup installs the `agents` command whenever an agent is installed. On Windows, `install.ps1` updates uv with the uv installer before setup starts, never with `uv self update`, which a group policy can block (term-6ltbzq).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-t9juf1) (288583b)
+- fix(setup): update uv in the running powershell without a policy flag (term-6ltbzq) (46f687f)
+- feat(setup): update the tools that setup owns on every install (term-6ltbzq) (a2c5bab)
+- fix(status): check for another terminal command in wsl by exit code (term-jim1nd) (04f82d3)
+- ci(e2e): run terminal status after the consumer install (term-jim1nd) (5e9b619)
+- fix(status): pin the terminal command to the ref that setup ran from (term-jim1nd) (e99ffd5)
+- feat(status): add the terminal status command for every installed tool (term-jim1nd) (9f02655)
+
 ## v0.22.0 - 2026-11-21
 
 Delta: v0.21.2..v0.22.0
