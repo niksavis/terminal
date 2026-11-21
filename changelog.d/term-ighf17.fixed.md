@@ -1,0 +1,1 @@
+- **`terminal update` runs on macOS.** bash 3.2 reported an empty argument list as unbound under `set -u`; the script now passes the WSL side as an optional word (term-ighf17).
