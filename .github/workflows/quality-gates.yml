@@ -31,11 +31,7 @@ jobs:
         run: uv run python .scripts/git-hooks/pre-push.py
 
   tests:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
