@@ -901,3 +901,14 @@ def test_the_agents_table_shows_the_daemon_under_codex(tmp_path: Path) -> None:
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout).splitlines()
     codex = next(index for index, line in enumerate(plain) if line.startswith("codex "))
     assert plain[codex + 1].startswith("  daemon ")
+
+
+@needs_bash4
+def test_agents_status_leaves_out_its_heading_under_terminal_status(tmp_path: Path) -> None:
+    _agents_home(tmp_path, {"claude": "2.1.0"})
+
+    plain = _run_agents(tmp_path, "status")
+    bare = _run_agents(tmp_path, "status", AGENTS_NO_HEADING="1")
+
+    assert "==> " in re.sub(r"\x1b\[[0-9;]*m", "", plain.stdout)
+    assert "==> " not in re.sub(r"\x1b\[[0-9;]*m", "", bare.stdout)

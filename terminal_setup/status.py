@@ -68,6 +68,12 @@ def _numbers(version: str) -> tuple[int, ...]:
     return tuple(int(part) for part in version.split("."))
 
 
+def _is_newer_dated(installed: str, latest: str) -> bool:
+    if not _DATED.fullmatch(installed) or not _DATED.fullmatch(latest):
+        return False
+    return _numbers(installed) > _numbers(latest)
+
+
 def state(installed: Installed | None, latest: str) -> str:
     if installed is None or not installed.path:
         return "missing"
@@ -139,7 +145,10 @@ def rows(
         now = state(item, newest) if command not in RUNTIMES else runtime_state(item)
         if item is not None and item.managed and now != "missing":
             now = MANAGED
-        result.append(Row(command, installed, version_of(newest) or newest or "?", now))
+        shown = version_of(newest) or newest or "?"
+        if now == "ok" and _is_newer_dated(installed, shown):
+            shown = "nightly"
+        result.append(Row(command, installed, shown, now))
     return result
 
 

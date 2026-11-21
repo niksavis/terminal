@@ -213,7 +213,7 @@ function Maybe($n, [scriptblock]$block) {
 
 function Run-Windows {
   switch ($Cmd) {
-    "status" { Check-All; Say "Windows"; Print-Table }
+    "status" { Check-All; if (-not $env:AGENTS_NO_HEADING) { Say "Windows" }; Print-Table }
     "update" {
       Check-All; Say "Windows"; Print-Table
       Maybe claude { Update-Agent claude }

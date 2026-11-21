@@ -246,7 +246,9 @@ run_local() {
   case "$CMD" in
     status)
       check_all
-      say "$SIDE"
+      if [[ -z "${AGENTS_NO_HEADING:-}" ]]; then
+        say "$SIDE"
+      fi
       print_table
       ;;
     update)

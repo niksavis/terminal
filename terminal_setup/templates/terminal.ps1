@@ -1,4 +1,23 @@
 $ErrorActionPreference = "Continue"
+$InstalledRef = "__SETUP_REF__"
+$Releases = "__RELEASES__"
+$TagPattern = '^v\d+\.\d+\.\d+$'
+
+function Newer-Release-Hint {
+  $location = $null
+  try {
+    $r = Invoke-WebRequest -Method Head -MaximumRedirection 0 -TimeoutSec 10 -UseBasicParsing -ErrorAction Stop "$Releases/latest"
+    $location = $r.Headers.Location
+  } catch {
+    $response = $_.Exception.Response
+    if ($response) { $location = $response.Headers.Location }
+  }
+  $tag = ("$location" -split '/')[-1]
+  if ($tag -notmatch $TagPattern -or $InstalledRef -notmatch $TagPattern -or $tag -eq $InstalledRef) { return }
+  if ([version]$tag.TrimStart('v') -le [version]$InstalledRef.TrimStart('v')) { return }
+  Write-Host "terminal $tag is available; this command is $InstalledRef and may not know the newer commands. To install $tag, run:"
+  Write-Host "  irm $Releases/download/$tag/install.ps1 | iex"
+}
 $Usage = "usage: terminal <status|update> [--wsl|--win] [--pinned]"
 $Cmd = ""
 $Target = "all"
@@ -7,15 +26,12 @@ foreach ($arg in $args) {
   if ($arg -in "status", "update") { $Cmd = $arg }
   elseif ($arg -match '^--?(wsl|win)$') { $Target = $Matches[1] }
   elseif ($arg -match '^--?pinned$') { $Pinned = $true }
-  else { Write-Host "terminal: unknown argument '$arg'"; Write-Host $Usage; exit 2 }
+  else { Write-Host "terminal: unknown argument '$arg'"; Write-Host $Usage; Newer-Release-Hint; exit 2 }
 }
 if (-not $Cmd -or ($Pinned -and $Cmd -ne "update")) { Write-Host $Usage; exit 2 }
 
 $H = $env:USERPROFILE
 $Failed = $false
-$InstalledRef = "__SETUP_REF__"
-$Releases = "__RELEASES__"
-$TagPattern = '^v\d+\.\d+\.\d+$'
 
 function Find-Uvx {
   $found = Get-Command uvx -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -192,9 +208,10 @@ if ($Target -ne "wsl") {
   $agents = Join-Path $H ".local\bin\agents.ps1"
   if (Test-Path $agents) {
     $env:AGENTS_NESTED = "1"
+    $env:AGENTS_NO_HEADING = "1"
     & $agents status "--win"
     if ($LASTEXITCODE -ne 0) { $Failed = $true }
-    Remove-Item Env:AGENTS_NESTED -ErrorAction SilentlyContinue
+    Remove-Item Env:AGENTS_NESTED, Env:AGENTS_NO_HEADING -ErrorAction SilentlyContinue
   }
 }
 

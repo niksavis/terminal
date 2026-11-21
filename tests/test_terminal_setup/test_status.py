@@ -975,3 +975,61 @@ def test_terminal_ps1_update_names_the_tool_that_setup_fixed(tmp_path: Path) -> 
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "Windows: updated sd" in result.stdout
+
+
+def test_a_nightly_wezterm_build_names_its_source_instead_of_an_older_stable_tag() -> None:
+    item = status.Installed("wezterm", "/usr/bin/wezterm", "wezterm 20260707-093716-fff02ca5")
+
+    row = status.rows([item], ["wezterm"], {"wezterm": "20240203-110809-5046fc22"})[0]
+
+    assert (row.installed, row.latest, row.state) == ("20260707-093716-fff02ca5", "nightly", "ok")
+
+
+def test_a_stable_wezterm_build_shows_the_latest_stable_tag() -> None:
+    item = status.Installed("wezterm", "/usr/bin/wezterm", "wezterm 20240203-110809-5046fc22")
+
+    row = status.rows([item], ["wezterm"], {"wezterm": "20240203-110809-5046fc22"})[0]
+
+    assert (row.latest, row.state) == ("20240203-110809-5046fc22", "ok")
+
+
+@needs_bash
+def test_an_unknown_argument_names_a_newer_release_and_its_install_command(tmp_path: Path) -> None:
+    result = _run_terminal(tmp_path, "upgrade", TERMINAL_TEST_TAG="v99.0.0")
+
+    assert result.returncode == 2
+    assert "terminal v99.0.0 is available" in result.stderr
+    assert (
+        f"curl -LsSf {terminal_command.RELEASES}/download/v99.0.0/install.sh | sh" in result.stderr
+    )
+
+
+@needs_bash
+@pytest.mark.parametrize("tag", ["", "v0.0.1", "latest"])
+def test_an_unknown_argument_names_no_release_when_none_is_newer(tmp_path: Path, tag: str) -> None:
+    result = _run_terminal(tmp_path, "upgrade", TERMINAL_TEST_TAG=tag)
+
+    assert result.returncode == 2
+    assert "is available" not in result.stderr
+
+
+@needs_pwsh
+def test_terminal_ps1_unknown_argument_names_a_newer_release(tmp_path: Path) -> None:
+    script = tmp_path / "terminal.ps1"
+    script.write_text(terminal_command.render_terminal_command("terminal.ps1"), encoding="utf-8")
+    wrapper = tmp_path / "wrapper.ps1"
+    wrapper.write_text(_PS_UPDATE_WRAPPER, encoding="utf-8")
+    pwsh = str(shutil.which("pwsh"))
+    env = {**os.environ, "TERMINAL_TEST_TAG": "v99.0.0", "TERMINAL_TEST_LOG": str(tmp_path / "log")}
+
+    result = subprocess.run(
+        [pwsh, "-NoProfile", "-NonInteractive", "-File", str(wrapper), str(script), "upgrade"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 2
+    assert "terminal v99.0.0 is available" in result.stdout
+    assert "/download/v99.0.0/install.ps1 | iex" in result.stdout

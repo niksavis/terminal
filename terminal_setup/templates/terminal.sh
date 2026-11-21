@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+INSTALLED_REF="__SETUP_REF__"
+RELEASES="__RELEASES__"
+TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
+
+newer_release_hint() {
+  local location tag
+  location="$(curl -fsSI --max-time 10 "$RELEASES/latest" 2>/dev/null | tr -d '\r' | sed -n 's/^[Ll]ocation: *//p' | tail -1)"
+  tag="${location##*/}"
+  if [[ ! "$tag" =~ $TAG_PATTERN || ! "$INSTALLED_REF" =~ $TAG_PATTERN || "$tag" == "$INSTALLED_REF" ]]; then
+    return
+  fi
+  if [[ "$(printf '%s\n%s\n' "${INSTALLED_REF#v}" "${tag#v}" | sort -V | tail -1)" != "${tag#v}" ]]; then
+    return
+  fi
+  echo "terminal $tag is available; this command is $INSTALLED_REF and may not know the newer commands. To install $tag, run:" >&2
+  echo "  curl -LsSf $RELEASES/download/$tag/install.sh | sh" >&2
+}
+
 USAGE="usage: terminal <status|update> [--wsl|--win] [--pinned]"
 CMD=""
 TARGET="all"
@@ -13,6 +31,7 @@ for arg in "$@"; do
     *)
       echo "terminal: unknown argument '$arg'" >&2
       echo "$USAGE" >&2
+      newer_release_hint
       exit 2
       ;;
   esac
@@ -24,9 +43,6 @@ fi
 
 export PATH="$HOME/.local/bin:$PATH"
 SETUP_SOURCE="__SETUP_SOURCE__"
-INSTALLED_REF="__SETUP_REF__"
-RELEASES="__RELEASES__"
-TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
 FAILED=0
 IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then
@@ -42,9 +58,9 @@ run_local() {
   uvx --from "$SETUP_SOURCE" terminal-setup --only status || FAILED=1
   if command -v agents >/dev/null 2>&1; then
     if ((IS_WSL)); then
-      AGENTS_NESTED=1 agents status --wsl || FAILED=1
+      AGENTS_NESTED=1 AGENTS_NO_HEADING=1 agents status --wsl || FAILED=1
     else
-      AGENTS_NESTED=1 agents status || FAILED=1
+      AGENTS_NESTED=1 AGENTS_NO_HEADING=1 agents status || FAILED=1
     fi
   fi
 }
