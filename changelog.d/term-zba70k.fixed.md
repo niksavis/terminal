@@ -1,1 +1,0 @@
-- **A Windows `agents` run prints each heading and the done line once.** Before, a run on Windows or from WSL printed the heading of the other side twice and `All done.` twice (term-zba70k).
