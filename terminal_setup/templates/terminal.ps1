@@ -44,17 +44,17 @@ function Target-Ref {
 }
 
 function Update-Here {
-  $target = Target-Ref
-  if (-not $target) {
+  $release = Target-Ref
+  if (-not $release) {
     Write-Host "!! the latest terminal release could not be read from $Releases/latest, so terminal does not update. To update with the installed release, run: terminal update --pinned"
     return $false
   }
-  Write-Host "setup: installed $InstalledRef, target $target"
+  Write-Host "setup: installed $InstalledRef, target $release"
   $ok = $true
-  $env:TERMINAL_SETUP_REF = $target
+  $env:TERMINAL_SETUP_REF = $release
   try {
-    if ($target -match $TagPattern) {
-      & { Invoke-RestMethod "$Releases/download/$target/install.ps1" | Invoke-Expression }
+    if ($release -match $TagPattern) {
+      & { Invoke-RestMethod "$Releases/download/$release/install.ps1" | Invoke-Expression }
     } else {
       $uvx = Find-Uvx
       if (-not $uvx) { throw "uvx is not on the PATH" }
@@ -62,15 +62,13 @@ function Update-Here {
       if ($LASTEXITCODE -ne 0) { throw "exit code $LASTEXITCODE" }
     }
   } catch {
-    Write-Host "!! the setup run of $target failed: $($_.Exception.Message)"
+    Write-Host "!! the setup run of $release failed: $($_.Exception.Message)"
     $ok = $false
   }
   $agents = Join-Path $H ".local\bin\agents.ps1"
   if (Test-Path $agents) {
     $env:AGENTS_NESTED = "1"
-    $side = @()
-    if ($Target -eq "win") { $side = @("--win") }
-    & $agents update @side
+    if ($Target -eq "win") { & $agents update "--win" } else { & $agents update }
     if ($LASTEXITCODE -ne 0) { Write-Host "!! agents update failed"; $ok = $false }
     Remove-Item Env:AGENTS_NESTED -ErrorAction SilentlyContinue
   }
@@ -79,7 +77,9 @@ function Update-Here {
 
 if ($Cmd -eq "update") {
   if ($Target -eq "wsl") {
-    & wsl.exe --exec bash -c 'p=~/.local/bin/terminal; test -x $p || { echo terminal is not in WSL, so terminal skips WSL. To add it, run the terminal setup.; exit 0; }; exec $p $@' terminal update --wsl @(if ($Pinned) { "--pinned" })
+    $forward = @("update", "--wsl")
+    if ($Pinned) { $forward += "--pinned" }
+    & wsl.exe --exec bash -c 'p=~/.local/bin/terminal; test -x $p || { echo terminal is not in WSL, so terminal skips WSL. To add it, run the terminal setup.; exit 0; }; exec $p $@' terminal $forward
     if ($LASTEXITCODE -ne 0) { exit 1 }
     exit 0
   }
@@ -101,7 +101,7 @@ if ($Target -ne "wsl") {
   $agents = Join-Path $H ".local\bin\agents.ps1"
   if (Test-Path $agents) {
     $env:AGENTS_NESTED = "1"
-    & $agents status --win
+    & $agents status "--win"
     if ($LASTEXITCODE -ne 0) { $Failed = $true }
     Remove-Item Env:AGENTS_NESTED -ErrorAction SilentlyContinue
   }

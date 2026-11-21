@@ -14,6 +14,7 @@ from terminal_setup import agents, cli, status, terminal_command
 from terminal_setup.cli import build_parser
 from terminal_setup.platform import SETUP_ARCHIVES, OperatingSystem
 
+from ..conftest import guarded_system_path
 from .test_runner import CapturingReporter
 from .test_unattended import RecordingRunner, _windows_platform
 
@@ -229,7 +230,7 @@ def _run_terminal(
     script.write_text(terminal_command.render_terminal_command("terminal"), encoding="utf-8")
     env = {
         "HOME": str(tmp_path / "home"),
-        "PATH": f"{tmp_path / 'stubs'}:/usr/bin:/bin",
+        "PATH": guarded_system_path(tmp_path / "stubs"),
         "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
         "TERMINAL_TEST_TAG": "",
         "TERMINAL_TEST_BOOT": "0",
