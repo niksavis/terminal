@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 
 from . import __version__
@@ -22,8 +24,18 @@ TERMINAL_COMMAND_TEMPLATES = {
 _WSL_FOUND = "command -v terminal 2>/dev/null || true"
 
 
+_REF = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/-]*")
+
+
+def setup_ref() -> str:
+    ref = os.environ.get("TERMINAL_SETUP_REF", "").strip()
+    if _REF.fullmatch(ref) and ".." not in ref:
+        return ref
+    return f"v{__version__}"
+
+
 def setup_source() -> str:
-    return f"{SETUP_ARCHIVES}v{__version__}.zip"
+    return f"{SETUP_ARCHIVES}{setup_ref()}.zip"
 
 
 def render_terminal_command(name: str) -> str:

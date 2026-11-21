@@ -372,3 +372,21 @@ def test_a_tool_without_a_version_and_a_dated_tag_is_unknown() -> None:
     item = status.Installed("wezterm", "/usr/bin/wezterm", "")
 
     assert status.state(item, "20240203-110809-5046fc22") == "unknown"
+
+
+@pytest.mark.parametrize(
+    ("ref", "expected"),
+    [
+        ("v0.23.0", "v0.23.0"),
+        ("harness/terminal-status", "harness/terminal-status"),
+        ("", None),
+        ('main"; rm -rf ~', None),
+        ("../evil", None),
+    ],
+)
+def test_the_terminal_command_pins_the_ref_that_setup_ran_from(
+    monkeypatch: pytest.MonkeyPatch, ref: str, expected: str | None
+) -> None:
+    monkeypatch.setenv("TERMINAL_SETUP_REF", ref)
+
+    assert terminal_command.setup_ref() == (expected or f"v{terminal_command.__version__}")

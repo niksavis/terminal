@@ -3,6 +3,8 @@ set -eu
 
 ref="${TERMINAL_SETUP_REF:-main}"
 source_url="https://github.com/niksavis/terminal/archive/${ref}.zip"
+TERMINAL_SETUP_REF="$ref"
+export TERMINAL_SETUP_REF
 PATH="$HOME/.local/bin:$PATH"
 export PATH
 
