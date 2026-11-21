@@ -64,32 +64,100 @@ target_ref() {
   return 1
 }
 
+SIDE_NAME="Linux"
+if ((IS_WSL)); then
+  SIDE_NAME="WSL"
+elif [[ "$(uname -s 2>/dev/null)" == Darwin ]]; then
+  SIDE_NAME="macOS"
+fi
+FAILED_STEPS=""
+
+run_step() {
+  local name="$1" start="$SECONDS"
+  shift
+  echo "==> $name"
+  if "$@"; then
+    echo "$name: done ($((SECONDS - start)) s)"
+    return 0
+  fi
+  echo "!! $name: failed ($((SECONDS - start)) s)"
+  FAILED=1
+  FAILED_STEPS="${FAILED_STEPS:+$FAILED_STEPS, }$name"
+  return 1
+}
+
+# shellcheck disable=SC2329
+bootstrap_release() {
+  curl -fsSL "$RELEASES/download/$1/install.sh" | TERMINAL_SETUP_REF="$1" sh
+}
+
+# shellcheck disable=SC2329
+bootstrap_ref() {
+  TERMINAL_SETUP_REF="$1" uvx --python 3.14 --refresh-package terminal --from "$SETUP_SOURCE" terminal-setup
+}
+
+plan_field() {
+  sed -n "s/^$1 [^ ]* //p" "$2" | tr '\n' ' ' | sed 's/ *$//'
+}
+
 update_local() {
-  local target
+  local target plan outdated apt checked reasons="" updated="" report agents_count=0 agents_updated=""
+  echo "$SIDE_NAME: checking the setup release, the tools and the agents..."
   if ! target="$(target_ref)"; then
     echo "!! the latest terminal release could not be read from $RELEASES/latest, so terminal does not update. To update with the installed release, run: terminal update --pinned"
     FAILED=1
+    FAILED_STEPS="release lookup"
     return
   fi
   echo "setup: installed $INSTALLED_REF, target $target"
-  if [[ "$target" =~ $TAG_PATTERN ]]; then
-    if ! curl -fsSL "$RELEASES/download/$target/install.sh" | TERMINAL_SETUP_REF="$target" sh; then
-      echo "!! the setup run of $target failed"
-      FAILED=1
+  plan="$(mktemp)"
+  if ! run_step "status check" env TERMINAL_STATUS_PLAN="$plan" uvx --from "$SETUP_SOURCE" terminal-setup --only status; then
+    rm -f "$plan"
+    return
+  fi
+  outdated="$(plan_field outdated "$plan")"
+  apt="$(plan_field apt "$plan")"
+  checked="$(plan_field checked "$plan")"
+  rm -f "$plan"
+  if [[ "$target" != "$INSTALLED_REF" ]]; then
+    reasons="setup $INSTALLED_REF -> $target"
+  fi
+  if [[ -n "$outdated" ]]; then
+    reasons="${reasons:+$reasons; }not up to date: $outdated"
+  fi
+  if [[ -z "$reasons" ]]; then
+    echo "setup $target: ok, every tool is up to date"
+  else
+    echo "setup $target runs, because of $reasons"
+    if [[ "$target" =~ $TAG_PATTERN ]]; then
+      run_step "setup $target" bootstrap_release "$target" && updated="setup $target"
+    else
+      run_step "setup $target" bootstrap_ref "$target" && updated="setup $target"
     fi
-  elif ! TERMINAL_SETUP_REF="$target" uvx --python 3.14 --refresh-package terminal --from "$SETUP_SOURCE" terminal-setup; then
-    echo "!! the setup run of $target failed"
-    FAILED=1
+  fi
+  if [[ -n "$apt" ]]; then
+    echo "$apt: a newer distro package exists; terminal update leaves distro packages. To upgrade them, run the install command with --update."
   fi
   if command -v agents >/dev/null 2>&1; then
     local side=""
     if ((IS_WSL)); then
       side="--wsl"
     fi
-    if ! AGENTS_NESTED=1 agents update ${side:+"$side"}; then
-      echo "!! agents update failed"
-      FAILED=1
-    fi
+    report="$(mktemp)"
+    run_step "agents update" env AGENTS_REPORT="$report" AGENTS_NESTED=1 agents update ${side:+"$side"} || true
+    agents_count="$(grep -cE '^(ok|updated) (claude|codex|copilot)$' "$report" || true)"
+    agents_updated="$(sed -n 's/^updated //p' "$report" | sed 's/^daemon$/codex daemon/' | tr '\n' ' ' | sed 's/ *$//')"
+    rm -f "$report"
+  fi
+  if [[ -n "$agents_updated" ]]; then
+    updated="${updated:+$updated, }$agents_updated"
+  fi
+  if ((FAILED)); then
+    echo "$SIDE_NAME: failed: $FAILED_STEPS${updated:+; updated: $updated}"
+  elif [[ -z "$updated" ]]; then
+    echo "$SIDE_NAME: Everything is up to date (setup $target, ${checked:-0} tools, $agents_count agents)"
+  else
+    echo "$SIDE_NAME: updated $updated"
   fi
 }
 

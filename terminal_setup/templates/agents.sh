@@ -39,14 +39,22 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
 fi
 
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
+report() {
+  if [[ -n "${AGENTS_REPORT:-}" ]]; then
+    printf '%s\n' "$*" >>"$AGENTS_REPORT"
+  fi
+  return 0
+}
 step() {
   local name="$1"
   shift
   say "$name"
-  "$@" || {
+  if "$@"; then
+    echo "$name: done"
+  else
     echo "!! $name failed"
     FAILED+=("$name")
-  }
+  fi
 }
 semver() { grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)(\.[0-9]+)*)?' | head -1; }
 
@@ -222,9 +230,10 @@ maybe() {
   local label="${LABEL[$agent]} ($SIDE)"
   if needs "$agent"; then
     step "$label" "$action" "$agent"
+    report "updated $agent"
   else
-    say "$label"
-    echo "up to date (${CUR[$agent]})"
+    echo "$label: ok, up to date (${CUR[$agent]})"
+    report "ok $agent"
   fi
 }
 
