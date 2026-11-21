@@ -231,25 +231,40 @@ def _agents_command_values() -> dict[str, str]:
     }
 
 
-def render_agents_command(name: str) -> str:
-    text = (_TEMPLATE_DIR / AGENTS_COMMAND_TEMPLATES[name]).read_text(encoding="utf-8")
-    for placeholder, value in _agents_command_values().items():
+def render_template(file_name: str, values: dict[str, str]) -> str:
+    text = (_TEMPLATE_DIR / file_name).read_text(encoding="utf-8")
+    for placeholder, value in values.items():
         text = text.replace(placeholder, value)
     leftover = _PLACEHOLDER.search(text)
     if leftover is not None:
-        raise RuntimeError(f"{AGENTS_COMMAND_TEMPLATES[name]} keeps {leftover.group()}")
-    if name.endswith(".cmd"):
+        raise RuntimeError(f"{file_name} keeps {leftover.group()}")
+    if file_name.endswith(".cmd"):
         text = text.replace("\n", "\r\n")
     return text
 
 
-_WSL_AGENTS_INSTALL = (
+def render_agents_command(name: str) -> str:
+    return render_template(AGENTS_COMMAND_TEMPLATES[name], _agents_command_values())
+
+
+_WSL_COMMAND_INSTALL = (
     'src=$(wslpath -u "$1") && mkdir -p "$HOME/.local/bin" && '
-    'cp -f "$src" "$HOME/.local/bin/agents" && chmod 755 "$HOME/.local/bin/agents"'
+    'cp -f "$src" "$HOME/.local/bin/$2" && chmod 755 "$HOME/.local/bin/$2"'
 )
 
 
-def _write_executable(runner: Runner, path: Path, content: str) -> None:
+def install_wsl_command(runner: Runner, platform: PlatformInfo, name: str, content: str) -> None:
+    staged = platform.home / ".local" / "share" / "terminal" / name
+    runner.write_text(staged, content)
+    runner.run(
+        wsl_exec_command(
+            _wsl_distro(platform), ["sh", "-c", _WSL_COMMAND_INSTALL, "sh", str(staged), name]
+        ),
+        label=f"install the {name} command in WSL",
+    )
+
+
+def write_executable(runner: Runner, path: Path, content: str) -> None:
     runner.write_text(path, content)
     if not runner.dry_run:
         path.chmod(0o755)
@@ -261,19 +276,12 @@ def deploy_agents_command(runner: Runner, platform: PlatformInfo) -> None:
         return
     bin_dir = platform.home / ".local" / "bin"
     if platform.os != OperatingSystem.WINDOWS or is_running_in_wsl():
-        _write_executable(runner, bin_dir / "agents", render_agents_command("agents"))
+        write_executable(runner, bin_dir / "agents", render_agents_command("agents"))
         return
     for name in ("agents.ps1", "agents.cmd"):
         runner.write_text(bin_dir / name, render_agents_command(name))
     _add_to_user_path(runner, bin_dir)
-    staged = platform.home / ".local" / "share" / "terminal" / "agents"
-    runner.write_text(staged, render_agents_command("agents"))
-    runner.run(
-        wsl_exec_command(
-            _wsl_distro(platform), ["sh", "-c", _WSL_AGENTS_INSTALL, "sh", str(staged)]
-        ),
-        label="install the agents command in WSL",
-    )
+    install_wsl_command(runner, platform, "agents", render_agents_command("agents"))
 
 
 def _herdr_command(platform: PlatformInfo, *arguments: str, script: str = _HERDR_RUN) -> list[str]:

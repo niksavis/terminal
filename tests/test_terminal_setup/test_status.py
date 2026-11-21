@@ -1,0 +1,374 @@
+from __future__ import annotations
+
+import os
+import shutil
+import subprocess
+import sys
+from dataclasses import replace
+from pathlib import Path
+from unittest import mock
+
+import pytest
+
+from terminal_setup import cli, status, terminal_command
+from terminal_setup.cli import build_parser
+from terminal_setup.platform import SETUP_ARCHIVES, OperatingSystem
+
+from .test_runner import CapturingReporter
+from .test_unattended import RecordingRunner, _windows_platform
+
+LATEST = {
+    "BurntSushi/ripgrep": "15.1.0",
+    "sharkdp/fd": "v10.4.0",
+    "wezterm/wezterm": "20240203-110809-5046fc22",
+}
+
+
+def _fake_release(repo: str) -> str:
+    if repo not in LATEST:
+        raise OSError("offline")
+    return LATEST[repo]
+
+
+FAKE = status.Lookups(release=_fake_release, node=lambda major: f"v{major}.2.0")
+
+
+@pytest.mark.parametrize(
+    ("text", "version"),
+    [
+        ("ripgrep 15.1.0", "15.1.0"),
+        ("jq-1.8.1", "1.8.1"),
+        ("yq (https://github.com/mikefarah/yq/) version v4.54.3", "4.54.3"),
+        ("fdfind 10.3.0", "10.3.0"),
+        ("tmux 3.6", "3.6"),
+        ("ShellCheck - shell script analysis tool", ""),
+        ("wezterm 20260707-093716-fff02ca5", "20260707-093716-fff02ca5"),
+    ],
+)
+def test_version_of_reads_the_first_version_number(text: str, version: str) -> None:
+    assert status.version_of(text) == version
+
+
+@pytest.mark.parametrize(
+    ("installed", "latest", "expected"),
+    [
+        (status.Installed("rg", "/bin/rg", "ripgrep 15.1.0"), "15.1.0", "ok"),
+        (status.Installed("fd", "/bin/fd", "fdfind 10.3.0"), "v10.4.0", "update"),
+        (status.Installed("fd", "/bin/fd", "fdfind 10.10.0"), "v10.9.0", "ok"),
+        (status.Installed("fd", "", ""), "v10.4.0", "missing"),
+        (None, "v10.4.0", "missing"),
+        (status.Installed("rg", "/bin/rg", "ripgrep 15.1.0"), "", "unknown"),
+        (
+            status.Installed("wezterm", "/bin/wezterm", "wezterm 20240203-110809-5046fc22"),
+            "20240203-110809-5046fc22",
+            "ok",
+        ),
+    ],
+)
+def test_state_compares_the_installed_and_the_latest_version(
+    installed: status.Installed | None, latest: str, expected: str
+) -> None:
+    assert status.state(installed, latest) == expected
+
+
+def test_latest_versions_uses_the_lookups_and_reports_a_failed_one_as_empty() -> None:
+    latest = status.latest_versions(["rg", "fd", "bat", "node", "python3"], FAKE)
+
+    assert latest == {
+        "rg": "15.1.0",
+        "fd": "v10.4.0",
+        "bat": "",
+        "node": "v26.2.0",
+        "python3": "3.14",
+    }
+
+
+def test_every_release_tool_has_a_repo() -> None:
+    repos = status.release_repos()
+
+    for command in (
+        "rg",
+        "fd",
+        "bat",
+        "lazygit",
+        "starship",
+        "herdr",
+        "wezterm",
+        "uv",
+        "shellcheck",
+    ):
+        assert "/" in repos[command]
+
+
+def _host_items(found: dict[str, str]):
+    def path(_runner, command):
+        return f"/home/dev/.local/bin/{command}" if command in found else None
+
+    def version(_runner, command, _where):
+        return found[command]
+
+    return path, version
+
+
+def test_status_prints_one_table_for_the_linux_host(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    platform_info = replace(_windows_platform(), os=OperatingSystem.LINUX, home=tmp_path)
+    path, version = _host_items({
+        "rg": "ripgrep 15.1.0",
+        "fd": "fdfind 10.3.0",
+        "python3": "Python 3.14.4",
+    })
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_host_command_path", side_effect=path),
+        mock.patch.object(cli, "_host_version", side_effect=version),
+        mock.patch.object(cli.release_install, "STATE_DIR", tmp_path / "releases"),
+    ):
+        assert cli.print_status(runner, platform_info, FAKE) == 0
+
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == "==> Linux"
+    rows = {line.split()[0]: line.split() for line in lines[2:]}
+    assert rows["rg"] == ["rg", "15.1.0", "15.1.0", "ok"]
+    assert rows["fd"] == ["fd", "10.3.0", "10.4.0", "update"]
+    assert rows["bat"] == ["bat", "-", "?", "missing"]
+    assert rows["python3"] == ["python3", "3.14.4", "3.14", "ok"]
+
+
+def test_status_reads_the_release_that_setup_recorded(tmp_path: Path) -> None:
+    (tmp_path / "sd").write_text("1.1.0 1.0.0\n", encoding="utf-8")
+
+    assert cli._release_state_version("sd", "sd 1.0.0", tmp_path) == "1.1.0"
+    assert cli._release_state_version("sd", "sd 1.2.0", tmp_path) == "sd 1.2.0"
+
+
+def test_status_on_a_windows_host_skips_wsl_when_the_side_is_windows(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    monkeypatch.setenv(cli.STATUS_SIDE_ENV, "windows")
+    item = [status.Installed("rg", "C:/tools/rg.exe", "ripgrep 15.1.0")]
+
+    with (
+        mock.patch.object(cli, "is_running_in_wsl", return_value=False),
+        mock.patch.object(cli, "_status_windows", return_value=item),
+        mock.patch.object(cli, "_status_wsl", side_effect=AssertionError("WSL must not run")),
+    ):
+        cli.print_status(runner, _windows_platform(), FAKE)
+
+    out = capsys.readouterr().out
+    assert "==> Windows" in out
+    assert "==> WSL" not in out
+
+
+def test_only_status_is_a_mode() -> None:
+    assert build_parser().parse_args(["--only", "status"]).only == "status"
+
+
+def test_the_terminal_command_runs_the_installed_setup_release() -> None:
+    for name in terminal_command.TERMINAL_COMMAND_TEMPLATES:
+        text = terminal_command.render_terminal_command(name)
+        assert "__" not in text.replace("__init__", "")
+    assert terminal_command.setup_source().startswith(SETUP_ARCHIVES)
+    assert (
+        f'--from "{terminal_command.setup_source()}"'
+        in terminal_command.render_terminal_command("terminal.ps1")
+    )
+    assert "\r\n" in terminal_command.render_terminal_command("terminal.cmd")
+
+
+@pytest.mark.skipif(shutil.which("shellcheck") is None, reason="requires shellcheck")
+def test_the_rendered_terminal_script_passes_shellcheck(tmp_path: Path) -> None:
+    script = tmp_path / "terminal"
+    script.write_text(terminal_command.render_terminal_command("terminal"), encoding="utf-8")
+
+    result = subprocess.run(
+        ["shellcheck", "-s", "bash", str(script)], check=False, capture_output=True, text=True
+    )
+
+    assert result.returncode == 0, result.stdout
+
+
+def _stub(path: Path, body: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        f'#!/bin/sh\necho "{path.name} $*" >> "$TERMINAL_TEST_LOG"\n{body}\n', encoding="utf-8"
+    )
+    path.chmod(0o755)
+
+
+needs_bash = pytest.mark.skipif(
+    sys.platform == "win32" or shutil.which("bash") is None, reason="runs the bash terminal script"
+)
+
+
+def _run_terminal(tmp_path: Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+    script = tmp_path / "terminal"
+    script.write_text(terminal_command.render_terminal_command("terminal"), encoding="utf-8")
+    env = {
+        "HOME": str(tmp_path / "home"),
+        "PATH": f"{tmp_path / 'stubs'}:/usr/bin:/bin",
+        "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
+    }
+    return subprocess.run(
+        ["bash", str(script), *arguments], check=False, capture_output=True, text=True, env=env
+    )
+
+
+@needs_bash
+def test_terminal_status_runs_setup_status_then_agents_status(tmp_path: Path) -> None:
+    _stub(tmp_path / "stubs" / "uvx", "echo tool-table")
+    _stub(tmp_path / "home" / ".local" / "bin" / "agents", "echo agent-table")
+
+    result = _run_terminal(tmp_path, "status", "--wsl")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    calls = (tmp_path / "calls.log").read_text(encoding="utf-8").splitlines()
+    assert calls[0] == f"uvx --from {terminal_command.setup_source()} terminal-setup --only status"
+    assert calls[1].startswith("agents status")
+    assert result.stdout.index("tool-table") < result.stdout.index("agent-table")
+
+
+@needs_bash
+def test_terminal_status_without_agents_runs_only_setup(tmp_path: Path) -> None:
+    _stub(tmp_path / "stubs" / "uvx", "echo tool-table")
+
+    result = _run_terminal(tmp_path, "status", "--wsl")
+
+    assert result.returncode == 0
+    assert len((tmp_path / "calls.log").read_text(encoding="utf-8").splitlines()) == 1
+
+
+@needs_bash
+@pytest.mark.parametrize("arguments", [(), ("update",), ("status", "--all")])
+def test_terminal_refuses_a_wrong_command_with_the_usage(
+    tmp_path: Path, arguments: tuple[str, ...]
+) -> None:
+    (tmp_path / "stubs").mkdir()
+
+    result = _run_terminal(tmp_path, *arguments)
+
+    assert result.returncode == 2
+    assert "usage: terminal status [--wsl|--win]" in result.stderr
+
+
+@pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs terminal.ps1 in pwsh")
+def test_terminal_ps1_status_reads_only_the_windows_side(tmp_path: Path) -> None:
+    profile = tmp_path / "profile"
+    stubs = tmp_path / "stubs"
+    ps1 = tmp_path / "terminal.ps1"
+    ps1.write_text(terminal_command.render_terminal_command("terminal.ps1"), encoding="utf-8")
+    if sys.platform == "win32":
+        stubs.mkdir(parents=True)
+        (stubs / "uvx.cmd").write_text(
+            '@echo off\r\n>>"%TERMINAL_TEST_LOG%" echo uvx side=%TERMINAL_STATUS_SIDE% %*\r\n',
+            encoding="utf-8",
+        )
+    else:
+        _stub(stubs / "uvx", 'echo "side=$TERMINAL_STATUS_SIDE" >> "$TERMINAL_TEST_LOG"')
+    pwsh = str(shutil.which("pwsh"))
+    env = {
+        **os.environ,
+        "USERPROFILE": str(profile),
+        "HOME": str(profile),
+        "PATH": os.pathsep.join([str(stubs), str(Path(pwsh).parent)]),
+        "TERMINAL_TEST_LOG": str(tmp_path / "calls.log"),
+    }
+
+    result = subprocess.run(
+        [pwsh, "-NoProfile", "-NonInteractive", "-File", str(ps1), "status", "--win"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "side=windows" in (tmp_path / "calls.log").read_text(encoding="utf-8", errors="replace")
+
+
+def test_setup_writes_the_terminal_command_on_linux(tmp_path: Path) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    platform_info = replace(_windows_platform(), os=OperatingSystem.LINUX, home=tmp_path)
+
+    with mock.patch.object(terminal_command, "is_running_in_wsl", return_value=False):
+        terminal_command.deploy_terminal_command(runner, platform_info)
+
+    target = tmp_path / ".local" / "bin" / "terminal"
+    assert target.read_text(encoding="utf-8") == terminal_command.render_terminal_command(
+        "terminal"
+    )
+
+
+def test_setup_refuses_another_terminal_command_by_name(tmp_path: Path) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    platform_info = replace(_windows_platform(), os=OperatingSystem.LINUX, home=tmp_path)
+
+    with (
+        mock.patch.object(terminal_command, "is_running_in_wsl", return_value=False),
+        mock.patch.object(runner, "which", return_value="/usr/bin/terminal"),
+        pytest.raises(
+            RuntimeError, match="another terminal command is on PATH at /usr/bin/terminal"
+        ),
+    ):
+        terminal_command.deploy_terminal_command(runner, platform_info)
+
+    assert not (tmp_path / ".local" / "bin" / "terminal").exists()
+
+
+def test_setup_writes_the_windows_terminal_command_and_the_wsl_copy(tmp_path: Path) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter())
+    platform_info = replace(_windows_platform(), home=tmp_path)
+
+    with (
+        mock.patch.object(terminal_command, "is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites._add_to_process_path"),
+    ):
+        terminal_command.deploy_terminal_command(runner, platform_info)
+
+    bin_dir = tmp_path / ".local" / "bin"
+    assert (bin_dir / "terminal.ps1").exists()
+    assert (bin_dir / "terminal.cmd").read_bytes() == terminal_command.render_terminal_command(
+        "terminal.cmd"
+    ).encode()
+    staged = tmp_path / ".local" / "share" / "terminal" / "terminal"
+    assert any(str(staged) in command and command[-1] == "terminal" for command in runner.commands)
+
+
+def test_apt_candidates_reads_each_package_candidate() -> None:
+    policy = (
+        "zsh:\n  Installed: 5.9-6ubuntu2\n  Candidate: 5.9-6ubuntu2\n"
+        "git:\n  Installed: (none)\n  Candidate: 1:2.43.0-1ubuntu7.3\n"
+        "tree:\n  Installed: (none)\n  Candidate: (none)\n"
+    )
+
+    assert status.apt_candidates(policy) == {
+        "zsh": "5.9-6ubuntu2",
+        "git": "1:2.43.0-1ubuntu7.3",
+        "tree": "",
+    }
+    assert status.version_of("1:2.43.0-1ubuntu7.3") == "2.43.0"
+
+
+def test_a_tool_without_releases_is_ok_when_present() -> None:
+    items = [status.Installed("img-zoom", "/home/dev/.local/bin/img-zoom", "")]
+
+    rows = status.rows(items, ["img-zoom"], {}, frozenset({"img-zoom"}))
+
+    assert rows == [status.Row("img-zoom", "present", "-", "ok")]
+
+
+def test_a_newer_dated_build_is_ok() -> None:
+    item = status.Installed("wezterm", "/usr/bin/wezterm", "wezterm 20260707-093716-fff02ca5")
+
+    assert status.state(item, "20240203-110809-5046fc22") == "ok"
+
+
+def test_a_tool_without_a_version_and_a_dated_tag_is_unknown() -> None:
+    item = status.Installed("wezterm", "/usr/bin/wezterm", "")
+
+    assert status.state(item, "20240203-110809-5046fc22") == "unknown"

@@ -9,7 +9,16 @@ from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
 
-from . import agents, configs, platform, prerequisites, windows_tools
+from . import (
+    agents,
+    configs,
+    platform,
+    prerequisites,
+    release_install,
+    terminal_command,
+    windows_tools,
+)
+from . import status as tool_status
 from .platform import is_running_in_wsl, rerun_command, setup_command, wsl_exec_command
 from .runner import ConsoleReporter, Runner
 
@@ -43,7 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--only",
-        choices=("check", "config", "report"),
+        choices=("check", "config", "report", "status"),
         help=(
             "Limit the run to one phase and exit: 'check' verifies prerequisites, "
             "'config' re-applies configuration without installing packages, "
@@ -666,6 +675,108 @@ def print_setup_report(
             )
 
 
+STATUS_SIDE_ENV = "TERMINAL_STATUS_SIDE"
+
+
+def _release_state_version(command: str, version: str, state_dir: Path) -> str:
+    recorded = state_dir / command
+    if not version or not recorded.is_file():
+        return version
+    tag, _, printed = recorded.read_text(encoding="utf-8").strip().partition(" ")
+    return tag if printed and printed in version else version
+
+
+def _status_host(runner: Runner) -> list[tool_status.Installed | None]:
+    items: list[tool_status.Installed | None] = []
+    for command in ("wezterm", *SHELL_TOOLS, "starship", "herdr"):
+        path = _host_command_path(runner, command)
+        version = _host_version(runner, command, path) if path else ""
+        version = _release_state_version(command, version, release_install.STATE_DIR)
+        items.append(tool_status.Installed(command, path or "", version))
+    return items
+
+
+def _status_wsl(
+    runner: Runner, platform_info: platform.PlatformInfo
+) -> list[tool_status.Installed | None]:
+    items: list[tool_status.Installed | None] = []
+    for command in (*SHELL_TOOLS, "starship", "herdr"):
+        path, version = _wsl_command_info(runner, platform_info, command)
+        items.append(tool_status.Installed(command, path, version))
+    return items
+
+
+def _status_windows(
+    runner: Runner, platform_info: platform.PlatformInfo
+) -> list[tool_status.Installed | None]:
+    items: list[tool_status.Installed | None] = []
+    commands = (
+        "wezterm",
+        *(tool.command for tool in windows_tools.WINDOWS_TOOLS),
+        windows_tools.STARSHIP.command,
+        *WINDOWS_RUNTIMES,
+    )
+    for command in commands:
+        info = _windows_tool_info(runner, platform_info, command)
+        items.append(
+            tool_status.Installed(command, info[0], info[1])
+            if info
+            else tool_status.Installed(command, "", "")
+        )
+    return items
+
+
+def _apt_latest(runner: Runner, platform_info: platform.PlatformInfo, side: str) -> dict[str, str]:
+    if side not in {"WSL", "Linux"}:
+        return {}
+    script = ["sh", "-c", f"apt-cache policy {' '.join(tool_status.APT_TOOLS)} 2>/dev/null"]
+    if side == "WSL" and not is_running_in_wsl():
+        script = wsl_exec_command(platform_info.wsl_distribution or "Ubuntu", script)
+    result = runner.run(script, check=False, dry_run_safe=True)
+    return tool_status.apt_candidates(result.stdout or "")
+
+
+def _print_status_side(
+    runner: Runner,
+    platform_info: platform.PlatformInfo,
+    side: str,
+    items: list[tool_status.Installed | None],
+    lookups: tool_status.Lookups,
+) -> None:
+    commands = [item.command for item in items if item is not None]
+    latest = {
+        **_apt_latest(runner, platform_info, side),
+        **tool_status.latest_versions(commands, lookups),
+    }
+    table_rows = tool_status.rows(items, commands, latest, NO_VERSION)
+    for line in tool_status.table(side, table_rows):
+        print(line)
+
+
+def print_status(
+    runner: Runner,
+    platform_info: platform.PlatformInfo,
+    lookups: tool_status.Lookups | None = None,
+) -> int:
+    lookups = lookups or tool_status.Lookups()
+    in_wsl = is_running_in_wsl()
+    windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
+    if windows_host:
+        _print_status_side(
+            runner, platform_info, "Windows", _status_windows(runner, platform_info), lookups
+        )
+        if os.environ.get(STATUS_SIDE_ENV) != "windows":
+            _print_status_side(
+                runner, platform_info, "WSL", _status_wsl(runner, platform_info), lookups
+            )
+        return 0
+    side = "WSL" if in_wsl else "Linux"
+    if platform_info.os == platform.OperatingSystem.MACOS:
+        side = "macOS"
+    _print_status_side(runner, platform_info, side, _status_host(runner), lookups)
+    return 0
+
+
 def run_check(platform_info: platform.PlatformInfo, runner: Runner) -> int:
     statuses = prerequisites.check_all(platform_info, runner)
     all_present = True
@@ -819,6 +930,11 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
                 "install the agents command",
                 partial(agents.deploy_agents_command, runner, platform_info),
             )
+        prerequisites.attempt(
+            runner,
+            "install the terminal command",
+            partial(terminal_command.deploy_terminal_command, runner, platform_info),
+        )
 
         if herdr:
             prerequisites.attempt(
@@ -942,6 +1058,9 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
 
     if args.only == "check":
         return run_check(platform_info, runner)
+
+    if args.only == "status":
+        return print_status(runner, platform_info)
 
     if args.only == "report":
         status = run_check(platform_info, runner)
