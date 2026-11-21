@@ -41,6 +41,21 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 
 All options are in the [User guide](docs/user-guide.md#cli-options).
 
+## Keep it up to date
+
+Setup installs the `terminal` command in WSL, on Linux, on macOS and on Windows. It shows which installed tools have a newer release, and updates them all with one command:
+
+```bash
+terminal status
+terminal update
+```
+
+`terminal update` runs the install script of the latest release, then updates the coding agents and the Codex app-server daemon. Add `--pinned` to stay on the installed release. In WSL it also updates Windows, and on Windows it also updates WSL.
+
+`terminal update` is new in v0.24.0. To move from an older release, run the install command above once.
+
+With `--agents`, setup also installs the `agents` command for the coding agents: `agents status`, `agents update`, `agents install <name>` and `agents uninstall <name>`. See [The agents command](docs/user-guide.md#the-agents-command).
+
 ## What you get
 
 | Tool | What it is for | Windows host | WSL | Linux, macOS |
