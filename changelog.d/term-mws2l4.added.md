@@ -1,1 +1,0 @@
-- **The Windows install ends with a command that starts WezTerm.** Copy it into Windows Terminal or PowerShell to start WezTerm the first time, then pin it to the taskbar (term-mws2l4).

@@ -2,6 +2,26 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.25.0 - 2026-11-21
+
+Delta: v0.24.2..v0.25.0
+
+### Highlights
+
+- **The Windows install ends with a command that starts WezTerm.** Copy it into Windows Terminal or PowerShell to start WezTerm the first time, then pin it to the taskbar (term-mws2l4).
+- **Setup prints one line per phase and writes the detail to a log file.** Each phase (prerequisites, tools, agents and commands, configuration, run checks) ends with one line that counts what is ok, updated and managed; warnings, failures and questions still print as their own lines. A summary per side and the log path follow at the end. In a terminal the current phase shows a live spinner (rich); plain lines are printed when the output is not a terminal or `NO_COLOR` is set. `--verbose` keeps the full output (term-5q0178).
+- **Setup has one way to do each task.** `--user-install` (a no-op), `--report` (run setup, then `terminal-setup --only report`) and `--only check` (`--only report` runs the same check first) are removed; each is refused by name with the command to use instead. `--only status` stays for the `terminal status` command and is no longer in the help (term-pxkb6g).
+- **`terminal status` rows say what they mean.** Each side prints one heading for its tools and agents. A nightly WezTerm build shows `nightly` instead of an older stable tag. An unknown argument names a newer terminal release and its install command, so a user on an old command learns how to get the new one (term-yjthfr).
+
+### Commit delta (auto-generated)
+
+- refactor(cli): remove the duplicate setup options (term-pxkb6g) (78be062)
+- feat(setup): print a copyable command that starts wezterm on windows (term-mws2l4) (8bfccce)
+- fix(status): make the status rows say what they mean (term-yjthfr) (fe42122)
+- feat(setup): print one line per phase and write the detail to a log file (term-5q0178) (4a4851e)
+- chore(deps): upgrade the harness to basicly 0-48-0 (term-v0tg4a) (37b9179)
+- build(deps): add rich for the setup progress view (term-5q0178) (c38ba61)
+
 ## v0.24.2 - 2026-11-21
 
 Delta: v0.24.1..v0.24.2

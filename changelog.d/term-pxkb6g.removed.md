@@ -1,1 +1,0 @@
-- **Setup has one way to do each task.** `--user-install` (a no-op), `--report` (run setup, then `terminal-setup --only report`) and `--only check` (`--only report` runs the same check first) are removed; each is refused by name with the command to use instead. `--only status` stays for the `terminal status` command and is no longer in the help (term-pxkb6g).

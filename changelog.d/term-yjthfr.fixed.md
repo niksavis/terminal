@@ -1,1 +1,0 @@
-- **`terminal status` rows say what they mean.** Each side prints one heading for its tools and agents. A nightly WezTerm build shows `nightly` instead of an older stable tag. An unknown argument names a newer terminal release and its install command, so a user on an old command learns how to get the new one (term-yjthfr).
