@@ -1,1 +1,0 @@
-- **The basicly pin follows the installed harness.** Setup reads the basicly version from `.basicly/state/install.json`, and a built package carries it as `terminal_setup/_harness.json`, so the pin and the harness cannot differ. A missing or malformed version stops setup with the file name and the expected form (term-gxn11k).

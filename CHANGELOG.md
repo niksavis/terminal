@@ -2,6 +2,24 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.24.0 - 2026-11-21
+
+Delta: v0.23.0..v0.24.0
+
+### Highlights
+
+- **`terminal update` updates every installed tool in one step.** It prints the installed and the target setup release, runs the install script of the latest terminal release, then `agents update`, which also updates the Codex app-server daemon. `--pinned` keeps the installed release. Setup ends with the `terminal status` hint, and names `agents update` when the Codex daemon is older than codex (term-ighf17).
+- **The basicly pin follows the installed harness.** Setup reads the basicly version from `.basicly/state/install.json`, and a built package carries it as `terminal_setup/_harness.json`, so the pin and the harness cannot differ. A missing or malformed version stops setup with the file name and the expected form (term-gxn11k).
+- **`terminal update` runs on macOS.** bash 3.2 reported an empty argument list as unbound under `set -u`; the script now passes the WSL side as an optional word (term-ighf17).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-285pte) (7528ca2)
+- fix(setup): derive the basicly pin from the installed harness (term-gxn11k) (3b4e24a)
+- fix(update): pass the agents side without an empty array on old bash (term-ighf17) (a660ac6)
+- test(guard): block network tools in every test unless a stub replaces them (term-ighf17) (570ec89)
+- feat(update): add the terminal update command for every installed tool (term-ighf17) (017959f)
+
 ## v0.23.0 - 2026-11-21
 
 Delta: v0.22.0..v0.23.0
