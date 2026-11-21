@@ -2,6 +2,40 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.22.0 - 2026-11-21
+
+Delta: v0.21.2..v0.22.0
+
+### Highlights
+
+- **The `agents` command shows and updates the coding agents.** With `--agents`, setup installs `agents` in WSL and on Linux, and `agents.cmd` with `agents.ps1` on Windows. `agents status` compares each installed version of Claude Code, Codex, the Codex daemon and Copilot CLI with the latest release. `agents update` runs only the updaters that are needed, and `agents uninstall` removes the programs and keeps their configuration. The command does not change an agent that npm or Homebrew installed, and prints the command to use instead (term-595bpm).
+- **The `cli-tools` skill comes from basicly v0.47.1.** Setup installs the Claude Code `cli-tools` skill from the basicly v0.47.1 release, and the repository harness is basicly 0.47.1 (term-r3v45w, term-uai89y).
+- **Setup upgrades the WSL distro only with `--update`.** When WSL system packages are missing, setup now updates the package lists and installs only those packages. Before, it also ran `apt-get upgrade -y` on every installed package without being asked. With `--update`, setup still upgrades the whole distro (term-x7lq0b).
+- **A Windows `agents` run prints each heading and the done line once.** Before, a run on Windows or from WSL printed the heading of the other side twice and `All done.` twice (term-zba70k).
+
+### Commit delta (auto-generated)
+
+- chore(release): bump package version for next release (term-hf99uc) (5089574)
+- ci(quality): run the macos tests in their own workflow (term-6t8vys) (21429ae)
+- ci(release): run the fresh install test inside the release workflow (term-6t8vys) (a45b0e9)
+- fix(agents): print each side heading and the done line once (term-zba70k) (fd4e0e3)
+- chore(deps): upgrade the harness and the cli-tools pin to basicly 0-47-1 (term-uai89y) (e7dc7b1)
+- docs(agents): note that a restricted policy needs powershell 7 (term-595bpm) (2fdde98)
+- ci(e2e): run agents status after the consumer install (term-595bpm) (4c28ed8)
+- feat(agents): add the agents command to show and update coding agents (term-595bpm) (79e2206)
+- chore(tracker): move terminal into the backlog vault (term-r3v45w) (0d494b0)
+- chore(tracker): record the basicly 0-47-0 upgrade landing (term-r3v45w) (39c1043)
+- chore(deps): upgrade the harness and the cli-tools pin to basicly 0-47-0 (term-r3v45w) (0c5fd28)
+- chore(tracker): sync tracker state for the harness loop (term-r3v45w) (463faba)
+- chore(tracker): file and claim the basicly 0-47-0 upgrade record (term-r3v45w) (5354e2e)
+- chore(tracker): close the basicly 0-47-0 consumer proof record (term-njd64j) (0ec6632)
+- chore(tracker): file and claim the basicly 0-47-0 consumer proof record (term-njd64j) (5b06ae5)
+- chore(tracker): record the install speed landing (term-x7lq0b) (d9da609)
+- fix(setup): upgrade the wsl distro only with update and quiet the wezterm download (term-x7lq0b) (e9ceee9)
+- chore(tracker): sync tracker state for the harness loop (term-x7lq0b) (e5838a4)
+- chore(tracker): file and claim the install speed record (term-x7lq0b) (11aa54d)
+- chore(tracker): record the v0-21-2 release (term-ahizq0) (b36b91e)
+
 ## v0.21.2 - 2026-11-19
 
 Delta: v0.21.1..v0.21.2
