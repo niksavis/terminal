@@ -15,12 +15,10 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 import pytest
 
 import terminal_setup.configs as configs_module
+from terminal_setup import cli, harness
 from terminal_setup.configs import (
-    _SKILLS_USER,
     _STARSHIP_BLOCK_MARKER,
     BACKUP_SUFFIX,
-    BASICLY_REF,
-    BASICLY_SPEC,
     CHEAT_SHEET_PATH,
     CLI_TOOLS_SKILL,
     IMG_ZOOM_SOURCE,
@@ -31,6 +29,7 @@ from terminal_setup.configs import (
     _configure_git_bash_starship,
     _configure_pwsh_starship,
     _img_zoom_install_script,
+    _skills_user,
     configure_vscode_terminal,
     deploy_all,
     deploy_claude_cli_tools_skills,
@@ -1486,16 +1485,71 @@ def test_deploy_all_writes_the_skill_only_with_claude(
 _REPO = Path(__file__).resolve().parents[2]
 
 
-def test_basicly_pin_matches_the_installed_harness() -> None:
+def test_the_basicly_pin_is_the_installed_harness_version() -> None:
     install = json.loads(
         (_REPO / ".basicly" / "state" / "install.json").read_text(encoding="utf-8")
     )
+    version = install["basicly_version"]
 
-    assert f"v{install['basicly_version']}" == BASICLY_REF
-    assert (
+    assert harness.basicly_ref() == f"v{version}"
+    assert harness.basicly_spec() == (
         "https://github.com/niksavis/basicly/releases/download/"
-        f"{BASICLY_REF}/basicly-{install['basicly_version']}-py3-none-any.whl"
-    ) == BASICLY_SPEC
+        f"v{version}/basicly-{version}-py3-none-any.whl"
+    )
+
+
+def test_configs_holds_no_hand_written_basicly_pin() -> None:
+    source = (_REPO / "terminal_setup" / "configs.py").read_text(encoding="utf-8")
+
+    assert re.search(r"basicly/releases/download/v?\d", source) is None
+    assert re.search(r"BASICLY_REF\s*=", source) is None
+
+
+def test_a_built_package_reads_the_packaged_harness_version(tmp_path: Path) -> None:
+    package = tmp_path / "site" / "terminal_setup"
+    package.mkdir(parents=True)
+    (package / harness.PACKAGED_NAME).write_text('{"basicly_version": "1.2.3"}', encoding="utf-8")
+
+    assert harness.basicly_ref(package) == "v1.2.3"
+
+
+@pytest.mark.parametrize(
+    "content", ["{}", '{"basicly_version": "0.47"}', '{"basicly_version": "v0.47.1"}', "[]", "{"]
+)
+def test_a_malformed_harness_version_stops_by_name(tmp_path: Path, content: str) -> None:
+    package = tmp_path / "terminal_setup"
+    package.mkdir()
+    (package / harness.PACKAGED_NAME).write_text(content, encoding="utf-8")
+
+    with pytest.raises(
+        harness.HarnessVersionError, match=r"basicly harness version in .*_harness\.json"
+    ):
+        harness.basicly_ref(package)
+
+
+def test_a_missing_harness_version_stops_by_name(tmp_path: Path) -> None:
+    package = tmp_path / "terminal_setup"
+    package.mkdir()
+
+    with pytest.raises(harness.HarnessVersionError, match="basicly harness version is missing"):
+        harness.basicly_ref(package)
+
+
+def test_setup_stops_before_any_step_on_a_bad_harness_version(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def refuse(*_args: object) -> str:
+        raise harness.HarnessVersionError("the basicly harness version in X is None; expected Y.")
+
+    def no_step(*_args: object) -> int:
+        raise AssertionError("setup ran a step")
+
+    monkeypatch.setattr(harness, "harness_version", refuse)
+    monkeypatch.setattr(cli, "_dispatch", no_step)
+
+    assert cli.main(["--dry-run"]) == 1
+    captured = capsys.readouterr()
+    assert "the basicly harness version in X" in captured.out + captured.err
 
 
 def test_the_pinned_harness_carries_no_tool_skills() -> None:
@@ -1536,7 +1590,7 @@ def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> 
 def test_cli_tools_script_passes_only_the_cli_tools_skill(tmp_path: Path) -> None:
     record = _run_cli_tools_script(tmp_path, ["fdfind", "rg"], claude=True)
 
-    assert record.read_text(encoding="utf-8").splitlines() == [*_SKILLS_USER, "cli-tools"]
+    assert record.read_text(encoding="utf-8").splitlines() == [*_skills_user(), "cli-tools"]
 
 
 @_posix_only
@@ -1559,7 +1613,7 @@ def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
 
     assert fake.commands == [
         wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()]),
-        ["uv.exe", *_SKILLS_USER, "--home", str(tmp_path), "cli-tools"],
+        ["uv.exe", *_skills_user(), "--home", str(tmp_path), "cli-tools"],
     ]
 
 

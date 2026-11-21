@@ -8,6 +8,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from . import harness
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .prerequisites import _add_to_user_path, attempt, root_shell_command
 from .prompt_config import configure_zshenv, write_starship_config
@@ -654,14 +655,12 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
     _deploy_img_zoom_skill_native(runner, platform, source)
 
 
-BASICLY_REF = "v0.47.1"
-BASICLY_SPEC = (
-    "https://github.com/niksavis/basicly/releases/download/"
-    f"{BASICLY_REF}/basicly-{BASICLY_REF.removeprefix('v')}-py3-none-any.whl"
-)
 CLI_TOOLS_SKILL = "cli-tools"
 _CLI_TOOLS_LABEL = "install the basicly cli-tools skills"
-_SKILLS_USER = ["tool", "run", "--from", BASICLY_SPEC, "basicly", "skills-user"]
+
+
+def _skills_user() -> list[str]:
+    return ["tool", "run", "--from", harness.basicly_spec(), "basicly", "skills-user"]
 
 
 def _cli_tools_skills_script() -> str:
@@ -670,7 +669,7 @@ def _cli_tools_skills_script() -> str:
         'skipping the cli-tools skills."; exit 0; }; '
         + _UV_RESOLVE_POSIX
         + '"$uv" '
-        + " ".join(shlex.quote(part) for part in [*_SKILLS_USER, CLI_TOOLS_SKILL])
+        + " ".join(shlex.quote(part) for part in [*_skills_user(), CLI_TOOLS_SKILL])
     )
 
 
@@ -681,7 +680,7 @@ def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> 
         )
         return
     uv = _windows_uv(runner, platform)
-    runner.run([uv, *_SKILLS_USER, "--home", str(platform.home), CLI_TOOLS_SKILL])
+    runner.run([uv, *_skills_user(), "--home", str(platform.home), CLI_TOOLS_SKILL])
 
 
 def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:
