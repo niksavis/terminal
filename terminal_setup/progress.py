@@ -24,6 +24,20 @@ _FINAL_FAILURES = "Setup finished with "
 _CURRENT = (" is up to date", " is already up to date", " is present")
 
 
+_SCRIPT_FLAGS = ("-c", "-Command")
+
+
+def before_script(command: list[str]) -> list[str]:
+    for index, part in enumerate(command):
+        if part in _SCRIPT_FLAGS:
+            return command[:index]
+    return command
+
+
+def command_line(command: list[str], label: str | None) -> str:
+    return f"{shlex.join(before_script(command))}: {label}" if label else shlex.join(command)
+
+
 def log_dir(*, windows_host: bool, home: Path) -> Path:
     if windows_host:
         local = os.environ.get("LOCALAPPDATA")
@@ -343,7 +357,7 @@ class PhasedReporter:
             self._display.line("question", message)
 
     def command(self, command: list[str], label: str | None = None) -> None:
-        self._write("run", f"{label}: {shlex.join(command)}" if label else shlex.join(command))
+        self._write("run", command_line(command, label))
         self._display.progress(label or shlex.join(command)[:80])
 
     def output(self, text: str) -> None:

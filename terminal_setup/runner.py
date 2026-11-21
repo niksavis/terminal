@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import shlex
 import shutil
 import subprocess  # nosec B404
 import sys
@@ -86,7 +85,7 @@ class ConsoleReporter:
         self._emit("prompt", message)
 
     def command(self, command: list[str], label: str | None = None) -> None:
-        line = f"{shlex.join(_before_script(command))}: {label}" if label else shlex.join(command)
+        line = progress.command_line(command, label)
         if self._color:
             limit = max(20, shutil.get_terminal_size((100, 24)).columns - 3)
             if len(line) > limit:
@@ -121,16 +120,6 @@ def _run_keeping_stderr(
     if check and result.returncode != 0:
         raise subprocess.CalledProcessError(result.returncode, command, stderr=result.stderr)
     return result
-
-
-_SCRIPT_FLAGS = ("-c", "-Command")
-
-
-def _before_script(command: list[str]) -> list[str]:
-    for index, part in enumerate(command):
-        if part in _SCRIPT_FLAGS:
-            return command[:index]
-    return command
 
 
 @dataclass

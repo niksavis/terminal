@@ -53,3 +53,32 @@ def guarded_system_path(*first: Path) -> str:
 @pytest.fixture(autouse=True)
 def no_agent_version_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("terminal_setup.agents.latest_agent_version", lambda _agent: "")
+
+
+def _host_is_wsl() -> bool:
+    version = Path("/proc/version")
+    return version.is_file() and "microsoft" in version.read_text(encoding="utf-8").lower()
+
+
+WSL_DETECTION_TARGETS = (
+    "terminal_setup.agents.is_running_in_wsl",
+    "terminal_setup.cli.is_running_in_wsl",
+    "terminal_setup.prerequisites.is_running_in_wsl",
+    "terminal_setup.configs.is_running_in_wsl",
+    "terminal_setup.terminal_command.is_running_in_wsl",
+    "terminal_setup.platform.is_running_in_wsl",
+)
+
+
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
+    if _host_is_wsl() and "wsl_detection" in metafunc.fixturenames:
+        metafunc.parametrize("wsl_detection", ["host", "forced-off"], indirect=True)
+
+
+@pytest.fixture(autouse=True)
+def wsl_detection(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> str:
+    mode = getattr(request, "param", "host")
+    if mode == "forced-off":
+        for target in WSL_DETECTION_TARGETS:
+            monkeypatch.setattr(target, lambda: False, raising=False)
+    return mode

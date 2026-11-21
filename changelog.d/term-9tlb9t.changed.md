@@ -1,0 +1,1 @@
+- **On a WSL host the test suite also runs with WSL detection forced off**, so a Windows-host fault shows locally before CI (term-9tlb9t).
