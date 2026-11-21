@@ -16,8 +16,14 @@ jobs:
   verify:
     uses: ./.github/workflows/quality-gates.yml
 
+  verify-macos:
+    uses: ./.github/workflows/quality-gates-macos.yml
+
+  e2e-install:
+    uses: ./.github/workflows/e2e-install.yml
+
   release:
-    needs: verify
+    needs: [verify, verify-macos, e2e-install]
     if: |
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
