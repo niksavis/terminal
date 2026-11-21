@@ -781,3 +781,45 @@ def test_agents_ps1_uninstall_removes_the_binaries_and_keeps_the_configuration(
     assert not (profile / "AppData" / "Local" / "Programs" / "OpenAI" / "Codex").exists()
     assert all(path.exists() for path in kept)
     assert "codex app-server daemon stop" in _ps_calls(tmp_path)
+
+
+@needs_bash4
+def test_a_nested_agents_run_leaves_the_done_line_to_its_parent(tmp_path: Path) -> None:
+    _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
+
+    nested = _run_agents(tmp_path, "status", AGENTS_NESTED="1")
+    alone = _run_agents(tmp_path, "status")
+
+    assert nested.returncode == 0, nested.stdout
+    assert "All done." not in nested.stdout
+    assert alone.stdout.count("All done.") == 1
+
+
+@needs_pwsh
+def test_agents_ps1_prints_the_wsl_side_without_its_own_heading(tmp_path: Path) -> None:
+    _ps_home(tmp_path)
+    _fake_windows_agent(tmp_path / "stubs", "claude", "2.1.0")
+    wrapper = tmp_path / "wrapper.ps1"
+    wrapper.write_text(
+        wrapper.read_text(encoding="utf-8").replace(
+            "@rest", "@($rest | Where-Object { $_ -ne '--win' })"
+        ),
+        encoding="utf-8",
+    )
+
+    result = _run_ps(tmp_path, "status")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "==> WSL" not in result.stdout
+    assert result.stdout.count("All done.") == 1
+
+
+@needs_pwsh
+def test_a_nested_agents_ps1_run_leaves_the_done_line_to_its_parent(tmp_path: Path) -> None:
+    _ps_home(tmp_path)
+    _fake_windows_agent(tmp_path / "stubs", "claude", "2.1.0")
+
+    result = _run_ps(tmp_path, "status", AGENTS_NESTED="1")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "All done." not in result.stdout

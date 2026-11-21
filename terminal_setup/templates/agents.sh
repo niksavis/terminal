@@ -30,6 +30,7 @@ declare -A LABEL=([claude]="Claude Code" [codex]="Codex" [daemon]="Codex daemon"
 declare -A NPM_PACKAGE=([claude]="__NPM_CLAUDE__" [codex]="__NPM_CODEX__" [copilot]="__NPM_COPILOT__")
 declare -A CUR NEW ST ORIGIN
 FAILED=()
+NESTED="${AGENTS_NESTED:-}"
 SIDE="Linux"
 IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then
@@ -280,7 +281,7 @@ run_windows() {
     return 0
   fi
   shell="$(command -v pwsh.exe || command -v powershell.exe)" || {
-    echo "!! neither pwsh.exe nor powershell.exe is on the PATH"
+    echo "!! Windows: neither pwsh.exe nor powershell.exe is on the PATH"
     FAILED+=("Windows")
     return 0
   }
@@ -288,7 +289,7 @@ run_windows() {
   if ((FORCE)); then
     args+=(--force)
   fi
-  (cd /mnt/c && AGENTS_CONFIRMED=1 WSLENV="AGENTS_CONFIRMED:${WSLENV:-}" "$shell" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${args[@]}") || FAILED+=("Windows")
+  (cd /mnt/c && AGENTS_CONFIRMED=1 AGENTS_NESTED=1 WSLENV="AGENTS_CONFIRMED:AGENTS_NESTED:${WSLENV:-}" "$shell" -NoProfile -ExecutionPolicy Bypass -File "$ps1" "${args[@]}") || FAILED+=("Windows")
 }
 
 if [[ "$CMD" == uninstall && -z "${AGENTS_CONFIRMED:-}" ]]; then
@@ -304,7 +305,6 @@ if [[ "$TARGET" != --win ]]; then
   run_local
 fi
 if [[ "$TARGET" != --wsl && "$IS_WSL" == 1 ]]; then
-  say "Windows"
   run_windows
 fi
 
@@ -312,4 +312,6 @@ if ((${#FAILED[@]})); then
   printf '\n\033[1;31mFailed: %s\033[0m\n' "${FAILED[*]}"
   exit 1
 fi
-printf '\n\033[1;32mAll done.\033[0m\n'
+if [[ -z "$NESTED" ]]; then
+  printf '\n\033[1;32mAll done.\033[0m\n'
+fi
