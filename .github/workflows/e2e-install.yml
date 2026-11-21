@@ -2,9 +2,16 @@
 name: e2e-install
 
 "on":
-  push:
-    tags:
-      - "v*"
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ""
+      agents:
+        type: string
+        required: false
+        default: all
   schedule:
     - cron: "17 4 * * 1"
   workflow_dispatch:
