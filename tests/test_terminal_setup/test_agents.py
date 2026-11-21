@@ -31,6 +31,7 @@ from terminal_setup.platform import (
     wsl_exec_command,
 )
 
+from ..conftest import guarded_system_path
 from .test_runner import CapturingReporter
 from .test_unattended import RecordingRunner, _windows_platform
 
@@ -372,7 +373,7 @@ def _run_agents(
 ) -> subprocess.CompletedProcess[str]:
     env = {
         "HOME": str(tmp_path / "home"),
-        "PATH": f"{tmp_path / 'stubs'}:/usr/bin:/bin",
+        "PATH": guarded_system_path(tmp_path / "stubs"),
         "AGENTS_TEST_LOG": str(tmp_path / "calls.log"),
         "LATEST_CLAUDE": _LATEST["claude"],
         "LATEST_CODEX": _LATEST["codex"],

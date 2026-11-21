@@ -23,6 +23,7 @@ from .prerequisites import (
     report_machine_scope,
 )
 from .runner import Runner
+from .status import version_of
 
 AGENTS = ("claude", "copilot", "codex")
 NPM_PACKAGES = {
@@ -338,3 +339,59 @@ def herdr_integration_states(runner: Runner, platform: PlatformInfo) -> dict[str
         if separator and agent in AGENTS:
             states[agent] = rest.split(" (/", 1)[0].strip()
     return states
+
+
+_DAEMON_SHELL = (
+    'PATH="$HOME/.local/bin:$PATH"; command -v codex >/dev/null 2>&1 || exit 0; '
+    "codex --version 2>/dev/null | head -n 1; "
+    'readlink "${CODEX_HOME:-$HOME/.codex}/packages/app-server-daemon/current" 2>/dev/null '
+    "| sed 's#.*/##'"
+)
+_DAEMON_WINDOWS = (
+    "$c = Get-Command codex -ErrorAction SilentlyContinue; if (-not $c) { exit 0 }; "
+    "& $c.Source --version | Select-Object -First 1; "
+    "$d = Get-Item (Join-Path $env:USERPROFILE '.codex\\packages\\app-server-daemon\\current') "
+    '-ErrorAction SilentlyContinue; if ($d) { Split-Path -Leaf "$($d.Target)" }'
+)
+
+
+def _daemon_lag(output: str) -> tuple[str, str] | None:
+    lines = [line.strip() for line in output.splitlines() if line.strip()]
+    if len(lines) < 2:
+        return None
+    codex, daemon = version_of(lines[0]), version_of(lines[1])
+    if not codex or not daemon:
+        return None
+    numbers = [tuple(int(part) for part in value.split(".")) for value in (codex, daemon)]
+    return (codex, daemon) if numbers[1] < numbers[0] else None
+
+
+def report_daemon_lag(runner: Runner, platform: PlatformInfo) -> None:
+    windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
+    sides = [
+        (
+            "in WSL" if windows_host else "",
+            _run_shell_read(
+                runner, _DAEMON_SHELL, wsl_distro=_wsl_distro(platform) if windows_host else None
+            ).stdout
+            or "",
+        )
+    ]
+    if windows_host:
+        result = runner.run(
+            ["powershell", "-NoProfile", "-Command", _DAEMON_WINDOWS],
+            check=False,
+            dry_run_safe=True,
+        )
+        sides.append(("on Windows", result.stdout or ""))
+    for where, output in sides:
+        lag = _daemon_lag(str(output))
+        if lag is None:
+            continue
+        codex, daemon = lag
+        place = f" {where}" if where else ""
+        runner.reporter.info(
+            f"The Codex app-server daemon{place} is {daemon}, older than codex {codex}. "
+            "Setup does not update it, because that stops running Codex work. "
+            "To update it, run: agents update"
+        )

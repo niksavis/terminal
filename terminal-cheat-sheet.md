@@ -55,10 +55,11 @@ curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install
 curl -LsSf https://github.com/niksavis/terminal/releases/latest/download/install.sh | sh -s -- --only report
 ```
 
-Show which installed tools have a newer release, in WSL and on Windows:
+Show which installed tools have a newer release, and update them all, in WSL and on Windows:
 
 ```bash
 terminal status
+terminal update
 ```
 
 Show and update the coding agents and the Codex daemon in WSL and on Windows (installed with `--agents`):

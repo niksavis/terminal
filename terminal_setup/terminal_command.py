@@ -43,8 +43,16 @@ def setup_source() -> str:
     return f"{SETUP_ARCHIVES}{setup_ref()}.zip"
 
 
+RELEASES = "https://github.com/niksavis/terminal/releases"
+
+
 def render_terminal_command(name: str) -> str:
-    return render_template(TERMINAL_COMMAND_TEMPLATES[name], {"__SETUP_SOURCE__": setup_source()})
+    values = {
+        "__SETUP_SOURCE__": setup_source(),
+        "__SETUP_REF__": setup_ref(),
+        "__RELEASES__": RELEASES,
+    }
+    return render_template(TERMINAL_COMMAND_TEMPLATES[name], values)
 
 
 def _refuse_other(found: str, ours: tuple[Path, ...]) -> None:
