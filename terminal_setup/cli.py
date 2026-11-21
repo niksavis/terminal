@@ -12,6 +12,7 @@ from pathlib import Path
 from . import (
     agents,
     configs,
+    harness,
     platform,
     prerequisites,
     release_install,
@@ -1041,6 +1042,7 @@ def main(argv: list[str] | None = None) -> int:
     reporter = ConsoleReporter()
     runner = Runner(dry_run=args.dry_run, reporter=reporter, unattended=args.unattended)
     try:
+        harness.harness_version()
         return _dispatch(args, runner)
     except KeyboardInterrupt:
         reporter.error("Interrupted.")
