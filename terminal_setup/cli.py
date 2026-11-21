@@ -26,6 +26,32 @@ from . import status as tool_status
 from .platform import is_running_in_wsl, rerun_command, setup_command, wsl_exec_command
 from .runner import ConsoleReporter, Reporter, Runner
 
+REMOVED_OPTIONS = {
+    "--user-install": "a user-local install is the default; run: terminal-setup",
+    "--report": "run terminal-setup, then: terminal-setup --only report",
+    "--only check": "--only report runs the same check first; run: terminal-setup --only report",
+}
+
+
+class _Removed(argparse.Action):
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        _namespace: argparse.Namespace,
+        _values: object,
+        option_string: str | None = None,
+    ) -> None:
+        name = option_string or self.dest
+        parser.error(f"{name} was removed: {REMOVED_OPTIONS[name]}")
+
+
+def _only_mode(value: str) -> str:
+    if value == "check":
+        raise argparse.ArgumentTypeError(
+            f"--only check was removed: {REMOVED_OPTIONS['--only check']}"
+        )
+    return value
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -37,10 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
             "  terminal-setup                 user-local install and configuration (no admin)\n"
             "  terminal-setup --system-install install system-wide via the package manager\n"
             "  terminal-setup --dry-run       preview the steps without making changes\n"
-            "  terminal-setup --only check    verify prerequisites, then exit\n"
             "  terminal-setup --only config   re-apply configuration only (no package installs)\n"
             "  terminal-setup --only report   print the verification report, then exit\n"
-            "  terminal-setup --report        full run, then print the verification report\n"
             "  terminal-setup --unattended    full run that never prompts (scripts, agents)\n"
             "  terminal-setup --agents all    also install Claude Code, Copilot CLI and Codex\n"
             "  terminal-setup --skip-claude   install everything except the Claude status line\n"
@@ -61,11 +85,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run.add_argument(
         "--only",
-        choices=("check", "config", "report", "status"),
+        type=_only_mode,
+        choices=("config", "report", "status"),
+        metavar="{config,report}",
         help=(
-            "Limit the run to one phase and exit: 'check' verifies prerequisites, "
-            "'config' re-applies configuration without installing packages, "
-            "'report' prints the verification report."
+            "Limit the run to one phase and exit: 'config' re-applies configuration without "
+            "installing packages, 'report' checks the prerequisites and prints the verification "
+            "report."
         ),
     )
     run.add_argument(
@@ -78,11 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
             "only with --update."
         ),
     )
-    run.add_argument(
-        "--report",
-        action="store_true",
-        help="After a full run, print a verification report for tools and deployed configs.",
-    )
+    run.add_argument("--report", action=_Removed, nargs=0, help=argparse.SUPPRESS, default=None)
 
     skip = parser.add_argument_group("skip components")
     skip.add_argument(
@@ -121,11 +143,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     install.add_argument(
         "--user-install",
-        action="store_true",
-        help=(
-            "Deprecated: a user-local install without admin rights is now the default, "
-            "so this flag is a no-op kept for backwards compatibility."
-        ),
+        action=_Removed,
+        nargs=0,
+        help=argparse.SUPPRESS,
+        default=None,
     )
     install.add_argument(
         "--no-sudo",
@@ -834,7 +855,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     no_nerd_font: bool,
     config_only: bool,
     system_install: bool,
-    user_install: bool,
     update: bool = False,
     no_sudo: bool = False,
     selected_agents: tuple[str, ...] = (),
@@ -842,7 +862,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
     winget_versions: str | None = None,
     uninstall_system_versions: bool,
     keep_system_versions: bool,
-    report: bool,
     windows_terminal_cwd: str | None,
     wsl_terminal_cwd: str | None,
 ) -> int:
@@ -851,7 +870,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
     in_wsl = is_running_in_wsl()
     targets_wsl = platform_info.os == platform.OperatingSystem.WINDOWS or in_wsl
-    effective_no_sudo = False if system_install else (no_sudo or user_install or targets_wsl)
+    effective_no_sudo = False if system_install else (no_sudo or targets_wsl)
 
     if config_only:
         runner.reporter.info(
@@ -861,11 +880,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         runner.reporter.info("System-install mode: installing tools system-wide (needs admin/sudo)")
     elif effective_no_sudo:
         runner.reporter.info("Installing tools into user-writable locations (no admin rights)")
-    if user_install:
-        runner.reporter.warn(
-            "--user-install is deprecated: a user-local install is the default now, "
-            "so the flag is a no-op."
-        )
 
     host_side = _host_side(platform_info)
     windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
@@ -1030,14 +1044,6 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             no_sudo=no_sudo,
         )
 
-    if report:
-        print_setup_report(
-            runner,
-            platform_info,
-            include_starship=not skip_starship,
-            include_vscode=not skip_vscode,
-        )
-
     if runner.failures:
         runner.reporter.error(
             f"Setup finished with {len(runner.failures)} failed "
@@ -1156,9 +1162,6 @@ def _start_phases(args: argparse.Namespace, runner: Runner, info: platform.Platf
 def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
     platform_info = platform.detect_platform()
 
-    if args.only == "check":
-        return run_check(platform_info, runner)
-
     if args.only == "status":
         return print_status(runner, platform_info)
 
@@ -1192,7 +1195,6 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         no_nerd_font=args.no_nerd_font,
         config_only=config_only,
         system_install=args.system_install,
-        user_install=args.user_install,
         update=args.update,
         no_sudo=args.no_sudo,
         selected_agents=args.agents,
@@ -1200,7 +1202,6 @@ def _dispatch(args: argparse.Namespace, runner: Runner) -> int:
         winget_versions=args.winget_versions,
         uninstall_system_versions=args.system_versions == "uninstall",
         keep_system_versions=args.system_versions == "keep",
-        report=args.report,
         windows_terminal_cwd=args.windows_terminal_cwd,
         wsl_terminal_cwd=args.wsl_terminal_cwd,
     )

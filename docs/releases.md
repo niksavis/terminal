@@ -41,9 +41,9 @@ The scripts in the repository default to `main`, so a clone and the e2e test run
 
   | Job | Runner | What it checks |
   | --- | --- | --- |
-  | `linux` | `ubuntu-latest` | `install.sh --unattended --agents all --herdr --report` exits with code 0 |
+  | `linux` | `ubuntu-latest` | `install.sh --unattended --agents all --herdr`, then `install.sh --only report`, each exit with code 0 |
   | `macos` | `macos-latest` | the same, after `wget` is present |
-  | `windows-wsl` | `windows-latest`, with Ubuntu 24.04 from `Vampire/setup-wsl` | `install.ps1 --unattended --agents all --herdr --report` exits with code 0 |
+  | `windows-wsl` | `windows-latest`, with Ubuntu 24.04 from `Vampire/setup-wsl` | `install.ps1 --unattended --agents all --herdr`, then `install.ps1 --only report`, each exit with code 0 |
   | `windows-without-wsl` | `windows-latest`, no distro | setup stops at the prerequisite check and installs nothing |
 
 - Triggers: `release.yml` runs it for each tag push (`v*`), next to `quality-gates`, and the weekly schedule and **Run workflow** on the Actions tab run it too. On demand, you can set the ref to install and the `--agents` value.

@@ -93,7 +93,7 @@ def test_parser_dry_run_flag() -> None:
 
 def test_parser_only_choices() -> None:
     parser = build_parser()
-    for phase in ("check", "config", "report"):
+    for phase in ("config", "report", "status"):
         args = parser.parse_args(["--only", phase])
         assert args.only == phase
     assert parser.parse_args([]).only is None
@@ -119,10 +119,24 @@ def test_parser_no_nerd_font_flag() -> None:
     assert args.no_nerd_font is True
 
 
-def test_parser_report_flag() -> None:
-    parser = build_parser()
-    args = parser.parse_args(["--report"])
-    assert args.report is True
+@pytest.mark.parametrize(
+    ("arguments", "kept"),
+    [
+        (["--report"], "terminal-setup --only report"),
+        (["--user-install"], "run: terminal-setup"),
+        (["--only", "check"], "terminal-setup --only report"),
+    ],
+)
+def test_a_removed_option_is_refused_by_name_with_the_kept_command(
+    arguments: list[str], kept: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as stopped:
+        build_parser().parse_args(arguments)
+
+    assert stopped.value.code == 2
+    error = capsys.readouterr().err
+    assert f"{' '.join(arguments)} was removed" in error
+    assert kept in error
 
 
 def test_parser_system_versions_choice() -> None:
@@ -146,10 +160,15 @@ def test_parser_optional_terminal_cwd_flags() -> None:
     assert args.wsl_terminal_cwd == "$HOME/workspace"
 
 
-def test_main_check_mode() -> None:
-    with mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False):
-        result = main(["--only", "check", "--dry-run"])
-    assert result in (0, 1)
+def test_main_report_mode_runs_the_prerequisite_check() -> None:
+    with (
+        mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.cli.run_check", return_value=0) as check,
+        mock.patch("terminal_setup.cli.print_setup_report"),
+    ):
+        result = main(["--only", "report", "--dry-run"])
+    assert result == 0
+    check.assert_called_once()
 
 
 def test_main_runs_wsl_setup_when_inside_wsl() -> None:
@@ -246,11 +265,9 @@ def test_run_setup_config_only_skips_package_installs() -> None:
             no_nerd_font=False,
             config_only=True,
             system_install=False,
-            user_install=False,
             no_sudo=False,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
         )
@@ -264,7 +281,7 @@ def test_run_setup_config_only_skips_package_installs() -> None:
     mock_deploy.assert_called_once()
 
 
-def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
+def test_run_setup_on_a_windows_host_uses_no_sudo_for_wsl_tools() -> None:
     fake_platform = PlatformInfo(
         os=OperatingSystem.WINDOWS,
         package_manager=PackageManager.WINGET,
@@ -300,11 +317,9 @@ def test_run_setup_user_install_implies_no_sudo_for_wsl_tools() -> None:
             no_nerd_font=False,
             config_only=False,
             system_install=False,
-            user_install=True,
             no_sudo=False,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
         )
@@ -343,11 +358,9 @@ def test_a_plain_run_updates_owned_tools_and_only_update_upgrades_the_distro(
             no_nerd_font=False,
             config_only=False,
             system_install=False,
-            user_install=False,
             no_sudo=False,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
             update=update,
@@ -377,11 +390,9 @@ def test_run_setup_ends_with_the_command_that_starts_wezterm_on_windows() -> Non
             no_nerd_font=False,
             config_only=True,
             system_install=False,
-            user_install=False,
             no_sudo=False,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
         )
@@ -421,12 +432,10 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
             no_nerd_font=False,
             config_only=False,
             system_install=False,
-            user_install=False,
             no_sudo=False,
             herdr=herdr,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
             selected_agents=("claude",),
@@ -478,11 +487,9 @@ def _plain_windows_run(**patches: object) -> dict[str, mock.Mock]:
             no_nerd_font=False,
             config_only=False,
             system_install=False,
-            user_install=False,
             no_sudo=False,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
         )
@@ -534,7 +541,7 @@ def _windows_platform() -> PlatformInfo:
 
 
 def _run_setup_install_mode(
-    fake_platform: PlatformInfo, *, system_install: bool, user_install: bool, no_sudo: bool
+    fake_platform: PlatformInfo, *, system_install: bool, no_sudo: bool
 ) -> tuple[mock.Mock, mock.Mock, mock.Mock, mock.Mock]:
     with (
         mock.patch("terminal_setup.cli.is_running_in_wsl", return_value=False),
@@ -565,11 +572,9 @@ def _run_setup_install_mode(
             no_nerd_font=False,
             config_only=False,
             system_install=system_install,
-            user_install=user_install,
             no_sudo=no_sudo,
             uninstall_system_versions=False,
             keep_system_versions=False,
-            report=False,
             windows_terminal_cwd=None,
             wsl_terminal_cwd=None,
         )
@@ -585,14 +590,14 @@ def test_parser_system_install_flag() -> None:
 
 def test_run_setup_default_is_user_local_on_windows() -> None:
     mock_tools, *_ = _run_setup_install_mode(
-        _windows_platform(), system_install=False, user_install=False, no_sudo=False
+        _windows_platform(), system_install=False, no_sudo=False
     )
     assert mock_tools.call_args.kwargs["no_sudo"] is True
 
 
 def test_run_setup_system_install_uses_sudo_on_windows() -> None:
     mock_tools, *_ = _run_setup_install_mode(
-        _windows_platform(), system_install=True, user_install=False, no_sudo=False
+        _windows_platform(), system_install=True, no_sudo=False
     )
     assert mock_tools.call_args.kwargs["no_sudo"] is False
 
@@ -609,9 +614,7 @@ def test_run_setup_native_linux_default_uses_package_manager() -> None:
         wezterm_config_dir=Path.home() / ".config" / "wezterm",
         vscode_settings_path=None,
     )
-    _, mock_extras, *_ = _run_setup_install_mode(
-        fake_platform, system_install=False, user_install=False, no_sudo=False
-    )
+    _, mock_extras, *_ = _run_setup_install_mode(fake_platform, system_install=False, no_sudo=False)
     assert mock_extras.call_args.kwargs["no_sudo"] is False
 
 
@@ -666,7 +669,7 @@ def test_main_reports_clean_error_for_value_errors() -> None:
 
 def test_run_setup_on_windows_installs_img_zoom_in_wsl_and_natively() -> None:
     _, _, zoom_wsl, zoom_native = _run_setup_install_mode(
-        _windows_platform(), system_install=False, user_install=False, no_sudo=False
+        _windows_platform(), system_install=False, no_sudo=False
     )
     zoom_wsl.assert_called_once()
     zoom_native.assert_called_once()
@@ -685,7 +688,7 @@ def test_run_setup_on_linux_installs_img_zoom_natively_only() -> None:
         vscode_settings_path=None,
     )
     _, _, zoom_wsl, zoom_native = _run_setup_install_mode(
-        fake_platform, system_install=False, user_install=False, no_sudo=False
+        fake_platform, system_install=False, no_sudo=False
     )
     zoom_wsl.assert_not_called()
     zoom_native.assert_called_once()

@@ -338,12 +338,10 @@ Setup prints one line per phase (prerequisites, tools, agents and commands, conf
 
 | Option | What it does |
 | --- | --- |
-| `--only check` | check the prerequisites, then exit |
 | `--dry-run` | print each step and change nothing |
 | `--verbose` | print every step, file and command on the screen, as before v0.24.3, instead of one line per phase |
 | `--only config` | re-apply all configs (also the Claude status line); install no packages |
 | `--only report` | print the verification report, then exit. It shows each tool with its path and version, warns about Python older than 3.14 and Node.js older than v26, and lists the herdr integrations |
-| `--report` | run setup, then print the verification report |
 | `--unattended` | never ask a question; take the safe answer (for scripts and agents) |
 | `--agents claude,codex` | also install these coding agents when missing; `all` installs all three. Setup never installs or updates an agent that you do not name |
 | `--herdr` | also install herdr in WSL, on Linux and on macOS, and its integration for each agent named in `--agents`. An herdr that is already installed is updated without this option |

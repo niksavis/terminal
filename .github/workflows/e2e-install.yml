@@ -45,7 +45,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install as a consumer
         shell: bash
-        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr
+      - name: Print the verification report
+        shell: bash
+        run: sh ./install.sh --only report
       - name: Run agents status
         shell: bash
         run: |
@@ -111,7 +114,10 @@ jobs:
         run: command -v wget >/dev/null || brew install wget
       - name: Install as a consumer
         shell: bash
-        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr --report
+        run: sh ./install.sh --unattended --agents "${AGENTS}" --herdr
+      - name: Print the verification report
+        shell: bash
+        run: sh ./install.sh --only report
 
   windows-wsl:
     runs-on: windows-latest
@@ -131,7 +137,12 @@ jobs:
         shell: powershell
         run: |
           $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
-          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --herdr --winget-versions replace --report
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --unattended --agents $env:AGENTS --herdr --winget-versions replace
+      - name: Print the verification report
+        shell: powershell
+        run: |
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+          powershell -NoProfile -ExecutionPolicy Bypass -File ./install.ps1 --only report
       - name: Run agents status on Windows and in WSL
         shell: pwsh
         run: |

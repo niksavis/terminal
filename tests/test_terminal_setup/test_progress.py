@@ -166,7 +166,7 @@ def test_setup_prints_plain_lines_when_stdout_is_not_a_terminal(
     assert chosen.log_path.parent == tmp_path / "terminal-setup" / "logs"
 
 
-@pytest.mark.parametrize("arguments", [["--verbose"], ["--only", "status"], ["--only", "check"]])
+@pytest.mark.parametrize("arguments", [["--verbose"], ["--only", "status"], ["--only", "report"]])
 def test_verbose_and_read_only_modes_keep_the_full_output(arguments: list[str]) -> None:
     assert isinstance(
         cli._setup_reporter(cli.build_parser().parse_args(arguments)), ConsoleReporter

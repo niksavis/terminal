@@ -41,7 +41,7 @@ uv run python setup-terminal.py
 Optional validation:
 
 ```bash
-uv run python setup-terminal.py --only check
+uv run python setup-terminal.py --only report
 uv run python setup-terminal.py --dry-run
 uv run python setup-terminal.py --only report
 ```
