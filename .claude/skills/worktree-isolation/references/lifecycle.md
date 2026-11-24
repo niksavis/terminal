@@ -16,7 +16,10 @@
 4. **Clean up.** `cleanup` removes the worktree, prunes the registry, and deletes `harness/<name>` when it is merged.
    It keeps an unmerged branch unless you pass `--force`. It never touches the base branch.
    It refuses locked checkouts even with `--force`; finish the active session and explicitly unlock the checkout first.
-   Unknown ignored files and tracked changes under dependency paths stop ordinary cleanup. Only untracked or ignored dependency directories, the tracker redirect, and the named verify counters, run artifact and their ignore marker are disposable generated output.
+   An untracked file that git does not ignore, and a tracked change under a dependency path, stop ordinary cleanup.
+   Any other git-ignored file (generated type folders, `*.basicly-bak` backups, local config) does not stop it: cleanup copies it to `.git/basicly-preserved/<lane>-<id>/` with a manifest, then removes the worktree. Dependency directories and `.basicly/bin` keep their own rules.
+   Cleanup deletes `origin/harness/<name>` when the base holds every path it changed. It keeps a branch whose head is still the commit the lane started from.
+   After a CI-proven landing, `worktree merge --mode ci` runs this cleanup itself and reports a refusal with the command to finish it.
    It can reclaim a worktree whose directory is gone.
 
 ## Hooks

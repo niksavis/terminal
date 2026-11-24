@@ -50,6 +50,29 @@ def base(cwd: Path, environ: dict[str, str]) -> Path:
     return found
 
 
+def member_name(cwd: Path, environ: dict[str, str]) -> str:
+    named = environ.get(NAME_ENV, "").strip()
+    if named:
+        return named
+    tried = [f"{NAME_ENV} is unset"]
+    root = store.find(cwd, environ)
+    chosen = next((environ[k] for k in SESSION_ENVS if environ.get(k)), "").strip()
+    if root is None:
+        tried.append(f"no orchestrator store above {cwd}")
+    elif not chosen:
+        tried.append(f"no session id in {' or '.join(SESSION_ENVS)}")
+    else:
+        name = store.read(store.session_path(root, chosen)).get("name")
+        if isinstance(name, str) and name.strip():
+            return name.strip()
+        tried.append(f"the orch state record of session {chosen} names no member")
+    raise RefusedError(
+        "orch cannot name this session's member: "
+        + "; ".join(tried)
+        + "; run 'orch state set --name NAME' or set ORCH_MEMBER"
+    )
+
+
 def session(environ: dict[str, str], given: str | None) -> str:
     chosen = given or next((environ[k] for k in SESSION_ENVS if environ.get(k)), "")
     if not chosen.strip():

@@ -15,7 +15,6 @@ MARKER = "orch-lessons-root"
 LOG = "lessons.jsonl"
 SCANNER = Path(".basicly/core/hooks/secret-scan.py")
 ROOT_ENV = "ORCH_LESSONS_ROOT"
-MEMBER_ENV = "ORCH_MEMBER"
 STALE_AFTER = timedelta(days=14)
 SESSION_END = "session-end"
 SCOPES = ("local", "basicly")
@@ -85,15 +84,6 @@ def init(folder: Path) -> Path:
     folder.mkdir(parents=True, exist_ok=True)
     (folder / MARKER).write_text("", encoding="utf-8")
     return folder
-
-
-def member(environ: dict[str, str]) -> str:
-    name = environ.get(MEMBER_ENV, "").strip()
-    if not name:
-        raise RefusedError(
-            f"set {MEMBER_ENV} to this session's member name; the tool stamps it on each lesson"
-        )
-    return name
 
 
 def check_text(scan: Callable[[str], str | None], texts: list[str]) -> None:

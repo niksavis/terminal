@@ -1,5 +1,5 @@
 {
-  "basicly_version": "0.49.1",
+  "basicly_version": "0.49.2",
   "core": {
     "agents/architect/agent.yaml": "sha256:a46f63a842d1992485ab7f6538f19a7a703a16ea9e5e8e90f6986a8636fe8489",
     "agents/auditor/agent.yaml": "sha256:b68326d319210c5c25785033879e5ac3ab3ed1f7a46e506d94537921250608cc",
@@ -111,9 +111,9 @@
     "kit/orch/orch_guard/__init__.py": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "kit/orch/orch_guard/hook.py": "sha256:60d83dadf8bb50900a999dbe175c060a85eaa5e8356c326aaf00dee4e132479e",
     "kit/orch/orch_lessons/__init__.py": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "kit/orch/orch_lessons/cli.py": "sha256:ce9ddc3a1a37431e35cb869fb9a0e36cdbf88369a2e82da4fc5fb7ac0a69f0eb",
+    "kit/orch/orch_lessons/cli.py": "sha256:58caf357a3e8e5c44d3b3ad5e34ce2393f8a96bed3d4b7f5f2352c88bee0c0a1",
     "kit/orch/orch_lessons/doctor.py": "sha256:fd9d53fbf4379a09231fdb443765e163fd551a780e0f700e5e39761254db637f",
-    "kit/orch/orch_lessons/log.py": "sha256:0fabc87e0a444b719425d6ff48c778aa6f9f42345f4400c9f5da8ccdd70add1f",
+    "kit/orch/orch_lessons/log.py": "sha256:dd132516691f8ce9ede7d08babbb4da056220afc56ce0d4d3d472e02bfb26301",
     "kit/orch/orch_lessons/ruleset.json": "sha256:b53b983e43f8c11073f3705e6efeb1243c3a01bc122e3c1dec93e7325c1375f6",
     "kit/orch/orch_relay/__init__.py": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "kit/orch/orch_relay/accept.py": "sha256:65009043c1721e1113cd58ef63a3a7a7cb81f45c2fd1c74b804a017dcfff2c19",
@@ -124,7 +124,7 @@
     "kit/orch/orch_relay/record.py": "sha256:9669bd4bdf7f78f798e1fb95355d918a9430181df9ee24d483f61c8a510fab62",
     "kit/orch/orch_relay/start.py": "sha256:febc9873fb9fbc8b2e88aebffe0608cecc11e1a31375fcf0709d77a604913487",
     "kit/orch/orch_state/__init__.py": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "kit/orch/orch_state/commands.py": "sha256:051568432e1f9585a3af87642093288c93e9d8cd4cc0d08f2741e0c2d3d3e09d",
+    "kit/orch/orch_state/commands.py": "sha256:c9318689fa5d4ced36ce6ab2e3509c9c17fe23e8f3c024759844a48280b597b6",
     "kit/orch/orch_state/herdr.py": "sha256:8232ba6a04aa760daf7eab440990e6876fdda00661a84f53cb4e7fb8fa5b676e",
     "kit/orch/orch_state/note.py": "sha256:164ace6798ab097a2e0ffcca3280f53cd028549fb1a29e03c42c195b4265c912",
     "kit/orch/orch_state/relay_guard.py": "sha256:e7157473daa7dc4bd5dbf4c2be427796872a1e6b6a55e0b922d313c7fb89e54b",
@@ -183,7 +183,7 @@
     "kit/tracker/migrate.py": "sha256:8362e46826a13d5bd57e659cd9857dc4e13132bc2faf26229681901b95c0b5d0",
     "kit/tracker/mirror.py": "sha256:b1907afcba7494b7fd5cb95230ab487304e0706cf1830b4616ffac989ba2ffd6",
     "kit/tracker/parent_progress.py": "sha256:39dd81be2e829276b52ecb3bbded0a3f9a5819627ec3bb78ed2585d987fc45db",
-    "kit/tracker/pin.py": "sha256:fb12372085ed1f5c1a9cd9e127ff06bb2375186307cf4ef9e3d789bd93f57c47",
+    "kit/tracker/pin.py": "sha256:e2d9ab6e7e89fbb150229254500a8fc9ef8db4216255da68c3023c0ec3d35195",
     "kit/tracker/process_evidence.py": "sha256:b1e932d2d5c9f744ecbc8ba5d9d68bb3cb26d69448d989e73ba941b72b1911bf",
     "kit/tracker/provenance.py": "sha256:5800d8eda460d3e7179e7e920738ef50e04fad0ee15ada48db49e3243e99fc59",
     "kit/tracker/queries.py": "sha256:366f794f3b0e69828580df17ea615fe310a8a41f5c7beb6ce54e0352e4ba1606",
@@ -403,7 +403,7 @@
     "skills/work-tracker/references/write.md": "sha256:f97193b8c5303c25ae01cd3346adec3db69bad7a0c6c9ec99e5f36e38b7359b8",
     "skills/work-tracker/skill.yaml": "sha256:8580a557cbc874f5aa6eb6ecf5f3d74b261480cc182c6fdab9201b21eda44d90",
     "skills/worktree-isolation/evals.yaml": "sha256:9b1e790f57ae91ca569f7c04d9c68e2feec1383a8d1dad54aaa07dbc5e3bf181",
-    "skills/worktree-isolation/references/lifecycle.md": "sha256:9642053b2316557212e59bcdb0ce5f517cde5d9237a8faffabe815deca9494a8",
+    "skills/worktree-isolation/references/lifecycle.md": "sha256:48641000510e71126c0512eec6fa7dfd0284fb89f67a0037add401b4ebd280d5",
     "skills/worktree-isolation/skill.yaml": "sha256:14557fc760602ee48b94e2f9de4527a3d84082523baefccb4a76eeadbe4ae8a5",
     "skills/wsl/evals.yaml": "sha256:7049009c8ab9528cd372bc459f2ab607128d18f7166abff2aa4ac9a6c05d6b26",
     "skills/wsl/references/commands.md": "sha256:b5140ab144319f3250ae95600a77001e7b7fbb5dcf59676a73d943757f472ad3",
@@ -438,6 +438,6 @@
     "templates/common/baseline.j2": "sha256:9cf48abf7d79710eca8d929127e5e9bcfc3fa70248e892c44c94edc234bf09ef",
     "templates/copilot/copilot_instructions_md.j2": "sha256:1646ed61a35551fcdf17c6335cbdac3a7991a8dd736fa57275bf04dd66c83a89"
   },
-  "installed_at": "2026-11-21T20:28:01.938511+00:00",
+  "installed_at": "2026-11-24T19:48:55.158996+00:00",
   "schema_version": 1
 }
