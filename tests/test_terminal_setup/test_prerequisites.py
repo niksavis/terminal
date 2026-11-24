@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import subprocess
 import sys
 from dataclasses import replace
@@ -45,6 +46,7 @@ from terminal_setup.prerequisites import (
     ensure_wsl_tools,
     install_package,
     missing_wsl_system_packages,
+    reconcile_probe_script,
     windows_tool_candidate_dirs,
     wsl_system_packages_command,
 )
@@ -59,6 +61,9 @@ from terminal_setup.prerequisites import (
 )
 from terminal_setup.prerequisites import (
     _install_lazygit_release as install_lazygit_release,
+)
+from terminal_setup.prerequisites import (
+    _install_release_tools as install_release_tools,
 )
 from terminal_setup.prerequisites import (
     _install_user_local_tool as install_user_local_tool,
@@ -170,6 +175,7 @@ class FakeRunner:
     def __init__(self, outputs: dict[tuple[str, ...], tuple[int, str]] | None = None) -> None:
         self.outputs = outputs or {}
         self.commands: list[list[str]] = []
+        self.failures: list[str] = []
         self.dry_run = False
         self.unattended = False
         self.confirm_answer = False
@@ -1125,6 +1131,15 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
                 "--exec",
                 "sh",
                 "-c",
+                reconcile_probe_script(),
+            ): (0, "lazygit /usr/local/bin/lazygit\n"),
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
                 "command -v lazygit",
             ): (0, "/usr/local/bin/lazygit"),
@@ -1132,16 +1147,9 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
     )
     policy = system_version_policy(uninstall_system_versions=True)
 
-    def fake_user_local(_runner: object, binary: str, **_kwargs: object) -> bool:
-        return binary == "lazygit"
-
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
-        mock.patch(
-            "terminal_setup.prerequisites._is_user_local_command_available",
-            side_effect=fake_user_local,
-        ),
         mock.patch(
             "terminal_setup.prerequisites._find_owning_package",
             return_value=None,
@@ -1163,16 +1171,24 @@ def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
 
 def test_reconcile_skips_tools_without_userlocal_copy() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
-    runner = FakeRunner()
+    runner = FakeRunner(
+        outputs={
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                reconcile_probe_script(),
+            ): (0, "")
+        }
+    )
     policy = system_version_policy(uninstall_system_versions=True)
 
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
-        mock.patch(
-            "terminal_setup.prerequisites._is_user_local_command_available",
-            return_value=False,
-        ),
     ):
         reconcile_system_versions(cast(Runner, runner), platform, policy, wsl_distro="Ubuntu")
 
@@ -1181,26 +1197,34 @@ def test_reconcile_skips_tools_without_userlocal_copy() -> None:
 
 def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
-    runner = FakeRunner()
+    runner = FakeRunner(
+        outputs={
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                reconcile_probe_script(),
+            ): (0, "git-lfs /usr/bin/git-lfs\nrg /home/u/x\n"),
+            (
+                "wsl",
+                "-d",
+                "Ubuntu",
+                "--exec",
+                "sh",
+                "-c",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin "
+                "command -v git-lfs",
+            ): (0, "/usr/bin/git-lfs"),
+        }
+    )
     policy = system_version_policy(uninstall_system_versions=True)
-
-    def fake_user_local(_runner: object, binary: str, **_kwargs: object) -> bool:
-        return binary == "git-lfs"
-
-    def fake_system_path(_runner: object, command: str, **_kwargs: object) -> str | None:
-        return "/usr/bin/git-lfs" if command == "git-lfs" else None
 
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
         mock.patch("terminal_setup.prerequisites._require_interactive_stdin_for_sudo"),
-        mock.patch(
-            "terminal_setup.prerequisites._is_user_local_command_available",
-            side_effect=fake_user_local,
-        ),
-        mock.patch(
-            "terminal_setup.prerequisites._find_system_command_path",
-            side_effect=fake_system_path,
-        ),
         mock.patch(
             "terminal_setup.prerequisites._find_owning_package",
             return_value="git-lfs",
@@ -1220,21 +1244,6 @@ def test_reconcile_uses_apt_for_wsl_from_windows() -> None:
         "-y",
         "git-lfs",
     ] in runner.commands
-
-
-def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
-    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
-    wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
-    starship_dirs = windows_tool_candidate_dirs(platform, "starship")
-    assert platform.user_programs_dir / "WezTerm" in wezterm_dirs
-    assert platform.terminal_tools_dir in starship_dirs
-    assert windows_tool_candidate_dirs(platform, "unknown-tool") == []
-
-
-def test_system_version_policy_defaults() -> None:
-    policy = system_version_policy()
-    assert policy.uninstall is False
-    assert policy.keep is False
 
 
 def test_find_system_command_path_detects_system_binary() -> None:
@@ -1280,6 +1289,21 @@ def test_find_system_command_path_uses_wsl_when_distro_is_provided() -> None:
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
         path = find_system_command_path(cast(Runner, runner), "rg", wsl_distro="Ubuntu")
     assert path == "/usr/bin/rg"
+
+
+def test_windows_tool_candidate_dirs_cover_user_programs() -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    wezterm_dirs = windows_tool_candidate_dirs(platform, "wezterm")
+    starship_dirs = windows_tool_candidate_dirs(platform, "starship")
+    assert platform.user_programs_dir / "WezTerm" in wezterm_dirs
+    assert platform.terminal_tools_dir in starship_dirs
+    assert windows_tool_candidate_dirs(platform, "unknown-tool") == []
+
+
+def test_system_version_policy_defaults() -> None:
+    policy = system_version_policy()
+    assert policy.uninstall is False
+    assert policy.keep is False
 
 
 def test_find_owning_package_apt() -> None:
@@ -1420,6 +1444,48 @@ def test_install_user_local_tool_downloads_every_release_tool_through_the_instal
         assert runner.commands == [
             [sys.executable, "-I", "-c", RELEASE_INSTALL_SOURCE, repo, binary, "1", *patterns]
         ]
+
+
+def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
+    packages = ["ripgrep", "jq", "fzf"]
+    jobs = [
+        {
+            "repo": RELEASE_TOOLS[p][0],
+            "binary": RELEASE_TOOLS[p][1],
+            "update": False,
+            "patterns": list(RELEASE_TOOLS[p][2]),
+        }
+        for p in packages
+    ]
+    command = (
+        "wsl",
+        "-d",
+        "Ubuntu",
+        "--exec",
+        "python3",
+        "-I",
+        "-c",
+        RELEASE_INSTALL_SOURCE,
+        "--batch",
+        json.dumps(jobs),
+    )
+    stdout = (
+        "ok\trg\tinstalled rg 16.0.0 into /home/u/.local/bin/rg\n"
+        "fail\tjq\tdownload failed: timed out\n"
+        "ok\tfzf\tfzf 0.75.0 is up to date\n"
+    )
+    runner = FakeRunner(outputs={command: (0, stdout)})
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        install_release_tools(cast(Runner, runner), packages, update=False, wsl_distro="Ubuntu")
+
+    assert runner.commands == [list(command)]
+    assert runner.failures == ["install jq"]
+    assert runner.reporter.messages == [
+        ("info", "installed rg 16.0.0 into /home/u/.local/bin/rg"),
+        ("warn", "install jq failed: download failed: timed out (continuing)"),
+        ("info", "fzf 0.75.0 is up to date"),
+    ]
 
 
 def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
@@ -1636,6 +1702,10 @@ def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
             side_effect=lambda _runner, package, _platform, **_kwargs: (
                 installed.append(package) or True
             ),
+        ),
+        mock.patch(
+            "terminal_setup.prerequisites._install_release_tools",
+            side_effect=lambda _runner, packages, **_kwargs: installed.extend(packages),
         ),
         mock.patch("terminal_setup.prerequisites._reconcile_system_versions"),
     ):

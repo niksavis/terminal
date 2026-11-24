@@ -657,20 +657,40 @@ def deploy_claude_img_zoom_skill(runner: Runner, platform: PlatformInfo) -> None
 
 CLI_TOOLS_SKILL = "cli-tools"
 _CLI_TOOLS_LABEL = "install the basicly cli-tools skills"
+_CLI_TOOLS_RECORD = "cli-tools-skill"
 
 
 def _skills_user() -> list[str]:
     return ["tool", "run", "--from", harness.basicly_spec(), "basicly", "skills-user"]
 
 
+def _cli_tools_current_message() -> str:
+    return f"the basicly {CLI_TOOLS_SKILL} skill is current (basicly {harness.basicly_ref()})"
+
+
 def _cli_tools_skills_script() -> str:
+    spec = shlex.quote(harness.basicly_spec())
+    record = f'"$HOME/.local/share/terminal-setup/{_CLI_TOOLS_RECORD}"'
+    skill = f'"$HOME/.claude/skills/{CLI_TOOLS_SKILL}/SKILL.md"'
     return (
         '[ -d "$HOME/.claude" ] || { echo "Claude Code not detected ($HOME/.claude missing); '
         'skipping the cli-tools skills."; exit 0; }; '
+        f'if [ -f {skill} ] && [ "$(cat {record} 2>/dev/null)" = {spec} ]; then '
+        f"echo {shlex.quote(_cli_tools_current_message())}; exit 0; fi; "
         + _UV_RESOLVE_POSIX
         + '"$uv" '
         + " ".join(shlex.quote(part) for part in [*_skills_user(), CLI_TOOLS_SKILL])
+        + ' && mkdir -p "$HOME/.local/share/terminal-setup"'
+        + f" && printf '%s\\n' {spec} > {record}"
     )
+
+
+def _cli_tools_record_current(record: Path, skill: Path) -> bool:
+    try:
+        recorded = record.read_text(encoding="utf-8").strip()
+    except OSError:
+        return False
+    return skill.is_file() and recorded == harness.basicly_spec()
 
 
 def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> None:
@@ -679,8 +699,14 @@ def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> 
             "Claude Code not detected (~/.claude missing); skipping the cli-tools skills."
         )
         return
+    record = platform.setup_data_dir / _CLI_TOOLS_RECORD
+    skill = platform.home / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
+    if _cli_tools_record_current(record, skill):
+        runner.reporter.info(_cli_tools_current_message())
+        return
     uv = _windows_uv(runner, platform)
     runner.run([uv, *_skills_user(), "--home", str(platform.home), CLI_TOOLS_SKILL])
+    runner.write_text(record, harness.basicly_spec() + "\n")
 
 
 def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:

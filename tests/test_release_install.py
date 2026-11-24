@@ -248,6 +248,41 @@ def test_main_refuses_a_malformed_repo_by_name_without_a_network_call(
     assert f"REPO must be OWNER/NAME on GitHub, got {repo!r}" in capsys.readouterr().err
 
 
+def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    looked_up: list[str] = []
+
+    def latest(repo: str) -> str:
+        looked_up.append(repo)
+        if repo == "sharkdp/fd":
+            raise OSError("timed out")
+        return "v1.2.0"
+
+    monkeypatch.setattr(release_install, "latest_tag", latest)
+    monkeypatch.setattr(release_install, "current_version", lambda *_a: "1.2.0")
+    jobs = [
+        {"repo": "jqlang/jq", "binary": "jq", "update": False, "patterns": ["jq-linux-{arch}"]},
+        {"repo": "sharkdp/fd", "binary": "fd", "update": False, "patterns": ["fd"]},
+        {"repo": "../jq", "binary": "bad", "update": False, "patterns": ["x"]},
+    ]
+
+    assert release_install.main(["--batch", json.dumps(jobs)]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "ok\tjq\tjq 1.2.0 is up to date",
+        "fail\tfd\tdownload failed: timed out",
+        "fail\tbad\tREPO must be OWNER/NAME on GitHub, got '../jq'",
+    ]
+    assert sorted(looked_up) == ["jqlang/jq", "sharkdp/fd", "sharkdp/fd"]
+    assert release_install._PREFETCHED == {}
+
+
+def test_batch_refuses_input_that_is_not_a_job_list() -> None:
+    assert release_install.main(["--batch", "{}"]) == 2
+    assert release_install.main(["--batch"]) == 2
+
+
 def test_every_release_tool_repo_is_a_well_formed_repo() -> None:
     assert [
         repo for repo, _, _ in RELEASE_TOOLS.values() if not release_install.REPO.fullmatch(repo)

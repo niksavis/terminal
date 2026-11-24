@@ -1576,6 +1576,8 @@ def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> 
         tool.chmod(0o755)
     empty = tmp_path / "empty"
     empty.mkdir()
+    for core in ("mkdir", "cat"):
+        (empty / core).symlink_to(shutil.which(core) or f"/bin/{core}")
     subprocess.run(
         ["/bin/sh", "-c", _cli_tools_skills_script()],
         env={"HOME": str(home), "PATH": str(empty)},
@@ -1594,6 +1596,31 @@ def test_cli_tools_script_passes_only_the_cli_tools_skill(tmp_path: Path) -> Non
 
 
 @_posix_only
+def test_cli_tools_script_skips_the_install_when_the_recorded_harness_is_current(
+    tmp_path: Path,
+) -> None:
+    record = _run_cli_tools_script(tmp_path, ["rg"], claude=True)
+    home = tmp_path / "home"
+    recorded = home / ".local" / "share" / "terminal-setup" / "cli-tools-skill"
+    assert recorded.read_text(encoding="utf-8") == harness.basicly_spec() + "\n"
+    record.unlink()
+    skill = home / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("skill", encoding="utf-8")
+
+    result = subprocess.run(
+        ["/bin/sh", "-c", _cli_tools_skills_script()],
+        env={"HOME": str(home), "PATH": str(tmp_path / "empty")},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    assert not record.exists()
+    assert "skill is current" in result.stdout
+
+
+@_posix_only
 def test_cli_tools_script_skips_without_claude_dir(tmp_path: Path) -> None:
     assert not _run_cli_tools_script(tmp_path, ["rg"], claude=False).exists()
 
@@ -1609,12 +1636,21 @@ def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
     monkeypatch.setattr(runner, "run", fake)
     monkeypatch.setattr(runner, "which", lambda command: command if command == "rg" else None)
 
-    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+    monkeypatch.delenv("LOCALAPPDATA", raising=False)
+    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
 
-    assert fake.commands == [
-        wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()]),
-        ["uv.exe", *_skills_user(), "--home", str(tmp_path), "cli-tools"],
-    ]
+    deploy_claude_cli_tools_skills(runner, platform)
+
+    wsl = wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()])
+    assert fake.commands == [wsl, ["uv.exe", *_skills_user(), "--home", str(tmp_path), "cli-tools"]]
+    skill = tmp_path / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("skill", encoding="utf-8")
+    fake.commands.clear()
+
+    deploy_claude_cli_tools_skills(runner, platform)
+
+    assert fake.commands == [wsl]
 
 
 def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(
