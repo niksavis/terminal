@@ -375,9 +375,11 @@ def test_ensure_windows_tools_covers_every_tool_and_starship_on_request(
     monkeypatch: pytest.MonkeyPatch, include_starship: bool
 ) -> None:
     seen: list[str] = []
+    looked_up: list[str] = []
     monkeypatch.setattr(
         windows_tools, "ensure_tool", lambda _r, _p, tool, **_k: seen.append(tool.command)
     )
+    monkeypatch.setattr(release_install, "latest_tag", lambda repo: looked_up.append(repo) or "")
     monkeypatch.setattr(windows_tools, "replace_winget_wezterm", lambda *_a, **_k: None)
     monkeypatch.setattr(windows_tools, "_add_to_user_path", lambda *_a: None)
 
@@ -391,6 +393,8 @@ def test_ensure_windows_tools_covers_every_tool_and_starship_on_request(
 
     expected = [tool.command for tool in WINDOWS_TOOLS] + (["starship"] if include_starship else [])
     assert seen == expected
+    tools = [*WINDOWS_TOOLS, *([STARSHIP] if include_starship else [])]
+    assert sorted(looked_up) == sorted({tool.repo for tool in tools})
 
 
 MEASURED_ASSETS = {

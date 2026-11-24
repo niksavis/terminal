@@ -320,12 +320,14 @@ def ensure_windows_tools(
     tools = (*WINDOWS_TOOLS, STARSHIP) if include_starship else WINDOWS_TOOLS
     target = platform.terminal_tools_dir
     runner.ensure_dir(target)
-    for tool in tools:
-        attempt(
-            runner,
-            f"install {tool.command} on Windows",
-            partial(ensure_tool, runner, platform, tool, update=update, policy=policy),
-        )
+    repos = [] if runner.dry_run else [tool.repo for tool in tools]
+    with release_install.prefetched(repos):
+        for tool in tools:
+            attempt(
+                runner,
+                f"install {tool.command} on Windows",
+                partial(ensure_tool, runner, platform, tool, update=update, policy=policy),
+            )
     if runner.dry_run or any(target.glob("*.exe")):
         _add_to_user_path(runner, target)
     attempt(

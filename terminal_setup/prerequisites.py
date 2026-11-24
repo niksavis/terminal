@@ -504,6 +504,37 @@ def _install_release_tool(
     report_release_message(runner, result.stdout or "")
 
 
+def _install_release_tools(
+    runner: Runner,
+    packages: list[str],
+    *,
+    update: bool,
+    wsl_distro: str | None = None,
+) -> None:
+    jobs = [
+        {"repo": repo, "binary": binary, "update": update, "patterns": list(patterns)}
+        for repo, binary, patterns in (RELEASE_TOOLS[package] for package in packages)
+    ]
+    if not jobs:
+        return
+    source = Path(release_install.__file__).read_text(encoding="utf-8")
+    interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
+    command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
+    result = _run_in_wsl_or_host(
+        runner, command, distro=wsl_distro, label=f"check {len(jobs)} release tools"
+    )
+    packages_by_binary = {RELEASE_TOOLS[package][1]: package for package in packages}
+    for line in (result.stdout or "").splitlines():
+        status, _, rest = line.partition("\t")
+        binary, _, text = rest.partition("\t")
+        package = packages_by_binary.get(binary, binary)
+        if status == "ok":
+            report_release_message(runner, text)
+        elif status == "fail":
+            runner.failures.append(f"install {package}")
+            runner.reporter.warn(f"install {package} failed: {text} (continuing)")
+
+
 def report_release_message(runner: Runner, message: str) -> None:
     message = message.strip()
     if message.endswith(" is available"):
@@ -805,6 +836,29 @@ _RECONCILE_BINARIES = (
 )
 
 
+def reconcile_probe_script() -> str:
+    system_path = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    return (
+        f"for b in {' '.join(_RECONCILE_BINARIES)}; do "
+        '[ -x "$HOME/.local/bin/$b" ] || continue; '
+        f'p=$(PATH={system_path} command -v "$b") && printf "%s %s\\n" "$b" "$p"; '
+        "done; exit 0"
+    )
+
+
+def _reconcile_conflicts(runner: Runner, *, wsl_distro: str | None = None) -> list[tuple[str, str]]:
+    result = _run_shell_read(runner, reconcile_probe_script(), wsl_distro=wsl_distro)
+    home = str(Path.home())
+    conflicts: list[tuple[str, str]] = []
+    for line in (result.stdout or "").splitlines():
+        binary, _, path = line.strip().partition(" ")
+        if binary not in _RECONCILE_BINARIES:
+            continue
+        if path.startswith(("/usr/", "/bin/")) and not path.startswith(home):
+            conflicts.append((binary, path))
+    return conflicts
+
+
 def _reconcile_system_versions(
     runner: Runner,
     platform: PlatformInfo,
@@ -817,14 +871,7 @@ def _reconcile_system_versions(
     if wsl_distro is not None and not is_running_in_wsl():
         package_manager = PackageManager.APT
 
-    conflicts: list[tuple[str, str]] = []
-    for binary in _RECONCILE_BINARIES:
-        if not _is_user_local_command_available(runner, binary, wsl_distro=wsl_distro):
-            continue
-        path = _find_system_command_path(runner, binary, wsl_distro=wsl_distro)
-        if path is not None:
-            conflicts.append((binary, path))
-
+    conflicts = _reconcile_conflicts(runner, wsl_distro=wsl_distro)
     if not conflicts:
         return
 
@@ -1654,7 +1701,11 @@ def ensure_wsl_tools(  # noqa: PLR0913
     if no_sudo:
         runner.reporter.info("Installing WSL tools into ~/.local without sudo.")
         base_packages = {"zsh", "tmux", "git", "curl", "wget", "tree", "gnupg", "xz-utils"}
+        release_packages: list[str] = []
         for package in packages:
+            if package in RELEASE_TOOLS:
+                release_packages.append(package)
+                continue
             command = _command_for_package(package)
             if package in base_packages:
                 if not _command_available(runner, command, wsl_distro=distro):
@@ -1666,7 +1717,6 @@ def ensure_wsl_tools(  # noqa: PLR0913
             if (
                 not update
                 and package != "lazygit"
-                and package not in RELEASE_TOOLS
                 and _is_user_local_command_available(runner, command, wsl_distro=distro)
             ):
                 continue
@@ -1675,6 +1725,13 @@ def ensure_wsl_tools(  # noqa: PLR0913
                 f"install {package}",
                 partial(_install_one_user_local_tool, runner, package, platform, update=update),
             )
+        attempt(
+            runner,
+            "install the release tools",
+            partial(
+                _install_release_tools, runner, release_packages, update=update, wsl_distro=distro
+            ),
+        )
         _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return
 

@@ -14,6 +14,9 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -27,6 +30,8 @@ VERSION = re.compile(r"\d+(?:\.\d+)+")
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
 STATE_DIR = Path.home() / ".local" / "share" / "terminal-setup" / "releases"
+PREFETCH_WORKERS = 8
+_PREFETCHED: dict[str, str] = {}
 
 
 class InstallError(Exception):
@@ -173,6 +178,29 @@ def latest_tag(repo: str) -> str:
     return urllib.parse.unquote(tag)
 
 
+def _prefetch_one(repo: str) -> tuple[str, str]:
+    try:
+        return repo, latest_tag(repo)
+    except InstallError:
+        return repo, ""
+    except OSError:
+        return repo, ""
+
+
+@contextmanager
+def prefetched(repos: list[str]) -> Iterator[None]:
+    unique = sorted(set(repos))
+    if unique:
+        with ThreadPoolExecutor(max_workers=min(PREFETCH_WORKERS, len(unique))) as pool:
+            for repo, tag in pool.map(_prefetch_one, unique):
+                if tag:
+                    _PREFETCHED[repo] = tag
+    try:
+        yield
+    finally:
+        _PREFETCHED.clear()
+
+
 class ReleaseAssets(HTMLParser):
     def __init__(self, repo: str, tag: str) -> None:
         super().__init__()
@@ -241,7 +269,7 @@ def run(  # noqa: PLR0913
 ) -> str:
     bin_dir = BIN_DIR if bin_dir is None else bin_dir
     state_dir = STATE_DIR if state_dir is None else state_dir
-    tag = latest_tag(repo)
+    tag = _PREFETCHED.pop(repo, "") or latest_tag(repo)
     latest = version_of(tag)
     if not latest:
         raise InstallError(f"{repo}: the latest release tag {tag!r} holds no version")
@@ -265,7 +293,49 @@ def run(  # noqa: PLR0913
     raise InstallError(f"no release asset of {tag} starts on this machine; tried: {names}")
 
 
+def _batch_line(job: object) -> str:
+    if not isinstance(job, dict):
+        return "fail\t?\ta batch job must be an object"
+    binary = str(job.get("binary", ""))
+    repo = str(job.get("repo", ""))
+    patterns = job.get("patterns")
+    if not binary or not REPO.fullmatch(repo) or not isinstance(patterns, list):
+        return f"fail\t{binary or '?'}\tREPO must be OWNER/NAME on GitHub, got {repo!r}"
+    try:
+        message = run(repo, binary, job.get("update") is True, [str(p) for p in patterns])
+    except InstallError as error:
+        return f"fail\t{binary}\t{_one_line(str(error))}"
+    except OSError as error:
+        return f"fail\t{binary}\tdownload failed: {_one_line(str(error))}"
+    return f"ok\t{binary}\t{_one_line(message)}"
+
+
+def _one_line(text: str) -> str:
+    return " ".join(text.split())
+
+
+def run_batch(jobs: list[object]) -> list[str]:
+    repos = [str(job.get("repo", "")) for job in jobs if isinstance(job, dict)]
+    with prefetched([repo for repo in repos if REPO.fullmatch(repo)]):
+        return [_batch_line(job) for job in jobs]
+
+
+def _batch_main(argv: list[str]) -> int:
+    try:
+        jobs = json.loads(argv[1]) if len(argv) == 2 else None
+    except ValueError:
+        jobs = None
+    if not isinstance(jobs, list):
+        print("usage: release_install.py --batch JSON-LIST-OF-JOBS", file=sys.stderr)
+        return 2
+    for line in run_batch(jobs):
+        print(line, flush=True)
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if argv[:1] == ["--batch"]:
+        return _batch_main(argv)
     if len(argv) < 4 or argv[2] not in {"0", "1"}:
         print("usage: release_install.py REPO BINARY 0|1 PATTERN [PATTERN ...]", file=sys.stderr)
         return 2
