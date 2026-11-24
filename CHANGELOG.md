@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.25.2 - 2026-11-24
+
+Delta: v0.25.1..v0.25.2
+
+### Highlights
+
+- **A setup run that changes nothing is faster.** Setup checks the WSL release tools in one `wsl.exe` call and looks up their latest releases in parallel, on Windows too. It finds duplicate system copies in one call, and skips the basicly `cli-tools` skill install when the recorded harness version is current. On a Windows host with WSL, a second setup run in a row went from 33 s to 23 s (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- docs(release): give the measured setup times in the term-uuvvl7 note (term-uuvvl7) (2299c6e)
+- perf(setup): check release tools in one call and skip a current skill (term-uuvvl7) (e1fcbb5)
+- chore(deps): upgrade the harness to basicly 0-49-2 (term-p9q02t) (3ecb189)
+- chore(deps): upgrade the harness to basicly 0-49-1 (term-6rm91m) (94f6ea1)
+
 ## v0.25.1 - 2026-11-21
 
 Delta: v0.25.0..v0.25.1
