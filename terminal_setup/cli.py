@@ -888,6 +888,7 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
 
     host_side = _host_side(platform_info)
     windows_host = platform_info.os == platform.OperatingSystem.WINDOWS and not in_wsl
+    herdr_present: bool | None = True if herdr else None
     if not config_only:
         _phase(
             runner,
@@ -1000,7 +1001,8 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             partial(terminal_command.deploy_terminal_command, runner, platform_info),
         )
 
-        if herdr or prerequisites.herdr_installed(runner, platform_info):
+        herdr_present = herdr or prerequisites.herdr_installed(runner, platform_info)
+        if herdr_present:
             prerequisites.attempt(
                 runner,
                 "install herdr" if herdr else "update herdr",
@@ -1025,7 +1027,9 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
         claude_nerdfont=not no_nerd_font,
         no_sudo=no_sudo,
         wsl_start_dir=wsl_terminal_cwd,
-        herdr=herdr or prerequisites.herdr_installed(runner, platform_info),
+        herdr=herdr_present
+        if herdr_present is not None
+        else prerequisites.herdr_installed(runner, platform_info),
     )
 
     if not skip_vscode and platform_info.os == platform.OperatingSystem.WINDOWS:

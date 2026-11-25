@@ -532,18 +532,13 @@ def _install_release_tools(
     ]
     if not jobs:
         return {}
-    source = Path(release_install.__file__).read_text(encoding="utf-8")
-    interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
-    command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
-    result = _run_in_wsl_or_host(
-        runner, command, distro=wsl_distro, label=f"check {len(jobs)} release tools"
+    lines = _run_release_jobs(
+        runner, jobs, wsl_distro=wsl_distro, label=f"check {len(jobs)} release tools"
     )
     packages_by_binary = {RELEASE_TOOLS[package][1]: package for package in packages}
     packages_by_binary.update({CHECKED_TOOLS[package][1]: package for package in checks})
     checked: dict[str, tuple[str, str]] = {}
-    for line in (result.stdout or "").splitlines():
-        status, _, rest = line.partition("\t")
-        binary, _, text = rest.partition("\t")
+    for status, binary, text, line in lines:
         package = packages_by_binary.get(binary, binary)
         if package in checks:
             checked[package] = (status if status in _CHECK_STATES else "fail", text)
@@ -553,6 +548,21 @@ def _install_release_tools(
             runner.failures.append(f"install {package}")
             runner.reporter.warn(f"install {package} failed: {text or line} (continuing)")
     return checked
+
+
+def _run_release_jobs(
+    runner: Runner, jobs: list[dict[str, object]], *, wsl_distro: str | None, label: str
+) -> list[tuple[str, str, str, str]]:
+    source = Path(release_install.__file__).read_text(encoding="utf-8")
+    interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
+    command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
+    result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=label)
+    lines: list[tuple[str, str, str, str]] = []
+    for line in (result.stdout or "").splitlines():
+        status, _, rest = line.partition("\t")
+        binary, _, text = rest.partition("\t")
+        lines.append((status, binary, text, line))
+    return lines
 
 
 def _finish_uv(
@@ -2072,14 +2082,24 @@ _STARSHIP_INSTALL_SCRIPT = (
 def _ensure_starship_wsl_guest(
     runner: Runner, platform: PlatformInfo, *, update: bool = False
 ) -> None:
-    distro = _wsl_distro(platform)
-    if not _is_user_local_command_available(
-        runner, "starship", wsl_distro=distro
-    ) and _command_available(runner, "starship", wsl_distro=distro):
-        return
-    _install_release_tool(
-        runner, "starship", update=update, wsl_distro=distro, spec=STARSHIP_RELEASE
+    repo, binary, patterns = STARSHIP_RELEASE
+    job: dict[str, object] = {
+        "repo": repo,
+        "binary": binary,
+        "update": update,
+        "patterns": list(patterns),
+        "keep_system": True,
+    }
+    lines = _run_release_jobs(
+        runner, [job], wsl_distro=_wsl_distro(platform), label="install starship"
     )
+    for status, _binary, text, line in lines:
+        if status == "ok":
+            report_release_message(runner, text)
+        elif status != "skip":
+            raise RuntimeError(text or line)
+    if not lines:
+        raise RuntimeError("the starship release check printed nothing")
 
 
 def ensure_starship(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:

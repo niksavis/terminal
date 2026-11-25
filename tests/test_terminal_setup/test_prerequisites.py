@@ -1540,33 +1540,8 @@ def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
     assert "direnv" in _RECONCILE_BINARIES
 
 
-def test_ensure_starship_installs_into_wsl_guest_from_windows() -> None:
-    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
-    runner = SpyRunner()
-    original_run = runner.run
-
-    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
-        result = original_run(command, **kwargs)  # type: ignore[arg-type]
-        script = command[-1]
-        if "test -x ~/.local/bin/starship" in script or "command -v starship" in script:
-            return subprocess.CompletedProcess(command, 1, "", "")
-        return result
-
-    runner.run = run  # type: ignore[method-assign]
-    runner.which = lambda _command: "C:/Program Files/starship/bin/starship.exe"  # type: ignore[attr-defined]
-
-    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
-        ensure_starship(cast(Runner, runner), platform)
-
-    assert _release_installs(runner.commands) == [("starship/starship", "0")]
-
-
-def _release_installs(commands: list[list[str]]) -> list[tuple[str, str]]:
-    return [
-        (command[command.index("-c") + 2], command[command.index("-c") + 4])
-        for command in commands
-        if "-I" in command and "-c" in command
-    ]
+def _starship_jobs(commands: list[list[str]]) -> list[dict[str, object]]:
+    return [job for command in commands if "--batch" in command for job in json.loads(command[-1])]
 
 
 def _starship_runner(*, user_local: bool, system: bool, which: str | None) -> SpyRunner:
@@ -1575,11 +1550,13 @@ def _starship_runner(*, user_local: bool, system: bool, which: str | None) -> Sp
 
     def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         result = original_run(command, **kwargs)  # type: ignore[arg-type]
-        script = command[-1]
-        if "command -v starship" in script:
-            return subprocess.CompletedProcess(command, 0 if system else 1, "", "")
-        if "test -x ~/.local/bin/starship" in script:
-            return subprocess.CompletedProcess(command, 0 if user_local else 1, "", "")
+        if "--batch" in command:
+            line = (
+                "skip\tstarship\tstarship has a system copy; setup leaves it as it is"
+                if system and not user_local
+                else "ok\tstarship\tstarship 1.27.0 is up to date"
+            )
+            return subprocess.CompletedProcess(command, 0, line + "\n", "")
         return result
 
     runner.run = run  # type: ignore[method-assign]
@@ -1588,7 +1565,9 @@ def _starship_runner(*, user_local: bool, system: bool, which: str | None) -> Sp
 
 
 @pytest.mark.parametrize("update", [False, True])
-def test_a_user_local_wsl_starship_goes_through_the_release_installer(update: bool) -> None:
+def test_a_wsl_starship_is_checked_in_one_release_call_that_keeps_a_system_copy(
+    *, update: bool
+) -> None:
     runner = _starship_runner(user_local=True, system=True, which=None)
 
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
@@ -1598,7 +1577,18 @@ def test_a_user_local_wsl_starship_goes_through_the_release_installer(update: bo
             update=update,
         )
 
-    assert _release_installs(runner.commands) == [("starship/starship", "1" if update else "0")]
+    assert len(runner.commands) == 1
+    assert runner.commands[0][:5] == ["wsl", "-d", "Ubuntu", "--exec", "python3"]
+    assert _starship_jobs(runner.commands) == [
+        {
+            "repo": "starship/starship",
+            "binary": "starship",
+            "update": update,
+            "patterns": list(prerequisites_module.STARSHIP_RELEASE[2]),
+            "keep_system": True,
+        }
+    ]
+    assert ("info", "starship 1.27.0 is up to date") in runner.reporter.messages
 
 
 def test_a_system_wsl_starship_is_left_alone() -> None:
@@ -1611,7 +1601,26 @@ def test_a_system_wsl_starship_is_left_alone() -> None:
             update=True,
         )
 
-    assert _release_installs(runner.commands) == []
+    assert len(runner.commands) == 1
+    assert runner.reporter.messages == []
+
+
+def test_a_failed_wsl_starship_check_raises_its_reason() -> None:
+    runner = SpyRunner()
+    original_run = runner.run
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        original_run(command, **kwargs)  # type: ignore[arg-type]
+        return subprocess.CompletedProcess(command, 0, "fail\tstarship\tdownload failed: x\n", "")
+
+    runner.run = run  # type: ignore[method-assign]
+    with (
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        pytest.raises(RuntimeError, match="download failed: x"),
+    ):
+        ensure_starship(
+            cast(Runner, runner), make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+        )
 
 
 def _windows_update(tool: str, path: str) -> tuple[SpyRunner, list[str]]:

@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess  # nosec B404
 import sys
 import tarfile
@@ -318,6 +319,8 @@ def _batch_line(job: object) -> str:
     patterns = job.get("patterns")
     if not binary or not REPO.fullmatch(repo) or not isinstance(patterns, list):
         return f"fail\t{binary or '?'}\tREPO must be OWNER/NAME on GitHub, got {repo!r}"
+    if job.get("keep_system") is True and not (BIN_DIR / binary).is_file() and shutil.which(binary):
+        return f"skip\t{binary}\t{binary} has a system copy; setup leaves it as it is"
     try:
         if job.get("check") is True:
             status, message = check(repo, binary)

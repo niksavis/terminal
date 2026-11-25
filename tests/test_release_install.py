@@ -263,6 +263,26 @@ def test_check_reports_the_state_and_never_downloads(
     assert not (tmp_path / "jq").exists()
 
 
+@pytest.mark.parametrize(
+    ("local", "on_path", "status"),
+    [(False, True, "skip"), (True, True, "ok"), (False, False, "ok")],
+)
+def test_a_keep_system_job_skips_only_a_tool_with_just_a_system_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, local: bool, on_path: bool, status: str
+) -> None:
+    _release(tmp_path, monkeypatch, "2.0.0")
+    if local:
+        (tmp_path / "jq").write_text("", encoding="utf-8")
+    monkeypatch.setattr(
+        release_install.shutil, "which", lambda _b: "/usr/bin/jq" if on_path else None
+    )
+    job = {"repo": "jqlang/jq", "binary": "jq", "update": True, "patterns": ["jq-linux-{arch}"]}
+
+    line = release_install._batch_line({**job, "keep_system": True})
+
+    assert line.split("\t")[0] == status
+
+
 def test_main_refuses_bad_arguments_with_the_usage() -> None:
     assert release_install.main(["jqlang/jq", "jq", "yes", "jq-linux-{arch}"]) == 2
 
