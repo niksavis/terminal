@@ -10,6 +10,7 @@ from typing import Any
 DEFAULT_STATUS = "open"
 
 DIRECTORY_HELP = "the ledger directory"
+SESSION_HELP = "the tracker session for a vault claim (default: BASICLY_TRACKER_SESSION)"
 
 IMPORT_FORMATS = ("beads", "beans")
 
@@ -273,15 +274,7 @@ def _add_write_parsers(sub: Any) -> None:
     undep.add_argument("target", help="the record it no longer depends on")
     undep.add_argument("--type", dest="edge_type", default="blocks", help="the edge type")
 
-    for name, helping in (
-        ("assign", "reserve a record for a person without changing its status"),
-        ("claim", "reserve a record for a person and set it in_progress"),
-    ):
-        hold = sub.add_parser(name, help=helping)
-        hold.add_argument("directory", help=DIRECTORY_HELP)
-        hold.add_argument("record", help="the record id")
-        hold.add_argument("--to", default="", help="the holder; default: git config user.name")
-        hold.add_argument("--take", action="store_true", help="take it from its current holder")
+    _add_hold_parsers(sub)
 
     settle = sub.add_parser("resolve", help="keep the current value of each conflicting fork")
     settle.add_argument("directory", help=DIRECTORY_HELP)
@@ -295,12 +288,26 @@ def _add_write_parsers(sub: Any) -> None:
     removal.add_argument("record", help="the record id")
 
 
+def _add_hold_parsers(sub: Any) -> None:
+    for name, helping in (
+        ("assign", "reserve a record for a person without changing its status"),
+        ("claim", "reserve a record for a person and set it in_progress"),
+    ):
+        hold = sub.add_parser(name, help=helping)
+        hold.add_argument("directory", help=DIRECTORY_HELP)
+        hold.add_argument("record", help="the record id")
+        hold.add_argument("--to", default="", help="the holder; default: git config user.name")
+        hold.add_argument("--take", action="store_true", help="take it from its current holder")
+        hold.add_argument("--session", help=SESSION_HELP)
+
+
 def _add_release_parser(sub: Any) -> None:
     release = sub.add_parser("unassign", help="give a reserved record back")
     release.add_argument("directory", help=DIRECTORY_HELP)
     release.add_argument("record", help="the record id")
     release.add_argument("--by", default="", help="who gives it back; default: git user.name")
     release.add_argument("--take", action="store_true", help="release another holder's record")
+    release.add_argument("--session", help=SESSION_HELP)
 
 
 def _add_ready_mark_parser(sub: Any) -> None:

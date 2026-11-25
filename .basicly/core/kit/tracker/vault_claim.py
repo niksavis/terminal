@@ -41,6 +41,7 @@ STALL = 5.0
 POLL = 0.1
 LANDED = 0
 FIX = 1
+NAME_SESSION = "name the session with --session or BASICLY_TRACKER_SESSION"
 LOST = 3
 UNSETTLED = 4
 UNREACHABLE = 5
@@ -344,7 +345,7 @@ def claim(
 
     clone, record, session, clock = ask.clone, ask.record, ask.session, ask.clock
     if not session:
-        return {"exit": FIX, "fix": "name the session with --session or BASICLY_TRACKER_SESSION"}
+        return {"exit": FIX, "fix": NAME_SESSION}
     if not record or not record.isprintable() or record.startswith("-"):
         return {
             "exit": FIX,

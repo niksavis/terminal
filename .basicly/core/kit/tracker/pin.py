@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-KIT_VERSION = "0.49.2"
+KIT_VERSION = "0.49.3"
 PIN_FILE = ".kit-version"
 INSTALL_SOURCE = (
     "git+https://github.com/niksavis/basicly@v{version}#subdirectory=packages/basicly-tracker"

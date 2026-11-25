@@ -17,7 +17,10 @@
    It keeps an unmerged branch unless you pass `--force`. It never touches the base branch.
    It refuses locked checkouts even with `--force`; finish the active session and explicitly unlock the checkout first.
    An untracked file that git does not ignore, and a tracked change under a dependency path, stop ordinary cleanup.
-   Any other git-ignored file (generated type folders, `*.basicly-bak` backups, local config) does not stop it: cleanup copies it to `.git/basicly-preserved/<lane>-<id>/` with a manifest, then removes the worktree. Dependency directories and `.basicly/bin` keep their own rules.
+   A symlink, and a `__pycache__` file that is not bytecode of a source beside it, also stop it.
+   Rebuildable content is deleted with no copy: bytecode, recognized `.pytest_cache`, `.ruff_cache` and `.import_linter_cache` content, and the bundled Lefthook files in `build/` and `.basicly/bin` whose bytes match the pinned hashes.
+   Cleanup copies every file in `.basicly/usage`, each unrecognized file in those folders and any other git-ignored file (`*.basicly-bak` backups, local config) to `.git/basicly-preserved/<lane>-<id>/` with a manifest. It checks each copy by size and hash, then removes the worktree. Dependency directories keep their own rules.
+   Cleanup refuses to copy more when `.git/basicly-preserved` holds over 500 MB. Inspect that folder and remove the archives you no longer need.
    Cleanup deletes `origin/harness/<name>` when the base holds every path it changed. It keeps a branch whose head is still the commit the lane started from.
    After a CI-proven landing, `worktree merge --mode ci` runs this cleanup itself and reports a refusal with the command to finish it.
    It can reclaim a worktree whose directory is gone.

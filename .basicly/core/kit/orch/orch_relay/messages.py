@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 VALID_FOR_MINUTES = 60
 UNTIL_LANDED = "Good for this exact diff until it lands; any change to the diff voids it."
-REPORT_STATES = ("done", "blocked", "needs-decision")
+REPORT_STATES = ("working", "done", "blocked", "needs-decision")
 RULE_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 Scan = Callable[[str], str | None]
@@ -157,6 +157,14 @@ def order(to: str, record: str, goal: str, limits: str, proof: str) -> str:
         f"Limits: {limits}",
         f"Expected proof: {proof}",
     ])
+
+
+def send_step(record: str) -> str:
+    return (
+        f"next: this report is recorded on {record} only; orch report sends no message. "
+        "Send the same text to the orchestrator session with SendMessage, "
+        "or with your client's message tool."
+    )
 
 
 def report_text(record: str, state: str, summary: str, recommend: str | None) -> str:
