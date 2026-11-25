@@ -140,6 +140,7 @@ def run_relay(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> i
     writer = messages.Writer(tracker, log.scanner(repo), session=session)
     if args.group == "report":
         print(writer.report(args.record, args.state, args.summary, args.recommend))
+        print(messages.send_step(args.record))
     else:
         print(relay(args, writer))
     commands.after_relay(args, cwd, environ)

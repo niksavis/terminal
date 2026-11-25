@@ -134,7 +134,7 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
     ),
     "claim": lambda a, c: commands.claim(a.directory, a.record, _holder(a), take=a.take, context=c),
     "unassign": lambda a, c: commands.unassign(
-        a.directory, a.record, _releaser(a), take=a.take, context=c
+        a.directory, a.record, _holder(a, "by"), take=a.take, context=c
     ),
     "mark-ready": lambda a, c: commands.mark_ready(
         a.directory, a.record, _holder(a), mode=a.mode, context=c
@@ -149,12 +149,8 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
 }
 
 
-def _holder(args: argparse.Namespace) -> str:
-    return getattr(args, "to", "") or commands.holders.default_holder(Path.cwd(), os.environ)
-
-
-def _releaser(args: argparse.Namespace) -> str:
-    return getattr(args, "by", "") or commands.holders.default_holder(Path.cwd(), os.environ)
+def _holder(args: argparse.Namespace, given: str = "to") -> str:
+    return getattr(args, given, "") or commands.holders.default_holder(Path.cwd(), os.environ)
 
 
 def _compacted(args: argparse.Namespace) -> dict[str, object]:
@@ -402,7 +398,8 @@ def main(argv: Sequence[str] | None = None, *, redact: Callable[[str], str] | No
     form = vault_arguments.FORMS.get(verb) if routed else None
     parser = form() if form else arguments.parser(refine_sheet.add_parsers)
     args = parser.parse_args(argv)
-    code, report = invoke(args, redact)
+    with commands.vault_write.given_session(os.environ, getattr(args, "session", None)):
+        code, report = invoke(args, redact)
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if reconfigure is not None:
         reconfigure(encoding="utf-8")

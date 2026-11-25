@@ -15,8 +15,8 @@ Cut a release with `basicly release`, which does every step up to the annotated 
 - **Write the notes before the cut.** The release commit and the tag are one step, so a later commit never reaches the tagged notes.
 - **Never clear a refusal by a manual run of the named tool.** That records a witness for a check that the gate did not see pass.
 - **Never delete a changelog fragment to clear a refusal.** A release note must not disappear without notice.
-- **The command never pushes.** Push only when the user release request includes publication.
-- **The user release request authorizes the requested cut and publication.** No grant is needed. Required release gates must still pass.
+- **An agent may cut, tag and publish a release without a person's approval.** It does so only when every required workflow is green on the exact commit it tags. It never reruns a workflow until it passes. It never deletes, moves or retags an existing tag, because that is a delete. It reports each release. A release is not destructive: a user can install the previous version.
+- **The command never pushes.** Push the release commit and its tag only under the rule above.
 
 ## 1. Check that the repository uses it
 

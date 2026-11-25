@@ -237,7 +237,7 @@
     },
     {
       "id": "report-command",
-      "rule": "orch report accepts only three states with a record id.",
+      "rule": "orch report accepts only four states with a record id and names the send step.",
       "source": "ARCHITECTURE.md:210",
       "place": "orch",
       "file": ".basicly/core/kit/orch/orch_relay/messages.py",
@@ -928,11 +928,11 @@
     },
     {
       "id": "settings-in-own-window",
-      "rule": "Settings, hooks.json, CLAUDE.md and AGENTS.md edits are confirmed by the person in the worker's own window.",
+      "rule": "Settings, hooks.json, permission rule and orchestration rule edits need the person's approval relayed live with the exact diff; CLAUDE.md, AGENTS.md, skill and agent edits for the session's own record are ordinary work.",
       "source": "ARCHITECTURE.md, Orchestration rules",
       "place": "fragment",
       "file": ".basicly/core/fragments/boundaries/orchestrated-session.fragment.yaml",
-      "anchor": "cannot be relayed: the person confirms it in your own window",
+      "anchor": "needs the person's approval, relayed live by the orchestrator in the full format above with the exact diff",
       "owner": [
         {
           "date": "2026-11-19",

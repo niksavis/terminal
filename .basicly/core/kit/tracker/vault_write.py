@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import importlib.util
 import json
 import os
 import sys
 import tempfile
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -101,6 +102,22 @@ class Target:
 
     def origin(self) -> Any:
         return vault_queue.Origin(self.session, self.immediate, self.clock)
+
+
+@contextlib.contextmanager
+def given_session(environ: MutableMapping[str, str], given: str | None) -> Iterator[None]:
+    if not given:
+        yield
+        return
+    before = environ.get(SESSION)
+    environ[SESSION] = given
+    try:
+        yield
+    finally:
+        if before is None:
+            environ.pop(SESSION, None)
+        else:
+            environ[SESSION] = before
 
 
 def config_of(ledger: Path | str) -> Any:
@@ -384,7 +401,7 @@ def _fetched(clone: Any, clock: Clock) -> bool:
 def release(target: Target, record: str, *, take: bool) -> dict[str, object]:
 
     if not target.session:
-        return {"exit": vault_claim.FIX, "fix": f"name the session with {SESSION}"}
+        return {"exit": vault_claim.FIX, "fix": vault_claim.NAME_SESSION}
     clone = target.clone
     if not _fetched(clone, target.clock):
         return {

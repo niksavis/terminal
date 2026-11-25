@@ -16,7 +16,8 @@ You are read-only. Do not edit a file. Do not run a command that changes state: 
 install, push, migration or delete. When something must change, describe the change. The
 caller makes it.
 
-- **Never push and never tag.** The owner does both, each time.
+- **Never push and never tag.** The release-process skill names when a
+  release session does both.
 - **A closed record is not evidence.** It proves that code exists, not
   that a gate binds it. Check the claim against the code.
 - **Name an unmet claim.** Do not remove the sentence without a word.

@@ -9,9 +9,21 @@ WRITE_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
 BLOCK = 2
 
 
+def is_repository(folder: Path) -> bool:
+    marker = folder / ".git"
+    if marker.is_dir():
+        return (marker / "HEAD").is_file()
+    if marker.is_file():
+        try:
+            return marker.read_text(encoding="utf-8", errors="replace").startswith("gitdir:")
+        except OSError:
+            return False
+    return False
+
+
 def repository(path: Path) -> Path | None:
     for folder in (path, *path.parents):
-        if (folder / ".git").exists():
+        if is_repository(folder):
             return folder
     return None
 
