@@ -25,6 +25,9 @@ from .platform import (
 )
 from .runner import Runner
 
+if sys.platform == "win32":
+    import winreg
+
 
 @dataclass(frozen=True)
 class PrerequisiteStatus:
@@ -2171,11 +2174,33 @@ def remove_from_user_path(runner: Runner, entries: list[str], backup: Path) -> N
     )
 
 
+def _user_path_entries() -> list[str] | None:
+    if sys.platform != "win32":
+        return None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            value, _ = winreg.QueryValueEx(key, "Path")
+    except OSError:
+        return None
+    return [part for part in str(value).split(";") if part]
+
+
+def _user_path_has(directory_str: str) -> bool:
+    entries = _user_path_entries()
+    if entries is None:
+        return False
+    wanted = directory_str.rstrip("\\").casefold()
+    return any(entry.rstrip("\\").casefold() == wanted for entry in entries)
+
+
 def _add_to_user_path(runner: Runner, directory: Path) -> None:
 
     if runner.dry_run:
         return
     directory_str = str(directory).replace("/", "\\")
+    if _user_path_has(directory_str):
+        _add_to_process_path(directory)
+        return
     script = (
         f"$dir = '{directory_str}'; " + _USER_PATH_READ + "$exists = $false; "
         "foreach ($p in $parts) { "

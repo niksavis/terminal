@@ -1700,6 +1700,28 @@ def _broadcast_script(script: str) -> str:
     return base64.b64decode(encoded).decode("utf-16-le")
 
 
+@pytest.mark.parametrize(
+    ("entries", "runs"),
+    [
+        (["%USERPROFILE%\\bin", "c:\\users\\test\\TOOL\\"], False),
+        (["C:\\Users\\test\\other"], True),
+        (None, True),
+    ],
+)
+def test_add_to_user_path_skips_powershell_when_the_user_path_has_the_folder(
+    entries: list[str] | None, *, runs: bool
+) -> None:
+    runner = SpyRunner()
+    with (
+        mock.patch("terminal_setup.prerequisites._user_path_entries", return_value=entries),
+        mock.patch("terminal_setup.prerequisites._add_to_process_path") as process_path,
+    ):
+        _add_to_user_path(cast(Runner, runner), Path("C:/Users/test/tool"))
+
+    assert bool(runner.commands) is runs
+    process_path.assert_called_once_with(Path("C:/Users/test/tool"))
+
+
 def test_add_to_user_path_preserves_unexpanded_entries_and_is_idempotent() -> None:
     script = _add_to_user_path_command()[-1]
 
