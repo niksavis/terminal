@@ -482,7 +482,14 @@ RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     ),
     "git-lfs": ("git-lfs/git-lfs", "git-lfs", (r"git-lfs-linux-{arch}-v[0-9.]+\.tar\.gz",)),
     "direnv": ("direnv/direnv", "direnv", (r"direnv\.linux-{arch}",)),
+    "lazygit": (
+        "jesseduffield/lazygit",
+        "lazygit",
+        (r"lazygit_[0-9.]+_linux_{arch}\.tar\.gz",),
+    ),
 }
+CHECKED_TOOLS: dict[str, tuple[str, str]] = {"uv": ("astral-sh/uv", "uv")}
+_CHECK_STATES = frozenset({"current", "stale", "missing"})
 STARSHIP_RELEASE = ("starship/starship", "starship", _RUST_ASSETS)
 HERDR_RELEASE = ("herdrdev/herdr", "herdr", (r"herdr-linux-{arch}",))
 _HERDR_PRESENT = 'test -x "$HOME/.local/bin/herdr" || command -v herdr >/dev/null 2>&1'
@@ -510,13 +517,18 @@ def _install_release_tools(
     *,
     update: bool,
     wsl_distro: str | None = None,
-) -> None:
-    jobs = [
+    checks: tuple[str, ...] = (),
+) -> dict[str, tuple[str, str]]:
+    jobs: list[dict[str, object]] = [
         {"repo": repo, "binary": binary, "update": update, "patterns": list(patterns)}
         for repo, binary, patterns in (RELEASE_TOOLS[package] for package in packages)
     ]
+    jobs += [
+        {"repo": repo, "binary": binary, "check": True, "patterns": []}
+        for repo, binary in (CHECKED_TOOLS[package] for package in checks)
+    ]
     if not jobs:
-        return
+        return {}
     source = Path(release_install.__file__).read_text(encoding="utf-8")
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
@@ -524,15 +536,43 @@ def _install_release_tools(
         runner, command, distro=wsl_distro, label=f"check {len(jobs)} release tools"
     )
     packages_by_binary = {RELEASE_TOOLS[package][1]: package for package in packages}
+    packages_by_binary.update({CHECKED_TOOLS[package][1]: package for package in checks})
+    checked: dict[str, tuple[str, str]] = {}
     for line in (result.stdout or "").splitlines():
         status, _, rest = line.partition("\t")
         binary, _, text = rest.partition("\t")
         package = packages_by_binary.get(binary, binary)
-        if status == "ok":
+        if package in checks:
+            checked[package] = (status if status in _CHECK_STATES else "fail", text)
+        elif status == "ok":
             report_release_message(runner, text)
-        elif status == "fail":
+        else:
             runner.failures.append(f"install {package}")
-            runner.reporter.warn(f"install {package} failed: {text} (continuing)")
+            runner.reporter.warn(f"install {package} failed: {text or line} (continuing)")
+    return checked
+
+
+def _finish_uv(
+    runner: Runner,
+    platform: PlatformInfo,
+    result: tuple[str, str] | None,
+    *,
+    update: bool,
+) -> None:
+    distro = _wsl_distro(platform)
+    status, text = result or ("fail", "")
+    if status == "current":
+        runner.reporter.success(text)
+        return
+    if status == "stale" and not update:
+        report_release_message(runner, text)
+        return
+    if status in {"stale", "missing"}:
+        _run_shell_command(runner, UV_INSTALL_SCRIPT, label="install uv", wsl_distro=distro)
+        return
+    if not update and _is_user_local_command_available(runner, "uv", wsl_distro=distro):
+        return
+    _install_one_user_local_tool(runner, "uv", platform, update=update)
 
 
 def report_release_message(runner: Runner, message: str) -> None:
@@ -1706,6 +1746,8 @@ def ensure_wsl_tools(  # noqa: PLR0913
             if package in RELEASE_TOOLS:
                 release_packages.append(package)
                 continue
+            if package in CHECKED_TOOLS:
+                continue
             command = _command_for_package(package)
             if package in base_packages:
                 if not _command_available(runner, command, wsl_distro=distro):
@@ -1714,23 +1756,31 @@ def ensure_wsl_tools(  # noqa: PLR0913
                         "skipping."
                     )
                 continue
-            if (
-                not update
-                and package != "lazygit"
-                and _is_user_local_command_available(runner, command, wsl_distro=distro)
-            ):
+            if not update and _is_user_local_command_available(runner, command, wsl_distro=distro):
                 continue
             attempt(
                 runner,
                 f"install {package}",
                 partial(_install_one_user_local_tool, runner, package, platform, update=update),
             )
+        checked: dict[str, tuple[str, str]] = {}
+
+        def release_tools() -> None:
+            checked.update(
+                _install_release_tools(
+                    runner,
+                    release_packages,
+                    update=update,
+                    wsl_distro=distro,
+                    checks=tuple(CHECKED_TOOLS),
+                )
+            )
+
+        attempt(runner, "install the release tools", release_tools)
         attempt(
             runner,
-            "install the release tools",
-            partial(
-                _install_release_tools, runner, release_packages, update=update, wsl_distro=distro
-            ),
+            "install uv",
+            partial(_finish_uv, runner, platform, checked.get("uv"), update=update),
         )
         _reconcile_system_versions(runner, platform, policy, wsl_distro=distro)
         return

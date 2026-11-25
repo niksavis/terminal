@@ -293,6 +293,23 @@ def run(  # noqa: PLR0913
     raise InstallError(f"no release asset of {tag} starts on this machine; tried: {names}")
 
 
+def check(
+    repo: str, binary: str, bin_dir: Path | None = None, state_dir: Path | None = None
+) -> tuple[str, str]:
+    bin_dir = BIN_DIR if bin_dir is None else bin_dir
+    state_dir = STATE_DIR if state_dir is None else state_dir
+    tag = _PREFETCHED.pop(repo, "") or latest_tag(repo)
+    latest = version_of(tag)
+    if not latest:
+        raise InstallError(f"{repo}: the latest release tag {tag!r} holds no version")
+    current = current_version(binary, bin_dir, state_dir)
+    if not current:
+        return "missing", f"{binary} is not installed; {latest} is available"
+    if current == latest:
+        return "current", f"{binary} {current} is up to date"
+    return "stale", f"{binary} {current} is installed; {latest} is available"
+
+
 def _batch_line(job: object) -> str:
     if not isinstance(job, dict):
         return "fail\t?\ta batch job must be an object"
@@ -302,12 +319,16 @@ def _batch_line(job: object) -> str:
     if not binary or not REPO.fullmatch(repo) or not isinstance(patterns, list):
         return f"fail\t{binary or '?'}\tREPO must be OWNER/NAME on GitHub, got {repo!r}"
     try:
-        message = run(repo, binary, job.get("update") is True, [str(p) for p in patterns])
+        if job.get("check") is True:
+            status, message = check(repo, binary)
+        else:
+            status = "ok"
+            message = run(repo, binary, job.get("update") is True, [str(p) for p in patterns])
     except InstallError as error:
         return f"fail\t{binary}\t{_one_line(str(error))}"
     except OSError as error:
         return f"fail\t{binary}\tdownload failed: {_one_line(str(error))}"
-    return f"ok\t{binary}\t{_one_line(message)}"
+    return f"{status}\t{binary}\t{_one_line(message)}"
 
 
 def _one_line(text: str) -> str:

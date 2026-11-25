@@ -66,6 +66,11 @@ ASSETS_SEEN_2026_09_25 = {
     ),
     "git-lfs": ("git-lfs-linux-amd64-v3.8.0.tar.gz", "git-lfs-linux-arm64-v3.8.0.tar.gz"),
     "direnv": ("direnv.linux-amd64", "direnv.linux-arm64"),
+    "lazygit": (
+        "lazygit_0.66.3_linux_32-bit.tar.gz",
+        "lazygit_0.66.3_linux_arm64.tar.gz",
+        "lazygit_0.66.3_linux_x86_64.tar.gz",
+    ),
 }
 EXPECTED_X86_64 = {
     "fd-find": "fd-v10.5.0-x86_64-unknown-linux-musl.tar.gz",
@@ -83,7 +88,12 @@ EXPECTED_X86_64 = {
     "shellcheck": "shellcheck-v0.11.0.linux.x86_64.tar.xz",
     "git-lfs": "git-lfs-linux-amd64-v3.8.0.tar.gz",
     "direnv": "direnv.linux-amd64",
+    "lazygit": "lazygit_0.66.3_linux_x86_64.tar.gz",
 }
+LAZYGIT_VERSION_LINE = (
+    "commit=e0fbfd50c36e1ef88c52297ca34750e640b4f5f4, build date=2026-11-07T23:20:44Z, "
+    "build source=binaryRelease, version=0.66.3, os=linux, arch=amd64, git version=2.55.0"
+)
 
 
 def _assets(names: tuple[str, ...]) -> list[dict]:
@@ -231,6 +241,28 @@ def test_run_installs_a_missing_tool_or_updates_on_request(
     assert (tmp_path / "jq").read_bytes() == b"#!/bin/sh\n"
 
 
+def test_the_lazygit_version_line_reads_as_its_release_version() -> None:
+    assert release_install.version_of(LAZYGIT_VERSION_LINE) == "0.66.3"
+
+
+@pytest.mark.parametrize(
+    ("installed", "expected"),
+    [
+        ("", ("missing", "jq is not installed; 2.0.0 is available")),
+        ("2.0.0", ("current", "jq 2.0.0 is up to date")),
+        ("1.0.0", ("stale", "jq 1.0.0 is installed; 2.0.0 is available")),
+    ],
+)
+def test_check_reports_the_state_and_never_downloads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, installed: str, expected: tuple[str, str]
+) -> None:
+    fetched = _release(tmp_path, monkeypatch, installed)
+
+    assert release_install.check("jqlang/jq", "jq") == expected
+    assert fetched == []
+    assert not (tmp_path / "jq").exists()
+
+
 def test_main_refuses_bad_arguments_with_the_usage() -> None:
     assert release_install.main(["jqlang/jq", "jq", "yes", "jq-linux-{arch}"]) == 2
 
@@ -265,6 +297,7 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
         {"repo": "jqlang/jq", "binary": "jq", "update": False, "patterns": ["jq-linux-{arch}"]},
         {"repo": "sharkdp/fd", "binary": "fd", "update": False, "patterns": ["fd"]},
         {"repo": "../jq", "binary": "bad", "update": False, "patterns": ["x"]},
+        {"repo": "astral-sh/uv", "binary": "uv", "check": True, "patterns": []},
     ]
 
     assert release_install.main(["--batch", json.dumps(jobs)]) == 0
@@ -273,8 +306,9 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
         "ok\tjq\tjq 1.2.0 is up to date",
         "fail\tfd\tdownload failed: timed out",
         "fail\tbad\tREPO must be OWNER/NAME on GitHub, got '../jq'",
+        "current\tuv\tuv 1.2.0 is up to date",
     ]
-    assert sorted(looked_up) == ["jqlang/jq", "sharkdp/fd", "sharkdp/fd"]
+    assert sorted(looked_up) == ["astral-sh/uv", "jqlang/jq", "sharkdp/fd", "sharkdp/fd"]
     assert release_install._PREFETCHED == {}
 
 

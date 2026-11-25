@@ -1120,6 +1120,46 @@ def test_uv_update_runs_the_installer_for_an_older_uv() -> None:
     assert all("UV_NO_MODIFY_PATH=1 sh" in script for script in installs)
 
 
+@pytest.mark.parametrize(
+    ("result", "update", "installs"),
+    [
+        (("current", "uv 0.13.10 is up to date"), True, False),
+        (("stale", "uv 0.13.9 is installed; 0.13.10 is available"), False, False),
+        (("stale", "uv 0.13.9 is installed; 0.13.10 is available"), True, True),
+        (("missing", "uv is not installed; 0.13.10 is available"), False, True),
+    ],
+)
+def test_uv_from_the_release_batch_runs_the_installer_only_when_needed(
+    result: tuple[str, str], *, update: bool, installs: bool
+) -> None:
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+    runner = FakeRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module._finish_uv(cast(Runner, runner), platform, result, update=update)
+
+    ran = [c for c in runner.commands if "astral.sh/uv/install.sh" in c[-1]]
+    assert bool(ran) is installs
+    assert all(c[:4] == ["wsl", "-d", "Ubuntu", "--exec"] for c in ran)
+    assert len(runner.commands) == len(ran)
+
+
+def test_uv_falls_back_to_its_own_check_when_the_batch_gives_no_answer() -> None:
+    runner = FakeRunner(
+        outputs={
+            _wsl_read(UV_INSTALLED_QUERY): (0, "0.12.21\n"),
+            _wsl_read(UV_LATEST_QUERY): (0, "0.12.21\n"),
+        }
+    )
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        prerequisites_module._finish_uv(cast(Runner, runner), platform, None, update=True)
+
+    assert not any("astral.sh/uv/install.sh" in c[-1] for c in runner.commands)
+    assert ("success", "uv 0.12.21 is up to date") in runner.reporter.messages
+
+
 def test_reconcile_removes_unowned_userlocal_duplicate() -> None:
     platform = make_platform(OperatingSystem.WINDOWS, PackageManager.APT)
     runner = FakeRunner(
@@ -1447,8 +1487,8 @@ def test_install_user_local_tool_downloads_every_release_tool_through_the_instal
 
 
 def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
-    packages = ["ripgrep", "jq", "fzf"]
-    jobs = [
+    packages = ["ripgrep", "jq", "fzf", "lazygit"]
+    jobs: list[dict[str, object]] = [
         {
             "repo": RELEASE_TOOLS[p][0],
             "binary": RELEASE_TOOLS[p][1],
@@ -1457,6 +1497,7 @@ def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
         }
         for p in packages
     ]
+    jobs.append({"repo": "astral-sh/uv", "binary": "uv", "check": True, "patterns": []})
     command = (
         "wsl",
         "-d",
@@ -1473,19 +1514,25 @@ def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
         "ok\trg\tinstalled rg 16.0.0 into /home/u/.local/bin/rg\n"
         "fail\tjq\tdownload failed: timed out\n"
         "ok\tfzf\tfzf 0.75.0 is up to date\n"
+        "pending\tlazygit\tlazygit 0.66.3\n"
+        "stale\tuv\tuv 0.13.9 is installed; 0.13.10 is available\n"
     )
     runner = FakeRunner(outputs={command: (0, stdout)})
 
     with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
-        install_release_tools(cast(Runner, runner), packages, update=False, wsl_distro="Ubuntu")
+        checked = install_release_tools(
+            cast(Runner, runner), packages, update=False, wsl_distro="Ubuntu", checks=("uv",)
+        )
 
     assert runner.commands == [list(command)]
-    assert runner.failures == ["install jq"]
+    assert runner.failures == ["install jq", "install lazygit"]
     assert runner.reporter.messages == [
         ("info", "installed rg 16.0.0 into /home/u/.local/bin/rg"),
         ("warn", "install jq failed: download failed: timed out (continuing)"),
         ("info", "fzf 0.75.0 is up to date"),
+        ("warn", "install lazygit failed: lazygit 0.66.3 (continuing)"),
     ]
+    assert checked == {"uv": ("stale", "uv 0.13.9 is installed; 0.13.10 is available")}
 
 
 def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:
@@ -1705,7 +1752,7 @@ def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
         ),
         mock.patch(
             "terminal_setup.prerequisites._install_release_tools",
-            side_effect=lambda _runner, packages, **_kwargs: installed.extend(packages),
+            side_effect=lambda _runner, packages, **_kwargs: installed.extend(packages) or {},
         ),
         mock.patch("terminal_setup.prerequisites._reconcile_system_versions"),
     ):
