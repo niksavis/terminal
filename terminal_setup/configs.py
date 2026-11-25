@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -8,7 +9,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import harness
+from . import __version__, harness
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .prerequisites import _add_to_user_path, attempt, root_shell_command
 from .prompt_config import configure_zshenv, write_starship_config
@@ -536,6 +537,7 @@ _UV_MISSING = (
 )
 _IMG_ZOOM_SKILL = "img-zoom"
 _IMG_ZOOM_STAGE_POSIX = "$HOME/.local/share/terminal-setup/img_zoom_tool"
+_IMG_ZOOM_STAMP = ".terminal-setup-stamp"
 
 
 def _is_windows_host(platform: PlatformInfo) -> bool:
@@ -548,14 +550,32 @@ _UV_RESOLVE_POSIX = (
 )
 
 
-def _img_zoom_install_script(source: str, *, update: bool) -> str:
+def img_zoom_digest() -> str:
+    digest = hashlib.sha256(__version__.encode())
+    files = sorted(
+        path
+        for path in IMG_ZOOM_SOURCE.rglob("*")
+        if path.is_file() and "__pycache__" not in path.parts
+    )
+    for path in files:
+        digest.update(b"\0" + path.relative_to(IMG_ZOOM_SOURCE).as_posix().encode() + b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _img_zoom_install_script(source: str, *, update: bool, digest: str) -> str:
     upgrade = " --upgrade" if update else ""
     return (
-        _UV_RESOLVE_POSIX + f'dest="{_IMG_ZOOM_STAGE_POSIX}"; '
+        f'dest="{_IMG_ZOOM_STAGE_POSIX}"; stamp="$dest/{_IMG_ZOOM_STAMP}"; '
+        f'if [ "$(cat "$stamp" 2>/dev/null)" = "{digest}" ] && '
+        '{ [ -x "$HOME/.local/bin/img-zoom" ] || command -v img-zoom >/dev/null 2>&1; }; '
+        'then echo "img-zoom is current"; exit 0; fi; '
+        + _UV_RESOLVE_POSIX
+        + f'src={source}; [ -n "$src" ] || exit 1; '
         'rm -rf "$dest" && mkdir -p "$dest" && '
-        f'cp -R {shlex.quote(source)}/. "$dest"/ && '
+        'cp -R "$src"/. "$dest"/ && '
         'find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} + || exit 1; '
-        f'"$uv" tool install{upgrade} "$dest"'
+        f'"$uv" tool install{upgrade} "$dest" && printf "%s\\n" "{digest}" > "$stamp"'
     )
 
 
@@ -579,8 +599,10 @@ def _stage_img_zoom_source(runner: Runner, destination: Path) -> None:
 
 def install_img_zoom_wsl(runner: Runner, platform: PlatformInfo, *, update: bool = False) -> None:
     distro = _wsl_distro(platform)
-    source = _to_wsl_path(runner, distro, IMG_ZOOM_SOURCE)
-    script = _img_zoom_install_script(source, update=update)
+    windows_source = shlex.quote(str(IMG_ZOOM_SOURCE).replace("\\", "/"))
+    script = _img_zoom_install_script(
+        f'"$(wslpath -u {windows_source})"', update=update, digest=img_zoom_digest()
+    )
     runner.run(wsl_exec_command(distro, ["sh", "-c", script]), label="install img-zoom")
 
 
@@ -597,15 +619,26 @@ def _windows_uv(runner: Runner, platform: PlatformInfo) -> str:
 def install_img_zoom_native(
     runner: Runner, platform: PlatformInfo, *, update: bool = False
 ) -> None:
+    digest = img_zoom_digest()
     if not _is_windows_host(platform):
-        script = _img_zoom_install_script(IMG_ZOOM_SOURCE.as_posix(), update=update)
+        source = shlex.quote(IMG_ZOOM_SOURCE.as_posix())
+        script = _img_zoom_install_script(source, update=update, digest=digest)
         runner.run(["sh", "-c", script], label="install img-zoom")
         return
-    uv = _windows_uv(runner, platform)
     stage = _windows_img_zoom_stage(platform)
+    stamp = stage / _IMG_ZOOM_STAMP
+    if (
+        runner.which("img-zoom")
+        and stamp.is_file()
+        and stamp.read_text(encoding="utf-8").strip() == digest
+    ):
+        runner.reporter.info("img-zoom is current")
+        return
+    uv = _windows_uv(runner, platform)
     _stage_img_zoom_source(runner, stage)
     upgrade = ["--upgrade"] if update else []
     runner.run([uv, "tool", "install", *upgrade, str(stage)])
+    runner.write_text(stamp, digest + "\n")
     bin_dir = runner.run([uv, "tool", "dir", "--bin"], dry_run_safe=True).stdout.strip()
     if bin_dir:
         _add_to_user_path(runner, Path(bin_dir))
