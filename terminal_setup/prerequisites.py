@@ -538,8 +538,12 @@ def _install_release_tools(
     packages_by_binary = {RELEASE_TOOLS[package][1]: package for package in packages}
     packages_by_binary.update({CHECKED_TOOLS[package][1]: package for package in checks})
     checked: dict[str, tuple[str, str]] = {}
+    answered: set[str] = set()
     for status, binary, text, line in lines:
-        package = packages_by_binary.get(binary, binary)
+        package = packages_by_binary.get(binary)
+        if package is None:
+            continue
+        answered.add(package)
         if package in checks:
             checked[package] = (status if status in _CHECK_STATES else "fail", text)
         elif status == "ok":
@@ -547,6 +551,10 @@ def _install_release_tools(
         else:
             runner.failures.append(f"install {package}")
             runner.reporter.warn(f"install {package} failed: {text or line} (continuing)")
+    for package in packages:
+        if package not in answered and not runner.dry_run:
+            runner.failures.append(f"install {package}")
+            runner.reporter.warn(f"install {package} failed: the release check printed no result")
     return checked
 
 
@@ -2098,7 +2106,7 @@ def _ensure_starship_wsl_guest(
             report_release_message(runner, text)
         elif status != "skip":
             raise RuntimeError(text or line)
-    if not lines:
+    if not lines and not runner.dry_run:
         raise RuntimeError("the starship release check printed nothing")
 
 

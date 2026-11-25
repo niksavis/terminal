@@ -1515,6 +1515,8 @@ def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
         "fail\tjq\tdownload failed: timed out\n"
         "ok\tfzf\tfzf 0.75.0 is up to date\n"
         "pending\tlazygit\tlazygit 0.66.3\n"
+        "\n"
+        "a warning line\n"
         "stale\tuv\tuv 0.13.9 is installed; 0.13.10 is available\n"
     )
     runner = FakeRunner(outputs={command: (0, stdout)})
@@ -1603,6 +1605,29 @@ def test_a_system_wsl_starship_is_left_alone() -> None:
 
     assert len(runner.commands) == 1
     assert runner.reporter.messages == []
+
+
+def test_release_tools_name_a_tool_that_got_no_result_line() -> None:
+    runner = FakeRunner()
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        install_release_tools(cast(Runner, runner), ["jq"], update=True, wsl_distro="Ubuntu")
+
+    assert runner.failures == ["install jq"]
+    assert runner.reporter.messages == [
+        ("warn", "install jq failed: the release check printed no result")
+    ]
+
+
+def test_a_dry_run_on_a_windows_host_reports_no_release_failure() -> None:
+    runner = Runner(dry_run=True, reporter=FakeReporter())  # type: ignore[arg-type]
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        install_release_tools(runner, ["jq"], update=True, wsl_distro="Ubuntu")
+        ensure_starship(runner, platform, update=True)
+
+    assert runner.failures == []
 
 
 def test_a_failed_wsl_starship_check_raises_its_reason() -> None:
