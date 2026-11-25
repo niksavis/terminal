@@ -2,6 +2,25 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.25.3 - 2026-11-25
+
+Delta: v0.25.2..v0.25.3
+
+### Highlights
+
+- **WSL setup checks lazygit and uv with the other release tools.** Setup reads the installed and latest lazygit and uv in the same `wsl.exe` call as the 15 release tools, instead of 4 more calls. In WSL, lazygit now updates like the other release tools, without a question before the update. A lazygit copy that is only in `/usr/local/bin` gets a user-local copy in `~/.local/bin`, and setup then reports the two copies. The same holds for a uv that is on the WSL PATH but not in `~/.local/bin` (term-uuvvl7).
+- **Setup skips a current img-zoom.** A rerun no longer rebuilds img-zoom in WSL and on Windows each time. Setup keeps a stamp of the img-zoom source and the setup version next to its copy of the source, and installs again only when the stamp differs or `img-zoom` is missing. The dependencies (Pillow, OpenCV) are now refreshed once for each new terminal-setup release, not on every run (term-uuvvl7).
+- **Setup on Windows starts PowerShell only to change the user PATH.** Setup reads the user PATH from the registry first, and skips the PowerShell call when the folder is already there. A no-change run on a Windows host starts 4 fewer PowerShell processes (term-uuvvl7).
+- **Setup checks a WSL starship and herdr with fewer `wsl.exe` calls.** The release check for starship now also finds a system copy, so 2 probe calls are gone. Setup asks WSL once per run whether herdr is installed, not twice (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- fix(setup): count only release lines of the batch jobs (term-uuvvl7) (daeb28e)
+- perf(setup): check wsl starship and herdr with fewer calls (term-uuvvl7) (965ea8b)
+- perf(setup): read the user path before starting powershell (term-uuvvl7) (a558d0b)
+- perf(setup): skip a current img-zoom install (term-uuvvl7) (99178ec)
+- perf(setup): check lazygit and uv in the wsl release batch (term-uuvvl7) (ebf61f8)
+
 ## v0.25.2 - 2026-11-24
 
 Delta: v0.25.1..v0.25.2
