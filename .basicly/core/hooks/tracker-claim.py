@@ -231,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError:
             report = {}
         if warning := report.get("warning"):
-            sys.stderr.write(f"tracker-claim: {warning}; run `{report.get('next', '')}`\n")
+            sys.stderr.write(f"tracker-claim: notice: {warning}; run `{report.get('next', '')}`\n")
         return 0
     try:
         report = json.loads(done.stdout)

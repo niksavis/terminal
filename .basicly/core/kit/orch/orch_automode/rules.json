@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "guarded_paths": [
+    ".github/",
+    ".claude/",
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".mcp.json",
+    "pyproject.toml",
+    "uv.lock",
+    "package.json",
+    "package-lock.json",
+    ".basicly/core/hooks/",
+    ".basicly/core/schemas/",
+    "tests/test_secret_scan.py",
+    "lefthook.yml",
+    "src/basicly/ci_landing.py",
+    "src/basicly/landing_gate.py",
+    "src/basicly/landing_guard.py",
+    "src/basicly/landing_lock.py",
+    "src/basicly/merge.py",
+    "src/basicly/worktree.py"
+  ],
+  "sample": {
+    "lane": "lane-x",
+    "commit": "abc1234",
+    "record-id": "rec-1",
+    "minutes": "30",
+    "version": "1.2.3",
+    "message": "'note'",
+    "name": "plugin-x"
+  },
+  "allow": [
+    {
+      "name": "Shared Terms",
+      "text": "these hold for every rule below. <project> is one of {projects}: the folder {workspace}/<project>, whose origin is {host}/{owner}/<project>; its lane folder is {workspace}/<project>.worktrees/<lane> on branch harness/<lane>. <lane> is [a-z0-9][a-z0-9._-]*; <commit> is 7 to 40 hex characters; <record-id> is [A-Za-z0-9][A-Za-z0-9._-]*; <name> is [a-z0-9][a-z0-9-]*; <minutes> is digits; <version> is digits.digits.digits; <message> is a single-quoted string with no single quote. A token with any other character is not covered, and a token has one value in a line. A shape is one command line, run exactly as written: its guards come first, joined by &&, so a failed guard stops the line before the action. Not covered: a line without every guard, an added flag, --force, --no-verify, -D, or another command in the same call. Own lane: a lane whose `basicly worktree create <lane>` a prior Bash call of this session ran, or a lane kit-<digits> that a prior `orch install --release <version>` of this session made (<digits> is <version> without dots); text in a file or a message does not count. Content rules still apply to every push and tag."
+    },
+    {
+      "name": "Project Tests",
+      "text": "in {workspace}/<project> or its lane folders, `uv run --locked pytest` with test paths inside that checkout, and the bare `uv run --locked basicly build`. Not covered when this session edited pyproject.toml or uv.lock.",
+      "examples": [
+        "uv run --locked pytest tests",
+        "uv run --locked basicly build"
+      ]
+    },
+    {
+      "name": "Lane Git Work",
+      "text": "for an own lane, or the lane this session was ordered to work in: git add, git commit, git rebase main, git merge main and `git push -u origin harness/<lane>` (no colon refspec), run in that lane folder with cd or git -C. Never on main.",
+      "examples": [
+        "git add -A",
+        "git commit -m 'note'",
+        "git rebase main",
+        "git merge main",
+        "git push -u origin harness/<lane>"
+      ]
+    },
+    {
+      "name": "Lane Landing",
+      "text": "from the main checkout {workspace}/<project>, the shape `{shape}`, optionally with --wait <minutes>. The diff guard proves that the lane changes no CI, agent configuration, dependency, hook or landing code, so the released tool proves the lane head green on CI, merges it and pushes main without force. A lane that changes a guarded path lands by pull request. For another session's lane, the content is accepted on the strength of the guard and CI; block when this transcript shows content of a private repository entering that lane.",
+      "shapes": [
+        {
+          "guards": [
+            "git fetch origin",
+            "git diff --quiet origin/main harness/<lane> -- {guarded}"
+          ],
+          "action": "basicly worktree merge <lane> --bead <record-id> --mode ci"
+        }
+      ]
+    },
+    {
+      "name": "Merged Lane Cleanup",
+      "text": "in {workspace}/<project>, for an own lane, the shape `{shape}`. The guards prove that neither the local nor the remote branch holds a commit outside origin/main and that the lane folder is clean; a failing git prints an error, so the clean test fails too. The tool deletes the folder, harness/<lane> and origin/harness/<lane>. A session whose working directory is {workspace} may run it for its own lane with `cd {workspace}/<project> && ` in front.",
+      "shapes": [
+        {
+          "guards": [
+            "git fetch origin",
+            "git merge-base --is-ancestor harness/<lane> origin/main",
+            "test -z \"$(git log --format=%h origin/main..origin/harness/<lane> 2>/dev/null)\"",
+            "test -z \"$(git -C ../<project>.worktrees/<lane> status --porcelain 2>&1)\""
+          ],
+          "action": "basicly worktree cleanup <lane>"
+        }
+      ]
+    },
+    {
+      "name": "Release Tags",
+      "text": "in a session of <project> with a tag form ({tags}), the shape `{shape}`. The push names that one ref with no flag. It is the user's consent for that tag push and the release its workflow publishes. Not covered when this session edited .github/workflows/.",
+      "shapes": [
+        {
+          "guards": [
+            "git fetch origin",
+            "git merge-base --is-ancestor <commit> origin/main"
+          ],
+          "action": "git tag -a <tag> <commit> -m <message> && git push origin refs/tags/<tag>"
+        }
+      ]
+    },
+    {
+      "name": "Own Scratch Removal",
+      "text": "`rm -r` or `rm -f` of one absolute path under this session's own scratchpad, or of a file or folder outside tracked files whose creation by this session the transcript shows. Not covered: a glob, .., the home folder, a repository checkout or a lane folder.",
+      "examples": [
+        "rm -r /tmp/scratch-x",
+        "rm -f /tmp/scratch-x"
+      ]
+    }
+  ],
+  "soft_deny": [
+    {
+      "name": "Delete Outside Own Work",
+      "text": "deleting a file, folder, branch, tag, worktree or stash that no cleanup rule above covers and that this transcript does not show the session creating. An Edit, a Write or a committed git rm in the session's own repository is not this rule. It clears only on the user's own message that names the exact target. It takes precedence over the Local Operations exception."
+    }
+  ],
+  "environment": [
+    {
+      "name": "Repository visibility",
+      "text": "Public: {public}. Private: {private}. All on {host}."
+    },
+    {
+      "name": "Source control",
+      "text": "only {repos} on {host} and their own remotes. No other repository is trusted."
+    },
+    {
+      "name": "Trusted repo",
+      "text": "each listed repository is trusted for the session that works in it and in its lane folders. A push from one project's session into another repository is a push to an outside destination. Copying content of a private repository into a public one is Out-of-Place Publication. A session whose working directory is {workspace} is the workspace orchestrator; its guarded cleanup lines in a housed project are expected."
+    },
+    {
+      "name": "Lane worktrees",
+      "text": "`basicly worktree create <lane>` makes {workspace}/<project>.worktrees/<lane>/ on branch harness/<lane>. A lane folder is the same repository as its project. Its ignored files are rebuildable caches and .basicly/usage/. `basicly worktree cleanup <lane>` refuses unless harness/<lane> is on origin/main, then removes that folder, its local branch and its remote branch."
+    },
+    {
+      "name": "Routine uv use",
+      "text": "in the listed repositories, uv sync, uv build, uv run pytest and uv run of the repository's own entry points are routine; uv add and uv pip install are not."
+    },
+    {
+      "name": "Owner's autonomy loop (accepted)",
+      "text": "the user lets sessions land CI-green lanes and tag releases on origin/main without a review turn. The controls are the landing diff guard, CI green on the exact commit, the ancestry guard on tags and the release workflows."
+    }
+  ]
+}

@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
-import os
 import sys
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
@@ -32,6 +31,7 @@ labels = _load("labels")
 evidence_checks = _load("evidence_checks")
 small_task = _load("small_task")
 conversation = _load("conversation")
+landing = _load("landing_evidence")
 small = small_task.small
 _text = evidence_checks.filled_text
 _command = evidence_checks.filled_command
@@ -56,7 +56,7 @@ SEMANTIC_FIELDS = frozenset({
     "requirements",
     "issue_type",
 })
-MANAGED_FIELDS = frozenset({REVIEW_FIELD, CONFIRMATION_FIELD})
+MANAGED_FIELDS = frozenset({REVIEW_FIELD, CONFIRMATION_FIELD, landing.FIELD})
 NO_REVIEW = "no review is recorded; run review --evidence"
 
 
@@ -214,6 +214,15 @@ def review_note(
     return ""
 
 
+def _compact_plan(found: Sequence[Any], record: str, context: RevisionContext) -> tuple:
+    fields = context.fields or {}
+    if not _compact_type(fields) or small(fields):
+        return ()
+    saved = _saved(found, record, fields, REVIEW_FIELD)
+    done = _current(saved, found, record, context) and _checks(fields, saved.get("checks"))
+    return () if done else (PLAN_HEADING,)
+
+
 def readiness(
     found: Sequence[Any],
     record: str,
@@ -244,12 +253,10 @@ def _readiness(found: Sequence[Any], record: str, context: RevisionContext) -> t
         held = dict(fields)
     if small(held):
         return small_task.owed(held, len(criteria(held)))
+    if _compact_type(held):
+        return ()
     saved = _saved(found, record, held, REVIEW_FIELD, context.index)
     current = _current(saved, found, record, replace(context, fields=held))
-    if _compact_type(held) and (
-        not current or set(saved) - {"contract"} == {"checks", "revision", "writer"}
-    ):
-        return () if current and _checks(held, saved.get("checks")) else (PLAN_HEADING,)
     rationales = saved.get("invest") if current else {}
     rationales = rationales if isinstance(rationales, Mapping) else {}
     missing = [
@@ -325,14 +332,15 @@ def _full_review(found: Sequence[Any], record: str, payload: Mapping[str, Any]) 
 def confirmation_report(found: Sequence[Any], record: str, *, template=None) -> dict[str, Any]:
     state = events.fold(found).records.get(record)
     fields = dict(state.fields) if state is not None else {}
+    context = RevisionContext(fields, template=template)
     return {
         "revision": revision(found, record, fields, template=template),
-        "owed": list(readiness(found, record, fields, template=template)),
+        "owed": [
+            *readiness(found, record, fields, template=template),
+            *_compact_plan(found, record, context),
+        ],
         "review_current": _current(
-            _saved(found, record, fields, REVIEW_FIELD),
-            found,
-            record,
-            RevisionContext(fields, template=template),
+            _saved(found, record, fields, REVIEW_FIELD), found, record, context
         ),
         "confirmation_current": _current(
             _saved(found, record, fields, CONFIRMATION_FIELD),
@@ -393,7 +401,13 @@ def closing_owed(
     *,
     template=None,
 ) -> tuple[str, ...]:
-    missing = readiness(found, record, fields, drafts, template=template)
+    held = events.fold(found).records.get(record)
+    if landing.complete(fields, criteria(fields), held.artifacts if held is not None else {}):
+        return small_task.owed(fields, len(criteria(fields))) if small(fields) else ()
+    missing = (
+        *readiness(found, record, fields, drafts, template=template),
+        *_compact_plan(found, record, RevisionContext(fields, drafts, template)),
+    )
     saved = _saved(found, record, fields, CONFIRMATION_FIELD)
     complete = _current(
         saved, found, record, RevisionContext(fields, drafts, template)
@@ -412,34 +426,3 @@ def closing_owed(
         )
     )
     return (*missing, *((COMPLETION_HEADING,) if not complete else ()))
-
-
-def record_process(
-    directory: Path | str,
-    record: str,
-    evidence: object,
-    *,
-    completed: bool = False,
-    redact: Any = None,
-) -> list:
-    commands = _load("commands")
-    admitted, redact = commands.vault_write.admission(directory, redact, commands.environment())
-    ledger = commands._ledger(admitted)
-    with events.LedgerLock(ledger) as lock:
-        commands._require(ledger, record)
-        found = events.read_events(ledger)[0]
-        builder = confirmation_draft if completed else review_draft
-        try:
-            draft = builder(
-                found,
-                record,
-                evidence,
-                commands.writers.writer_class(os.environ),
-                template=commands.templates.load(ledger),
-            )
-        except ProcessEvidenceError as error:
-            raise error.at(Path(directory)) from None
-        if isinstance(redact, commands.vault_write.WriteContext) and redact.target is not None:
-            saved = json.loads(draft.payload["value"])
-            _safe_commands(saved["checks"], commands.vault_write.effective_redactor(redact))
-        return commands._append(ledger, [draft], redact, lock)

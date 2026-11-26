@@ -27,7 +27,7 @@ The script is `${CLAUDE_SKILL_DIR}/../swarm/scripts/swarm.py`, in the `swarm` sk
 
    Replace the voters, options and folder with yours. Exit 0 prints the decision and each dissenting vote with its reason. Exit 2 means no option has a majority of all voters; the user decides.
 5. **Verify.** When the winning reason rests on a number or a root cause, run `falsify-first` on it with an agent that did not vote.
-6. **Report.** Before the tally, write the question as the first line of `DIR/question.txt`; the diagram shows it. Give the vote table, the script's mermaid block as printed, the decision, the strongest dissent, each voter that is not run, and how the decision can fail. Put the mermaid block only in this final report, never in a voter brief. State that each voter voted blind, without seeing another vote.
+6. **Report.** Before the tally, write the question as the first line of `DIR/question.txt`; the diagram shows it. Give the vote table, the script's mermaid block as printed when it prints one, the decision, the strongest dissent, each voter that is not run, and how the decision can fail. Put the mermaid block only in this final report, never in a voter brief. State that each voter voted blind, without seeing another vote.
 
 ## Rules
 

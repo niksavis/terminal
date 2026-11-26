@@ -88,6 +88,23 @@ TABLE = (
         "the shared completed close refusal; use confirm --evidence",
     ),
     Field(
+        "landing_evidence",
+        PROCESS,
+        "the close of a task, bug or chore: merge commit, CI run and criterion test map; "
+        "use close --landed COMMIT RUN_URL --tests JSON",
+    ),
+    Field(
+        "superseded_by",
+        CLOSING,
+        "the record or tag that replaced a cancelled record; use close --superseded-by",
+    ),
+    Field(
+        "followup_of",
+        WRITER,
+        "the close gate of a parent: a record with an open follow-up child cannot close; "
+        "close --landed sets it",
+    ),
+    Field(
         "size",
         OPTIONAL,
         "the definition of ready: size=small lets a task, bug or chore with one acceptance "

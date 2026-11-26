@@ -11,6 +11,8 @@ HOUR_S = 3600
 LENGTH_S = {"five_hour": 5 * HOUR_S, "seven_day": 7 * 24 * HOUR_S}
 STALE_S = 600
 RECENT_S = HOUR_S
+FIT_FROM_S = 600
+FIT_TO_S = 1800
 MIN_SPAN_S = 900
 MIN_ELAPSED_S = {"five_hour": 30 * 60, "seven_day": 24 * HOUR_S}
 HOLD_AT = 90.0
@@ -75,6 +77,32 @@ def pace(name: str, window: Window, now: int) -> Pace:
     return Pace(
         name, used, int(resets), int(read), found, basis, projected, advise(used, projected), False
     )
+
+
+def fit(window: Window, now: int, working: int) -> tuple[int | None, str]:
+    used, resets = _num(window, "used_percentage"), _num(window, "resets_at")
+    if resets <= now:
+        return None, "the window reset and has no reading yet"
+    if working < 1:
+        return None, "no session is working"
+    recent = [r for r in _readings(window) if now - r[0] <= FIT_TO_S]
+    if len(recent) < 2 or recent[-1][0] - recent[0][0] < FIT_FROM_S:
+        return None, f"readings of the last {FIT_TO_S // 60} min span under {FIT_FROM_S // 60} min"
+    taken = recent[-1][0] - recent[0][0]
+    burn = (recent[-1][1] - recent[0][1]) * HOUR_S / taken
+    if burn <= 0:
+        return None, "no use measured in the last readings"
+    room = (CLOSE_AT - used) * HOUR_S / (resets - now)
+    basis = f"burn {burn:.1f}%/h over the last {int(taken // 60)} min with {working} working"
+    return int(room * working // burn), basis
+
+
+def fit_line(window: Window, now: int, working: int) -> str:
+    count, basis = fit(window, now, working)
+    if count is None:
+        return f"fit: unknown ({basis})"
+    noun = "session fits" if count == 1 else "sessions fit"
+    return f"fit: {count} working {noun} until the reset ({basis})"
 
 
 def overall(paces: list[Pace]) -> str:

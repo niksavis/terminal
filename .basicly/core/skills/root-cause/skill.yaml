@@ -46,6 +46,12 @@ instructions: |
   | Covers | The observed defect and related call paths established by evidence |
   | Branch not taken | One line |
 
+  Write the chain, one why per line, to `chain.txt` in the session scratchpad, and put the block that this command prints, as printed, under the table. It prints nothing when the reply view draws no Mermaid:
+
+  ```sh
+  python3 -B ${CLAUDE_SKILL_DIR}/../swarm/scripts/mermaid.py chain --links chain.txt --control "CONTROL" --tier control
+  ```
+
   Hand the fix to `repair-in-place`, or to the owner, with the Control row. Record other improvements as separate recommendations.
 
   For a worked chain from signal to control, read [example](references/example.md).

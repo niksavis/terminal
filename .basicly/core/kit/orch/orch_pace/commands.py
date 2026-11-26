@@ -94,6 +94,8 @@ def show(
     lines = [f"usage snapshots in {where}, fresh from: {', '.join(writers)}"]
     lines += [plan.line(p, now) for p in paces]
     lines.append(f"advice: {plan.overall(paces)}")
+    if "five_hour" in windows:
+        lines.append(plan.fit_line(windows["five_hour"], now, working_count(cwd, environ)))
     lines += costs.lines(cwd, tracker)
     return "\n".join(lines)
 
@@ -103,12 +105,17 @@ def _dead(session: dict[str, object]) -> bool:
     return isinstance(pid, int) and isinstance(began, int) and store.alive(pid, began) is False
 
 
-def working(cwd: Path, environ: dict[str, str]) -> str:
+def working_count(cwd: Path, environ: dict[str, str]) -> int:
     root = store.find(cwd, environ)
     if root is None:
+        return 0
+    return sum(1 for s in store.sessions(root) if s.get("state") == "working" and not _dead(s))
+
+
+def working(cwd: Path, environ: dict[str, str]) -> str:
+    if store.find(cwd, environ) is None:
         return ""
-    count = sum(1 for s in store.sessions(root) if s.get("state") == "working" and not _dead(s))
-    return f" working_sessions={count}"
+    return f" working_sessions={working_count(cwd, environ)}"
 
 
 def note(

@@ -90,8 +90,9 @@ not prove value, independence, or testability. The agent records a current revie
 criterion checks as described in `GUIDANCE.md`. Acceptance criteria and
 requirements are typed fields. Every entry in a list must be filled.
 
-New claims require one planned argv and expected result per criterion. Explicit `task`,
-`bug` and `chore` types may use checks-only review evidence. The full review requires six
+New claims of a feature, epic, research or untyped record require one planned argv and
+expected result per criterion. An explicit `task`, `bug` or `chore` starts without review
+evidence, and may use checks-only review evidence. The full review requires six
 filled INVEST rationales and actual same-card comment sequence references; it remains
 valid for every type and required for other or missing types. `review --evidence` records
 either form with an internally computed semantic revision and generic writer identity.
@@ -100,6 +101,9 @@ These checks establish recorded evidence, not automated proof of semantic INVEST
 
 A completed close requires a meaningful delivered reason and current `confirm --evidence`
 for every criterion: the agreed exact argv, a filled observed result, and exit code 0.
+A `task`, `bug` or `chore` may instead close with `--landed COMMIT --tests JSON`: the
+landing-verification artifact of that commit, and a test file in that commit or `null` for
+each criterion; a `null` opens a follow-up that holds the parent open.
 Generic closed updates share this refusal before writing events. `close --resolution
 cancelled` requires a meaningful abandonment reason, retains closed history, and leaves
 blocking dependencies unmet. Existing imports and closed history remain readable without

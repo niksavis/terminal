@@ -6,6 +6,7 @@ import shlex
 import sys
 from pathlib import Path
 
+from orch_automode import commands as automode
 from orch_pace import commands as pace
 from orch_relay import accept, brief, classes, delegate, install, messages, record, start
 from orch_state import commands, relay_guard, store
@@ -36,6 +37,7 @@ def parser() -> argparse.ArgumentParser:
     _relay_parsers(groups)
     commands.add_parsers(groups)
     pace.add_parsers(groups)
+    automode.add_parsers(groups)
     return top
 
 
@@ -227,6 +229,8 @@ def run(argv: list[str], cwd: Path, environ: dict[str, str]) -> int:
     shown = commands.run(args, cwd, environ)
     if shown is None:
         shown = pace.run(args, cwd, environ)
+    if shown is None:
+        shown = automode.run(args, cwd, environ)
     if shown is not None:
         print(shown)
         return 0

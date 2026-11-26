@@ -28,6 +28,7 @@ shaping = _load("shaping.py", "basicly_tracker_kit_shaping")
 label_shape = _load("label_shape.py", "basicly_tracker_kit_label_shape")
 writers = _load("writers.py", "basicly_tracker_kit_writers")
 process = _load("process_evidence.py", "basicly_tracker_kit_process_evidence")
+closing_ = _load("closing.py", "basicly_tracker_kit_closing")
 
 REVIEW_LABEL = shaping.REFINE_LABEL
 IN_PROGRESS = "in_progress"
@@ -136,6 +137,11 @@ def refuse(
             )
         historical = state is not None and state.status == "closed" and not changed_resolution
         if closing and not historical:
+            if waiting := closing_.open_followups(states, closing_.children(found), record):
+                raise UnreviewedError(
+                    f"{record} cannot close while a child has an open follow-up: "
+                    f"{', '.join(waiting)}; add the missing tests and close them first"
+                )
             resolution = fields.get(process.RESOLUTION_FIELD, "completed")
             if resolution not in ("completed", "cancelled"):
                 raise UnreviewedError("close_resolution must be completed or cancelled")
@@ -149,9 +155,14 @@ def refuse(
                     *process.closing_owed(found, record, fields, drafts, template=template),
                 )
                 if missing:
+                    note = (
+                        process.review_note(found, record, fields, drafts, template=template)
+                        if process.PLAN_HEADING in missing
+                        else ""
+                    )
                     raise UnreviewedError(
                         f"{record} cannot complete: it owes {', '.join(missing)}; "
-                        f"{shaping.remedy(missing)}",
+                        f"{shaping.remedy(missing)}" + (f" ({note})" if note else ""),
                         record,
                         _closing_steps(missing),
                     )
