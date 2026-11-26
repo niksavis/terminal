@@ -358,9 +358,6 @@ def write_executable(runner: Runner, path: Path, content: str) -> None:
 
 
 def deploy_agents_command(runner: Runner, platform: PlatformInfo) -> None:
-    if platform.os == OperatingSystem.MACOS:
-        runner.reporter.info("The agents command needs bash 4, so setup skips it on macOS.")
-        return
     bin_dir = platform.home / ".local" / "bin"
     if platform.os != OperatingSystem.WINDOWS or is_running_in_wsl():
         write_executable(runner, bin_dir / "agents", render_agents_command("agents"))

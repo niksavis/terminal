@@ -209,7 +209,7 @@ In WSL, the command also prints the Windows side, and on Windows it also prints 
 
 ### The agents command
 
-With `--agents`, setup also installs the `agents` command. It shows and updates Claude Code, Codex, the Codex app-server daemon and Copilot CLI in one step. In WSL and on Linux it is `~/.local/bin/agents`. On Windows it is `agents.cmd` and `agents.ps1` in `%USERPROFILE%\.local\bin`. Setup does not install it on macOS, because the command needs bash 4.
+With `--agents`, setup also installs the `agents` command. It shows and updates Claude Code, Codex, the Codex app-server daemon and Copilot CLI in one step. In WSL, on Linux and on macOS it is `~/.local/bin/agents`. It runs with bash 3.2 or newer, so the bash that ships with macOS works. On Windows it is `agents.cmd` and `agents.ps1` in `%USERPROFILE%\.local\bin`.
 
 ```bash
 agents status

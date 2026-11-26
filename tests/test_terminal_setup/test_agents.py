@@ -312,17 +312,17 @@ def test_the_rendered_agents_script_passes_shellcheck(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout
 
 
-def _bash4() -> str | None:
-    bash = shutil.which("bash")
-    if bash is None or sys.platform == "win32":
+def _bash() -> str | None:
+    if sys.platform == "win32":
         return None
-    probe = subprocess.run(
-        [bash, "-c", "echo $BASH_VERSINFO"], check=False, capture_output=True, text=True
-    )
-    return bash if probe.stdout.strip().isdigit() and int(probe.stdout.strip()) >= 4 else None
+    if sys.platform == "darwin" and Path("/bin/bash").is_file():
+        return "/bin/bash"
+    return shutil.which("bash")
 
 
-needs_bash4 = pytest.mark.skipif(_bash4() is None, reason="runs the bash 4 agents script")
+needs_bash = pytest.mark.skipif(
+    _bash() is None, reason="runs the agents script; macOS runs it with the system bash 3.2"
+)
 
 _LATEST = {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"}
 _FAKE_CURL = """#!/bin/sh
@@ -382,7 +382,7 @@ def _run_agents(
         **extra,
     }
     return subprocess.run(
-        [str(_bash4()), str(tmp_path / "agents"), *arguments, "--wsl"],
+        [str(_bash()), str(tmp_path / "agents"), *arguments, "--wsl"],
         check=False,
         capture_output=True,
         text=True,
@@ -403,7 +403,7 @@ def _row(output: str, agent: str) -> list[str]:
     )
 
 
-@needs_bash4
+@needs_bash
 def test_agents_status_compares_each_installed_version_with_the_latest(tmp_path: Path) -> None:
     home = _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.170.0"})
     daemon = home / ".codex" / "packages" / "app-server-daemon"
@@ -420,7 +420,28 @@ def test_agents_status_compares_each_installed_version_with_the_latest(tmp_path:
     assert not any(call.endswith(" update") for call in _calls(tmp_path))
 
 
-@needs_bash4
+@needs_bash
+@pytest.mark.parametrize(
+    ("installed", "latest", "state"),
+    [
+        ("2.10.0", "2.9.1", "ok"),
+        ("2.9.10", "2.10.0", "update"),
+        ("2.1.0-beta.1", "2.1.0", "ok"),
+        ("2.1.0", "2.1.1-rc.1", "update"),
+    ],
+)
+def test_agents_status_compares_versions_by_number(
+    tmp_path: Path, installed: str, latest: str, state: str
+) -> None:
+    _agents_home(tmp_path, {"claude": installed})
+
+    result = _run_agents(tmp_path, "status", LATEST_CLAUDE=latest)
+
+    assert result.returncode == 0, result.stdout
+    assert _row(result.stdout, "claude")[3] == state
+
+
+@needs_bash
 def test_agents_status_exits_zero_when_a_lookup_fails(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0"})
 
@@ -430,7 +451,7 @@ def test_agents_status_exits_zero_when_a_lookup_fails(tmp_path: Path) -> None:
     assert _row(result.stdout, "claude") == ["claude", "2.1.0", "?", "unknown"]
 
 
-@needs_bash4
+@needs_bash
 def test_agents_update_runs_only_the_updaters_of_outdated_agents(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.170.0", "copilot": "1.0.5"})
 
@@ -444,7 +465,7 @@ def test_agents_update_runs_only_the_updaters_of_outdated_agents(tmp_path: Path)
     assert "codex app-server daemon update" in calls
 
 
-@needs_bash4
+@needs_bash
 def test_agents_update_prints_one_line_for_a_current_agent_and_reports_each_agent(
     tmp_path: Path,
 ) -> None:
@@ -462,7 +483,7 @@ def test_agents_update_prints_one_line_for_a_current_agent_and_reports_each_agen
     assert {"ok claude", "updated codex", "ok copilot"} <= set(lines)
 
 
-@needs_bash4
+@needs_bash
 def test_agents_update_with_force_runs_every_updater(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
 
@@ -472,7 +493,7 @@ def test_agents_update_with_force_runs_every_updater(tmp_path: Path) -> None:
     assert {"claude update", "codex update", "copilot update"} <= set(calls)
 
 
-@needs_bash4
+@needs_bash
 def test_a_failed_daemon_update_falls_back_to_the_daemon_only_installer(tmp_path: Path) -> None:
     home = _agents_home(tmp_path, {"claude": "2.1.0", "copilot": "1.0.5"})
     _fake_agent(home / ".local" / "bin" / "codex", "0.171.0", daemon_update=1)
@@ -483,7 +504,7 @@ def test_a_failed_daemon_update_falls_back_to_the_daemon_only_installer(tmp_path
     assert "installer=1" in _calls(tmp_path)
 
 
-@needs_bash4
+@needs_bash
 @pytest.mark.parametrize(
     ("relative", "command"),
     [
@@ -509,7 +530,7 @@ def test_agents_refuses_a_package_manager_install_by_name(
     assert "claude update" not in _calls(tmp_path)
 
 
-@needs_bash4
+@needs_bash
 def test_agents_uninstall_removes_the_binaries_and_keeps_the_configuration(tmp_path: Path) -> None:
     home = _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
     kept = [
@@ -533,7 +554,7 @@ def test_agents_uninstall_removes_the_binaries_and_keeps_the_configuration(tmp_p
     assert all(path.exists() for path in kept)
 
 
-@needs_bash4
+@needs_bash
 def test_agents_uninstall_without_yes_removes_nothing(tmp_path: Path) -> None:
     home = _agents_home(tmp_path, {"claude": "2.1.0"})
 
@@ -544,7 +565,7 @@ def test_agents_uninstall_without_yes_removes_nothing(tmp_path: Path) -> None:
     assert (home / ".local" / "bin" / "claude").exists()
 
 
-@needs_bash4
+@needs_bash
 def test_agents_refuses_an_unknown_argument_with_the_usage(tmp_path: Path) -> None:
     _agents_home(tmp_path, {})
 
@@ -587,13 +608,15 @@ def test_setup_writes_the_windows_agents_command_and_the_wsl_copy(tmp_path: Path
     )
 
 
-def test_setup_skips_the_agents_command_on_macos(tmp_path: Path) -> None:
+def test_setup_installs_the_agents_command_on_macos(tmp_path: Path) -> None:
     runner = RecordingRunner(reporter=CapturingReporter())
     platform = replace(_linux_platform(), os=OperatingSystem.MACOS, home=tmp_path)
 
     agents.deploy_agents_command(runner, platform)
 
-    assert not (tmp_path / ".local" / "bin" / "agents").exists()
+    script = tmp_path / ".local" / "bin" / "agents"
+    assert script.read_text(encoding="utf-8") == _rendered("agents")
+    assert script.stat().st_mode & 0o111
 
 
 needs_pwsh = pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs agents.ps1 in pwsh")
@@ -821,7 +844,7 @@ def test_agents_ps1_uninstall_removes_the_binaries_and_keeps_the_configuration(
     assert "codex app-server daemon stop" in _ps_calls(tmp_path)
 
 
-@needs_bash4
+@needs_bash
 def test_a_nested_agents_run_leaves_the_done_line_to_its_parent(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
 
@@ -892,7 +915,7 @@ def test_setup_runs_an_agent_updater_only_when_the_agent_is_not_current(
     assert any(script.endswith("codex update") for script in commands) is runs
 
 
-@needs_bash4
+@needs_bash
 def test_the_agents_table_shows_the_daemon_under_codex(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0", "codex": "0.171.0", "copilot": "1.0.5"})
 
@@ -903,7 +926,7 @@ def test_the_agents_table_shows_the_daemon_under_codex(tmp_path: Path) -> None:
     assert plain[codex + 1].startswith("  daemon ")
 
 
-@needs_bash4
+@needs_bash
 def test_agents_status_leaves_out_its_heading_under_terminal_status(tmp_path: Path) -> None:
     _agents_home(tmp_path, {"claude": "2.1.0"})
 
@@ -914,7 +937,7 @@ def test_agents_status_leaves_out_its_heading_under_terminal_status(tmp_path: Pa
     assert "==> " not in re.sub(r"\x1b\[[0-9;]*m", "", bare.stdout)
 
 
-@needs_bash4
+@needs_bash
 def test_agents_update_under_terminal_update_prints_only_agents_that_need_action(
     tmp_path: Path,
 ) -> None:

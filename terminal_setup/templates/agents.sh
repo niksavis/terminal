@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-if ((BASH_VERSINFO[0] < 4)); then
-  echo "agents needs bash 4 or newer; this shell is bash $BASH_VERSION" >&2
-  exit 2
-fi
-
 USAGE="usage: agents <status|update|install|uninstall> [--wsl|--win] [--force]"
 CMD="update"
 TARGET="all"
@@ -26,9 +21,26 @@ done
 export PATH="$HOME/.local/bin:$PATH"
 CODEX_DIR="${CODEX_HOME:-$HOME/.codex}"
 NAMES=(claude codex daemon copilot)
-declare -A LABEL=([claude]="Claude Code" [codex]="Codex" [daemon]="Codex daemon" [copilot]="Copilot CLI")
-declare -A NPM_PACKAGE=([claude]="__NPM_CLAUDE__" [codex]="__NPM_CODEX__" [copilot]="__NPM_COPILOT__")
-declare -A CUR NEW ST ORIGIN
+label() {
+  case "$1" in
+    claude) echo "Claude Code" ;;
+    codex) echo "Codex" ;;
+    daemon) echo "Codex daemon" ;;
+    copilot) echo "Copilot CLI" ;;
+  esac
+}
+npm_package() {
+  case "$1" in
+    claude) echo "__NPM_CLAUDE__" ;;
+    codex) echo "__NPM_CODEX__" ;;
+    copilot) echo "__NPM_COPILOT__" ;;
+  esac
+}
+put() { printf -v "$1_$2" '%s' "$3"; }
+get() {
+  local var="$1_$2"
+  printf '%s' "${!var:-${3:-}}"
+}
 FAILED=()
 NESTED="${AGENTS_NESTED:-}"
 SIDE="Linux"
@@ -36,6 +48,8 @@ IS_WSL=0
 if grep -qi microsoft /proc/version 2>/dev/null; then
   IS_WSL=1
   SIDE="WSL"
+elif [[ "$(uname -s)" == Darwin ]]; then
+  SIDE="macOS"
 fi
 
 say() { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
@@ -106,15 +120,15 @@ brew_name() {
 refuse() {
   local agent="$1" how="$2" verb="$3" fix
   if [[ "$how" == npm && "$verb" == uninstall ]]; then
-    fix="npm uninstall -g ${NPM_PACKAGE[$agent]}"
+    fix="npm uninstall -g $(npm_package "$agent")"
   elif [[ "$how" == npm ]]; then
-    fix="npm install -g ${NPM_PACKAGE[$agent]}@latest"
+    fix="npm install -g $(npm_package "$agent")@latest"
   elif [[ "$verb" == uninstall ]]; then
     fix="brew uninstall $(brew_name "$agent")"
   else
     fix="brew upgrade $(brew_name "$agent")"
   fi
-  echo "!! ${LABEL[$agent]} is a $how install, so agents does not $verb it. Run: $fix"
+  echo "!! $(label "$agent") is a $how install, so agents does not $verb it. Run: $fix"
   return 1
 }
 
@@ -134,13 +148,27 @@ latest_claude() {
 latest_codex() { fetch "__CODEX_LATEST_URL__" | grep -oE '"tag_name" *: *"[^"]*"' | semver; }
 latest_copilot() { curl -fsSI --max-time 15 "__COPILOT_LATEST_URL__" 2>/dev/null | grep -i '^location:' | semver; }
 
+at_least() {
+  local a="${1%%-*}" b="${2%%-*}" i x y
+  local -a left right
+  IFS=. read -r -a left <<<"$a"
+  IFS=. read -r -a right <<<"$b"
+  for i in 0 1 2; do
+    x="${left[i]:-0}"
+    y="${right[i]:-0}"
+    ((10#$x > 10#$y)) && return 0
+    ((10#$x < 10#$y)) && return 1
+  done
+  [[ "$1" == *-* || "$2" != *-* ]]
+}
+
 state() {
   local installed="$1" latest="$2"
   if [[ -z "$installed" ]]; then
     echo missing
   elif [[ -z "$latest" ]]; then
     echo unknown
-  elif [[ "$installed" == "$latest" || "$(printf '%s\n%s\n' "$installed" "$latest" | sort -V | tail -1)" == "$installed" ]]; then
+  elif [[ "$installed" == "$latest" ]] || at_least "$installed" "$latest"; then
     echo ok
   else
     echo update
@@ -149,22 +177,22 @@ state() {
 
 check_all() {
   local name
-  NEW[claude]="$(latest_claude)"
-  NEW[codex]="$(latest_codex)"
-  NEW[copilot]="$(latest_copilot)"
-  NEW[daemon]="${NEW[codex]}"
-  CUR[claude]="$(cur claude)"
-  CUR[codex]="$(cur codex)"
-  CUR[copilot]="$(cur copilot)"
-  CUR[daemon]="$(cur_daemon)"
-  ORIGIN[claude]="$(origin claude)"
-  ORIGIN[codex]="$(origin codex)"
-  ORIGIN[copilot]="$(origin copilot)"
-  ORIGIN[daemon]=native
+  put NEW claude "$(latest_claude)"
+  put NEW codex "$(latest_codex)"
+  put NEW copilot "$(latest_copilot)"
+  put NEW daemon "$(get NEW codex)"
+  put CUR claude "$(cur claude)"
+  put CUR codex "$(cur codex)"
+  put CUR copilot "$(cur copilot)"
+  put CUR daemon "$(cur_daemon)"
+  put ORIGIN claude "$(origin claude)"
+  put ORIGIN codex "$(origin codex)"
+  put ORIGIN copilot "$(origin copilot)"
+  put ORIGIN daemon native
   for name in "${NAMES[@]}"; do
-    case "${ORIGIN[$name]}" in
-      npm | brew) ST[$name]="${ORIGIN[$name]}" ;;
-      *) ST[$name]="$(state "${CUR[$name]}" "${NEW[$name]}")" ;;
+    case "$(get ORIGIN "$name")" in
+      npm | brew) put ST "$name" "$(get ORIGIN "$name")" ;;
+      *) put ST "$name" "$(state "$(get CUR "$name")" "$(get NEW "$name")")" ;;
     esac
   done
 }
@@ -173,7 +201,7 @@ changes_only() { [[ -n "${AGENTS_CHANGES_ONLY:-}" ]]; }
 any_not_ok() {
   local name
   for name in "${NAMES[@]}"; do
-    [[ "${ST[$name]}" != ok ]] && return 0
+    [[ "$(get ST "$name")" != ok ]] && return 0
   done
   return 1
 }
@@ -185,10 +213,10 @@ print_table() {
   fi
   printf '%-8s %-12s %-12s %s\n' agent installed latest state
   for name in "${NAMES[@]}"; do
-    if changes_only && [[ "${ST[$name]}" == ok ]]; then
+    if changes_only && [[ "$(get ST "$name")" == ok ]]; then
       continue
     fi
-    case "${ST[$name]}" in
+    case "$(get ST "$name")" in
       ok) color=32 ;;
       unknown) color=31 ;;
       *) color=33 ;;
@@ -197,11 +225,11 @@ print_table() {
     if [[ "$name" == daemon ]]; then
       shown="  daemon"
     fi
-    printf '%-8s %-12s %-12s \033[%sm%s\033[0m\n' "$shown" "${CUR[$name]:--}" "${NEW[$name]:-?}" "$color" "${ST[$name]}"
+    printf '%-8s %-12s %-12s \033[%sm%s\033[0m\n' "$shown" "$(get CUR "$name" '-')" "$(get NEW "$name" '?')" "$color" "$(get ST "$name")"
   done
 }
 
-needs() { ((FORCE)) || [[ "${ST[$1]}" != ok ]]; }
+needs() { ((FORCE)) || [[ "$(get ST "$1")" != ok ]]; }
 
 install_claude() { __CLAUDE_INSTALL__; }
 install_codex() { __CODEX_INSTALL__; }
@@ -210,8 +238,8 @@ install_daemon() { __CODEX_DAEMON_INSTALL__; }
 
 update_agent() {
   local agent="$1" found
-  case "${ORIGIN[$agent]}" in
-    npm | brew) refuse "$agent" "${ORIGIN[$agent]}" update ;;
+  case "$(get ORIGIN "$agent")" in
+    npm | brew) refuse "$agent" "$(get ORIGIN "$agent")" update ;;
     missing) "install_$agent" ;;
     *)
       found="$(locate "$agent")" || {
@@ -246,12 +274,13 @@ uninstall_copilot() { rm -f "$HOME/.local/bin/copilot"; }
 
 maybe() {
   local agent="$1" action="$2"
-  local label="${LABEL[$agent]} ($SIDE)"
+  local title
+  title="$(label "$agent") ($SIDE)"
   if needs "$agent"; then
-    step "$label" "$action" "$agent"
+    step "$title" "$action" "$agent"
     report "updated $agent"
   else
-    changes_only || echo "$label: ok, up to date (${CUR[$agent]})"
+    changes_only || echo "$title: ok, up to date ($(get CUR "$agent"))"
     report "ok $agent"
   fi
 }
@@ -281,11 +310,11 @@ run_local() {
       for name in claude codex copilot; do
         how="$(origin "$name")"
         if [[ "$how" == npm || "$how" == brew ]]; then
-          step "${LABEL[$name]} ($SIDE)" refuse "$name" "$how" install
+          step "$(label "$name") ($SIDE)" refuse "$name" "$how" install
         elif ((FORCE)) || [[ "$how" == missing ]]; then
-          step "${LABEL[$name]} ($SIDE)" "install_$name"
+          step "$(label "$name") ($SIDE)" "install_$name"
         else
-          say "${LABEL[$name]} ($SIDE)"
+          say "$(label "$name") ($SIDE)"
           echo "already installed"
         fi
       done
@@ -294,9 +323,9 @@ run_local() {
       for name in claude codex copilot; do
         how="$(origin "$name")"
         if [[ "$how" == npm || "$how" == brew ]]; then
-          step "${LABEL[$name]} ($SIDE)" refuse "$name" "$how" uninstall
+          step "$(label "$name") ($SIDE)" refuse "$name" "$how" uninstall
         else
-          step "${LABEL[$name]} ($SIDE)" "uninstall_$name"
+          step "$(label "$name") ($SIDE)" "uninstall_$name"
         fi
       done
       ;;

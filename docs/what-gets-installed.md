@@ -188,7 +188,7 @@ A rerun installs a missing tool and skips a current tool. A tool that setup inst
 | GitHub Copilot CLI | `copilot` | GitHub's coding agent. Only with `--agents copilot` or `--agents all`. | The coding agent. |
 | OpenAI Codex | `codex` | OpenAI's coding agent. Only with `--agents codex` or `--agents all`. | The coding agent. |
 | terminal command | `terminal` | Shows each installed tool with its latest release, in WSL and on Windows, and updates them: `terminal status`, `terminal update`. Always installed. | The person sees which tools need an update and updates them with one command. |
-| agents command | `agents` | Shows and updates Claude Code, Codex, the Codex daemon and Copilot CLI in WSL and on Windows. Only with `--agents`, and not on macOS. | The person updates every coding agent with one command. |
+| agents command | `agents` | Shows and updates Claude Code, Codex, the Codex daemon and Copilot CLI on Linux, macOS, WSL and Windows. Only with `--agents`. | The person updates every coding agent with one command. |
 | herdr | `herdr` | Keeps coding agents running in terminals that stay alive after the window closes. It shows whether each agent is working, blocked or idle. Only with `--herdr`. | The person starts several agents, closes the window, and finds them again with their state. |
 
 ### Claude Code add-ons
