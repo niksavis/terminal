@@ -46,6 +46,7 @@ from terminal_setup.configs import (
     deploy_zsh_config,
     install_img_zoom_native,
     install_img_zoom_wsl,
+    install_vscode_wsl_extension,
     template_path,
 )
 from terminal_setup.platform import OperatingSystem, PackageManager, PlatformInfo, wsl_exec_command
@@ -761,6 +762,52 @@ def test_deploy_claude_statusline_dry_run_makes_no_changes(tmp_path: Path) -> No
 
     assert not (claude / "statusline.sh").exists()
     assert not (claude / "settings.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("folders", "obsolete", "installs"),
+    [
+        (["ms-vscode-remote.remote-wsl-1.104.7"], None, False),
+        (["MS-VSCode-Remote.Remote-WSL-1.104.7"], None, False),
+        ([], None, True),
+        (
+            ["ms-vscode-remote.remote-wsl-1.104.7"],
+            {"ms-vscode-remote.remote-wsl-1.104.7": True},
+            True,
+        ),
+        (["ms-vscode-remote.remote-wsl-recommender-0.0.20"], None, True),
+    ],
+)
+def test_install_vscode_wsl_extension_runs_code_only_when_the_extension_is_missing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    folders: list[str],
+    obsolete: dict[str, bool] | None,
+    *,
+    installs: bool,
+) -> None:
+    extensions = tmp_path / ".vscode" / "extensions"
+    for folder in folders:
+        (extensions / folder).mkdir(parents=True)
+    if obsolete is not None:
+        (extensions / ".obsolete").write_text(json.dumps(obsolete), encoding="utf-8")
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    monkeypatch.setattr(runner, "which", lambda _command: "C:/VS Code/bin/code.CMD")
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+
+    install_vscode_wsl_extension(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    expected = [
+        [
+            "cmd",
+            "/c",
+            "C:/VS Code/bin/code.CMD",
+            "--install-extension",
+            "ms-vscode-remote.remote-wsl",
+        ]
+    ]
+    assert fake.commands == (expected if installs else [])
 
 
 def test_wezterm_template_offers_git_bash() -> None:

@@ -864,7 +864,30 @@ def ensure_vscode_extension(runner: Runner, extension_id: str) -> None:
         )
 
 
+def _vscode_extension_installed(home: Path, extension_id: str) -> bool:
+    folder = home / ".vscode" / "extensions"
+    try:
+        obsolete = json.loads((folder / ".obsolete").read_text(encoding="utf-8"))
+    except OSError, ValueError:
+        obsolete = {}
+    if not isinstance(obsolete, dict):
+        obsolete = {}
+    pattern = re.compile(rf"{re.escape(extension_id)}-\d", re.IGNORECASE)
+    try:
+        entries = list(folder.iterdir())
+    except OSError:
+        return False
+    return any(
+        entry.is_dir() and pattern.match(entry.name) and entry.name not in obsolete
+        for entry in entries
+    )
+
+
 def install_vscode_wsl_extension(runner: Runner, platform: PlatformInfo) -> None:
     if platform.os != OperatingSystem.WINDOWS:
         return
-    ensure_vscode_extension(runner, "ms-vscode-remote.remote-wsl")
+    extension_id = "ms-vscode-remote.remote-wsl"
+    if _vscode_extension_installed(platform.home, extension_id):
+        runner.reporter.info(f"VS Code extension {extension_id} is installed")
+        return
+    ensure_vscode_extension(runner, extension_id)

@@ -71,7 +71,7 @@ The result is the same from each Windows shell. The shell does not change which 
 | --- | --- |
 | PowerShell 7 (`pwsh`) | adds the starship prompt to the PowerShell 7 profile |
 | Git for Windows | adds the starship prompt to Git Bash, and the Claude Code status line on the Windows host |
-| VS Code (`code` on PATH) | installs the Remote - WSL extension |
+| VS Code (`code` on PATH) | installs the Remote - WSL extension, unless its folder is in `%USERPROFILE%\.vscode\extensions` |
 
 Command Prompt gets no starship prompt, because `cmd` has no prompt hook.
 
