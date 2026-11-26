@@ -6,8 +6,11 @@ import io
 import json
 import sys
 import tarfile
+import threading
+import urllib.error
 import zipfile
 from email.message import Message
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Literal
 
@@ -325,6 +328,7 @@ def test_main_refuses_a_malformed_repo_by_name_without_a_network_call(
         raise AssertionError("a malformed repo reached the network")
 
     monkeypatch.setattr(release_install.urllib.request, "urlopen", no_network)
+    monkeypatch.setattr(release_install.urllib.request, "build_opener", no_network)
 
     assert release_install.main([repo, "jq", "0", "jq-linux-{arch}"]) == 2
     assert f"REPO must be OWNER/NAME on GitHub, got {repo!r}" in capsys.readouterr().err
@@ -594,3 +598,42 @@ def test_no_startable_asset_keeps_the_installed_binary_and_names_the_assets(
 
     assert (tmp_path / "ast-grep").read_bytes() == _OLDER
     assert [path.name for path in tmp_path.iterdir()] == ["ast-grep"]
+
+
+def test_latest_release_url_follows_a_rename_and_stops_at_the_tag_redirect() -> None:
+    requested: list[str] = []
+    redirects = {
+        "/old/x/releases/latest": "/new/x/releases/latest",
+        "/new/x/releases/latest": "/new/x/releases/tag/v1.2.3",
+    }
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_HEAD(self) -> None:
+            requested.append(self.path)
+            target = redirects.get(self.path)
+            self.send_response(301 if self.path.startswith("/old/") else 302 if target else 404)
+            if target:
+                self.send_header("Location", target)
+            self.end_headers()
+
+        def log_message(self, *_args: object) -> None:
+            return
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    try:
+        url = release_install.latest_release_url(f"{base}/old/x/releases/latest")
+        with pytest.raises(urllib.error.HTTPError):
+            release_install.latest_release_url(f"{base}/missing/releases/latest")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert url == f"{base}/new/x/releases/tag/v1.2.3"
+    assert requested == [
+        "/old/x/releases/latest",
+        "/new/x/releases/latest",
+        "/missing/releases/latest",
+    ]

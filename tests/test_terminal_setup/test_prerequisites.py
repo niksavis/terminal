@@ -1458,8 +1458,8 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
     with (
         mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
         mock.patch(
-            "terminal_setup.prerequisites._command_available",
-            return_value=True,
+            "terminal_setup.prerequisites._commands_available",
+            side_effect=lambda _runner, commands, **_kwargs: set(commands),
         ) as available,
         mock.patch(
             "terminal_setup.prerequisites._install_lazygit_release",
@@ -1468,8 +1468,18 @@ def test_ensure_wsl_tools_no_sudo_checks_target_wsl_when_called_from_windows() -
     ):
         ensure_wsl_tools(cast(Runner, runner), platform, no_sudo=True)
 
-    assert available.call_count >= 1
-    assert all(call.kwargs.get("wsl_distro") == "Ubuntu" for call in available.call_args_list)
+    assert available.call_count == 1
+    assert available.call_args.kwargs.get("wsl_distro") == "Ubuntu"
+    assert set(available.call_args.args[1]) == {
+        "zsh",
+        "tmux",
+        "git",
+        "curl",
+        "wget",
+        "tree",
+        "gpg",
+        "xz",
+    }
 
 
 def test_install_user_local_tool_downloads_every_release_tool_through_the_installer() -> None:
@@ -1879,9 +1889,9 @@ def test_ensure_wsl_tools_update_reinstalls_existing_user_local_tools() -> None:
 
 
 def _dpkg_state(installed: set[str], *, docker_command: bool = False):
-    def dpkg(_runner: object, package: str, *, wsl_distro: str | None) -> bool:
+    def dpkg(_runner: object, packages: list[str], *, wsl_distro: str | None) -> set[str]:
         del wsl_distro
-        return package in installed
+        return installed & set(packages)
 
     def available(_runner: object, command: str, *, wsl_distro: str | None = None) -> bool:
         del wsl_distro
@@ -1923,6 +1933,21 @@ def test_podman_docker_is_left_out_when_docker_is_present(
 
     assert "podman-docker" not in missing
     assert "podman" in missing
+
+
+def test_one_probe_reads_every_system_package_and_the_docker_choice() -> None:
+    class ListingRunner(SpyRunner):
+        def run(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            del kwargs
+            self.commands.append(command)
+            listed = "zsh\ntmux\ntree\npodman\nbubblewrap\nsocat\nlibatomic1\npodman-docker\n"
+            return subprocess.CompletedProcess(args=command, returncode=0, stdout=listed)
+
+    runner = ListingRunner()
+    missing = missing_wsl_system_packages(cast(Runner, runner), wsl_distro="Ubuntu")
+
+    assert missing == []
+    assert len(runner.commands) == 1
 
 
 def test_system_packages_command_installs_only_the_missing_packages_by_default() -> None:

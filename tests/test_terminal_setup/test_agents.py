@@ -147,6 +147,27 @@ def test_installed_agents_lists_the_present_agents() -> None:
         assert agents.installed_agents(runner, _linux_platform()) == ("claude", "codex")
 
 
+def test_installed_agents_probes_wsl_only_for_agents_missing_on_a_windows_host(
+    tmp_path: Path,
+) -> None:
+    runner = RecordingRunner(reporter=CapturingReporter(), outputs={})
+    platform = replace(_windows_platform(), home=tmp_path)
+
+    with (
+        mock.patch.object(agents, "is_running_in_wsl", return_value=False),
+        mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False),
+        mock.patch.object(
+            agents,
+            "windows_agent_path",
+            side_effect=lambda _r, _p, agent: None if agent == "copilot" else f"C:/{agent}.exe",
+        ),
+    ):
+        found = agents.installed_agents(runner, platform)
+
+    assert found == AGENTS
+    assert runner.commands == [_wsl(present_query("copilot"))]
+
+
 def test_the_shell_installers_are_the_vendor_scripts() -> None:
     assert shell_install_script("claude") == "curl -fsSL https://claude.ai/install.sh | bash"
     assert shell_install_script("copilot") == "curl -fsSL https://gh.io/copilot-install | bash"

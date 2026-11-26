@@ -5,6 +5,7 @@ import json
 import re
 import subprocess  # nosec B404
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from functools import cache, partial
 from pathlib import Path, PureWindowsPath
 
@@ -257,6 +258,9 @@ def ensure_agents(
     windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
     wsl_distro = _wsl_distro(platform) if windows_host else None
     _CURRENT_CODEX.clear()
+    if update:
+        with ThreadPoolExecutor(max_workers=len(AGENTS)) as pool:
+            list(pool.map(latest_agent_version, AGENTS))
     for agent in AGENTS:
         named = agent in selected
         if not named and not update:
@@ -289,8 +293,9 @@ def installed_agents(runner: Runner, platform: PlatformInfo) -> tuple[str, ...]:
     wsl_distro = _wsl_distro(platform) if windows_host else None
     found = []
     for agent in AGENTS:
-        shell = _run_shell_read(runner, present_query(agent), wsl_distro=wsl_distro).returncode == 0
-        if shell or (windows_host and windows_agent_path(runner, platform, agent) is not None):
+        if (windows_host and windows_agent_path(runner, platform, agent) is not None) or (
+            _run_shell_read(runner, present_query(agent), wsl_distro=wsl_distro).returncode == 0
+        ):
             found.append(agent)
     return tuple(found)
 

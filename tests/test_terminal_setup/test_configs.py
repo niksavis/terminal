@@ -8,6 +8,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 import tomllib
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -1434,13 +1435,20 @@ def test_install_img_zoom_native_windows_uses_the_uv_running_setup_and_adds_its_
 
 
 @pytest.mark.parametrize(
-    ("stamp", "on_path", "installs"),
-    [("same", True, False), ("old", True, True), ("same", False, True)],
+    ("stamp", "on_path", "age_days", "installs"),
+    [
+        ("same", True, 0, False),
+        ("same", True, 29, False),
+        ("old", True, 0, True),
+        ("same", False, 0, True),
+        ("same", True, 31, True),
+    ],
 )
-def test_install_img_zoom_native_windows_skips_only_a_current_stamped_install(
+def test_install_img_zoom_native_windows_skips_only_a_current_stamped_install(  # noqa: PLR0913
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     stamp: str,
+    age_days: int,
     *,
     on_path: bool,
     installs: bool,
@@ -1453,6 +1461,8 @@ def test_install_img_zoom_native_windows_skips_only_a_current_stamped_install(
     stage = tmp_path / "LocalAppData" / "terminal-setup" / "img_zoom_tool"
     stage.mkdir(parents=True)
     (stage / ".terminal-setup-stamp").write_text(stamp + "\n", encoding="utf-8")
+    stamped = time.time() - age_days * 86400
+    os.utime(stage / ".terminal-setup-stamp", (stamped, stamped))
     runner = Runner(dry_run=False, reporter=RecordingReporter())
     monkeypatch.setattr(runner, "which", lambda _c: "C:/u/img-zoom.exe" if on_path else None)
     fake = _FakeRun(bin_dir="C:/Users/u/.local/bin\n")
@@ -1568,6 +1578,14 @@ def test_install_script_skips_a_stamped_current_install_and_redoes_a_changed_one
 
     assert current.stdout.strip() == "img-zoom is current"
     assert not (tmp_path / "uv-args").exists()
+    stamp = _stage(tmp_path) / ".terminal-setup-stamp"
+    month_old = time.time() - 31 * 86400
+    os.utime(stamp, (month_old, month_old))
+    aged = _run_install_script(tmp_path, uv_in_local_bin=True)
+    assert aged.returncode == 0, aged.stderr
+    assert (tmp_path / "uv-args").exists()
+    assert time.time() - stamp.stat().st_mtime < 60
+    (tmp_path / "uv-args").unlink()
     changed = _run_install_script(tmp_path, uv_in_local_bin=True, digest="d2")
     assert changed.returncode == 0, changed.stderr
     assert (tmp_path / "uv-args").exists()

@@ -419,6 +419,23 @@ def _command_available(runner: Runner, command: str, *, wsl_distro: str | None =
     return result.returncode == 0
 
 
+def _commands_available(
+    runner: Runner, commands: list[str], *, wsl_distro: str | None = None
+) -> set[str]:
+    if wsl_distro is None or is_running_in_wsl():
+        return {command for command in commands if _command_available(runner, command)}
+    probes = [
+        f"{{ test -x ~/.local/bin/{name} || command -v {name} >/dev/null 2>&1; }} && echo {name}"
+        for name in map(shlex.quote, commands)
+    ]
+    result = runner.run(
+        wsl_exec_command(wsl_distro, ["sh", "-c", "; ".join([*probes, "true"])]),
+        check=False,
+        dry_run_safe=True,
+    )
+    return set(result.stdout.split()) & set(commands)
+
+
 def _is_user_local_command_available(
     runner: Runner,
     command: str,
@@ -1594,23 +1611,24 @@ WSL_SYSTEM_PACKAGES = ("zsh", "tmux", "tree", "podman", "bubblewrap", "socat", "
 _DOCKER_PACKAGES = ("docker.io", "docker-ce-cli")
 
 
-def _dpkg_installed(runner: Runner, package: str, *, wsl_distro: str | None) -> bool:
+def _dpkg_installed(runner: Runner, packages: list[str], *, wsl_distro: str | None) -> set[str]:
     script = (
-        f"dpkg-query -W -f='${{Status}}' {package} 2>/dev/null | grep -q 'install ok installed'"
+        f"for p in {' '.join(map(shlex.quote, packages))}; do "
+        "dpkg-query -W -f='${Status}' \"$p\" 2>/dev/null | grep -q 'install ok installed' "
+        '&& echo "$p"; done; true'
     )
-    return _run_shell_read(runner, script, wsl_distro=wsl_distro).returncode == 0
+    result = _run_shell_read(runner, script, wsl_distro=wsl_distro)
+    return set(result.stdout.split()) & set(packages)
 
 
 def missing_wsl_system_packages(runner: Runner, *, wsl_distro: str | None) -> list[str]:
-    missing = [
-        package
-        for package in WSL_SYSTEM_PACKAGES
-        if not _dpkg_installed(runner, package, wsl_distro=wsl_distro)
-    ]
-    docker_present = _command_available(runner, "docker", wsl_distro=wsl_distro) or any(
-        _dpkg_installed(runner, package, wsl_distro=wsl_distro) for package in _DOCKER_PACKAGES
+    installed = _dpkg_installed(
+        runner, [*WSL_SYSTEM_PACKAGES, *_DOCKER_PACKAGES, "podman-docker"], wsl_distro=wsl_distro
     )
-    if not docker_present and not _dpkg_installed(runner, "podman-docker", wsl_distro=wsl_distro):
+    missing = [package for package in WSL_SYSTEM_PACKAGES if package not in installed]
+    if installed.isdisjoint({*_DOCKER_PACKAGES, "podman-docker"}) and not _command_available(
+        runner, "docker", wsl_distro=wsl_distro
+    ):
         missing.append("podman-docker")
     return missing
 
@@ -1763,6 +1781,11 @@ def ensure_wsl_tools(  # noqa: PLR0913
         runner.reporter.info("Installing WSL tools into ~/.local without sudo.")
         base_packages = {"zsh", "tmux", "git", "curl", "wget", "tree", "gnupg", "xz-utils"}
         release_packages: list[str] = []
+        base_present = _commands_available(
+            runner,
+            [_command_for_package(package) for package in packages if package in base_packages],
+            wsl_distro=distro,
+        )
         for package in packages:
             if package in RELEASE_TOOLS:
                 release_packages.append(package)
@@ -1771,7 +1794,7 @@ def ensure_wsl_tools(  # noqa: PLR0913
                 continue
             command = _command_for_package(package)
             if package in base_packages:
-                if not _command_available(runner, command, wsl_distro=distro):
+                if command not in base_present:
                     runner.reporter.warn(
                         f"{package} is not installed and requires sudo to install via apt; "
                         "skipping."
@@ -1828,9 +1851,6 @@ def ensure_wsl_cli_extras(runner: Runner, platform: PlatformInfo) -> None:
 
 
 def _link_debian_renamed_tools(runner: Runner, distro: str | None) -> None:
-    _run_in_wsl_or_host(
-        runner, ["sh", "-c", "mkdir -p ~/.local/bin"], distro=distro, label="create ~/.local/bin"
-    )
     fd_alias = (
         "[ -e ~/.local/bin/fd ] || { command -v fdfind >/dev/null "
         "&& ln -sf $(command -v fdfind) ~/.local/bin/fd; } || true"
@@ -1839,8 +1859,12 @@ def _link_debian_renamed_tools(runner: Runner, distro: str | None) -> None:
         "[ -e ~/.local/bin/bat ] || { command -v batcat >/dev/null "
         "&& ln -sf $(command -v batcat) ~/.local/bin/bat; } || true"
     )
-    _run_in_wsl_or_host(runner, ["sh", "-c", fd_alias], distro=distro, label="link fd to fdfind")
-    _run_in_wsl_or_host(runner, ["sh", "-c", bat_alias], distro=distro, label="link bat to batcat")
+    _run_in_wsl_or_host(
+        runner,
+        ["sh", "-c", f"mkdir -p ~/.local/bin; {fd_alias}; {bat_alias}"],
+        distro=distro,
+        label="create ~/.local/bin and link fd and bat",
+    )
 
 
 def _is_winget_package_installed(runner: Runner, package_id: str) -> bool:

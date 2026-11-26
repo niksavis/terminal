@@ -7,9 +7,10 @@ import re
 import shlex
 import shutil
 import sys
+import time
 from pathlib import Path
 
-from . import __version__, harness
+from . import harness
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
 from .prerequisites import _add_to_user_path, attempt, root_shell_command
 from .prompt_config import configure_zshenv, write_starship_config
@@ -585,6 +586,7 @@ _UV_MISSING = (
 _IMG_ZOOM_SKILL = "img-zoom"
 _IMG_ZOOM_STAGE_POSIX = "$HOME/.local/share/terminal-setup/img_zoom_tool"
 _IMG_ZOOM_STAMP = ".terminal-setup-stamp"
+_IMG_ZOOM_REFRESH_DAYS = 30
 
 
 def _is_windows_host(platform: PlatformInfo) -> bool:
@@ -598,7 +600,7 @@ _UV_RESOLVE_POSIX = (
 
 
 def img_zoom_digest() -> str:
-    digest = hashlib.sha256(__version__.encode())
+    digest = hashlib.sha256()
     files = sorted(
         path
         for path in IMG_ZOOM_SOURCE.rglob("*")
@@ -615,6 +617,7 @@ def _img_zoom_install_script(source: str, *, update: bool, digest: str) -> str:
     return (
         f'dest="{_IMG_ZOOM_STAGE_POSIX}"; stamp="$dest/{_IMG_ZOOM_STAMP}"; '
         f'if [ "$(cat "$stamp" 2>/dev/null)" = "{digest}" ] && '
+        f'[ -n "$(find "$stamp" -mtime -{_IMG_ZOOM_REFRESH_DAYS} 2>/dev/null)" ] && '
         '{ [ -x "$HOME/.local/bin/img-zoom" ] || command -v img-zoom >/dev/null 2>&1; }; '
         'then echo "img-zoom is current"; exit 0; fi; '
         + _UV_RESOLVE_POSIX
@@ -678,6 +681,7 @@ def install_img_zoom_native(
         runner.which("img-zoom")
         and stamp.is_file()
         and stamp.read_text(encoding="utf-8").strip() == digest
+        and time.time() - stamp.stat().st_mtime < _IMG_ZOOM_REFRESH_DAYS * 86400
     ):
         runner.reporter.info("img-zoom is current")
         return

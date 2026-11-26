@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -11,6 +12,7 @@ import subprocess  # nosec B404
 import sys
 import tarfile
 import tempfile
+import typing
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,8 +33,9 @@ VERSION = re.compile(r"\d+(?:\.\d+)+")
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
 STATE_DIR = Path.home() / ".local" / "share" / "terminal-setup" / "releases"
-PREFETCH_WORKERS = 8
+PREFETCH_WORKERS = 32
 _PREFETCHED: dict[str, str] = {}
+_REDIRECTS = frozenset({301, 302, 303, 307, 308})
 
 
 class InstallError(Exception):
@@ -165,14 +168,37 @@ def fetch(url: str) -> bytes:
         return response.read()
 
 
+class _StopAtTag(urllib.request.HTTPRedirectHandler):
+    def redirect_request(  # noqa: PLR0913
+        self,
+        req: urllib.request.Request,
+        fp: typing.IO[bytes],
+        code: int,
+        msg: str,
+        headers: http.client.HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        if "/releases/tag/" in urllib.parse.urlsplit(newurl).path:
+            return None
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def latest_release_url(url: str) -> str:
+    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "terminal-setup"})
+    opener = urllib.request.build_opener(_StopAtTag)
+    try:
+        with opener.open(request, timeout=60) as response:  # nosec B310
+            return response.geturl()
+    except urllib.error.HTTPError as error:
+        location = error.headers.get("Location", "") if error.code in _REDIRECTS else ""
+        error.close()
+        if not location:
+            raise
+        return urllib.parse.urljoin(error.url, location)
+
+
 def latest_tag(repo: str) -> str:
-    request = urllib.request.Request(
-        f"https://github.com/{repo}/releases/latest",
-        method="HEAD",
-        headers={"User-Agent": "terminal-setup"},
-    )
-    with urllib.request.urlopen(request, timeout=60) as response:  # nosec B310
-        final = response.geturl()
+    final = latest_release_url(f"https://github.com/{repo}/releases/latest")
     _, marker, tag = final.partition("/releases/tag/")
     if not marker or not tag:
         raise InstallError(f"{repo}: could not read the latest release from {final}")
