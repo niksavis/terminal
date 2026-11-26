@@ -11,6 +11,7 @@ import sys
 import tomllib
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import cast
 
 import pytest
 
@@ -30,6 +31,7 @@ from terminal_setup.configs import (
     _configure_pwsh_starship,
     _img_zoom_install_script,
     _skills_user,
+    _to_wsl_path,
     configure_vscode_terminal,
     deploy_all,
     deploy_claude_cli_tools_skills,
@@ -988,6 +990,31 @@ def test_deploy_wsl_configs_resolves_guest_home_not_windows_username(
     scripts = [command[-1] for command in commands]
     assert any('mkdir -p "$HOME/.config/micro"' in script for script in scripts)
     assert any('"$HOME/.tmux.conf"' in script for script in scripts)
+
+
+def test_wsl_paths_on_one_drive_cost_one_wslpath_call(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("terminal_setup.configs._WSL_DRIVE_ROOTS", {})
+    runner = Runner(dry_run=False, reporter=RecordingReporter())
+    commands: list[list[str]] = []
+    monkeypatch.setattr(
+        runner,
+        "run",
+        lambda command, **_kwargs: (
+            commands.append(command) or subprocess.CompletedProcess(command, 0, "/mnt/c/\n", "")
+        ),
+    )
+    sources = [
+        PureWindowsPath("C:/Users/me/AppData/Local/uv/templates/tmux.conf"),
+        PureWindowsPath("C:\\Users\\me\\.config\\wezterm\\wezterm.lua"),
+    ]
+
+    paths = [_to_wsl_path(runner, "Ubuntu", cast(Path, source)) for source in sources]
+
+    assert paths == [
+        "/mnt/c/Users/me/AppData/Local/uv/templates/tmux.conf",
+        "/mnt/c/Users/me/.config/wezterm/wezterm.lua",
+    ]
+    assert [command[-3:] for command in commands] == [["wslpath", "-u", "C:/"]]
 
 
 def test_deploy_wsl_configs_inside_wsl_uses_platform_home(

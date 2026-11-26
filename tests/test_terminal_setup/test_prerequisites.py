@@ -1593,6 +1593,63 @@ def test_a_wsl_starship_is_checked_in_one_release_call_that_keeps_a_system_copy(
     assert ("info", "starship 1.27.0 is up to date") in runner.reporter.messages
 
 
+def _batch_runner(output: str) -> SpyRunner:
+    runner = SpyRunner()
+    runner.failures = []  # type: ignore[attr-defined]
+    original_run = runner.run
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        result = original_run(command, **kwargs)  # type: ignore[arg-type]
+        if "--batch" in command:
+            return subprocess.CompletedProcess(command, 0, output, "")
+        return result
+
+    runner.run = run  # type: ignore[method-assign]
+    return runner
+
+
+@pytest.mark.parametrize(
+    ("install_herdr", "output", "present", "failures"),
+    [
+        (False, "absent\therdr\therdr is not installed\nok\tstarship\tstarship ok\n", False, []),
+        (False, "ok\therdr\therdr 0.9.5 is up to date\nok\tstarship\tstarship ok\n", True, []),
+        (
+            True,
+            "ok\therdr\tinstalled herdr\nfail\tstarship\tdownload failed\n",
+            True,
+            ["install starship"],
+        ),
+        (
+            False,
+            "fail\therdr\tdownload failed\nskip\tstarship\tsystem copy\n",
+            True,
+            ["update herdr"],
+        ),
+    ],
+)
+def test_herdr_and_starship_are_checked_in_one_wsl_call(
+    *, install_herdr: bool, output: str, present: bool, failures: list[str]
+) -> None:
+    runner = _batch_runner(output)
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        found = prerequisites_module.ensure_wsl_herdr_and_starship(
+            cast(Runner, runner),
+            make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET),
+            install_herdr=install_herdr,
+            starship=True,
+        )
+
+    assert found is present
+    assert runner.failures == failures  # type: ignore[attr-defined]
+    assert len(runner.commands) == 1
+    assert runner.commands[0][:5] == ["wsl", "-d", "Ubuntu", "--exec", "python3"]
+    herdr_job, starship_job = _starship_jobs(runner.commands)
+    assert herdr_job["binary"] == "herdr"
+    assert herdr_job["present_only"] is not install_herdr
+    assert starship_job["keep_system"] is True
+
+
 def test_a_system_wsl_starship_is_left_alone() -> None:
     runner = _starship_runner(user_local=False, system=True, which="C:/Program Files/s.exe")
 

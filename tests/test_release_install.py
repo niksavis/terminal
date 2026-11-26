@@ -264,11 +264,24 @@ def test_check_reports_the_state_and_never_downloads(
 
 
 @pytest.mark.parametrize(
-    ("local", "on_path", "status"),
-    [(False, True, "skip"), (True, True, "ok"), (False, False, "ok")],
+    ("option", "local", "on_path", "status"),
+    [
+        ("keep_system", False, True, "skip"),
+        ("keep_system", True, True, "ok"),
+        ("keep_system", False, False, "ok"),
+        ("present_only", False, False, "absent"),
+        ("present_only", False, True, "ok"),
+        ("present_only", True, False, "ok"),
+    ],
 )
-def test_a_keep_system_job_skips_only_a_tool_with_just_a_system_copy(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, local: bool, on_path: bool, status: str
+def test_a_presence_option_answers_from_the_local_and_the_system_copy(  # noqa: PLR0913
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    option: str,
+    local: bool,
+    on_path: bool,
+    status: str,
 ) -> None:
     _release(tmp_path, monkeypatch, "2.0.0")
     if local:
@@ -278,9 +291,26 @@ def test_a_keep_system_job_skips_only_a_tool_with_just_a_system_copy(
     )
     job = {"repo": "jqlang/jq", "binary": "jq", "update": True, "patterns": ["jq-linux-{arch}"]}
 
-    line = release_install._batch_line({**job, "keep_system": True})
+    line = release_install._batch_line({**job, option: True})
 
     assert line.split("\t")[0] == status
+
+
+def test_a_batch_looks_up_no_tag_for_a_tool_that_is_absent(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(release_install, "BIN_DIR", tmp_path)
+    monkeypatch.setattr(release_install.shutil, "which", lambda _b: None)
+
+    def no_lookup(repo: str) -> str:
+        raise AssertionError(f"looked up {repo} for an absent tool")
+
+    monkeypatch.setattr(release_install, "latest_tag", no_lookup)
+    job = {"repo": "herdrdev/herdr", "binary": "herdr", "update": True, "patterns": []}
+
+    assert release_install.run_batch([{**job, "present_only": True}]) == [
+        "absent\therdr\therdr is not installed"
+    ]
 
 
 def test_main_refuses_bad_arguments_with_the_usage() -> None:

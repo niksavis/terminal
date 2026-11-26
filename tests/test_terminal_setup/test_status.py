@@ -670,6 +670,24 @@ def test_setup_names_agents_update_for_an_older_codex_daemon(
     assert agents._daemon_lag(output) == lag
 
 
+def test_the_daemon_check_reuses_the_codex_version_probe_of_the_update(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(agents, "latest_agent_version", lambda _agent: "0.171.0")
+    monkeypatch.setattr(agents, "is_running_in_wsl", lambda: False)
+    runner = mock.Mock(dry_run=False)
+    runner.run.side_effect = AssertionError("the daemon check ran a second probe")
+    printed = "codex-cli 0.171.0\n0.170.0-x86_64-unknown-linux-musl\n"
+    agents._CURRENT_CODEX.clear()
+
+    assert agents._reports_current(runner, "codex", "on this host", lambda: printed)
+    agents.report_daemon_lag(runner, replace(_windows_platform(), os=OperatingSystem.LINUX))
+
+    [message] = [call.args[0] for call in runner.reporter.info.call_args_list]
+    assert "daemon is 0.170.0, older than codex 0.171.0" in message
+    assert agents._CURRENT_CODEX == {}
+
+
 def test_setup_ends_with_the_terminal_status_hint() -> None:
     source = Path(cli.__file__).read_text(encoding="utf-8")
 

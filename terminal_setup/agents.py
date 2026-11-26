@@ -6,7 +6,7 @@ import re
 import subprocess  # nosec B404
 from collections.abc import Callable
 from functools import cache, partial
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from . import release_install
 from .platform import (
@@ -111,6 +111,9 @@ def latest_agent_version(agent: str) -> str:
     return version_of(text)
 
 
+_CURRENT_CODEX: dict[str, str] = {}
+
+
 def _reports_current(
     runner: Runner, agent: str, where: str, read_version: Callable[[], str]
 ) -> bool:
@@ -120,12 +123,23 @@ def _reports_current(
     printed = read_version()
     if not version_of(printed) or state(Installed(agent, agent, printed), latest) != "ok":
         return False
+    if agent == "codex":
+        _CURRENT_CODEX[where] = printed
     runner.reporter.success(f"{agent} {version_of(printed)} is up to date {where}")
     return True
 
 
 def _shell_version(runner: Runner, agent: str, wsl_distro: str | None) -> str:
-    return str(_run_shell_read(runner, version_query(agent), wsl_distro=wsl_distro).stdout or "")
+    query = _DAEMON_SHELL if agent == "codex" else version_query(agent)
+    return str(_run_shell_read(runner, query, wsl_distro=wsl_distro).stdout or "")
+
+
+def _windows_daemon_leaf(home: Path) -> str:
+    try:
+        target = (home / ".codex" / "packages" / "app-server-daemon" / "current").readlink()
+    except OSError, ValueError:
+        return ""
+    return PureWindowsPath(str(target)).name
 
 
 def _windows_version(runner: Runner, found: str) -> str:
@@ -242,6 +256,7 @@ def ensure_agents(
 ) -> None:
     windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
     wsl_distro = _wsl_distro(platform) if windows_host else None
+    _CURRENT_CODEX.clear()
     for agent in AGENTS:
         named = agent in selected
         if not named and not update:
@@ -399,12 +414,6 @@ _DAEMON_SHELL = (
     'readlink "${CODEX_HOME:-$HOME/.codex}/packages/app-server-daemon/current" 2>/dev/null '
     "| sed 's#.*/##'"
 )
-_DAEMON_WINDOWS = (
-    "$c = Get-Command codex -ErrorAction SilentlyContinue; if (-not $c) { exit 0 }; "
-    "& $c.Source --version | Select-Object -First 1; "
-    "$d = Get-Item (Join-Path $env:USERPROFILE '.codex\\packages\\app-server-daemon\\current') "
-    '-ErrorAction SilentlyContinue; if ($d) { Split-Path -Leaf "$($d.Target)" }'
-)
 
 
 def _daemon_lag(output: str) -> tuple[str, str] | None:
@@ -418,24 +427,36 @@ def _daemon_lag(output: str) -> tuple[str, str] | None:
     return (codex, daemon) if numbers[1] < numbers[0] else None
 
 
+def _shell_daemon_output(runner: Runner, wsl_distro: str | None) -> str:
+    where = "in WSL" if wsl_distro else "on this host"
+    printed = _CURRENT_CODEX.pop(where, None)
+    if printed is not None:
+        return printed
+    return str(_run_shell_read(runner, _DAEMON_SHELL, wsl_distro=wsl_distro).stdout or "")
+
+
+def _windows_daemon_output(runner: Runner, platform: PlatformInfo) -> str:
+    leaf = _windows_daemon_leaf(platform.home)
+    printed = _CURRENT_CODEX.pop("on Windows", None)
+    if not leaf:
+        return ""
+    if printed is None:
+        found = windows_agent_path(runner, platform, "codex")
+        printed = _windows_version(runner, found) if found else ""
+    first = printed.strip().splitlines()[:1]
+    return "\n".join([*first, leaf])
+
+
 def report_daemon_lag(runner: Runner, platform: PlatformInfo) -> None:
     windows_host = platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl()
     sides = [
         (
             "in WSL" if windows_host else "",
-            _run_shell_read(
-                runner, _DAEMON_SHELL, wsl_distro=_wsl_distro(platform) if windows_host else None
-            ).stdout
-            or "",
+            _shell_daemon_output(runner, _wsl_distro(platform) if windows_host else None),
         )
     ]
     if windows_host:
-        result = runner.run(
-            ["powershell", "-NoProfile", "-Command", _DAEMON_WINDOWS],
-            check=False,
-            dry_run_safe=True,
-        )
-        sides.append(("on Windows", result.stdout or ""))
+        sides.append(("on Windows", _windows_daemon_output(runner, platform)))
     for where, output in sides:
         lag = _daemon_lag(str(output))
         if lag is None:

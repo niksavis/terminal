@@ -309,6 +309,9 @@ def test_run_setup_on_a_windows_host_uses_no_sudo_for_wsl_tools() -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.configs.deploy_all"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
+        mock.patch(
+            "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship", return_value=False
+        ),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
     ):
         result = run_setup(
@@ -348,6 +351,9 @@ def test_a_plain_run_updates_owned_tools_and_only_update_upgrades_the_distro(
         mock.patch("terminal_setup.cli.agents.ensure_agents"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_starship") as mock_starship,
+        mock.patch(
+            "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship", return_value=False
+        ) as mock_batch,
         mock.patch("terminal_setup.cli.configs.deploy_all"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),
@@ -371,7 +377,8 @@ def test_a_plain_run_updates_owned_tools_and_only_update_upgrades_the_distro(
 
     assert result == 0
     assert mock_wezterm.call_args.kwargs["update"] is True
-    assert mock_starship.call_args.kwargs["update"] is True
+    assert not mock_starship.called
+    assert mock_batch.call_args.kwargs == {"install_herdr": False, "starship": True}
     assert mock_system.call_args.kwargs["upgrade"] is update
 
 
@@ -420,6 +427,9 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
         mock.patch("terminal_setup.cli.prerequisites.ensure_herdr") as mock_herdr,
+        mock.patch(
+            "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship", return_value=herdr
+        ) as mock_batch,
         mock.patch("terminal_setup.cli.agents.ensure_herdr_integrations") as mock_integrations,
         mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
         mock.patch("terminal_setup.cli.configs.deploy_all") as mock_deploy,
@@ -445,7 +455,8 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
         )
 
     assert result == 0
-    assert mock_herdr.called is herdr
+    assert not mock_herdr.called
+    assert mock_batch.call_args.kwargs == {"install_herdr": herdr, "starship": False}
     assert mock_integrations.called is herdr
     if herdr:
         assert mock_integrations.call_args.args[2] == ("claude",)
@@ -455,6 +466,7 @@ def test_run_setup_installs_herdr_only_when_asked(herdr: bool) -> None:
 def _plain_windows_run(**patches: object) -> dict[str, mock.Mock]:
     names = {
         "ensure_herdr": "terminal_setup.cli.prerequisites.ensure_herdr",
+        "batch": "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship",
         "integrations": "terminal_setup.cli.agents.ensure_herdr_integrations",
         "deploy_agents": "terminal_setup.cli.agents.deploy_agents_command",
     }
@@ -481,6 +493,9 @@ def _plain_windows_run(**patches: object) -> dict[str, mock.Mock]:
         for target, value in patches.items():
             stack.enter_context(mock.patch(target, return_value=value))
         mocks = {key: stack.enter_context(mock.patch(path)) for key, path in names.items()}
+        mocks["batch"].return_value = patches.get(
+            "terminal_setup.cli.prerequisites.herdr_installed", False
+        )
         run_setup(
             _windows_platform(),
             mock.Mock(failures=[]),
@@ -505,7 +520,8 @@ def test_a_plain_run_updates_an_installed_herdr_without_the_option() -> None:
         "terminal_setup.cli.agents.installed_agents": (),
     })
 
-    assert mocks["ensure_herdr"].call_args.kwargs["update"] is True
+    assert not mocks["ensure_herdr"].called
+    assert mocks["batch"].call_args.kwargs == {"install_herdr": False, "starship": False}
     assert not mocks["integrations"].called
 
 
@@ -517,6 +533,7 @@ def test_a_plain_run_deploys_the_agents_command_when_an_agent_is_installed() -> 
 
     assert mocks["deploy_agents"].called
     assert not mocks["ensure_herdr"].called
+    assert mocks["batch"].called
 
 
 def test_a_plain_run_without_agents_or_herdr_installs_neither() -> None:
@@ -564,6 +581,9 @@ def _run_setup_install_mode(
         mock.patch("terminal_setup.cli.prerequisites.ensure_starship"),
         mock.patch("terminal_setup.cli.configs.deploy_all"),
         mock.patch("terminal_setup.cli.configs.install_vscode_wsl_extension"),
+        mock.patch(
+            "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship", return_value=False
+        ),
         mock.patch("terminal_setup.cli.configs.configure_vscode_terminal"),
     ):
         result = run_setup(
@@ -722,6 +742,9 @@ def test_setup_skips_the_run_checks_when_nothing_changed(
         mock.patch("terminal_setup.cli.prerequisites.herdr_installed", return_value=False),
         mock.patch("terminal_setup.cli.prerequisites.ensure_node"),
         mock.patch("terminal_setup.cli.prerequisites.wezterm_location", return_value=None),
+        mock.patch(
+            "terminal_setup.cli.prerequisites.ensure_wsl_herdr_and_starship", return_value=False
+        ),
         mock.patch("terminal_setup.cli.configs.deploy_all"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_wsl"),
         mock.patch("terminal_setup.cli.configs.install_img_zoom_native"),

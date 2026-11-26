@@ -2137,6 +2137,53 @@ def ensure_herdr(runner: Runner, platform: PlatformInfo, *, update: bool = False
         _install_release_tool(runner, "herdr", update=update, spec=HERDR_RELEASE)
 
 
+def _release_job(spec: tuple[str, str, tuple[str, ...]], **options: bool) -> dict[str, object]:
+    repo, binary, patterns = spec
+    return {"repo": repo, "binary": binary, "update": True, "patterns": list(patterns), **options}
+
+
+def ensure_wsl_herdr_and_starship(
+    runner: Runner, platform: PlatformInfo, *, install_herdr: bool, starship: bool
+) -> bool:
+    herdr_label = "install herdr" if install_herdr else "update herdr"
+    jobs = [_release_job(HERDR_RELEASE, present_only=not install_herdr)]
+    if starship:
+        jobs.append(_release_job(STARSHIP_RELEASE, keep_system=True))
+    label = "check herdr and starship" if starship else "check herdr"
+    try:
+        lines = _run_release_jobs(runner, jobs, wsl_distro=_wsl_distro(platform), label=label)
+    except (subprocess.CalledProcessError, RuntimeError, OSError) as error:
+        labels = [herdr_label, "install starship"] if starship else [herdr_label]
+        for failed in labels:
+            runner.failures.append(failed)
+            runner.reporter.warn(f"{failed} failed: {_failure_reason(error)} (continuing)")
+        return install_herdr or herdr_installed(runner, platform)
+    results = {binary: (status, text or line) for status, binary, text, line in lines}
+    present = _finish_release_job(runner, results.get("herdr"), herdr_label)
+    if starship:
+        _finish_release_job(runner, results.get("starship"), "install starship")
+    if present is None:
+        return install_herdr or herdr_installed(runner, platform)
+    return present
+
+
+def _finish_release_job(runner: Runner, result: tuple[str, str] | None, label: str) -> bool | None:
+    if result is None:
+        if not runner.dry_run:
+            runner.failures.append(label)
+            runner.reporter.warn(f"{label} failed: the release check printed no result")
+        return None
+    status, text = result
+    if status == "absent":
+        return False
+    if status == "ok":
+        report_release_message(runner, text)
+    elif status != "skip":
+        runner.failures.append(label)
+        runner.reporter.warn(f"{label} failed: {text} (continuing)")
+    return True
+
+
 def herdr_installed(runner: Runner, platform: PlatformInfo) -> bool:
     command = ["sh", "-c", _HERDR_PRESENT]
     if platform.os == OperatingSystem.WINDOWS and not is_running_in_wsl():

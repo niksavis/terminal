@@ -1001,17 +1001,22 @@ def run_setup(  # noqa: PLR0912, PLR0913, PLR0915
             partial(terminal_command.deploy_terminal_command, runner, platform_info),
         )
 
-        herdr_present = herdr or prerequisites.herdr_installed(runner, platform_info)
-        if herdr_present:
-            prerequisites.attempt(
-                runner,
-                "install herdr" if herdr else "update herdr",
-                partial(prerequisites.ensure_herdr, runner, platform_info, update=True),
+        if windows_host:
+            herdr_present = prerequisites.ensure_wsl_herdr_and_starship(
+                runner, platform_info, install_herdr=herdr, starship=not skip_starship
             )
+        else:
+            herdr_present = herdr or prerequisites.herdr_installed(runner, platform_info)
+            if herdr_present:
+                prerequisites.attempt(
+                    runner,
+                    "install herdr" if herdr else "update herdr",
+                    partial(prerequisites.ensure_herdr, runner, platform_info, update=True),
+                )
         if herdr:
             agents.ensure_herdr_integrations(runner, platform_info, selected_agents)
 
-        if not skip_starship:
+        if not skip_starship and not windows_host:
             prerequisites.attempt(
                 runner,
                 "install starship",

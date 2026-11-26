@@ -311,6 +311,17 @@ def check(
     return "stale", f"{binary} {current} is installed; {latest} is available"
 
 
+def _presence_line(job: dict[object, object], binary: str) -> str | None:
+    if (BIN_DIR / binary).is_file():
+        return None
+    system = shutil.which(binary)
+    if job.get("present_only") is True and system is None:
+        return f"absent\t{binary}\t{binary} is not installed"
+    if job.get("keep_system") is True and system:
+        return f"skip\t{binary}\t{binary} has a system copy; setup leaves it as it is"
+    return None
+
+
 def _batch_line(job: object) -> str:
     if not isinstance(job, dict):
         return "fail\t?\ta batch job must be an object"
@@ -319,8 +330,8 @@ def _batch_line(job: object) -> str:
     patterns = job.get("patterns")
     if not binary or not REPO.fullmatch(repo) or not isinstance(patterns, list):
         return f"fail\t{binary or '?'}\tREPO must be OWNER/NAME on GitHub, got {repo!r}"
-    if job.get("keep_system") is True and not (BIN_DIR / binary).is_file() and shutil.which(binary):
-        return f"skip\t{binary}\t{binary} has a system copy; setup leaves it as it is"
+    if (presence := _presence_line(job, binary)) is not None:
+        return presence
     try:
         if job.get("check") is True:
             status, message = check(repo, binary)
@@ -339,7 +350,11 @@ def _one_line(text: str) -> str:
 
 
 def run_batch(jobs: list[object]) -> list[str]:
-    repos = [str(job.get("repo", "")) for job in jobs if isinstance(job, dict)]
+    repos = [
+        str(job.get("repo", ""))
+        for job in jobs
+        if isinstance(job, dict) and _presence_line(job, str(job.get("binary", ""))) is None
+    ]
     with prefetched([repo for repo in repos if REPO.fullmatch(repo)]):
         return [_batch_line(job) for job in jobs]
 

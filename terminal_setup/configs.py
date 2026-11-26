@@ -354,16 +354,28 @@ def deploy_all(  # noqa: PLR0913
         )
 
 
+_WSL_DRIVE_ROOTS: dict[tuple[str, str], str] = {}
+_DRIVE = re.compile(r"[A-Za-z]:")
+
+
 def _to_wsl_path(runner: Runner, distro: str, windows_path: Path) -> str:
+    drive = windows_path.drive
+    rest = str(windows_path)[len(drive) :].replace("\\", "/")
     if runner.dry_run:
-        drive = windows_path.drive.lower().rstrip(":")
-        rest = str(windows_path)[len(windows_path.drive) :].replace("\\", "/")
-        return f"/mnt/{drive}{rest}"
-    result = runner.run(
-        wsl_exec_command(distro, ["wslpath", "-u", str(windows_path).replace("\\", "/")]),
-        check=True,
-    )
-    return result.stdout.strip()
+        return f"/mnt/{drive.lower().rstrip(':')}{rest}"
+    if _DRIVE.fullmatch(drive) is None:
+        result = runner.run(
+            wsl_exec_command(distro, ["wslpath", "-u", str(windows_path).replace("\\", "/")]),
+            check=True,
+        )
+        return result.stdout.strip()
+    key = (distro, drive.upper())
+    root = _WSL_DRIVE_ROOTS.get(key)
+    if root is None:
+        result = runner.run(wsl_exec_command(distro, ["wslpath", "-u", f"{drive}/"]), check=True)
+        root = result.stdout.strip().rstrip("/")
+        _WSL_DRIVE_ROOTS[key] = root
+    return f"{root}{rest}"
 
 
 def deploy_wsl_configs(
