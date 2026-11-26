@@ -2,6 +2,21 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.25.4 - 2026-11-26
+
+Delta: v0.25.3..v0.25.4
+
+### Highlights
+
+- **The harness is basicly 0.49.3.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.3 wheel. The first setup after this update installs the skill once, then skips it while it is current (term-p9q02t).
+- **A setup run on Windows makes fewer `wsl.exe` and PowerShell calls.** Setup checks herdr and starship in WSL in one `wsl.exe` call, and that call also finds out whether herdr is installed. The Codex daemon check reuses the codex version that the agent update has just read, and on Windows it reads the daemon link without PowerShell. Setup asks WSL for the path of each drive once, not once for each configuration file (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- perf(setup): batch herdr and starship and reuse the codex and wslpath probes (term-uuvvl7) (31444a0)
+- docs(basicly): pin the docs to the released kit (term-p9q02t) (55cceb8)
+- chore(basicly): install the released kit (term-p9q02t) (e1776c4)
+
 ## v0.25.3 - 2026-11-25
 
 Delta: v0.25.2..v0.25.3
