@@ -14,9 +14,13 @@
 
     $uv = Get-Command uv -ErrorAction SilentlyContinue
     if (-not $uv) {
-        powershell -NoProfile -ExecutionPolicy Bypass -Command 'irm https://astral.sh/uv/install.ps1 | iex'
-        if ($LASTEXITCODE -ne 0) {
-            throw "The uv installer failed with exit code $LASTEXITCODE."
+        try {
+            & { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression }
+        } catch {
+            throw "The uv installer failed: $($_.Exception.Message)"
+        }
+        if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+            throw "The uv installer finished, but uv is not in $localBin."
         }
     } elseif ($uv.Source.StartsWith($env:USERPROFILE, [StringComparison]::OrdinalIgnoreCase)) {
         $installed = if ((& $uv.Source --version) -match '\d+\.\d+\.\d+') { $Matches[0] } else { '' }
