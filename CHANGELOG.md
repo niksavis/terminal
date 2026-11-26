@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.1 - 2026-11-26
+
+Delta: v0.26.0..v0.26.1
+
+### Highlights
+
+- **Setup keeps a wrapper around the Claude Code status line.** `terminal update` replaced a `statusLine` command such as the `orch-statusline-tap` wrapper with the plain `bash ~/.claude/statusline.sh`. Setup now leaves a command that wraps `statusline.sh` as it is. With no wrapper set and `orch-statusline-tap` on `PATH`, it writes the wrapped command, which falls back to the plain script (term-edpbfd).
+- **A Windows setup run with nothing to do is about 1 s faster.** Setup no longer starts `code --install-extension` when the Remote - WSL extension is in `%USERPROFILE%\.vscode\extensions`. The 5 s for the basicly cli-tools skill comes back only once after a basicly pin change (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- perf(configs): skip an installed vscode wsl extension (term-uuvvl7) (55e0854)
+- fix(configs): keep the wrapper around the claude status line (term-edpbfd) (42c46bb)
+
 ## v0.26.0 - 2026-11-26
 
 Delta: v0.25.4..v0.26.0

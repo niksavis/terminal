@@ -1,1 +1,0 @@
-- **A Windows setup run with nothing to do is about 1 s faster.** Setup no longer starts `code --install-extension` when the Remote - WSL extension is in `%USERPROFILE%\.vscode\extensions`. The 5 s for the basicly cli-tools skill comes back only once after a basicly pin change (term-uuvvl7).
