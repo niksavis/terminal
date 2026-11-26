@@ -325,6 +325,12 @@ On Windows the status line is installed into **both** Claude Code homes so it lo
 
 Nerd Font icons are used by default (WezTerm ships a Nerd Font). Pass `--no-nerd-font` for the universal build, or `--skip-claude` to skip it. The universal build restricts itself to codepoints checked against the cmap of every font it can land in — Consolas, Cascadia Mono, and Lucida Console on Windows, DejaVu Sans Mono on Linux — so it renders in PowerShell and Git Bash rather than in a Nerd Font terminal only; a test asserts this over the rendered output, since a codepoint looking ordinary is no evidence a console font carries it. Two environment variables adjust it: `STATUSLINE_NERDFONT=1` or `0` forces the Nerd Font or the universal glyphs (the default is Nerd Font, and universal under Git Bash), and `STATUSLINE_WIDTH=<columns>` overrides the detected width. The script runs on bash 3.2 or newer, so the bash that ships with macOS works. If Claude Code is not installed, this step is a no-op. To re-apply the configuration later — including an updated status line — without reinstalling packages, run `--only config`; an existing `~/.claude/statusline.sh` is overwritten (logged in the output), while other keys in `settings.json` are preserved.
 
+Setup keeps a `statusLine` command that wraps the script. If the command contains `statusline.sh` and is not one of the two plain forms that setup writes (`bash ~/.claude/statusline.sh`, or the same with `STATUSLINE_NERDFONT=0` in front), setup leaves the command as it is and prints "Kept the statusLine command that wraps statusline.sh". `--no-nerd-font` does not change a kept command. If no wrapper is set and `orch-statusline-tap` is on `PATH`, setup writes the wrapped form, which falls back to the plain script when the tap is missing:
+
+```sh
+if command -v orch-statusline-tap >/dev/null 2>&1; then exec orch-statusline-tap -- bash ~/.claude/statusline.sh; else exec bash ~/.claude/statusline.sh; fi
+```
+
 ## CLI options
 
 Add options to any setup command. Each command below runs as copied, without a clone and without git:
