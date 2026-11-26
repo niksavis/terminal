@@ -90,7 +90,7 @@ hooks:
   # it (basicly-vkh0.5). The engine strips br's source_repo_path at its own
   # tracker commits; this is the gate for whatever that misses.
   - id: tracker-path-scan
-    description: "Block a commit that stages a machine-specific path in the tracker export (basicly-vkh0.5)."
+    description: "Block a commit that stages a machine-specific path in the tracker export or in this repository's queued vault events (basicly-vkh0.5, basicly-ndlzlv6)."
     script: tracker-path-scan.py
     stage: pre-commit
     always_run: true

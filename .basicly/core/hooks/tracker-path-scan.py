@@ -58,22 +58,49 @@ def vault_ledger() -> Path | None:
     return _harness(module).harness_ledger(root, time.time)
 
 
-def vault_queue_text() -> str:
+def _vault_harness() -> Any:
     source = Path(__file__).resolve().parent.parent / "kit/tracker/locate.py"
     spec = importlib.util.spec_from_file_location("basicly_tracker_kit_locate", source)
     if spec is None or spec.loader is None:
         raise ImportError("the tracker kit is missing; reinstall basicly")
     module: Any = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    reader = getattr(_harness(module), "harness_queue_text", None)
+    return _harness(module)
+
+
+def vault_queue_text() -> str:
+    reader = getattr(_vault_harness(), "harness_queue_text", None)
     if not callable(reader):
         raise ImportError("the tracker kit lacks the vault queue reader")
     return str(reader(Path.cwd()))
 
 
+def vault_prefix() -> str:
+    config = _vault_harness().harness_config(Path.cwd())
+    prefix = getattr(config, "prefix", "")
+    if not isinstance(prefix, str) or not prefix:
+        raise ValueError("the vault configuration names no prefix")
+    return prefix
+
+
+def _record_of(event: object) -> str:
+    if not isinstance(event, dict):
+        return ""
+    record = event.get("record")
+    if isinstance(record, str):
+        return record
+    identity = event.get("id")
+    return identity.partition("#")[0] if isinstance(identity, str) and "#" in identity else ""
+
+
+def _foreign(event: object, prefix: str) -> bool:
+    record = _record_of(event)
+    return bool(prefix and record) and not record.startswith(f"{prefix}-")
+
+
 def vault_findings(vault: Path) -> list[tuple[str, int, str]]:
     try:
-        return findings("vault/queue.jsonl", vault_queue_text())
+        return findings("vault/queue.jsonl", vault_queue_text(), vault_prefix())
     except ValueError, OSError, ImportError:
         return [
             finding
@@ -191,7 +218,7 @@ def rule_hit(
     return None
 
 
-def findings(path: str, content: str) -> list[tuple[str, int, str]]:
+def findings(path: str, content: str, prefix: str = "") -> list[tuple[str, int, str]]:
     identity = identity_pattern()
     holder = configured_holder() if identity is not None else ""
     hits: list[tuple[str, int, str]] = []
@@ -202,6 +229,8 @@ def findings(path: str, content: str) -> list[tuple[str, int, str]]:
             event = json.loads(line)
         except json.JSONDecodeError:
             event = line
+        if _foreign(event, prefix):
+            continue
         texts = _strings(event)
         if rule := rule_hit(texts, identity, _strings(_outside_holder(event, holder))):
             hits.append((path, lineno, rule))

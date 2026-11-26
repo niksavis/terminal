@@ -6,8 +6,8 @@ import shlex
 import sys
 from pathlib import Path
 
-from orch_relay import accept, brief, classes, messages, record, start
-from orch_state import commands, relay_guard
+from orch_relay import accept, brief, classes, install, messages, record, start
+from orch_state import commands, relay_guard, store
 
 from orch_lessons import doctor, log
 
@@ -28,6 +28,15 @@ def _top() -> argparse.ArgumentParser:
 def parser() -> argparse.ArgumentParser:
     top = _top()
     groups = top.add_subparsers(dest="group", required=True)
+    _lesson_parsers(groups)
+    install.add_parser(groups)
+    groups.add_parser("doctor")
+    _relay_parsers(groups)
+    commands.add_parsers(groups)
+    return top
+
+
+def _lesson_parsers(groups: argparse._SubParsersAction) -> None:
     lesson = groups.add_parser("lesson").add_subparsers(dest="action", required=True)
     add = lesson.add_parser("add")
     add.add_argument("--what", required=True)
@@ -48,7 +57,9 @@ def parser() -> argparse.ArgumentParser:
     export.add_argument("--target", type=Path, required=True)
     export.add_argument("--out", required=True)
     many.add_parser("end-session")
-    groups.add_parser("doctor")
+
+
+def _relay_parsers(groups: argparse._SubParsersAction) -> None:
     groups.add_parser("record")
     for name in ("decide", "approve"):
         relay = groups.add_parser(name)
@@ -78,8 +89,6 @@ def parser() -> argparse.ArgumentParser:
     launch.add_argument("--vendor", choices=start.VENDORS, required=True)
     launch.add_argument("--name", required=True)
     launch.add_argument("--role", default="orchestrator")
-    commands.add_parsers(groups)
-    return top
 
 
 def relay(args: argparse.Namespace, writer: messages.Writer) -> str:
@@ -116,10 +125,26 @@ def _read(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> str |
     return None
 
 
+def run_install(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int:
+    found = store.find(cwd, environ)
+    if found is None:
+        raise log.RefusedError(commands.NO_STORE.format(cwd=cwd))
+    for line in install.run(found.parent, args.release, args.repo, args.dry_run):
+        print(line, flush=True)
+    return 0
+
+
+def run_send(args: argparse.Namespace, _cwd: Path, _environ: dict[str, str]) -> int:
+    print(messages.order(args.to, args.record, args.goal, args.limits, args.proof))
+    return 0
+
+
+DIRECT = {"install": run_install, "send": run_send}
+
+
 def run_relay(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int | None:
-    if args.group == "send":
-        print(messages.order(args.to, args.record, args.goal, args.limits, args.proof))
-        return 0
+    if (direct := DIRECT.get(args.group)) is not None:
+        return direct(args, cwd, environ)
     if (shown := _read(args, cwd, environ)) is not None:
         print(shown)
         return 0

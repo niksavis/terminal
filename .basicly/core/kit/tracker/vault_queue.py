@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import getpass
 import importlib.util
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -32,6 +34,7 @@ git_runner = _load("git_runner.py", "basicly_tracker_kit_git_runner")
 events = _load("events.py", "basicly_tracker_kit_events")
 redact = _load("redact.py", "basicly_tracker_kit_redact")
 vault_clone = _load("vault_clone.py", "basicly_tracker_kit_vault_clone")
+vault_personal = _load("vault_personal.py", "basicly_tracker_kit_vault_personal")
 
 QUEUE_NAME = "queue.jsonl"
 WRITER_NAME = "writer.id"
@@ -154,9 +157,60 @@ def _redacted(draft: Mapping[str, object]) -> dict[str, object]:
     return line
 
 
+def _machine_user() -> re.Pattern[str] | None:
+    try:
+        name = getpass.getuser()
+    except KeyError, OSError:
+        return None
+    if len(name) < vault_personal.MIN_IDENTITY_LENGTH:
+        return None
+    return re.compile(rf"\b{re.escape(name)}\b")
+
+
+def _texts(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Mapping):
+        return [text for item in value.values() for text in _texts(item)]
+    if isinstance(value, list):
+        return [text for item in value for text in _texts(item)]
+    return []
+
+
+def _outside_holder(line: Mapping[str, object]) -> object:
+    nested = line.get("ledger")
+    if line.get("kind") == "ledger" and isinstance(nested, Mapping):
+        return {**line, "ledger": _outside_holder(nested)}
+    payload = line.get("payload")
+    if not isinstance(payload, Mapping):
+        return line
+    kind = line.get("kind")
+    if kind in HOLDER_KINDS:
+        hidden = HOLDER_NAME
+    elif kind == "field" and payload.get("name") == "assignee":
+        hidden = "value"
+    elif kind == "created":
+        hidden = "assignee"
+    else:
+        return line
+    return {**line, "payload": {k: v for k, v in payload.items() if k != hidden}}
+
+
+def _refuse_machine_user(line: Mapping[str, object]) -> None:
+    identity = _machine_user()
+    if identity is None:
+        return
+    if any(identity.search(text) for text in _texts(_outside_holder(line))):
+        raise QueueError(
+            f"the {line.get('kind')} names this machine's user name, which the shared vault "
+            "queue must not hold; rewrite the text without it and run the command again"
+        )
+
+
 def checked(drafts: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
     lines = [_redacted(draft) for draft in drafts]
     for line in lines:
+        _refuse_machine_user(line)
         if (
             len(json.dumps(line.get("payload"), ensure_ascii=False).encode("utf-8"))
             > events.MAX_TEXT_BYTES
