@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess  # nosec B404
+from collections.abc import Callable
 from dataclasses import dataclass
 
 
@@ -35,6 +36,15 @@ def attempt(argv: list[str], timeout: float, cwd: str | None = None) -> Done:
         return Done(127, "", f"{argv[0]} cannot start: {missing.strerror or missing}")
     except subprocess.TimeoutExpired:
         return Done(124, "", f"{argv[0]} ran past {timeout:.0f} s and was stopped")
+
+
+def relay(argv: list[str], data: bytes, during: Callable[[], None]) -> tuple[int, bytes]:
+    child = subprocess.Popen(  # nosec B603 - list argv from the caller, no shell
+        argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE
+    )
+    during()
+    out, _ = child.communicate(data)
+    return child.returncode, out
 
 
 def quiet(argv: list[str], env: dict[str, str], timeout: float) -> None:

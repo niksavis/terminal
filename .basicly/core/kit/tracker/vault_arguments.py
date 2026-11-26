@@ -14,6 +14,11 @@ class _Form(argparse.ArgumentParser):
         self.exit(2, f"{self.format_usage()}{self.prog}: error: {message}{hint}\n")
 
 
+SESSION_HELP = (
+    "the session (default: BASICLY_TRACKER_SESSION, else ORCH_SESSION_ID or CLAUDE_CODE_SESSION_ID)"
+)
+
+
 def _form(verb: str, text: str, command: str) -> _Form:
     parser = _Form(prog=f"cli.py {verb}", description=text)
     parser.add_argument("verb", choices=[verb], help=argparse.SUPPRESS)
@@ -59,7 +64,7 @@ def hook() -> argparse.ArgumentParser:
 def claim() -> argparse.ArgumentParser:
     parser = _form("claim", "claim a record in the vault within 30 s", "claim-vault")
     parser.add_argument("record", help="the record id")
-    parser.add_argument("--session", help="the session (default: BASICLY_TRACKER_SESSION)")
+    parser.add_argument("--session", help=SESSION_HELP)
     parser.add_argument("--deadline", type=float, default=30.0, help="seconds for the whole claim")
     return parser
 
@@ -67,7 +72,7 @@ def claim() -> argparse.ArgumentParser:
 def unassign() -> argparse.ArgumentParser:
     parser = _form("unassign", "give a vault record back", "unassign-vault")
     parser.add_argument("record", help="the record id")
-    parser.add_argument("--session", help="the session (default: BASICLY_TRACKER_SESSION)")
+    parser.add_argument("--session", help=SESSION_HELP)
     parser.add_argument("--take", action="store_true", help="release another session's claim")
     return parser
 
@@ -75,7 +80,7 @@ def unassign() -> argparse.ArgumentParser:
 def commit_msg() -> argparse.ArgumentParser:
     parser = _form("commit-msg", "check a commit message against vault claims", "commit-msg-vault")
     parser.add_argument("message", help="the commit message file git passes to commit-msg")
-    parser.add_argument("--session", help="the session (default: BASICLY_TRACKER_SESSION)")
+    parser.add_argument("--session", help=SESSION_HELP)
     return parser
 
 

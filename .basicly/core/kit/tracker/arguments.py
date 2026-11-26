@@ -10,7 +10,10 @@ from typing import Any
 DEFAULT_STATUS = "open"
 
 DIRECTORY_HELP = "the ledger directory"
-SESSION_HELP = "the tracker session for a vault claim (default: BASICLY_TRACKER_SESSION)"
+SESSION_HELP = (
+    "the tracker session for a vault claim "
+    "(default: BASICLY_TRACKER_SESSION, else ORCH_SESSION_ID or CLAUDE_CODE_SESSION_ID)"
+)
 
 IMPORT_FORMATS = ("beads", "beans")
 

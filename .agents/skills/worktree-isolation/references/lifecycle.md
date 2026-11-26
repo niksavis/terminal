@@ -72,10 +72,12 @@ When no landing of that lane runs any more, remove it with `basicly worktree unl
 ## Land on CI
 
 `basicly worktree merge NAME --bead RECORD-ID --mode ci` proves the lane on GitHub runners instead of a local full verify.
-Use it when `gh` is logged in and `.github/workflows/quality-gates.yml` accepts `workflow_dispatch` with a `base` input.
+Use it when `gh` is logged in and the repository has a landing workflow with a `workflow_dispatch` trigger.
+The landing workflows are the list `[landing] workflows = [...]` in `basicly.toml`. Without that key, the landing takes whichever of `quality-gates.yml` and `basicly-gates.yml` has the trigger; when both have it, it refuses and prints the key line to add.
+It passes `base` only to a workflow that declares that input. When `gh` refuses a call, it names `gh auth login` only when `gh auth status` fails, and otherwise the exact `gh` command to rerun.
 It runs locally only the `local_only` checks, because they read tracker records and CI must not.
-It pushes the rebased lane to a new branch `land/NAME/N`, never a force-push, and dispatches `quality-gates` on it.
-It lands only on a passing run; a failed, cancelled or unfinished run refuses by name and lands nothing.
+It pushes the rebased lane to a new branch `land/NAME/N`, never a force-push, and dispatches every landing workflow on it.
+It lands only when every landing workflow passes; a failed, cancelled or unfinished run refuses by name and lands nothing.
 A tree that failed once gets one rerun, and the landing line says that CI passed on a rerun; after a second failure the merge refuses a new run and names both runs; change the lane first.
 When git stops the merge with the lane tree staged, the merge commits it once with hooks on; a refusing hook still stops the landing and its text is shown.
 After the merge it records the destination as `ci-verified`, pushes the base and deletes its `land/` branches.

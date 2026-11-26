@@ -354,6 +354,7 @@ def _run_command(
             "record": record,
             "events": [event.id for event in appended],
             "appended": bool(appended),
+            **commands.parent_progress.started(appended, record),
             **_owed_of(vault_cli.view_of(args, clock), record),
         }
     records = queries.listed(args)

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import contextlib
 import importlib.util
 import json
 import os
 import sys
 import tempfile
-from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -48,7 +47,10 @@ vault_pending = _load("vault_pending.py", "basicly_tracker_kit_vault_pending")
 
 LEDGER_KIND = "ledger"
 LEDGER_FIELD = "ledger"
-SESSION = "BASICLY_TRACKER_SESSION"
+vault_session = _load("vault_session.py", "basicly_tracker_kit_vault_session")
+SESSION = vault_session.SESSION
+session_of = vault_session.session_of
+given_session = vault_session.given_session
 IMMEDIATE = ("CI", "BASICLY_TRACKER_EPHEMERAL")
 _UNREACHED = (vault_clone.CloneError, git_runner.GitRunnerError, events.LockUnavailableError)
 
@@ -104,22 +106,6 @@ class Target:
         return vault_queue.Origin(self.session, self.immediate, self.clock)
 
 
-@contextlib.contextmanager
-def given_session(environ: MutableMapping[str, str], given: str | None) -> Iterator[None]:
-    if not given:
-        yield
-        return
-    before = environ.get(SESSION)
-    environ[SESSION] = given
-    try:
-        yield
-    finally:
-        if before is None:
-            environ.pop(SESSION, None)
-        else:
-            environ[SESSION] = before
-
-
 def config_of(ledger: Path | str) -> Any:
     return vault_config.load(Path(ledger).resolve())
 
@@ -138,7 +124,7 @@ def target_of(ledger: Path | str, environ: Mapping[str, str], clock: Clock | Non
     return Target(
         vault_clone.locate(state, config.vault),
         state,
-        environ.get(SESSION, ""),
+        session_of(environ),
         any(environ.get(name) for name in IMMEDIATE),
         clock,
         config.prefix,

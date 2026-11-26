@@ -59,7 +59,7 @@ Use `--no-daemon` to isolate Codex from an existing shared server.
 Use the client's supported environment configuration for desktop or already-running servers.
 
 Set `BASICLY_HOLDER` to your chosen holder name.
-Set `BASICLY_TRACKER_SESSION` to your unique agent session before launching the server and Git hooks.
+Set `BASICLY_TRACKER_SESSION` to your unique agent session before launching the server and Git hooks. When it is unset, the kit uses `ORCH_SESSION_ID`, else `CLAUDE_CODE_SESSION_ID`, so a claim and the commit-msg hook of one Claude Code session name the same session.
 Use separate session values for concurrent agents.
 Tools cannot change the repository, vault, project prefix or session identity.
 Reconnect after changing tracker configuration.

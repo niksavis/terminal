@@ -27,6 +27,17 @@ differential = queries.differential
 events = differential.events
 
 
+def started(appended: Sequence[Any], record: str) -> dict[str, object]:
+    parents = sorted({
+        event.record
+        for event in appended
+        if event.record != record
+        and event.kind == events.KIND_STATUS
+        and event.payload.get("status") == "in_progress"
+    })
+    return {"started_parents": parents} if parents else {}
+
+
 def progress(found: Sequence[Any], drafts: Sequence[Any]) -> tuple[list[Any], set[str]]:
     views = differential.views_from_events(found)
     children = differential.children_of(views, differential.DEFAULT_VOCABULARY)
@@ -49,16 +60,15 @@ def progress(found: Sequence[Any], drafts: Sequence[Any]) -> tuple[list[Any], se
             break
         parents.update(added)
         active.update(added)
-    affected = {draft.record for draft in drafts}
+    started = {
+        draft.record
+        for draft in drafts
+        if draft.kind == events.KIND_STATUS and draft.payload.get("status") == "in_progress"
+    }
     result = list(drafts)
     pending = set(parents)
     while True:
-        reached = {
-            parent
-            for parent in pending
-            if parent in affected
-            or any(child in affected and child in active for child in children[parent])
-        }
+        reached = {parent for parent in pending if any(c in started for c in children[parent])}
         if not reached:
             break
         result.extend(
@@ -66,6 +76,6 @@ def progress(found: Sequence[Any], drafts: Sequence[Any]) -> tuple[list[Any], se
             for parent in sorted(reached)
             if statuses[parent] == "open" and parent not in explicit
         )
-        affected.update(reached)
+        started.update(reached)
         pending.difference_update(reached)
     return result, parents

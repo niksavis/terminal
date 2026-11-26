@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import math
 import sys
 import time
 import traceback
@@ -39,9 +40,15 @@ FRESH = 1.0
 JOIN_WAIT = 0.05
 STALL = 5.0
 POLL = 0.1
+TAKEOVER_FLOOR = 1.35
+TAKEOVER_MARGIN = 1.5
+TAKEOVER_NAME = "takeover.s"
 LANDED = 0
 FIX = 1
-NAME_SESSION = "name the session with --session or BASICLY_TRACKER_SESSION"
+NAME_SESSION = (
+    "name the session with --session, or set BASICLY_TRACKER_SESSION; "
+    "a Claude Code or orch session uses its own session id"
+)
 LOST = 3
 UNSETTLED = 4
 UNREACHABLE = 5
@@ -177,9 +184,33 @@ def _check(ask: Ask, budget: _Budget, writer: str) -> dict[str, object] | None:
     return None if held is None else _lost(clone, ask.record)
 
 
+def _recorded_takeover(folder: Path) -> float:
+    try:
+        seconds = float(vault_clone._read(folder / TAKEOVER_NAME).strip() or "0")
+    except OSError, ValueError:
+        return 0.0
+    return seconds if math.isfinite(seconds) and seconds > 0 else 0.0
+
+
+def takeover_reserve(folder: Path) -> float:
+    return max(TAKEOVER_FLOOR, TAKEOVER_MARGIN * _recorded_takeover(folder))
+
+
+def _record_takeover(folder: Path, seconds: float, *, took_over: bool) -> None:
+    if took_over and seconds > _recorded_takeover(folder):
+        vault_clone.durable(folder / TAKEOVER_NAME, f"{seconds:.3f}\n")
+
+
+def _stalled(joined_at: float | None, left: float, reserve: float) -> bool:
+    if joined_at is None:
+        return False
+    return joined_at - left >= min(STALL, joined_at / 2) or left <= reserve
+
+
 def _share_or_join(ask: Ask, budget: _Budget, made: str, fresh: bool) -> bool:
 
     joined_at = None
+    reserve = takeover_reserve(ask.clone.folder)
     writer = vault_queue.writer_of(ask.state)
     progress = vault_clone._read(ask.clone.folder / vault_share.PROGRESS_NAME)
 
@@ -202,7 +233,7 @@ def _share_or_join(ask: Ask, budget: _Budget, made: str, fresh: bool) -> bool:
         if joined_at is not None and latest and latest != progress:
             joined_at = budget.left()
         progress = latest
-        stalled = joined_at is not None and joined_at - budget.left() >= min(STALL, joined_at / 2)
+        stalled = _stalled(joined_at, budget.left(), reserve)
         plan = vault_share.Plan(
             ask.clock,
             urgent=True,
@@ -235,6 +266,7 @@ def _share_or_join(ask: Ask, budget: _Budget, made: str, fresh: bool) -> bool:
             if _wait_join(ask, budget, decided):
                 return True
             continue
+        _record_takeover(ask.clone.folder, budget.now() - asked, took_over=stalled)
         budget.add("share_lock_wait_s", shared.get("lock_wait_s"))
         budget.add("fetch_lock_wait_s", shared.get("fetch_lock_wait_s"))
         if decided() or shared.get("ended"):

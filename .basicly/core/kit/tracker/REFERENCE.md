@@ -22,7 +22,7 @@ Calls use the existing tracker admission and canonical ownership rules.
 Arguments cannot override the repository, vault, prefix or session identity.
 Reconnect after changing `.basicly-tracker.toml`.
 
-Set `BASICLY_TRACKER_SESSION` separately for each coding agent session.
+Set `BASICLY_TRACKER_SESSION` separately for each coding agent session. When it is unset, the kit uses `ORCH_SESSION_ID`, else `CLAUDE_CODE_SESSION_ID`, so a claim and the commit-msg hook of one Claude Code session name the same session.
 Its tools and Git hooks must inherit that same value.
 Choose the human-readable holder through `BASICLY_HOLDER` or `git config basicly.holder`.
 Never persist one shared session identity for concurrent agents.
@@ -119,7 +119,9 @@ Set fields, the status or labels. `--add-label` and `--remove-label` repeat. Mov
 that nobody holds to `in_progress` also names you as its holder in ledger mode. Vault mode
 requires your canonical claim first. `--if-seq N` refuses the
 update when a field it writes changed after seq `N`, the `max_seq` that `show` gave you, so
-an edit never silently replaces a newer one.
+an edit never silently replaces a newer one. Starting a child also starts each open parent,
+and the output names those parents under `started_parents`. A comment or a field write on a
+child never changes the status of its parent.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py update .basicly/ledger acme-a1b2 --status in_progress --add-label export
@@ -455,7 +457,7 @@ history or its vault binding. Preserve that lane and inspect its late events wit
 `migrate LEDGER --to-vault --preview` before importing them and rebasing onto the frozen destination.
 
 With `--vault`, `commit-msg` checks the message file against the vault claims of this session
-(`--session`, else `BASICLY_TRACKER_SESSION`). It exits 1 when the message names no record id
+(`--session`, else `BASICLY_TRACKER_SESSION`, else `ORCH_SESSION_ID` or `CLAUDE_CODE_SESSION_ID`). It exits 1 when the message names no record id
 and has no `Record: none` line, and prints the claim command and `Record: none`. A record id
 is the `(id)` that ends the subject, or a `Record: <id>` line. When the session holds exactly
 one claim, the hook adds the id in parentheses to the subject instead. Git-generated
