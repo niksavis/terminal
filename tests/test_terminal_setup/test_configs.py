@@ -723,6 +723,92 @@ def test_deploy_claude_statusline_preserves_and_is_idempotent(tmp_path: Path) ->
     assert settings["statusLine"]["command"] == "bash ~/.claude/statusline.sh"
 
 
+@pytest.fixture(autouse=True)
+def _no_statusline_tap(monkeypatch: pytest.MonkeyPatch) -> None:
+    real = Runner.which
+    monkeypatch.setattr(
+        Runner,
+        "which",
+        lambda self, command: None if command == "orch-statusline-tap" else real(self, command),
+    )
+
+
+STATUSLINE_WRAPPED = (
+    "if command -v orch-statusline-tap >/dev/null 2>&1; "
+    "then exec orch-statusline-tap -- bash ~/.claude/statusline.sh; "
+    "else exec bash ~/.claude/statusline.sh; fi"
+)
+
+
+def _tap_runner(
+    monkeypatch: pytest.MonkeyPatch, *, tap: bool, reporter: RecordingReporter | None = None
+) -> Runner:
+    runner = Runner(dry_run=False, reporter=reporter or RecordingReporter())
+    found = "/home/u/.local/bin/orch-statusline-tap" if tap else None
+    monkeypatch.setattr(runner, "which", lambda command: found if "tap" in command else None)
+    return runner
+
+
+@pytest.mark.parametrize("tap", [False, True])
+@pytest.mark.parametrize(
+    "existing",
+    [STATUSLINE_WRAPPED, "my-wrapper -- bash ~/.claude/statusline.sh"],
+)
+def test_deploy_claude_statusline_keeps_a_command_that_wraps_the_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, existing: str, *, tap: bool
+) -> None:
+    claude = _make_claude_home(tmp_path)
+    original = {
+        "theme": "dark",
+        "statusLine": {"type": "command", "command": existing, "padding": 0},
+    }
+    (claude / "settings.json").write_text(json.dumps(original), encoding="utf-8")
+    reporter = RecordingReporter()
+    runner = _tap_runner(monkeypatch, tap=tap, reporter=reporter)
+
+    deploy_claude_statusline(runner, make_platform(OperatingSystem.LINUX, tmp_path))
+
+    assert json.loads((claude / "settings.json").read_text(encoding="utf-8")) == original
+    assert (claude / "statusline.sh").exists()
+    assert "Kept the statusLine command that wraps statusline.sh" in reporter.messages
+
+
+@pytest.mark.parametrize(
+    ("nerdfont", "expected"),
+    [
+        (True, STATUSLINE_WRAPPED),
+        (
+            False,
+            STATUSLINE_WRAPPED.replace("then exec", "then STATUSLINE_NERDFONT=0 exec").replace(
+                "else exec", "else STATUSLINE_NERDFONT=0 exec"
+            ),
+        ),
+    ],
+)
+@pytest.mark.parametrize("existing", [None, "bash ~/.claude/statusline.sh"])
+def test_deploy_claude_statusline_wraps_the_script_when_the_tap_is_on_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    existing: str | None,
+    expected: str,
+    *,
+    nerdfont: bool,
+) -> None:
+    claude = _make_claude_home(tmp_path)
+    if existing is not None:
+        (claude / "settings.json").write_text(
+            json.dumps({"statusLine": {"type": "command", "command": existing}}), encoding="utf-8"
+        )
+    runner = _tap_runner(monkeypatch, tap=True)
+
+    deploy_claude_statusline(
+        runner, make_platform(OperatingSystem.LINUX, tmp_path), nerdfont=nerdfont
+    )
+
+    settings = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert settings["statusLine"] == {"type": "command", "command": expected, "padding": 0}
+
+
 def test_deploy_claude_statusline_skips_without_claude_dir(tmp_path: Path) -> None:
     platform = make_platform(OperatingSystem.LINUX, tmp_path)
     reporter = RecordingReporter()
@@ -1868,6 +1954,62 @@ def test_wsl_status_line_uses_the_jq_that_setup_installs_in_local_bin(tmp_path: 
     assert result.returncode == 0, result.stderr
     assert "jq not found" not in result.stdout
     assert json.loads((home / ".claude" / "settings.json").read_text()) == {"statusLine": "set"}
+
+
+@_posix_only
+@pytest.mark.parametrize(
+    ("existing", "tap", "expected"),
+    [
+        (STATUSLINE_WRAPPED, False, STATUSLINE_WRAPPED),
+        (
+            "my-wrapper -- bash ~/.claude/statusline.sh",
+            True,
+            "my-wrapper -- bash ~/.claude/statusline.sh",
+        ),
+        ("bash ~/.claude/statusline.sh", True, STATUSLINE_WRAPPED),
+        (None, True, STATUSLINE_WRAPPED),
+        ("bash ~/.claude/statusline.sh", False, "bash ~/.claude/statusline.sh"),
+        (None, False, "bash ~/.claude/statusline.sh"),
+    ],
+)
+def test_wsl_status_line_keeps_a_wrapper_and_wraps_when_the_tap_is_on_path(
+    tmp_path: Path, existing: str | None, expected: str, *, tap: bool
+) -> None:
+    home = tmp_path / "home"
+    claude = home / ".claude"
+    claude.mkdir(parents=True)
+    settings: dict[str, object] = {"theme": "dark"}
+    if existing is not None:
+        settings["statusLine"] = {"type": "command", "command": existing, "padding": 0}
+    (claude / "settings.json").write_text(json.dumps(settings), encoding="utf-8")
+    local_bin = home / ".local" / "bin"
+    local_bin.mkdir(parents=True)
+    if tap:
+        (local_bin / "orch-statusline-tap").write_text("#!/bin/sh\n", encoding="utf-8")
+        (local_bin / "orch-statusline-tap").chmod(0o755)
+    system_bin = tmp_path / "bin"
+    system_bin.mkdir()
+    for tool in ("cp", "mv", "rm", "mktemp", "cat", "jq"):
+        found = shutil.which(tool)
+        assert found is not None, tool
+        (system_bin / tool).symlink_to(found)
+    script = configs_module._claude_wsl_install_script(
+        str(template_path("statusline.sh")), nerdfont=True
+    )
+
+    result = subprocess.run(
+        [shutil.which("sh") or "sh", "-c", script],
+        env={"HOME": str(home), "PATH": str(system_bin)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    written = json.loads((claude / "settings.json").read_text(encoding="utf-8"))
+    assert written["theme"] == "dark"
+    assert written["statusLine"]["command"] == expected
+    assert (claude / "statusline.sh").exists()
 
 
 def _windows_host_wezterm_script(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:

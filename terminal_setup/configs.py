@@ -462,14 +462,38 @@ def deploy_wsl_wezterm_config(runner: Runner, platform: PlatformInfo) -> None:
         runner.reporter.info(line)
 
 
-def _claude_statusline_command(*, nerdfont: bool) -> str:
-    prefix = "" if nerdfont else "STATUSLINE_NERDFONT=0 "
-    return f"{prefix}bash ~/.claude/statusline.sh"
+_STATUSLINE_TAP = "orch-statusline-tap"
+_STATUSLINE_RUN = "bash ~/.claude/statusline.sh"
+_STATUSLINE_UNIVERSAL = "STATUSLINE_NERDFONT=0 "
+_STATUSLINE_PLAIN_FORMS = (_STATUSLINE_RUN, _STATUSLINE_UNIVERSAL + _STATUSLINE_RUN)
+_STATUSLINE_KEPT = "Kept the statusLine command that wraps statusline.sh"
+
+
+def _claude_statusline_command(*, nerdfont: bool, tap: bool = False) -> str:
+    prefix = "" if nerdfont else _STATUSLINE_UNIVERSAL
+    if not tap:
+        return f"{prefix}{_STATUSLINE_RUN}"
+    return (
+        f"if command -v {_STATUSLINE_TAP} >/dev/null 2>&1; "
+        f"then {prefix}exec {_STATUSLINE_TAP} -- {_STATUSLINE_RUN}; "
+        f"else {prefix}exec {_STATUSLINE_RUN}; fi"
+    )
+
+
+def _keeps_statusline_command(existing: object) -> bool:
+    return (
+        isinstance(existing, str)
+        and "statusline.sh" in existing
+        and existing not in _STATUSLINE_PLAIN_FORMS
+    )
 
 
 def _claude_wsl_install_script(source: str, *, nerdfont: bool) -> str:
-
-    command = _claude_statusline_command(nerdfont=nerdfont)
+    plain = _claude_statusline_command(nerdfont=nerdfont)
+    wrapped = _claude_statusline_command(nerdfont=nerdfont, tap=True)
+    keep_test = " && ".join(
+        f'[ "$cur" != {shlex.quote(form)} ]' for form in _STATUSLINE_PLAIN_FORMS
+    )
     return (
         'PATH="$HOME/.local/bin:$PATH"; '
         'claude="$HOME/.claude"; '
@@ -480,8 +504,14 @@ def _claude_wsl_install_script(source: str, *, nerdfont: bool) -> str:
         's="$claude/settings.json"; [ -f "$s" ] || printf "%s" "{}" > "$s"; '
         'command -v jq >/dev/null 2>&1 || { echo "WARN: jq not found; add the statusLine '
         'block to $s manually"; exit 0; }; '
+        'cur="$(jq -r \'(.statusLine | objects | .command | strings) // empty\' "$s" '
+        '2>/dev/null)"; '
+        f'case "$cur" in *statusline.sh*) if {keep_test}; then '
+        f"echo {shlex.quote(_STATUSLINE_KEPT)}; exit 0; fi;; esac; "
+        f"if command -v {_STATUSLINE_TAP} >/dev/null 2>&1; then c={shlex.quote(wrapped)}; "
+        f"else c={shlex.quote(plain)}; fi; "
         'tmp="$(mktemp)"; '
-        f"if jq --arg c {shlex.quote(command)} "
+        'if jq --arg c "$c" '
         "'.statusLine = {type: \"command\", command: $c, padding: 0}' "
         '"$s" > "$tmp" 2>/dev/null; then mv "$tmp" "$s"; '
         'else rm -f "$tmp"; '
@@ -535,9 +565,14 @@ def _deploy_claude_statusline_host(
                 "Add the statusLine block manually."
             )
             return
+    current = settings.get("statusLine")
+    if isinstance(current, dict) and _keeps_statusline_command(current.get("command")):
+        runner.reporter.info(_STATUSLINE_KEPT)
+        return
+    tap = runner.which(_STATUSLINE_TAP) is not None
     settings["statusLine"] = {
         "type": "command",
-        "command": _claude_statusline_command(nerdfont=nerdfont),
+        "command": _claude_statusline_command(nerdfont=nerdfont, tap=tap),
         "padding": 0,
     }
     runner.write_text(settings_path, json.dumps(settings, indent=2) + "\n")

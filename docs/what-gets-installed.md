@@ -197,7 +197,7 @@ Setup writes these only when `~/.claude` exists. Add `--skip-claude` to skip the
 
 | Add-on | Where | What it is for |
 | --- | --- | --- |
-| Status line | `~/.claude/statusline.sh`, and the `statusLine` key in `~/.claude/settings.json` | Shows the model, the git state, the context use, the rate limits and the cost. On Windows it needs Git for Windows. In WSL, Linux and macOS, setup needs `jq` to write the `statusLine` key. It finds the `jq` that it installs in `~/.local/bin`. Without `jq`, setup copies only the script and prints a warning. |
+| Status line | `~/.claude/statusline.sh`, and the `statusLine` key in `~/.claude/settings.json` | Shows the model, the git state, the context use, the rate limits and the cost. On Windows it needs Git for Windows. In WSL, Linux and macOS, setup needs `jq` to write the `statusLine` key. It finds the `jq` that it installs in `~/.local/bin`. Without `jq`, setup copies only the script and prints a warning. Setup keeps a `statusLine` command that wraps `statusline.sh`, such as one that runs `orch-statusline-tap`. With no wrapper set and `orch-statusline-tap` on `PATH`, it writes the wrapped command. |
 | `img-zoom` skill | `~/.claude/skills/img-zoom/SKILL.md` | Tells Claude Code that `img-zoom` exists. |
 | `cli-tools` skill | `~/.claude/skills/cli-tools/` | One reference file for each of 25 tools. Claude Code picks `rg`, `fd`, `jq` and the other tools in any repository. |
 
