@@ -1,1 +1,0 @@
-- **The agents command on macOS.** With `--agents`, setup now installs the `agents` command on macOS too, in `~/.local/bin/agents`. It runs with the bash 3.2 that ships with macOS, and shows and updates Claude Code, Codex, the Codex daemon and Copilot CLI as on Linux (term-558myn).

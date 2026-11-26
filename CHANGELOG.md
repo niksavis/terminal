@@ -2,6 +2,26 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.0 - 2026-11-26
+
+Delta: v0.25.4..v0.26.0
+
+### Highlights
+
+- **The agents command on macOS.** With `--agents`, setup now installs the `agents` command on macOS too, in `~/.local/bin/agents`. It runs with the bash 3.2 that ships with macOS, and shows and updates Claude Code, Codex, the Codex daemon and Copilot CLI as on Linux (term-558myn).
+- **The harness is basicly 0.49.4.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.4 wheel. The first setup after this update installs the skill once, then skips it while it is current. The tracker path scan now checks only the queued vault events of this repository (term-16d14b).
+- **install.ps1 installs uv in the running PowerShell.** On a machine without uv, `install.ps1` now runs the uv installer in the same PowerShell session, as it already did for a uv update. It no longer starts a second PowerShell with `-ExecutionPolicy Bypass`, which did not change how the installer ran. When the installer fails, or uv is not in `~/.local/bin` after it, setup stops with that reason (term-4gqvp4).
+- **terminal status shows the shellcheck version.** shellcheck prints its name on the first line and its version on the second, so the status showed `present` and the state `unknown`. Status now reads the version from the first output line that holds a number, in WSL, on Linux, on macOS and on Windows (term-co890y).
+
+### Commit delta (auto-generated)
+
+- docs(basicly): pin the docs to the released kit (term-p9q02t) (8370047)
+- chore(basicly): install the released kit (term-16d14b) (4b08eb1)
+- fix(bootstrap): install uv in the running powershell (term-4gqvp4) (e744d5d)
+- fix(status): read a version from the first line with a number (term-co890y) (e20a9e4)
+- test(agents): check the exec bit only where files have one (term-558myn) (fad75d4)
+- feat(agents): run the agents command with the macos system bash (term-558myn) (19762fd)
+
 ## v0.25.4 - 2026-11-26
 
 Delta: v0.25.3..v0.25.4

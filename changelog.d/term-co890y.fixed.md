@@ -1,1 +1,0 @@
-- **terminal status shows the shellcheck version.** shellcheck prints its name on the first line and its version on the second, so the status showed `present` and the state `unknown`. Status now reads the version from the first output line that holds a number, in WSL, on Linux, on macOS and on Windows (term-co890y).
