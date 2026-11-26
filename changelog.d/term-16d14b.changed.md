@@ -1,0 +1,1 @@
+- **The harness is basicly 0.49.4.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.4 wheel. The first setup after this update installs the skill once, then skips it while it is current. The tracker path scan now checks only the queued vault events of this repository (term-16d14b).
