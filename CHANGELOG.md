@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.2 - 2026-11-26
+
+Delta: v0.26.1..v0.26.2
+
+### Highlights
+
+- **The harness is basicly 0.49.5.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.5 wheel, once after this update. Landings in this repository now wait for all three required workflows: quality-gates, basicly-gates and quality-gates-macos (term-p9q02t).
+- **A setup run that changes nothing is faster.** Setup reads the latest tool releases from the GitHub redirect and no longer loads each release page. It checks all release tools at once. It checks the WSL system packages and base commands with 2 WSL calls instead of 16, and it reads the 3 agent versions at the same time. img-zoom is now reinstalled when its source changes or when its last install is older than 30 days, not at each terminal release. In a dry run on a Windows host with WSL, setup made 32 calls in 6 s, against 48 calls in 10 s before (term-uuvvl7).
+
+### Commit delta (auto-generated)
+
+- fix(setup): keep the agent prefetch and the bin folder failure-safe (term-uuvvl7) (a9e75b2)
+- perf(setup): cut the wsl and network calls of a no-change run (term-uuvvl7) (eaba23c)
+- chore(basicly): land on all three required workflows (term-p9q02t) (6c57bc2)
+- chore(basicly): install the released kit (term-p9q02t) (5ef786b)
+
 ## v0.26.1 - 2026-11-26
 
 Delta: v0.26.0..v0.26.1

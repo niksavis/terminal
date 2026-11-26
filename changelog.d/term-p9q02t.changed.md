@@ -1,1 +1,0 @@
-- **The harness is basicly 0.49.5.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.5 wheel, once after this update. Landings in this repository now wait for all three required workflows: quality-gates, basicly-gates and quality-gates-macos (term-p9q02t).
