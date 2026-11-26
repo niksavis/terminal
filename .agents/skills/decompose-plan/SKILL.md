@@ -36,6 +36,12 @@ Cut one parent record, an epic or a feature, into children that each do somethin
    basicly decompose PARENT-ID --plan plan.toml
    ```
 
+4. Report the plan with the block that this command prints, as printed. It prints nothing when the reply view draws no Mermaid; then report the plan as text:
+
+   ```sh
+   python3 -B ${CLAUDE_SKILL_DIR}/../swarm/scripts/mermaid.py plan --plan plan.toml
+   ```
+
 ## The plan fields
 
 | Field | Refused when | Notes |

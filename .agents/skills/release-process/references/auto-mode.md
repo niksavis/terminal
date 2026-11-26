@@ -10,7 +10,7 @@ When a public repository tag push is blocked as creating a public surface, revie
 }
 ```
 
-Keep `$defaults` when extending the classifier's default allow list. These entries are classifier guidance, not deterministic shell permission patterns. Do not install them into a consumer's user settings automatically.
+Keep `$defaults` when extending the classifier's default allow list. These entries are classifier guidance, not deterministic shell permission patterns. Do not install them into a consumer's user settings automatically. In an orchestrated workspace, `orch automode plan` shows the rules for the user's repositories as a diff, and `orch automode apply --plan TOKEN` writes them only for that plan.
 
 Narrow `permissions.allow` rules normally resolve before the classifier and remain effective in auto mode. `autoMode.classifyAllShell` sends shell calls through the classifier even with a narrow allow; explicit deny and ask rules still take precedence. A project permission allow and a project `autoMode.allow` entry are different settings. This exception must not authorize force pushes, remote deletion or hook bypass.
 

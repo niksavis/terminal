@@ -18,7 +18,7 @@ AGE = 3
 Alive = Callable[[int, int], bool | None]
 
 
-def _when(value: object) -> datetime | None:
+def when(value: object) -> datetime | None:
     if not isinstance(value, str):
         return None
     try:
@@ -53,7 +53,7 @@ def state(record: dict[str, object], now: datetime, alive: Alive) -> str:
     pid, began = record.get("pid"), record.get("pid_start")
     if isinstance(pid, int) and isinstance(began, int) and alive(pid, began) is False:
         return "dead"
-    updated = _when(record.get("updated_at"))
+    updated = when(record.get("updated_at"))
     if updated is None or now - updated >= STALE_AFTER:
         return "stale"
     if record.get("state") == "needs-you":
@@ -67,7 +67,7 @@ def state(record: dict[str, object], now: datetime, alive: Alive) -> str:
 
 def _now(record: dict[str, object], now: datetime) -> str:
     text = record.get("now")
-    said = _when(record.get("now_at"))
+    said = when(record.get("now_at"))
     if not isinstance(text, str) or not text or said is None:
         return ""
     if now - said >= QUIET_AFTER:
@@ -82,10 +82,16 @@ def _last(record: dict[str, object]) -> str:
     return f"last {'ok' if record.get('last_ok') is not False else 'failed'}: {clean(text)}"
 
 
+def _request(record: dict[str, object], now: datetime) -> str:
+    asked = when(record.get("request_at"))
+    return f"request {age(now - asked)} ago" if asked is not None else ""
+
+
 def _doing(record: dict[str, object], now: datetime) -> str:
     item = record.get("item")
     parts = [
         clean(item) if isinstance(item, str) and item else "",
+        _request(record, now),
         _now(record, now),
         _last(record),
     ]
@@ -94,16 +100,16 @@ def _doing(record: dict[str, object], now: datetime) -> str:
 
 def row(record: dict[str, object], now: datetime, alive: Alive, columns: int = WIDTH) -> str:
     name = clean(str(record.get("name") or record.get("id") or "?"))
-    updated = _when(record.get("updated_at"))
-    when = age(now - updated) if updated else "?"
-    head = f"{fit(name, NAME)} {fit(state(record, now, alive), STATE)} {when:>{AGE}} "
+    updated = when(record.get("updated_at"))
+    since = age(now - updated) if updated else "?"
+    head = f"{fit(name, NAME)} {fit(state(record, now, alive), STATE)} {since:>{AGE}} "
     return (head + fit(_doing(record, now), max(columns, WIDTH) - width(head))).rstrip()
 
 
 def header(asks: list[dict[str, object]], now: datetime) -> list[str]:
     open_now, old = 0, 0
     for item in asks:
-        opened = _when(item.get("opened_at"))
+        opened = when(item.get("opened_at"))
         if "closed_at" in item or opened is None:
             continue
         if now - opened >= ASK_STALE_AFTER:

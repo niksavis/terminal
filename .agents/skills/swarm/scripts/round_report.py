@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from mermaid import climb_diagram, print_shown
+
 USAGE_LIMIT = 1024 * 1024
 DISPATCH_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:-]{0,159}")
 
@@ -176,7 +178,7 @@ def round_metrics(
     }
 
 
-def print_rounds(state: dict[str, Any]) -> None:
+def print_rounds(state: dict[str, Any], decision: str) -> None:
     print("Grades come from reviewer reports. Usage covers reported agents only.")
     print("| round | property | grade |\n|---|---|---|")
     for number, row in enumerate(state["rounds"], 1):
@@ -207,3 +209,4 @@ def print_rounds(state: dict[str, Any]) -> None:
         kinds = usage.get("cost_kinds", [])
         if kinds:
             print(f"Reported cost kinds for round {number}: {', '.join(kinds)}")
+    print_shown(climb_diagram(state, decision))

@@ -7,7 +7,7 @@ from pathlib import Path
 
 from orch_lessons.log import RefusedError
 
-from orch_state import relay_guard, status, store
+from orch_state import keepalive, relay_guard, status, store
 
 SESSION_ENVS = ("ORCH_SESSION_ID", "CLAUDE_CODE_SESSION_ID")
 NAME_ENV = "ORCH_MEMBER"
@@ -30,7 +30,9 @@ def add_parsers(groups: argparse._SubParsersAction) -> None:
         put.add_argument(flag)
     put.add_argument("--failed", action="store_true")
     put.add_argument("--state", choices=store.STATES)
+    put.add_argument("--after-reset", choices=keepalive.AFTER_RESET)
     groups.add_parser("status")
+    keepalive.add_parser(groups)
     groups.add_parser("brief")
     accept = groups.add_parser("accept")
     for flag in ("--record", "--repo", "--action"):
@@ -111,6 +113,7 @@ def set_state(
         "next": store.clean(args.next) if args.next is not None else None,
         "waiting_on": store.clean(args.waiting) if args.waiting is not None else None,
         "state": args.state,
+        "after_reset": getattr(args, "after_reset", None),
         **process_fields(os.getppid()),
     }
     if args.now is not None:
@@ -153,6 +156,8 @@ def run(
         return "\n".join(lines) if lines else "no session has written its state yet"
     if args.group == "ask":
         return run_ask(args, base(cwd, environ), clock)
+    if args.group == "keepalive":
+        return keepalive.run(args, base(cwd, environ), environ, clock())
     return None
 
 

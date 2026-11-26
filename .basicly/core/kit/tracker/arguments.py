@@ -256,6 +256,9 @@ def _add_write_parsers(sub: Any) -> None:
     closing.add_argument("record", nargs="+", help="the record ids to close")
     closing.add_argument("--reason", default="", help="why, recorded as a field")
     closing.add_argument("--resolution", choices=("completed", "cancelled"), default="completed")
+    closing.add_argument("--landed", metavar="COMMIT", help="the merge commit the landing proved")
+    closing.add_argument("--tests", help="JSON map of each criterion to its test file or null")
+    closing.add_argument("--superseded-by", default="", help="the record or tag that replaced it")
 
     _add_process_parsers(sub)
 

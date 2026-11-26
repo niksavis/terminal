@@ -179,6 +179,17 @@ Move one or more records to `closed`. The reason is the permanent record of what
 python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Shipped the importer fix; the round-trip test passes"
 ```
 
+A task, bug or chore that landed with `basicly worktree merge --mode ci` closes in one call by
+its landing evidence. The record must carry the landing-verification artifact for the commit,
+and `--tests` maps each acceptance criterion to a test file in that commit, or to `null`,
+which opens a follow-up record. `--superseded-by` closes a record that another record or a
+release tag replaced, as cancelled.
+
+```sh
+python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Landed the fix" --landed 4f1a7b3c --tests '{"the import round-trips": "tests/test_import.py"}'
+python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Replaced" --superseded-by acme-c3d4
+```
+
 ### assign
 
 Reserve a record for a person without changing its status, so that others see it is taken.
@@ -462,9 +473,11 @@ and has no `Record: none` line, and prints the claim command and `Record: none`.
 is the `(id)` that ends the subject, or a `Record: <id>` line. When the session holds exactly
 one claim, the hook adds the id in parentheses to the subject instead. Git-generated
 `Merge`, `Revert "`, `fixup!` and `squash!` messages pass, and a revert or fixup takes the id
-in the subject it repeats. A named record that this session does not hold, or whose claim has not reached the
-vault, passes with a warning and the claim command. When a fetch older than 20 s fails, the
-hook queues a local `miss` event for the record.
+in the subject it repeats. A named record that another session holds is refused: the hook names
+the holder and prints the `unassign RECORD --take` and `claim` commands. A named record with no
+holder, a claim that has not reached the vault, or a vault that cannot be reached passes with a
+notice line and the claim command. A closed record has no holder. When a fetch older than 20 s
+fails, the hook queues a local `miss` event for the record.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py commit-msg --vault path/to/vault.git .git/COMMIT_EDITMSG
