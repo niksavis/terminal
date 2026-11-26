@@ -31,10 +31,10 @@ instructions: |
      Supply host usage with `--usage DIR/rN/usage.json` when available.
      Follow [measurements](references/measurements.md) for the manifest and its limits.
      Missing usage stays unknown.
-     The script prints the decision, grades, finding counts and reported usage.
+     The script prints the decision, grades, finding counts and reported usage, and a mermaid block of the rounds when the reply view draws Mermaid.
      [Rounds](references/rounds.md) lists the existing stop rules and refusals.
   4. **Revise or stop.** On continue, revise the artifact from the findings, note what changed, and go to step 2. On stop, report.
-  5. **Report.** Give the final version, changes, grades, finding counts, reported usage and open decisions.
+  5. **Report.** Give the final version, changes, grades, finding counts, reported usage and open decisions, and the last round's mermaid block as printed when there is one.
      Name which verified finding or unresolved decision each revision addressed.
      Give one recommendation for each open decision.
      Report missing measurements and cost estimates explicitly.

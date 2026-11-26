@@ -23,6 +23,21 @@ RESET = re.compile(
 )
 
 
+COPILOT_SHELL = ("git status", "git diff", "git add", "git commit", "uv run", "pytest")
+COPILOT_DENY = ("shell(git push)", "shell(git reset)", "shell(git checkout)", "shell(rm)", "url")
+FORBIDDEN = (
+    "--allow-all",
+    "--allow-all-tools",
+    "--allow-all-paths",
+    "--allow-all-urls",
+    "--yolo",
+    "--autopilot",
+    "--dangerously-skip-permissions",
+    "--dangerously-bypass-approvals-and-sandbox",
+)
+RULE_FLAGS = ("--allow-tool=", "--deny-tool=", "--disallow-temp-dir")
+
+
 class UsageLimitError(RefusedError):
     pass
 
@@ -33,6 +48,8 @@ class Turn:
     session: str | None
     resume: bool
     model: str | None = None
+    read_only: bool = False
+    lane: str | None = None
 
 
 @dataclass(frozen=True)
@@ -44,6 +61,7 @@ class Reply:
 class Adapter(Protocol):
     name: str
     names_session: bool
+    resumes_read_only: bool
 
     def argv(self, turn: Turn) -> list[str]: ...
 
@@ -59,10 +77,11 @@ def _model(turn: Turn, flag: str) -> list[str]:
 class Claude:
     name = "claude"
     names_session = True
+    resumes_read_only = True
 
     def argv(self, turn: Turn) -> list[str]:
         session = ["--resume" if turn.resume else "--session-id", str(turn.session)]
-        mode = ["--permission-mode", "acceptEdits"]
+        mode = ["--permission-mode", "plan" if turn.read_only else "acceptEdits"]
         head = ["claude", "-p", turn.prompt, "--output-format", "json"]
         return [*head, *mode, *_model(turn, "--model"), *session]
 
@@ -83,12 +102,14 @@ class Claude:
 class Codex:
     name = "codex"
     names_session = False
+    resumes_read_only = False
 
     def argv(self, turn: Turn) -> list[str]:
         model = _model(turn, "-m")
         if turn.resume:
             return ["codex", "exec", "resume", "--json", *model, str(turn.session), turn.prompt]
-        return ["codex", "exec", "--json", "-s", "workspace-write", *model, turn.prompt]
+        sandbox = "read-only" if turn.read_only else "workspace-write"
+        return ["codex", "exec", "--json", "-s", sandbox, *model, turn.prompt]
 
     def reply(self, done: runner.Done, turn: Turn) -> Reply:
         session, text = turn.session, None
@@ -113,13 +134,37 @@ class Codex:
         return f"codex resume {session}"
 
 
+def _lane_rules(lane: str | None) -> list[str]:
+    if lane is None:
+        return []
+    allow = [f"--allow-tool=write({lane}/**)"]
+    allow += [f"--allow-tool=shell({command})" for command in COPILOT_SHELL]
+    deny = [f"--deny-tool={rule}" for rule in COPILOT_DENY]
+    return [*allow, *deny, "--disallow-temp-dir"]
+
+
+def refuse_bypass(vendor: str, argv: list[str]) -> None:
+    found = [part for part in argv if part.split("=", 1)[0] in FORBIDDEN]
+    if found:
+        raise RefusedError(
+            f"orch delegate never passes {', '.join(found)} to {vendor}; "
+            f"fix the adapter so the agent works inside its lane rules"
+        )
+
+
+def rules(argv: list[str]) -> list[str]:
+    return [part for part in argv if part.startswith(RULE_FLAGS)]
+
+
 class Copilot:
     name = "copilot"
     names_session = True
+    resumes_read_only = True
 
     def argv(self, turn: Turn) -> list[str]:
         session = f"--resume={turn.session}" if turn.resume else f"--session-id={turn.session}"
-        return ["copilot", "-p", turn.prompt, "--silent", *_model(turn, "--model"), session]
+        rules = ["--deny-tool=write"] if turn.read_only else _lane_rules(turn.lane)
+        return ["copilot", "-p", turn.prompt, "--silent", *rules, *_model(turn, "--model"), session]
 
     def reply(self, done: runner.Done, turn: Turn) -> Reply:
         if not done.out.strip():

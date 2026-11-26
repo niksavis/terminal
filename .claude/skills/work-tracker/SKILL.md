@@ -70,7 +70,7 @@ python3 .basicly/core/kit/tracker/cli.py confirm .basicly/ledger RECORD-ID --evi
 python3 .basicly/core/kit/tracker/cli.py close .basicly/ledger RECORD-ID --reason "why"
 ```
 
-1. **Find or file the record before the work.** Give it a `## Context` and at least one acceptance criterion; a record bigger than `size=small` also needs `review --evidence` before the claim. Run `create` alone and read the id from its reply; the `tracker-commit-msg` hook refuses a commit that names an id the ledger does not hold.
+1. **Find or file the record before the work.** Give it a `## Context` and at least one acceptance criterion; a feature, epic or research record also needs `review --evidence` before the claim; a task, bug or chore does not. Run `create` alone and read the id from its reply; the `tracker-commit-msg` hook refuses a commit that names an id the ledger does not hold.
 2. **Claim it before the first edit.** In ledger mode, push so others can see it. In vault mode, use the native canonical claim, then set `in_progress` through update; the claim has its own exit codes and does not bypass readiness. A refusal names its remedy; follow it before retrying.
 3. **Confirm, then close it** once the whole task is done: `confirm` records each criterion with its command and result, as `{"checks": [{"criterion": "...", "command": ["argv"], "result": "what you saw", "exit_code": 0}]}`, and `close` refuses without it.
 4. **Commit with the id in the subject.** In ledger mode, stage the code and `.basicly/ledger` together; make no separate close commit. Vault mode writes no local ledger events.

@@ -189,13 +189,18 @@ def _fetch_twice(clone: Clone, runner: Runner, timeout: float) -> bool:
 
 def durable(path: Path, text: str, *, append: bool = False) -> None:
 
-    target = path if append else path.with_name(path.name + ".tmp")
-    with target.open("a" if append else "w", encoding="utf-8") as stream:
-        stream.write(text)
-        stream.flush()
-        os.fsync(stream.fileno())
-    if not append:
-        target.replace(path)
+    target = path if append else events.temporary_beside(path)
+    try:
+        with target.open("a" if append else "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if not append:
+            target.replace(path)
+    except BaseException:
+        if not append:
+            target.unlink(missing_ok=True)
+        raise
 
 
 def _read(path: Path) -> str:

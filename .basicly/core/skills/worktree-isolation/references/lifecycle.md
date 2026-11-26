@@ -1,5 +1,16 @@
 # Worktree lifecycle
 
+## Contents
+
+- [Steps](#steps)
+- [Hooks](#hooks)
+- [Claude Code](#claude-code)
+- [Protected destinations](#protected-destinations)
+- [Landing lock](#landing-lock)
+- [Land on CI](#land-on-ci)
+- [Land through a pull request](#land-through-a-pull-request)
+- [Merge several](#merge-several)
+
 ## Steps
 
 1. **Create.** The worktree gets the branch `harness/<name>`, from `[worktree].base_branch` in `basicly.toml` or the current branch.
@@ -85,6 +96,22 @@ It exits 1 and prints a note when the base stays unverified or unpushed, or a `l
 If the base moved during the wait, run the merge again: a tree equal outside the ledger reuses the proof, and a code change starts a new run.
 When the workflow carries the `ci-reuse` step, the push run on the base reuses the proving run and logs `ci-reuse: reuse`.
 Without `gh`, or while GitHub is down, land with `--mode full`, the default.
+
+## Land through a pull request
+
+`basicly worktree merge NAME --bead RECORD-ID --delivery pr` lets GitHub merge the lane. `[delivery] adapter = "pr"` in `basicly.toml` makes it the default; without the key the lander above stays the default. basicly's own repository sets it, so its lanes land through pull requests, and `--delivery lander` is the fallback when GitHub is down.
+It runs every check of `--mode ci` up to the proof: the record binding, the rebase, the regenerated files, the engine guard and the `local_only` checks.
+It refuses a lane head that does not contain `origin/BASE`, because the pull request would then prove a tree that the base never gets. Run `git pull --ff-only` in the base checkout and merge again.
+It pushes the head to a new branch `pr/NAME/HEAD12`, never a force-push, and opens a pull request or reuses the open one on the same head.
+It waits for a `pull_request` run of every landing workflow on that exact head. A landing workflow without a `pull_request` trigger is refused by name. A failed run refuses and the pull request stays open.
+A pull request runs again only on a new head, so a head that already failed is refused before any push. Commit a fix, or retry the same tree once with `git commit --allow-empty` or a rebase on the base.
+The rerun limit counts the failed runs of every earlier `pr/NAME/` head with the same tree outside the ledger, as `--mode ci` does: a tree gets one more run after a failure, and after a second failure the lane must change. A pass only on a rerun attempt is refused.
+It checks `origin/BASE` again right before the merge; when the base moved during the wait, it refuses and leaves the pull request open.
+Then `gh pr merge --merge --match-head-commit HEAD` merges it on GitHub with a conventional subject that names the record. The adapter never pushes the base itself.
+It checks that the merge commit has the proved tree, writes the `landing-verification` artifact for the merge commit and fast-forwards the local base.
+Then it sweeps every `pr/NAME/` branch: it closes each other open pull request with a comment that names the merged one, and deletes a branch through the cleanup path when its head is on the base or the base holds every path it changed. It lists a kept branch.
+`basicly worktree cleanup NAME` runs the same sweep, also after the lane worktree is gone. `close --landed COMMIT` then accepts the merge commit.
+The merge queue of GitHub is not available to repositories that a user account owns, so this adapter uses required checks on the pull request.
 
 ## Merge several
 

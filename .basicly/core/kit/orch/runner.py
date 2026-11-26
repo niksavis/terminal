@@ -22,20 +22,36 @@ def which(name: str, path: str | None) -> str | None:
     return shutil.which(name, path=path)
 
 
-def capture(argv: list[str], timeout: float, cwd: str | None = None) -> Done:
+def capture(
+    argv: list[str], timeout: float, cwd: str | None = None, env: dict[str, str] | None = None
+) -> Done:
     done = subprocess.run(  # nosec B603 - list argv from the caller, no shell
-        argv, capture_output=True, text=True, check=False, timeout=timeout, cwd=cwd
+        argv, capture_output=True, text=True, check=False, timeout=timeout, cwd=cwd, env=env
     )
     return Done(done.returncode, done.stdout, done.stderr)
 
 
-def attempt(argv: list[str], timeout: float, cwd: str | None = None) -> Done:
+def attempt(
+    argv: list[str], timeout: float, cwd: str | None = None, env: dict[str, str] | None = None
+) -> Done:
     try:
-        return capture(argv, timeout, cwd)
+        return capture(argv, timeout, cwd, env)
     except OSError as missing:
         return Done(127, "", f"{argv[0]} cannot start: {missing.strerror or missing}")
     except subprocess.TimeoutExpired:
         return Done(124, "", f"{argv[0]} ran past {timeout:.0f} s and was stopped")
+
+
+def attempt_env(argv: list[str], timeout: float, env: dict[str, str]) -> Done:
+    try:
+        done = subprocess.run(  # nosec B603 - list argv from the caller, no shell
+            argv, capture_output=True, text=True, check=False, timeout=timeout, env=env
+        )
+    except OSError as missing:
+        return Done(127, "", f"{argv[0]} cannot start: {missing.strerror or missing}")
+    except subprocess.TimeoutExpired:
+        return Done(124, "", f"{argv[0]} ran past {timeout:.0f} s and was stopped")
+    return Done(done.returncode, done.stdout, done.stderr)
 
 
 def relay(argv: list[str], data: bytes, during: Callable[[], None]) -> tuple[int, bytes]:

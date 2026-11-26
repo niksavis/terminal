@@ -39,6 +39,8 @@ claims = _load("claims.py", "basicly_tracker_kit_claims")
 git_layout = _load("git_layout.py", "basicly_tracker_kit_git_layout")
 vault_write = _load("vault_write.py", "basicly_tracker_kit_vault_write")
 holder_writes = _load("holder_writes.py", "basicly_tracker_kit_holder_writes")
+closing = _load("closing.py", "basicly_tracker_kit_closing")
+process_write = _load("process_write.py", "basicly_tracker_kit_process_write")
 differential = queries.differential
 events = differential.events
 migrate = differential.migrate
@@ -190,21 +192,50 @@ def close(
     resolution: str = "completed",
     context: Any = None,
 ) -> list:
+    ending = closing.Ending(reason=reason, resolution=resolution)
+    return close_with(directory, records, ending=ending, context=context)
+
+
+def close_with(
+    directory: Path | str, records: Sequence[str], *, ending: Any, context: Any = None
+) -> list:
 
     admitted, context = vault_write.admission(directory, context, environment())
     ledger = _ledger(admitted)
     if not records:
         raise TrackerCommandError("close names no record")
+    resolution = ending.resolution
+    extra: dict[str, object] = {}
+    if ending.landed:
+        state = _require(ledger, records[0])
+        extra[closing.landing.FIELD] = closing.evidence(state, ending.landed, ending.tests)
+    if ending.superseded_by:
+        folded = events.fold(events.read_events(ledger)[0]).records
+        extra[closing.SUPERSEDED_FIELD] = closing.superseded(folded, ending.superseded_by)
+        resolution = "cancelled"
     with events.LedgerLock(ledger) as lock:
         drafts = []
         for record in records:
             _require(ledger, record)
-            if reason:
+            drafts += [
+                events.Draft(
+                    record,
+                    events.KIND_FIELD,
+                    {"name": name, "value": value}
+                    | (
+                        {review.process.VERSION_FIELD: review.process.VERSION}
+                        if name in review.process.MANAGED_FIELDS
+                        else {}
+                    ),
+                )
+                for name, value in extra.items()
+            ]
+            if ending.reason:
                 drafts.append(
                     events.Draft(
                         record,
                         events.KIND_FIELD,
-                        {"name": CLOSE_REASON_FIELD, "value": reason},
+                        {"name": CLOSE_REASON_FIELD, "value": ending.reason},
                     )
                 )
             drafts.append(
@@ -403,7 +434,7 @@ def resolve(directory: Path | str, record: str, *, context: Any = None) -> list:
         return appended
 
 
-record_process = review.process.record_process
+record_process = process_write.record_process
 assign = holder_writes.assign
 claim = holder_writes.claim
 unassign = holder_writes.unassign

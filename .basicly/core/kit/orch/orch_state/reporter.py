@@ -24,6 +24,7 @@ EVENT_STATES = {
     "Stop": "idle",
 }
 ASKING = frozenset({"permission_prompt", "elicitation_dialog"})
+REQUEST_EVENTS = frozenset({"UserPromptSubmit", "PostToolUse", "Stop"})
 TAIL_BYTES = 262_144
 NAME_ENTRIES = (("custom-title", "customTitle"), ("agent-name", "agentName"))
 
@@ -121,6 +122,8 @@ def write_state(event: dict[str, object], environ: dict[str, str], clock: store.
         "project": store.project(cwd),
         **commands.process_fields(os.getppid()),
     }
+    if event.get("hook_event_name") in REQUEST_EVENTS:
+        changes["request_at"] = changes["state_at"]
     title = event.get("session_title")
     current = store.read(store.session_path(root, session)).get("name")
     if isinstance(title, str) and title.strip():
