@@ -616,7 +616,8 @@ def test_setup_installs_the_agents_command_on_macos(tmp_path: Path) -> None:
 
     script = tmp_path / ".local" / "bin" / "agents"
     assert script.read_text(encoding="utf-8") == _rendered("agents")
-    assert script.stat().st_mode & 0o111
+    if sys.platform != "win32":
+        assert script.stat().st_mode & 0o111
 
 
 needs_pwsh = pytest.mark.skipif(shutil.which("pwsh") is None, reason="runs agents.ps1 in pwsh")
