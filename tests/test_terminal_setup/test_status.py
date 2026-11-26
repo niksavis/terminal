@@ -52,6 +52,35 @@ def test_version_of_reads_the_first_version_number(text: str, version: str) -> N
     assert status.version_of(text) == version
 
 
+_SHELLCHECK_VERSION = (
+    "ShellCheck - shell script analysis tool\nversion: 0.11.0\nlicense: GNU General Public License"
+)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="runs the WSL probe script with sh")
+def test_the_host_and_wsl_readers_take_the_version_from_a_later_line(tmp_path: Path) -> None:
+    tool = tmp_path / ".local" / "bin" / "shellcheck"
+    tool.parent.mkdir(parents=True)
+    tool.write_text(f"#!/bin/sh\nprintf '%s\\n' '{_SHELLCHECK_VERSION}'\n", encoding="utf-8")
+    tool.chmod(0o755)
+    runner = mock.Mock()
+    runner.run.return_value = subprocess.CompletedProcess([], 0, _SHELLCHECK_VERSION, "")
+
+    host = cli._host_version(runner, "shellcheck", str(tool))
+
+    def run_in_sh(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        env = {**os.environ, "HOME": str(tmp_path)}
+        return subprocess.run(command, check=False, capture_output=True, text=True, env=env)
+
+    runner.run.side_effect = run_in_sh
+    with mock.patch.object(cli, "is_running_in_wsl", return_value=True):
+        path, wsl = cli._wsl_command_info(runner, _windows_platform(), "shellcheck")
+
+    assert status.version_of(host) == "0.11.0"
+    assert path == str(tool)
+    assert status.version_of(wsl) == "0.11.0"
+
+
 @pytest.mark.parametrize(
     ("installed", "latest", "expected"),
     [

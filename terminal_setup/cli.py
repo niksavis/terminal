@@ -288,6 +288,15 @@ def _first_line(text: str) -> str:
     return lines[0].strip() if lines else ""
 
 
+_VERSION_LINE_SHELL = "grep -m 1 '[0-9]'"
+
+
+def _version_line(text: str) -> str:
+    lines = [line.strip() for line in text.strip().splitlines()]
+    with_digit = (line for line in lines if any(char.isdigit() for char in line))
+    return next(with_digit, lines[0] if lines else "")
+
+
 def _windows_tool_info(
     runner: Runner, platform_info: platform.PlatformInfo, command: str
 ) -> tuple[str, str, str] | None:
@@ -300,7 +309,7 @@ def _windows_tool_info(
         path = str(local)
         note = ", restart terminal for PATH"
     result = runner.run([path, "--version"], check=False, dry_run_safe=True)
-    version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
+    version = _version_line(result.stdout or result.stderr or "") or "version unreadable"
     scope = "user profile" if prerequisites.is_user_scope(path, platform_info) else "machine-wide"
     return path, version, f"{scope}{note}"
 
@@ -472,7 +481,8 @@ def _wsl_command_info(
     version_step = (
         ""
         if command in NO_VERSION
-        else f'; "$p" {VERSION_FLAGS.get(command, "--version")} </dev/null 2>&1 | head -n 1'
+        else f'; "$p" {VERSION_FLAGS.get(command, "--version")} </dev/null 2>&1 '
+        f"| {_VERSION_LINE_SHELL}"
     )
     script = (
         f"p=$(if test -x ~/.local/bin/{command}; then echo ~/.local/bin/{command}; "
@@ -589,7 +599,7 @@ def _report_windows_tool(
         _report_status(runner, label, False, "not found")
         return
     result = runner.run([path, "--version"], check=False, dry_run_safe=True)
-    version = _first_line(result.stdout or result.stderr or "") or "version unreadable"
+    version = _version_line(result.stdout or result.stderr or "") or "version unreadable"
     origin = windows_tools.ORIGIN_LABELS[windows_tools.classify(path, platform_info, tool)]
     _report_status(runner, label, True, f"{path}, {version}, {origin}{note}")
     for hidden in windows_tools.all_copies(tool.command, platform_info)[1:]:
@@ -650,7 +660,7 @@ def _host_version(runner: Runner, command: str, path: str) -> str:
         return ""
     flag = VERSION_FLAGS.get(command, "--version")
     result = runner.run([path, flag], check=False, dry_run_safe=True)
-    return _first_line(result.stdout or result.stderr or "")
+    return _version_line(result.stdout or result.stderr or "")
 
 
 def _print_host_report(
