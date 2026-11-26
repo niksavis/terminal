@@ -1861,7 +1861,7 @@ def _link_debian_renamed_tools(runner: Runner, distro: str | None) -> None:
     )
     _run_in_wsl_or_host(
         runner,
-        ["sh", "-c", f"mkdir -p ~/.local/bin; {fd_alias}; {bat_alias}"],
+        ["sh", "-c", f"mkdir -p ~/.local/bin || exit 1; {fd_alias}; {bat_alias}"],
         distro=distro,
         label="create ~/.local/bin and link fd and bat",
     )

@@ -260,7 +260,8 @@ def ensure_agents(
     _CURRENT_CODEX.clear()
     if update:
         with ThreadPoolExecutor(max_workers=len(AGENTS)) as pool:
-            list(pool.map(latest_agent_version, AGENTS))
+            for agent in AGENTS:
+                pool.submit(latest_agent_version, agent)
     for agent in AGENTS:
         named = agent in selected
         if not named and not update:
