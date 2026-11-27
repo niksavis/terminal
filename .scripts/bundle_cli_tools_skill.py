@@ -17,6 +17,7 @@ BUNDLE = ROOT / "terminal_setup" / "templates" / "cli-tools"
 SKILL = "cli-tools"
 REFRESH = "uv run python .scripts/bundle_cli_tools_skill.py"
 INSTALL_STATE = ".basicly/state/install.json"
+REMOVES_FILES = 3
 
 
 def in_ci(environ: dict[str, str] | None = None) -> bool:
@@ -94,7 +95,7 @@ def check(spec: str, bundle: Path = BUNDLE, *, ci: bool) -> int:
     return 1
 
 
-def refresh(spec: str, bundle: Path = BUNDLE) -> int:
+def refresh(spec: str, bundle: Path = BUNDLE, *, in_hook: bool = False) -> int:
     with tempfile.TemporaryDirectory() as scratch:
         result = render(spec, Path(scratch), offline=False)
         if result.returncode != 0:
@@ -104,6 +105,17 @@ def refresh(spec: str, bundle: Path = BUNDLE) -> int:
     if not files:
         print(f"cli-tools bundle: {spec} wrote no {SKILL} skill", file=sys.stderr)
         return 1
+    removed = sorted(tree(bundle).keys() - files.keys()) if in_hook else []
+    if removed:
+        folder = bundle.relative_to(ROOT).as_posix()
+        for name in removed:
+            print(f"cli-tools bundle: the new pin removes {folder}/{name}", file=sys.stderr)
+        print(
+            "cli-tools bundle: the commit hook cannot remove files, so nothing was written; run "
+            f"{REFRESH}, then git add -A {folder}, then commit again",
+            file=sys.stderr,
+        )
+        return REMOVES_FILES
     write_bundle(files, bundle)
     print(f"cli-tools bundle: wrote {len(files)} files to {bundle.relative_to(ROOT).as_posix()}")
     return 0
@@ -124,7 +136,10 @@ def refresh_staged(staged: list[str], spec: str, bundle: Path = BUNDLE) -> int:
     if INSTALL_STATE not in staged:
         return 0
     print(f"cli-tools bundle: {INSTALL_STATE} is staged, so the bundle follows the pin")
-    if refresh(spec, bundle) != 0:
+    code = refresh(spec, bundle, in_hook=True)
+    if code == REMOVES_FILES:
+        return 1
+    if code != 0:
         print(
             f"cli-tools bundle: the refresh failed; run {REFRESH}, then "
             f"git add {bundle.relative_to(ROOT).as_posix()}",

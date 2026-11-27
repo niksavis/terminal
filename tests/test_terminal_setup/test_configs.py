@@ -1911,7 +1911,7 @@ def test_the_bundle_follows_a_staged_basicly_pin(monkeypatch: pytest.MonkeyPatch
     refreshed: list[str] = []
     added: list[list[str]] = []
 
-    def fake_refresh(spec: str, _bundle: Path) -> int:
+    def fake_refresh(spec: str, _bundle: Path, **_options: object) -> int:
         refreshed.append(spec)
         return 0
 
@@ -1928,6 +1928,37 @@ def test_the_bundle_follows_a_staged_basicly_pin(monkeypatch: pytest.MonkeyPatch
     assert script.refresh_staged([".basicly/state/install.json"], "spec", bundle) == 0
     assert refreshed == ["spec"]
     assert added == [["git", "add", "-A", "--", "terminal_setup/templates/cli-tools"]]
+
+
+def test_the_hook_refresh_refuses_a_pin_that_removes_a_file(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    script = cast("Any", _load_bundle_script())
+    bundle = script.ROOT / "terminal_setup" / "templates" / "cli-tools-probe"
+    monkeypatch.setattr(script, "write_bundle", lambda *_a: pytest.fail("the hook wrote files"))
+
+    def new_pin(_spec: str, home: Path, **_options: object) -> subprocess.CompletedProcess[str]:
+        skill = home / ".claude" / "skills" / "cli-tools"
+        skill.mkdir(parents=True)
+        (skill / "SKILL.md").write_text("new", encoding="utf-8")
+        return subprocess.CompletedProcess([], 0, "", "")
+
+    monkeypatch.setattr(script, "render", new_pin)
+    monkeypatch.setattr(
+        script,
+        "tree",
+        lambda root: (
+            {"SKILL.md": "old", "references/gone.md": "x"}
+            if root == bundle
+            else {"SKILL.md": "new"}
+        ),
+    )
+
+    assert script.refresh_staged([".basicly/state/install.json"], "spec", bundle) == 1
+    err = capsys.readouterr().err
+    assert "the new pin removes terminal_setup/templates/cli-tools-probe/references/gone.md" in err
+    assert "git add -A terminal_setup/templates/cli-tools-probe, then commit again" in err
+    assert not bundle.exists()
 
 
 def _run_cli_tools_wsl_script(home: Path) -> subprocess.CompletedProcess[str]:
