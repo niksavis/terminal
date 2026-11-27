@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.3 - 2026-11-27
+
+Delta: v0.26.2..v0.26.3
+
+### Highlights
+
+- **Setup no longer hangs when WSL cannot reach GitHub.** Before, setup waited up to 60 s for each of the 17 release tools. Now a check of at most 8 s names the host that fails. Setup then skips the GitHub release tools, herdr, starship and the `cli-tools` skill install in WSL, and the other steps run as usual. When Windows reaches GitHub, the message says to run `wsl --shutdown` first. [Windows and WSL setup](docs/windows-wsl-setup.md#wsl-networking-behind-a-vpn) has the next steps (term-djk9n0).
+- **The harness is basicly 0.49.6.** Setup installs the basicly `cli-tools` skill from the basicly v0.49.6 wheel, once after this update (term-dfpe1d).
+
+### Commit delta (auto-generated)
+
+- fix(setup): bound the github probe by one deadline and keep presence answers offline (term-djk9n0) (dfd7136)
+- fix(setup): name the wsl restart first and probe the release asset host (term-djk9n0) (c0d468d)
+- fix(setup): probe github once so a blocked wsl network fails fast (term-djk9n0) (a8a2c61)
+- chore(basicly): install the released kit (term-dfpe1d) (dfe84fe)
+
 ## v0.26.2 - 2026-11-26
 
 Delta: v0.26.1..v0.26.2

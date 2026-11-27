@@ -1,1 +1,0 @@
-- Setup no longer hangs for minutes when WSL cannot reach GitHub. A check of at most 8 s names the host that fails and the likely cause, and setup skips the GitHub release tools, herdr, starship and the `cli-tools` skill install in WSL instead of waiting on each one. When Windows reaches GitHub, the message says to run `wsl --shutdown` first.
