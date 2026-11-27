@@ -16,7 +16,7 @@ The active local git hooks are the basicly catalog hooks (`.basicly/core/hooks/`
 | Script                                               | Purpose                                                |
 | ---------------------------------------------------- | ------------------------------------------------------ |
 | [`git-hooks/pre-commit.py`](git-hooks/pre-commit.py) | ruff, pyright, bandit, markdownlint, cheat-sheet check |
-| [`git-hooks/pre-push.py`](git-hooks/pre-push.py)     | pytest                                                 |
+| [`git-hooks/pre-push.py`](git-hooks/pre-push.py)     | pytest: changed tests only locally, whole suite in CI  |
 
 See the root [README.md](../README.md) for installation and usage instructions.
 
