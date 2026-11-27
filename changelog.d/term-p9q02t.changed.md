@@ -1,0 +1,1 @@
+- **For contributors: the repository runs basicly v0.50.0.** The kit, the CI gate pins and the contributor docs move from v0.49.6 to v0.50.0, and the bundled `cli-tools` skill follows the new pin (term-p9q02t).

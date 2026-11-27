@@ -278,6 +278,18 @@ def check_source(directory: Path) -> Path | None:
     return None
 
 
+def refuse_local_fsck(directory: Path) -> None:
+    if not directory.is_file():
+        return
+    check(directory)
+    config = _load("vault_config").load(directory.parent.parent)
+    vault = config.vault if config is not None else "URL"
+    raise FreezeError(
+        f"{directory.as_posix()} is the frozen guard file of a vault consumer, so its records "
+        f"live in the vault; run `python3 .basicly/core/kit/tracker/cli.py fsck --vault {vault}`"
+    )
+
+
 def refuse_append(directory: Path) -> None:
     check_source(directory)
     if directory.is_file():

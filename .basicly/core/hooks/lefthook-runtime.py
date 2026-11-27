@@ -8,6 +8,7 @@ import re
 import subprocess  # nosec B404
 import sys
 import tempfile
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -371,8 +372,19 @@ def main() -> int:
         print(f"basicly hook failed: {exc}", file=sys.stderr)
         return 2
     except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
-        print(f"basicly hook failed: {type(exc).__name__}", file=sys.stderr)
+        print(f"basicly hook failed: {described(exc)}", file=sys.stderr)
         return 2
+
+
+def described(exc: BaseException) -> str:
+    hooks = Path(__file__).resolve().parent
+    frames = traceback.extract_tb(exc.__traceback__)
+    own = [frame for frame in frames if Path(frame.filename).resolve().parent == hooks] or frames
+    place = f" at {Path(own[-1].filename).name}:{own[-1].lineno}" if own else ""
+    text = str(exc)
+    for private in (str(Path.cwd()), str(Path.home())):
+        text = text.replace(private, ".")
+    return f"{type(exc).__name__}: {text}{place}" if text else f"{type(exc).__name__}{place}"
 
 
 if __name__ == "__main__":

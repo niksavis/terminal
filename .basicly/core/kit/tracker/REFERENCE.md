@@ -182,7 +182,7 @@ python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Sh
 A task, bug or chore that landed with `basicly worktree merge --mode ci` closes in one call by
 its landing evidence. The record must carry the landing-verification artifact for the commit,
 and `--tests` maps each acceptance criterion to a test file in that commit, or to `null`,
-which opens a follow-up record. `--superseded-by` closes a record that another record or a
+which opens a follow-up record that asks for a test or a recorded run. `--superseded-by` closes a record that another record or a
 release tag replaced, as cancelled.
 
 ```sh
@@ -193,7 +193,7 @@ python3 .basicly/kit/tracker/cli.py close .basicly/ledger acme-a1b2 --reason "Re
 ### assign
 
 Reserve a record for a person without changing its status, so that others see it is taken.
-The holder is `--to`, or else the name you choose with `BASICLY_HOLDER` or `git config basicly.holder`, or else `git config user.name`. The ledger records that name, so choose a pseudonym when your git name must not be committed. A record that someone else holds is
+The holder is `--to`, or else the pseudonym you choose with `BASICLY_HOLDER` or `git config basicly.holder`. The ledger records that name. With no pseudonym, the claim is refused and names `git config basicly.holder PSEUDONYM`, because the ledger must not record a real name. A record that someone else holds is
 refused with the holder's name; `--take` takes it on purpose, and the ledger records that.
 
 ```sh
@@ -237,7 +237,7 @@ python3 .basicly/kit/tracker/cli.py resolve .basicly/ledger acme-a1b2
 ### unassign
 
 Give a reserved record back. Only its holder can do this: `--by` names who gives it back
-(default: `git config user.name`). Anyone else is refused with the holder's name. To release
+(default: your pseudonym from `BASICLY_HOLDER` or `git config basicly.holder`). Anyone else is refused with the holder's name. To release
 another holder's record on purpose, pass `--take`, which the ledger records.
 
 ```sh
@@ -334,7 +334,10 @@ python3 .basicly/kit/tracker/cli.py status --vault path/to/vault.git
 
 `hook EVENT --vault` runs from an agent hook and never fails the agent. `session-start` and
 `prompt` fetch with a 3 s deadline at most every 20 s, then share only when this clone's bulk
-slot is due (180 s after its last share). `stop` and `session-end` share the whole queue. A
+slot is due (180 s after its last share). `stop` and `session-end` share the whole queue. Their report gives `queued`, the count still
+queued, and `left`, each queued id. When an event stays queued, because the vault cannot be
+reached or another share holds the lock, `next` names the command that shares it:
+`sync --vault URL`. A
 person's write shares at once when the slot is due; otherwise a later `fetch` or write shares
 it. `status --vault` makes no network call: it prints the fetch age, the last shared event and
 its age per writer, the queued count and the oldest queued age, and any unrepaired retraction.
@@ -471,7 +474,9 @@ With `--vault`, `commit-msg` checks the message file against the vault claims of
 (`--session`, else `BASICLY_TRACKER_SESSION`, else `ORCH_SESSION_ID` or `CLAUDE_CODE_SESSION_ID`). It exits 1 when the message names no record id
 and has no `Record: none` line, and prints the claim command and `Record: none`. A record id
 is the `(id)` that ends the subject, or a `Record: <id>` line. When the session holds exactly
-one claim, the hook adds the id in parentheses to the subject instead. Git-generated
+one open claim with the prefix that `.basicly-tracker.toml` names, the hook adds the id in
+parentheses to the subject instead. Claims of other projects that share the vault are never
+added or listed. Git-generated
 `Merge`, `Revert "`, `fixup!` and `squash!` messages pass, and a revert or fixup takes the id
 in the subject it repeats. A named record that another session holds is refused: the hook names
 the holder and prints the `unassign RECORD --take` and `claim` commands. A named record with no

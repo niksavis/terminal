@@ -99,7 +99,9 @@ def _legacy(root: Path) -> int:
     pending = git(root, "rev-list", "--count", "@{u}..HEAD")
     if pending.returncode == 0 and pending.stdout.strip() == "0":
         return 0
-    status = git(root, "status", "--porcelain", "--", ".", ":(exclude).basicly/ledger")
+    status = git(
+        root, "--no-optional-locks", "status", "--porcelain", "--", ".", ":(exclude).basicly/ledger"
+    )
     if (
         status.returncode
         or status.stdout.strip()

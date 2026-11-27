@@ -105,8 +105,18 @@ def hook(event: str, clone: Any, state: Path, *, clock: Clock) -> dict[str, obje
             except events.LockUnavailableError:
                 shared = {"deferred": "another share in this clone is running and takes the queue"}
     except _KEPT as exc:
-        return {"hook": event, "skipped": str(exc), "queued": len(_queued(clone))}
-    return {"hook": event, "fetched": fetched, "shared": shared, "queued": len(_queued(clone))}
+        return _left(event, clone, {"hook": event, "skipped": str(exc)})
+    return _left(event, clone, {"hook": event, "fetched": fetched, "shared": shared})
+
+
+def _left(event: str, clone: Any, report: dict[str, object]) -> dict[str, object]:
+    queued = _queued(clone)
+    report["queued"] = len(queued)
+    if event in ENDS:
+        report["left"] = [line.get("id") for line in queued]
+        if queued:
+            report["next"] = vault_queue.share_command(clone.url)
+    return report
 
 
 def status(clone: Any, *, clock: Clock) -> dict[str, object]:

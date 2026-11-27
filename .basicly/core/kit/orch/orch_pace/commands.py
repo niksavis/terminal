@@ -23,6 +23,9 @@ SETUP = (
     "wrap the status line command in ~/.claude/settings.json as "
     "'orch-statusline-tap -- <your command>' (docs/design/usage-snapshot.md)"
 )
+PACE_CONFIG = "pace.json"
+SESSION_RATE = "session_rate_pct_per_hour"
+SESSION_RATE_DEFAULT = 5.0
 START_MARK = "[pace start]"
 DONE_MARK = "[pace done]"
 START_NOTE = re.compile(
@@ -95,9 +98,29 @@ def show(
     lines += [plan.line(p, now) for p in paces]
     lines.append(f"advice: {plan.overall(paces)}")
     if "five_hour" in windows:
-        lines.append(plan.fit_line(windows["five_hour"], now, working_count(cwd, environ)))
+        count = working_count(cwd, environ)
+        lines.append(plan.fit_line(windows["five_hour"], now, count))
+        assumed = session_rate(store.find(cwd, environ))
+        lines.append(plan.sessions_line(windows["five_hour"], now, count, assumed))
     lines += costs.lines(cwd, tracker)
     return "\n".join(lines)
+
+
+def session_rate(root: Path | None) -> float:
+    path = root / PACE_CONFIG if root else None
+    if path is None or not path.is_file():
+        return SESSION_RATE_DEFAULT
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise RefusedError(f"the pace config {path} is not readable JSON; fix it") from error
+    found = value.get(SESSION_RATE, SESSION_RATE_DEFAULT) if isinstance(value, dict) else None
+    if isinstance(found, bool) or not isinstance(found, int | float) or found <= 0:
+        raise RefusedError(
+            f"the pace config {path} needs {SESSION_RATE} as a number above 0, "
+            f'for example {{"{SESSION_RATE}": {SESSION_RATE_DEFAULT:g}}}'
+        )
+    return float(found)
 
 
 def _dead(session: dict[str, object]) -> bool:

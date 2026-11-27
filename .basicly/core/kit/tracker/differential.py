@@ -186,9 +186,21 @@ def edge_dialects(ledger_events: Iterable[Any]) -> tuple[str, ...]:
     return tuple(sorted(seen))
 
 
+class QuarantinedLineError(ValueError):
+    pass
+
+
 def read_ledger(directory: Path | str) -> list[Any]:
 
-    found, _ = events.read_events(directory)
+    found, quarantined = events.read_events(directory)
+    if quarantined:
+        named = ", ".join(f"{bad.path.name}:{bad.line_number}" for bad in quarantined)
+        raise QuarantinedLineError(
+            f"the ledger holds {len(quarantined)} line(s) that are not events ({named}), so its "
+            "records cannot be read whole; run `fsck --vault URL` in a vault consumer, or "
+            f"`fsck {Path(directory).as_posix()}` for a local ledger, to see each line, then "
+            "restore the file from git or remove the merge-conflict lines"
+        )
     return found
 
 

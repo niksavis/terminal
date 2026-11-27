@@ -61,6 +61,7 @@ class Commit:
     session: str
     clock: Clock
     runner: Callable[..., str] = git_runner.run
+    prefix: str = ""
 
 
 def _lines(text: str) -> list[str]:
@@ -130,13 +131,19 @@ def _reached(commit: Commit) -> bool:
     return bool(fetched.get("fetched"))
 
 
-def _held(folded: Any, writer: str, session: str) -> list[str]:
+def _of_prefix(record: str, prefix: str) -> bool:
+    return not prefix or record.split(ids.PREFIX_SEP, 1)[0] == prefix
+
+
+def _held(folded: Any, writer: str, session: str, prefix: str) -> list[str]:
     if not session:
         return []
     return sorted(
         name
         for name, state in folded.records.items()
-        if state.holder == (writer, session) and state.status != "closed"
+        if state.holder == (writer, session)
+        and state.status != "closed"
+        and _of_prefix(name, prefix)
     )
 
 
@@ -248,7 +255,7 @@ def check(commit: Commit) -> dict[str, object]:
     folded = vault_fold.fold(vault_clone.valid_events(commit.clone))
     report: dict[str, object] = {"exit": ACCEPTED, "reached": reached, "session": commit.session}
     if record is None:
-        held = _held(folded, writer, commit.session)
+        held = _held(folded, writer, commit.session, commit.prefix)
         if len(held) != 1:
             return {
                 **_refusal(commit.clone.url, held),

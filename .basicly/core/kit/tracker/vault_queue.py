@@ -38,8 +38,12 @@ vault_personal = _load("vault_personal.py", "basicly_tracker_kit_vault_personal"
 
 QUEUE_NAME = "queue.jsonl"
 WRITER_NAME = "writer.id"
-SHARED_BY = "the next Stop or SessionEnd hook, or `share --vault` with the same vault"
+SHARED_BY = "the next Stop or SessionEnd hook, or `sync --vault` with the same vault"
 _MAX_RECORD = 200
+
+
+def share_command(url: str) -> str:
+    return f"sync --vault {url}"
 
 
 class QueueError(ValueError):

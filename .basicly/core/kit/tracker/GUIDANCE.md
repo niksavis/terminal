@@ -142,6 +142,8 @@ branches; the two agree who keeps it, then run `resolve` to keep the current hol
 These directory forms describe ledger mode.
 For vault claims and comments, use the native forms under Agent tools.
 Create, update, review, confirm and close keep the `.basicly/ledger` argument in either mode.
+Before your first claim, choose a pseudonym once with `git config basicly.holder PSEUDONYM`.
+A claim without a pseudonym is refused, because the ledger must not record a real name.
 
 ```sh
 python3 .basicly/kit/tracker/cli.py create .basicly/ledger --prefix <p> --title "<what>" \
@@ -239,8 +241,8 @@ Keep the card and confirmation linked. Record conversations when facts or decisi
    `basicly worktree merge --mode ci` or `--delivery pr` closes in one call with
    `close ID --reason TEXT --landed COMMIT --tests JSON`. The record must carry the
    landing-verification artifact for that commit, and `--tests` maps each criterion to a test
-   file in that commit or to `null`. A `null` opens a follow-up record, and its parent cannot
-   close while that follow-up is open. `close ID --superseded-by RECORD-OR-TAG` closes a
+   file in that commit or to `null`. A `null` opens a follow-up record that asks for a test
+   or a recorded run, and its parent cannot close while that follow-up is open. `close ID --superseded-by RECORD-OR-TAG` closes a
    replaced record as cancelled.
 
 Read `show` first. Its `comment_log` gives each comment's `seq`; its `process` report gives
@@ -389,7 +391,9 @@ Vault writes queue outside the project. Run `sync` to share them and inspect the
 Never compact or edit the frozen guard or archive.
 
 - A write appends to `pending-<branch>.jsonl`, and `merge=union` in `.gitattributes` keeps
-  both sides of a merge. A merge needs nothing from you. If a merge conflicts on the log,
+  both sides of a merge. A branch name that is not a plain file name, such as one with a
+  slash, a name that already ends like a hashed name, and a detached head get a short
+  hash, so two branches never share a file. A merge needs nothing from you. If a merge conflicts on the log,
   run `basicly-tracker status`: the attribute is missing.
 - `fsck` checks the log: exit 0 clean, 1 stale derivative, 2 broken. Two writers on one
   record are a warning. When they set one value differently, `fsck` names both values:

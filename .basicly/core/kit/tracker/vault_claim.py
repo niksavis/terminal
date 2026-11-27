@@ -130,8 +130,15 @@ def _held_elsewhere(record: str, vault: str, held: tuple, name: str = "") -> dic
         "exit": LOST,
         "record": record,
         "holder": {"writer": held[0], "session": held[1], "name": name},
-        "next": f"claim {record} --take --reason 'why' --vault {vault}",
+        "next": f"unassign {record} --take --vault {vault}",
     }
+
+
+def _released_here(clone: Any, record: str) -> bool:
+    queued = vault_queue.pending(clone.folder / vault_queue.QUEUE_NAME)
+    return any(
+        line.get("kind") == vault_fold.UNASSIGN and line.get("record") == record for line in queued
+    )
 
 
 def _lost(clone: Any, record: str) -> dict[str, object] | None:
@@ -181,7 +188,9 @@ def _check(ask: Ask, budget: _Budget, writer: str) -> dict[str, object] | None:
     if held == (writer, ask.session):
         mine = {"writer": writer, "session": ask.session, "name": ask.name}
         return {"exit": YOURS, "record": ask.record, "holder": mine}
-    return None if held is None else _lost(clone, ask.record)
+    if held is None or _released_here(clone, ask.record):
+        return None
+    return _lost(clone, ask.record)
 
 
 def _recorded_takeover(folder: Path) -> float:
@@ -207,6 +216,19 @@ def _stalled(joined_at: float | None, left: float, reserve: float) -> bool:
     return joined_at - left >= min(STALL, joined_at / 2) or left <= reserve
 
 
+def _decided(ask: Ask, made: str, writer: str) -> bool:
+    try:
+        with events.LedgerLock(ask.clone.folder / "fetch", timeout_s=0):
+            if made in vault_clone.valid_ids(ask.clone):
+                return True
+            held = holder(ask.clone, ask.record)
+    except events.LockUnavailableError:
+        return False
+    if held is None or held == (writer, ask.session):
+        return False
+    return not _released_here(ask.clone, ask.record)
+
+
 def _share_or_join(ask: Ask, budget: _Budget, made: str, fresh: bool) -> bool:
 
     joined_at = None
@@ -215,14 +237,7 @@ def _share_or_join(ask: Ask, budget: _Budget, made: str, fresh: bool) -> bool:
     progress = vault_clone._read(ask.clone.folder / vault_share.PROGRESS_NAME)
 
     def decided() -> bool:
-        try:
-            with events.LedgerLock(ask.clone.folder / "fetch", timeout_s=0):
-                if made in vault_clone.valid_ids(ask.clone):
-                    return True
-                held = holder(ask.clone, ask.record)
-        except events.LockUnavailableError:
-            return False
-        return held is not None and held != (writer, ask.session)
+        return _decided(ask, made, writer)
 
     while True:
         if decided():
@@ -350,6 +365,13 @@ def _land(ask: Ask, budget: _Budget, writer: str, fetched_left: float) -> dict[s
         return {"exit": LANDED, "record": record, "claim": made, "joined": joined}
     if held is None:
         return {**_unsettled(record, clone.url, "the claim has not landed yet"), "claim": made}
+    if _released_here(clone, record):
+        why = f"this clone's release of {record} is not shared yet"
+        return {
+            **_unsettled(record, clone.url, why),
+            "claim": made,
+            "next": [vault_queue.share_command(clone.url)],
+        }
     return _lost(clone, record) or _held_elsewhere(record, clone.url, held)
 
 
@@ -397,5 +419,5 @@ def claim(
             "exit": INTERNAL,
             "record": record,
             "log": str(log),
-            "next": f"sync --vault {clone.url}",
+            "next": vault_queue.share_command(clone.url),
         }

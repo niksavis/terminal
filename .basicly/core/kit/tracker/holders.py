@@ -38,6 +38,10 @@ NAME_VARIABLES = ("GIT_AUTHOR_NAME", "GIT_COMMITTER_NAME")
 USER_SECTION = "[user]"
 HOLDER_SECTION = "[basicly]"
 HOLDER_GIT_CONFIG = "git config basicly.holder"
+NO_PSEUDONYM = (
+    "no pseudonymous holder is set, and the ledger must not record a real name; "
+    "run `git config basicly.holder PSEUDONYM`, or name the holder with --to"
+)
 SECONDS_PER_DAY = 86400
 
 
@@ -169,10 +173,13 @@ def claimed_by(states: Mapping[str, Any], drafts: Sequence[Any], name: str) -> l
             and other.payload.get("name") == HOLDER_FIELD
             for other in drafts
         )
-        if name and not named and not _held_by(states, draft.record):
-            added.append(
-                events.Draft(draft.record, events.KIND_FIELD, {"name": HOLDER_FIELD, "value": name})
-            )
+        if named or _held_by(states, draft.record):
+            continue
+        if not name:
+            raise fields.RefusedFieldError(NO_PSEUDONYM)
+        added.append(
+            events.Draft(draft.record, events.KIND_FIELD, {"name": HOLDER_FIELD, "value": name})
+        )
     return [*drafts, *added]
 
 

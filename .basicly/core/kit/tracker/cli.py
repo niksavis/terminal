@@ -148,7 +148,7 @@ _WRITES: dict[str, Callable[[argparse.Namespace, Any], Sequence[Any]]] = {
 
 
 def _holder(args: argparse.Namespace, given: str = "to") -> str:
-    return getattr(args, given, "") or commands.holders.default_holder(Path.cwd(), os.environ)
+    return getattr(args, given, "") or commands.holders.chosen_holder(Path.cwd(), os.environ)
 
 
 def _compacted(args: argparse.Namespace) -> dict[str, object]:
@@ -223,6 +223,7 @@ def _dor(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
 
 
 def _fsck(args: argparse.Namespace) -> tuple[int, dict[str, object]]:
+    vault_cli.ledger_freeze.refuse_local_fsck(Path(args.directory))
     rebuilt: dict[str, object] = {}
     if args.rebuild:
         done = fsck.rebuild(args.directory)

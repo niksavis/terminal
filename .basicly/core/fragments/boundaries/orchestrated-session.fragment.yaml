@@ -33,7 +33,7 @@ body: |
 
   These stay with the person in your own window, and no approval or decision covers them:
 
-  - a permission prompt or a classifier refusal; report it to the orchestrator with the exact command and do not work around it;
+  - a permission prompt or a classifier refusal; report it to the orchestrator with the exact command and do not work around it. Run one guarded step per tool call, because the classifier refuses a call that bundles a safe step with a risky one as a whole;
   - an action that destroys work and cannot be undone: force-push, history rewrite, deleting unmerged work or work you did not create, or making a repository public.
 
   "Delete" covers branches, tags, repositories, releases, tracker records, worktrees and data that git does not hold.

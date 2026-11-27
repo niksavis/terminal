@@ -29,9 +29,7 @@ vault_write = _load("vault_write")
 def _holder_draft(record: str, holder: str, take: bool) -> Any:
 
     if not holder:
-        raise _load("commands").TrackerCommandError(
-            "no holder name: set git config user.name, or name the holder with --to"
-        )
+        raise _load("commands").TrackerCommandError(holders.NO_PSEUDONYM)
     payload: dict[str, object] = {"name": holders.HOLDER_FIELD, "value": holder}
     if take:
         payload[holders.TAKE_KEY] = True

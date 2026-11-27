@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import shlex
 import sys
 import tempfile
 from collections.abc import Callable
@@ -128,7 +129,26 @@ def _commit(work: Path, runner: Runner) -> str:
     return runner(made, bare, env=identity).strip()
 
 
-def init(text: str, *, confirmed: bool, runner: Runner = git_runner.run) -> dict[str, object]:
+def prefix_for(
+    url: str, prefix: str | None, yes: bool, root: Path | None, guards: tuple[Path, ...]
+) -> tuple[str, dict[str, object] | None]:
+    if prefix or root is None or any((root / guard).exists() for guard in guards):
+        return prefix or "", None
+    if not yes:
+        return "PREFIX", None
+    command = shlex.join(["vault-init", "--vault", url, "--prefix", "PREFIX", "--yes"])
+    return "", {
+        "exit": FIX,
+        "vault": url,
+        "pushed": False,
+        "fix": "this checkout has no tracker, so a vault made without --prefix "
+        f"would attach nothing; nothing was pushed. Run {command}",
+    }
+
+
+def init(
+    text: str, *, confirmed: bool, prefix: str = "", runner: Runner = git_runner.run
+) -> dict[str, object]:
     url, allow_file = vault_clone.vault_source(text)
     shown = guide(url)
     with tempfile.TemporaryDirectory(prefix="basicly-vault-init-") as folder:
@@ -148,7 +168,9 @@ def init(text: str, *, confirmed: bool, runner: Runner = git_runner.run) -> dict
                 "refused": f"{url} already has commits; name an empty repository",
             }
         if not confirmed:
-            return {**shown, "pushed": False, "next": f"vault-init --vault {url} --yes"}
+            named = ["--prefix", prefix] if prefix else []
+            again = shlex.join(["vault-init", "--vault", url, *named, "--yes"])
+            return {**shown, "pushed": False, "next": again}
         commit = _commit(work, runner)
         vault_push_guard.check(
             work / "genesis.git",

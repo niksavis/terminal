@@ -131,15 +131,16 @@ def run(args: Any, context: Any, commands: Any) -> list:
 
 def _followup(directory: Any, record: str, criterion: str, context: Any, commands: Any) -> list:
     fields = {
-        "title": f"Add a test for a criterion of {record}"[:200],
+        "title": f"Prove a criterion of {record} by a test or a recorded run"[:200],
         "issue_type": "task",
         "priority": 3,
         FOLLOWUP_FIELD: record,
         "description": (
-            f"## Context\n\n{record} closed by landing evidence, but no test checks this "
-            f"criterion: {criterion}"
+            f"## Context\n\n{record} closed by landing evidence, but no test in the landed "
+            f"commit checks this criterion: {criterion}\n\nProve it with a test, or with a "
+            "read-only run recorded through review --evidence and confirm --evidence."
         ),
-        "acceptance_criteria": f"A test checks: {criterion}",
+        "acceptance_criteria": f"A test or a recorded run checks: {criterion}",
     }
     prefix = record.split("-", 1)[0]
     made = commands.create_root(directory, fields, prefix=prefix, context=context)

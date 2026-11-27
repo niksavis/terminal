@@ -109,7 +109,9 @@ class Installer:
     def dirty(self, t: Target) -> str | None:
         if not t.lane_path.exists():
             return None
-        done = self._step(t, "git status", ["git", "status", "--porcelain"], t.lane_path)
+        done = self._step(
+            t, "git status", ["git", "--no-optional-locks", "status", "--porcelain"], t.lane_path
+        )
         if not done.out.strip():
             return None
         return (
