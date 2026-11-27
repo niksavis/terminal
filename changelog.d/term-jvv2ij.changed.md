@@ -1,0 +1,1 @@
+- **For contributors: the local git hooks are light.** A commit runs ruff and the file checks, and a push runs only the `cli-tools` bundle check. pyright, bandit and the whole test suite run in CI on every pull request (term-jvv2ij).

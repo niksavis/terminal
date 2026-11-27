@@ -29,7 +29,7 @@ When `basicly install` moves the basicly pin, refresh the `cli-tools` skill that
 uv run python .scripts/bundle_cli_tools_skill.py
 ```
 
-The pre-push hook runs `uv run python .scripts/bundle_cli_tools_skill.py --check`. It fails when the bundled files differ from the skill of the pinned basicly version, and names each file. On a local push without the pinned wheel in the uv cache, it prints one line and skips; CI always runs it.
+The local hooks stay light. A commit runs ruff, ruff-format, markdownlint, the secret scan and the comment check. A push runs the bundle check `uv run python .scripts/bundle_cli_tools_skill.py --check` and no tests. CI runs pyright, bandit and the whole test suite on every pull request, from the same scripts with `CI` set. The bundle check fails when the bundled files differ from the skill of the pinned basicly version, and names each file. On a local push without the pinned wheel in the uv cache, it prints one line and skips; CI always runs it.
 
 Run the setup flow after your contributor environment is ready:
 

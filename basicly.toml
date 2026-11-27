@@ -11,7 +11,8 @@ templates = ".basicly/core/templates"
 manifest = ".basicly/generated-manifest.json"
 
 # Deterministic verify gate (run by the projected pre-commit/pre-push hooks and
-# `basicly verify`). Fast checks gate commits; full adds the test suite on push.
+# `basicly verify`). Fast checks (ruff only) gate local commits and pushes; full adds
+# pyright, bandit and the test suite, and runs in CI.
 [[verify.checks]]
 name = "ruff"
 command = ["uv", "run", "ruff", "check"]
@@ -25,12 +26,12 @@ modes = ["fast", "full"]
 [[verify.checks]]
 name = "pyright"
 command = ["uv", "run", "pyright", "."]
-modes = ["fast", "full"]
+modes = ["full"]
 
 [[verify.checks]]
 name = "bandit"
 command = ["uv", "run", "bandit", "-q", "-c", "pyproject.toml", "-r", ".scripts", "terminal_setup"]
-modes = ["fast", "full"]
+modes = ["full"]
 
 [[verify.checks]]
 name = "pytest"
