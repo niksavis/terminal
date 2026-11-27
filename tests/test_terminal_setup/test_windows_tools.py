@@ -380,6 +380,7 @@ def test_ensure_windows_tools_covers_every_tool_and_starship_on_request(
         windows_tools, "ensure_tool", lambda _r, _p, tool, **_k: seen.append(tool.command)
     )
     monkeypatch.setattr(release_install, "latest_tag", lambda repo: looked_up.append(repo) or "")
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda: "")
     monkeypatch.setattr(windows_tools, "replace_winget_wezterm", lambda *_a, **_k: None)
     monkeypatch.setattr(windows_tools, "_add_to_user_path", lambda *_a: None)
 

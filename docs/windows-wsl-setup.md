@@ -132,6 +132,7 @@ Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu. At the end of
 | Setup prints an `apt-get` command | Setup could not run `sudo` | Run that command in Ubuntu, then run the install again |
 | `python` opens the Microsoft Store | The Store app alias comes first on PATH | Turn off the `python.exe` and `python3.exe` App execution aliases in Settings > Apps > Advanced app settings |
 | A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](user-guide.md#managed-windows-machines) |
+| Setup prints `cannot reach github.com (timed out) ... so setup skips the GitHub release tools` | WSL cannot open a TLS connection to GitHub. When setup also prints `Windows reaches GitHub but WSL cannot open a connection`, the cause is usually WSL networking: NAT mode behind a VPN or a proxy | In Ubuntu, run `curl -sSIL https://github.com/niksavis/terminal/releases/latest/download/install.sh`. Run `wsl --status` and check `networkingMode` in `.wslconfig` in your Windows user folder. Set `HTTPS_PROXY` in Ubuntu when your network needs a proxy. Then run the install again |
 
 The first two rows come from the Microsoft pages above.
 
@@ -141,7 +142,7 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 
 | Host | Used for |
 | --- | --- |
-| `github.com`, `api.github.com`, and the GitHub release download hosts | `install.ps1` and `install.sh`, the setup archive, each tool release, the release digests, the basicly `cli-tools` skill |
+| `github.com`, `api.github.com`, and the GitHub release download host `release-assets.githubusercontent.com` | `install.ps1` and `install.sh`, the setup archive, each tool release, the release digests, the basicly `cli-tools` skill |
 | `astral.sh` | The uv installer. uv also downloads Python from GitHub |
 | `pypi.org`, `files.pythonhosted.org` | The setup package dependencies and the img-zoom dependencies (Pillow, OpenCV) |
 | `nodejs.org` | Node.js archives and their checksums |
@@ -155,3 +156,5 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 | The VS Code Marketplace | The Remote - WSL extension |
 
 When the GitHub API limit stops a download, set the `GITHUB_TOKEN` environment variable and run the install again.
+
+Before the GitHub release tools, setup checks in 5 s or less that it can reach GitHub and the release download host. It uses the same proxy settings (`HTTPS_PROXY`, `NO_PROXY`) as the downloads. When the check fails, setup prints one message that names the host, and skips the release tools, herdr, starship and the `cli-tools` skill on that side. The other steps run as usual.

@@ -12,7 +12,13 @@ from pathlib import Path
 
 from . import harness
 from .platform import OperatingSystem, PlatformInfo, is_running_in_wsl, wsl_exec_command
-from .prerequisites import _add_to_user_path, attempt, root_shell_command
+from .prerequisites import (
+    SKIPPED_OFFLINE,
+    _add_to_user_path,
+    attempt,
+    github_unreachable,
+    root_shell_command,
+)
 from .prompt_config import configure_zshenv, write_starship_config
 from .runner import Runner
 
@@ -796,11 +802,17 @@ def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> 
 def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:
     script = _cli_tools_skills_script()
     if not _is_windows_host(platform):
+        if github_unreachable(None):
+            raise RuntimeError(SKIPPED_OFFLINE)
         runner.run(["sh", "-c", script], label=_CLI_TOOLS_LABEL)
         return
-    runner.run(
-        wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]), label=_CLI_TOOLS_LABEL
-    )
+    if github_unreachable(_wsl_distro(platform)):
+        runner.failures.append(f"{_CLI_TOOLS_LABEL} in WSL")
+        runner.reporter.warn(f"{_CLI_TOOLS_LABEL} in WSL failed: {SKIPPED_OFFLINE} (continuing)")
+    else:
+        runner.run(
+            wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]), label=_CLI_TOOLS_LABEL
+        )
     _deploy_cli_tools_skills_windows(runner, platform)
 
 

@@ -1,0 +1,1 @@
+- Setup no longer hangs for minutes when WSL cannot reach GitHub. A 5 s check names the host that fails and the likely cause, and setup skips the GitHub release tools, herdr, starship and the `cli-tools` skill in WSL instead of waiting on each one.

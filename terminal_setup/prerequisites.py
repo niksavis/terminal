@@ -509,7 +509,30 @@ RELEASE_TOOLS: dict[str, tuple[str, str, tuple[str, ...]]] = {
     ),
 }
 CHECKED_TOOLS: dict[str, tuple[str, str]] = {"uv": ("astral-sh/uv", "uv")}
-_CHECK_STATES = frozenset({"current", "stale", "missing"})
+_CHECK_STATES = frozenset({"current", "stale", "missing", release_install.UNREACHED})
+SKIPPED_OFFLINE = "skipped, because GitHub is unreachable"
+_UNREACHABLE: dict[str, str] = {}
+_NETWORK_DOC = (
+    "https://github.com/niksavis/terminal/blob/main/docs/windows-wsl-setup.md#network-access"
+)
+
+
+def github_unreachable(wsl_distro: str | None) -> bool:
+    return (wsl_distro or "") in _UNREACHABLE
+
+
+def _host_side_note(wsl_distro: str | None) -> str:
+    if not wsl_distro or is_running_in_wsl():
+        return ""
+    if release_install.unreachable_reason():
+        return " Windows cannot reach GitHub either, so check the proxy or the VPN first."
+    return (
+        " Windows reaches GitHub but WSL cannot open a connection; WSL networking (NAT behind"
+        " a VPN or proxy) is the likely cause. Check networkingMode in .wslconfig, or set"
+        f" HTTPS_PROXY inside WSL. See {_NETWORK_DOC}"
+    )
+
+
 STARSHIP_RELEASE = ("starship/starship", "starship", _RUST_ASSETS)
 HERDR_RELEASE = ("herdrdev/herdr", "herdr", (r"herdr-linux-{arch}",))
 _HERDR_PRESENT = 'test -x "$HOME/.local/bin/herdr" || command -v herdr >/dev/null 2>&1'
@@ -524,6 +547,8 @@ def _install_release_tool(
     spec: tuple[str, str, tuple[str, ...]] | None = None,
 ) -> None:
     repo, binary, patterns = RELEASE_TOOLS[package] if spec is None else spec
+    if github_unreachable(wsl_distro) and not runner.dry_run:
+        raise RuntimeError(SKIPPED_OFFLINE)
     source = Path(release_install.__file__).read_text(encoding="utf-8")
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, repo, binary, "1" if update else "0", *patterns]
@@ -567,6 +592,8 @@ def _install_release_tools(
             report_release_message(runner, text)
         else:
             runner.failures.append(f"install {package}")
+            if status == release_install.UNREACHED:
+                continue
             runner.reporter.warn(f"install {package} failed: {text or line} (continuing)")
     for package in packages:
         if package not in answered and not runner.dry_run:
@@ -578,6 +605,13 @@ def _install_release_tools(
 def _run_release_jobs(
     runner: Runner, jobs: list[dict[str, object]], *, wsl_distro: str | None, label: str
 ) -> list[tuple[str, str, str, str]]:
+    key = wsl_distro or ""
+    if key in _UNREACHABLE and not runner.dry_run:
+        runner.reporter.info(f"{label}: {SKIPPED_OFFLINE}")
+        return [
+            (release_install.UNREACHED, str(job.get("binary", "")), SKIPPED_OFFLINE, "")
+            for job in jobs
+        ]
     source = Path(release_install.__file__).read_text(encoding="utf-8")
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
@@ -586,6 +620,10 @@ def _run_release_jobs(
     for line in (result.stdout or "").splitlines():
         status, _, rest = line.partition("\t")
         binary, _, text = rest.partition("\t")
+        if status == release_install.OFFLINE:
+            _UNREACHABLE[key] = text
+            runner.reporter.warn(text + _host_side_note(wsl_distro))
+            continue
         lines.append((status, binary, text, line))
     return lines
 
@@ -599,6 +637,10 @@ def _finish_uv(
 ) -> None:
     distro = _wsl_distro(platform)
     status, text = result or ("fail", "")
+    if status == release_install.UNREACHED:
+        if not _is_user_local_command_available(runner, "uv", wsl_distro=distro):
+            raise RuntimeError(text)
+        return
     if status == "current":
         runner.reporter.success(text)
         return
@@ -2200,6 +2242,10 @@ def _finish_release_job(runner: Runner, result: tuple[str, str] | None, label: s
     status, text = result
     if status == "absent":
         return False
+    if status == release_install.UNREACHED:
+        runner.failures.append(label)
+        runner.reporter.warn(f"{label} failed: {text} (continuing)")
+        return None
     if status == "ok":
         report_release_message(runner, text)
     elif status != "skip":

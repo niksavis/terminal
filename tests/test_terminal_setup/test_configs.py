@@ -1905,6 +1905,23 @@ def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
     assert fake.commands == [wsl]
 
 
+def test_deploy_cli_tools_skills_skips_wsl_when_github_is_unreachable_there(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr("terminal_setup.prerequisites._UNREACHABLE", {"Ubuntu": "cannot reach"})
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+
+    deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
+
+    assert fake.commands == []
+    assert runner.failures == ["install the basicly cli-tools skills in WSL"]
+    assert any("GitHub is unreachable" in message for message in reporter.messages)
+
+
 def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

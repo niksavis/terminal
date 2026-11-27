@@ -34,7 +34,14 @@ REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
 STATE_DIR = Path.home() / ".local" / "share" / "terminal-setup" / "releases"
 PREFETCH_WORKERS = 32
+PROBE_URLS = (
+    "https://github.com/niksavis/terminal/releases/latest/download/install.sh",
+    "https://api.github.com/",
+)
+PROBE_TIMEOUT = 5
+LOOKUP_TIMEOUT = 20
 _PREFETCHED: dict[str, str] = {}
+_UNREACHED: dict[str, Exception] = {}
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
 
 
@@ -187,7 +194,7 @@ def latest_release_url(url: str) -> str:
     request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "terminal-setup"})
     opener = urllib.request.build_opener(_StopAtTag)
     try:
-        with opener.open(request, timeout=60) as response:  # nosec B310
+        with opener.open(request, timeout=LOOKUP_TIMEOUT) as response:  # nosec B310
             return response.geturl()
     except urllib.error.HTTPError as error:
         location = error.headers.get("Location", "") if error.code in _REDIRECTS else ""
@@ -205,27 +212,84 @@ def latest_tag(repo: str) -> str:
     return urllib.parse.unquote(tag)
 
 
-def _prefetch_one(repo: str) -> tuple[str, str]:
+def _prefetch_one(repo: str) -> tuple[str, str, Exception | None]:
     try:
-        return repo, latest_tag(repo)
-    except InstallError:
-        return repo, ""
-    except OSError:
-        return repo, ""
+        return repo, latest_tag(repo), None
+    except (InstallError, OSError) as error:
+        return repo, "", error
+
+
+class _Trail(urllib.request.HTTPRedirectHandler):
+    def __init__(self, url: str) -> None:
+        super().__init__()
+        self.url = url
+
+    def redirect_request(  # noqa: PLR0913
+        self,
+        req: urllib.request.Request,
+        fp: typing.IO[bytes],
+        code: int,
+        msg: str,
+        headers: http.client.HTTPMessage,
+        newurl: str,
+    ) -> urllib.request.Request | None:
+        self.url = newurl
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def _probe_one(url: str) -> str:
+    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "terminal-setup"})
+    trail = _Trail(url)
+    try:
+        with urllib.request.build_opener(trail).open(  # nosec B310
+            request, timeout=PROBE_TIMEOUT
+        ):
+            return ""
+    except urllib.error.HTTPError as error:
+        error.close()
+        return ""
+    except (OSError, http.client.HTTPException) as error:
+        reason = _one_line(str(getattr(error, "reason", None) or error)) or type(error).__name__
+        return f"{urllib.parse.urlsplit(trail.url).hostname} ({reason})"
+
+
+def unreachable_reason() -> str:
+    with ThreadPoolExecutor(max_workers=len(PROBE_URLS)) as pool:
+        failed = [host for host in pool.map(_probe_one, PROBE_URLS) if host]
+    if not failed:
+        return ""
+    return (
+        f"cannot reach {', '.join(failed)} within {PROBE_TIMEOUT} s, so setup skips the "
+        "GitHub release tools. Likely causes: a proxy that needs HTTPS_PROXY and NO_PROXY, "
+        "a VPN, or the WSL networking mode. Check with: curl -sSIL "
+        f"{PROBE_URLS[0]} in the same shell. Run terminal update again when it works."
+    )
 
 
 @contextmanager
-def prefetched(repos: list[str]) -> Iterator[None]:
+def prefetched(repos: list[str]) -> Iterator[str]:
     unique = sorted(set(repos))
-    if unique:
+    reason = unreachable_reason() if unique else ""
+    if reason:
+        _UNREACHED.update((repo, InstallError(reason)) for repo in unique)
+    elif unique:
         with ThreadPoolExecutor(max_workers=min(PREFETCH_WORKERS, len(unique))) as pool:
-            for repo, tag in pool.map(_prefetch_one, unique):
+            for repo, tag, error in pool.map(_prefetch_one, unique):
                 if tag:
                     _PREFETCHED[repo] = tag
+                elif error is not None:
+                    _UNREACHED[repo] = error
     try:
-        yield
+        yield reason
     finally:
         _PREFETCHED.clear()
+        _UNREACHED.clear()
+
+
+def _tag_of(repo: str) -> str:
+    if (error := _UNREACHED.get(repo)) is not None:
+        raise error
+    return _PREFETCHED.pop(repo, "") or latest_tag(repo)
 
 
 class ReleaseAssets(HTMLParser):
@@ -296,7 +360,7 @@ def run(  # noqa: PLR0913
 ) -> str:
     bin_dir = BIN_DIR if bin_dir is None else bin_dir
     state_dir = STATE_DIR if state_dir is None else state_dir
-    tag = _PREFETCHED.pop(repo, "") or latest_tag(repo)
+    tag = _tag_of(repo)
     latest = version_of(tag)
     if not latest:
         raise InstallError(f"{repo}: the latest release tag {tag!r} holds no version")
@@ -325,7 +389,7 @@ def check(
 ) -> tuple[str, str]:
     bin_dir = BIN_DIR if bin_dir is None else bin_dir
     state_dir = STATE_DIR if state_dir is None else state_dir
-    tag = _PREFETCHED.pop(repo, "") or latest_tag(repo)
+    tag = _tag_of(repo)
     latest = version_of(tag)
     if not latest:
         raise InstallError(f"{repo}: the latest release tag {tag!r} holds no version")
@@ -375,14 +439,29 @@ def _one_line(text: str) -> str:
     return " ".join(text.split())
 
 
+UNREACHED = "unreached"
+OFFLINE = "offline"
+
+
 def run_batch(jobs: list[object]) -> list[str]:
     repos = [
         str(job.get("repo", ""))
         for job in jobs
         if isinstance(job, dict) and _presence_line(job, str(job.get("binary", ""))) is None
     ]
-    with prefetched([repo for repo in repos if REPO.fullmatch(repo)]):
-        return [_batch_line(job) for job in jobs]
+    with prefetched([repo for repo in repos if REPO.fullmatch(repo)]) as reason:
+        if not reason:
+            return [_batch_line(job) for job in jobs]
+        return [f"{OFFLINE}\t\t{_one_line(reason)}"] + [
+            _unreached_line(job) if isinstance(job, dict) else _batch_line(job) for job in jobs
+        ]
+
+
+def _unreached_line(job: dict[object, object]) -> str:
+    binary = str(job.get("binary", ""))
+    if (presence := _presence_line(job, binary)) is not None:
+        return presence
+    return f"{UNREACHED}\t{binary}\tskipped, because GitHub is unreachable"
 
 
 def _batch_main(argv: list[str]) -> int:
@@ -409,7 +488,8 @@ def main(argv: list[str]) -> int:
         print("usage: release_install.py REPO BINARY 0|1 PATTERN [PATTERN ...]", file=sys.stderr)
         return 2
     try:
-        print(run(argv[0], argv[1], argv[2] == "1", argv[3:]))
+        with prefetched([argv[0]]):
+            print(run(argv[0], argv[1], argv[2] == "1", argv[3:]))
     except InstallError as error:
         print(f"{argv[1]}: {error}", file=sys.stderr)
         return 1

@@ -42,6 +42,7 @@ from terminal_setup.prerequisites import (
     ensure_node,
     ensure_starship,
     ensure_wezterm,
+    ensure_wsl_herdr_and_starship,
     ensure_wsl_system_packages,
     ensure_wsl_tools,
     install_package,
@@ -1545,6 +1546,59 @@ def test_release_tools_check_in_one_call_and_report_each_tool() -> None:
         ("warn", "install lazygit failed: lazygit 0.66.3 (continuing)"),
     ]
     assert checked == {"uv": ("stale", "uv 0.13.9 is installed; 0.13.10 is available")}
+
+
+@pytest.mark.parametrize(
+    ("windows_reason", "note"),
+    [
+        ("", "Windows reaches GitHub but WSL cannot open a connection"),
+        ("cannot reach github.com", "Windows cannot reach GitHub"),
+    ],
+)
+def test_an_unreachable_github_in_wsl_warns_once_and_skips_the_later_wsl_steps(
+    monkeypatch: pytest.MonkeyPatch, windows_reason: str, note: str
+) -> None:
+    monkeypatch.setattr("terminal_setup.prerequisites._UNREACHABLE", {})
+    monkeypatch.setattr(
+        "terminal_setup.prerequisites.release_install.unreachable_reason", lambda: windows_reason
+    )
+    reason = "cannot reach release-assets.githubusercontent.com (timed out) within 5 s"
+    stdout = (
+        f"offline\t\t{reason}\n"
+        "unreached\trg\tskipped, because GitHub is unreachable\n"
+        "unreached\tjq\tskipped, because GitHub is unreachable\n"
+        "unreached\tuv\tskipped, because GitHub is unreachable\n"
+    )
+
+    class OfflineRunner(FakeRunner):
+        def run(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            super().run(command, **kwargs)  # type: ignore[arg-type]
+            return subprocess.CompletedProcess(command, 0, stdout if "--batch" in command else "")
+
+    runner = OfflineRunner()
+    platform = make_platform(OperatingSystem.WINDOWS, PackageManager.WINGET)
+
+    with mock.patch("terminal_setup.prerequisites.is_running_in_wsl", return_value=False):
+        checked = install_release_tools(
+            cast(Runner, runner),
+            ["ripgrep", "jq"],
+            update=False,
+            wsl_distro="Ubuntu",
+            checks=("uv",),
+        )
+        batches = len(runner.commands)
+        ensure_wsl_herdr_and_starship(
+            cast(Runner, runner), platform, install_herdr=True, starship=True
+        )
+
+    warnings = [text for kind, text in runner.reporter.messages if kind == "warn"]
+    assert warnings[0].startswith(reason)
+    assert note in warnings[0]
+    assert [w for w in warnings if "cannot reach" in w] == [warnings[0]]
+    assert checked == {"uv": ("unreached", "skipped, because GitHub is unreachable")}
+    assert runner.failures == ["install ripgrep", "install jq", "install herdr", "install starship"]
+    assert batches == 1
+    assert [c for c in runner.commands if "--batch" in c] == runner.commands[:1]
 
 
 def test_reconcile_binaries_include_gitlfs_and_direnv() -> None:

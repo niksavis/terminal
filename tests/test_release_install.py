@@ -7,6 +7,7 @@ import json
 import sys
 import tarfile
 import threading
+import typing
 import urllib.error
 import zipfile
 from email.message import Message
@@ -346,6 +347,7 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
         return "v1.2.0"
 
     monkeypatch.setattr(release_install, "latest_tag", latest)
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda: "")
     monkeypatch.setattr(release_install, "current_version", lambda *_a: "1.2.0")
     jobs = [
         {"repo": "jqlang/jq", "binary": "jq", "update": False, "patterns": ["jq-linux-{arch}"]},
@@ -362,8 +364,107 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
         "fail\tbad\tREPO must be OWNER/NAME on GitHub, got '../jq'",
         "current\tuv\tuv 1.2.0 is up to date",
     ]
-    assert sorted(looked_up) == ["astral-sh/uv", "jqlang/jq", "sharkdp/fd", "sharkdp/fd"]
+    assert sorted(looked_up) == ["astral-sh/uv", "jqlang/jq", "sharkdp/fd"]
     assert release_install._PREFETCHED == {}
+    assert release_install._UNREACHED == {}
+
+
+def test_an_unreachable_github_skips_every_tool_with_one_message_and_no_lookup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def no_lookup(repo: str) -> str:
+        raise AssertionError(f"looked up {repo} after the probe failed")
+
+    reason = "cannot reach release-assets.githubusercontent.com (timed out)"
+    monkeypatch.setattr(release_install, "latest_tag", no_lookup)
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda: reason)
+    monkeypatch.setattr(release_install, "BIN_DIR", tmp_path)
+    monkeypatch.setattr(release_install.shutil, "which", lambda _b: None)
+    jobs = [
+        {"repo": "jqlang/jq", "binary": "jq", "update": True, "patterns": ["jq-linux-{arch}"]},
+        {"repo": "astral-sh/uv", "binary": "uv", "check": True, "patterns": []},
+        {"repo": "herdrdev/herdr", "binary": "herdr", "patterns": [], "present_only": True},
+    ]
+
+    assert release_install.main(["--batch", json.dumps(jobs)]) == 0
+    assert release_install.main(["jqlang/jq", "jq", "1", "jq-linux-{arch}"]) == 1
+
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        f"offline\t\t{reason}",
+        "unreached\tjq\tskipped, because GitHub is unreachable",
+        "unreached\tuv\tskipped, because GitHub is unreachable",
+        "absent\therdr\therdr is not installed",
+    ]
+    assert captured.err == f"jq: {reason}\n"
+
+
+class _Proxy(BaseHTTPRequestHandler):
+    tunnels: typing.ClassVar[list[str]] = []
+
+    def do_CONNECT(self) -> None:
+        self.tunnels.append(self.path)
+        self.send_response(403)
+        self.end_headers()
+
+    def log_message(self, *_args: object) -> None:
+        return
+
+
+def _serve(handler: type[BaseHTTPRequestHandler]) -> ThreadingHTTPServer:
+    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def test_the_probe_goes_through_the_https_proxy_and_names_the_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _Proxy.tunnels = []
+    server = _serve(_Proxy)
+    for name in ("NO_PROXY", "no_proxy", "https_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("HTTPS_PROXY", f"http://127.0.0.1:{server.server_address[1]}")
+    try:
+        reason = release_install.unreachable_reason()
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert sorted(_Proxy.tunnels) == ["api.github.com:443", "github.com:443"]
+    assert reason.startswith("cannot reach ")
+    assert "github.com (" in reason
+    assert "api.github.com (" in reason
+    assert "HTTPS_PROXY" in reason
+
+
+def test_the_probe_names_the_redirect_host_that_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy"):
+        monkeypatch.delenv(name, raising=False)
+    closed = ThreadingHTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler)
+    dead = f"http://localhost:{closed.server_address[1]}/asset"
+    closed.server_close()
+
+    class Redirect(BaseHTTPRequestHandler):
+        def do_HEAD(self) -> None:
+            self.send_response(302)
+            self.send_header("Location", dead)
+            self.end_headers()
+
+        def log_message(self, *_args: object) -> None:
+            return
+
+    server = _serve(Redirect)
+    base = f"http://127.0.0.1:{server.server_address[1]}"
+    monkeypatch.setattr(release_install, "PROBE_URLS", (f"{base}/download", f"{base}/download"))
+    try:
+        reason = release_install.unreachable_reason()
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert reason.startswith("cannot reach localhost (")
+    assert "127.0.0.1" not in reason.split(" within ")[0]
 
 
 def test_batch_refuses_input_that_is_not_a_job_list() -> None:
