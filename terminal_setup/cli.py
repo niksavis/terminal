@@ -231,6 +231,7 @@ def _report_status(runner: Runner, label: str, ok: bool, detail: str = "") -> No
 WINDOWS_RUNTIMES = ("uv", "python", "node")
 VERSION_FLAGS = {"tmux": "-V"}
 NO_VERSION = frozenset({"img-zoom"})
+CLI_TOOLS_SKILL_FILE = ".claude/skills/cli-tools/SKILL.md"
 SHELL_TOOLS = (
     "zsh",
     "tmux",
@@ -575,6 +576,8 @@ def _print_windows_report(
     _report_status(runner, "windows:img-zoom", img_zoom is not None, img_zoom or "")
     skill = platform_info.home / ".claude" / "skills" / "img-zoom" / "SKILL.md"
     _report_status(runner, "windows:~/.claude/skills/img-zoom/SKILL.md", skill.exists(), str(skill))
+    cli_tools = platform_info.home / CLI_TOOLS_SKILL_FILE
+    _report_status(runner, f"windows:~/{CLI_TOOLS_SKILL_FILE}", cli_tools.exists(), str(cli_tools))
 
     if platform_info.wezterm_config_dir is not None:
         wezterm_path = platform_info.wezterm_config_dir / "wezterm.lua"
@@ -633,6 +636,7 @@ def _print_wsl_report(
         "~/.config/micro/settings.json",
         "~/.claude/statusline.sh",
         "~/.claude/skills/img-zoom/SKILL.md",
+        f"~/{CLI_TOOLS_SKILL_FILE}",
     ]:
         ok, detail = _wsl_file_exists(runner, platform_info, path)
         _report_status(runner, f"wsl:{path}", ok, detail)
@@ -681,6 +685,8 @@ def _print_host_report(
         _report_optional_agent(
             runner, f"host:{agent}", _shell_agent_path(runner, agent, wsl_distro=None)
         )
+    cli_tools = platform_info.home / CLI_TOOLS_SKILL_FILE
+    _report_status(runner, f"host:~/{CLI_TOOLS_SKILL_FILE}", cli_tools.exists(), str(cli_tools))
     herdr = _host_command_path(runner, "herdr")
     _report_optional(runner, "host:herdr", herdr, "--herdr")
     if herdr:

@@ -61,6 +61,31 @@ def test_windows_report_warns_for_a_missing_runtime() -> None:
     assert ("warn", "windows:node (not found)") in _windows_report()
 
 
+def test_windows_report_names_a_missing_cli_tools_skill() -> None:
+    skill = HOME / ".claude" / "skills" / "cli-tools" / "SKILL.md"
+
+    assert ("warn", f"windows:~/.claude/skills/cli-tools/SKILL.md ({skill})") in _windows_report()
+
+
+@pytest.mark.parametrize("present", [True, False])
+def test_host_report_lists_the_cli_tools_skill(tmp_path: Path, present: bool) -> None:
+    skill = tmp_path / ".claude" / "skills" / "cli-tools" / "SKILL.md"
+    if present:
+        skill.parent.mkdir(parents=True)
+        skill.write_text("skill", encoding="utf-8")
+    runner = WhichRunner(reporter=CapturingReporter())
+    runner.found = {}
+
+    cli._print_host_report(
+        runner, replace(_windows_platform(), home=tmp_path), include_starship=False
+    )
+
+    level = "success" if present else "warn"
+    assert (level, f"host:~/.claude/skills/cli-tools/SKILL.md ({skill})") in (
+        runner.reporter.messages  # type: ignore[attr-defined]
+    )
+
+
 def test_windows_report_shows_a_missing_agent_as_optional() -> None:
     messages = _windows_report()
 
@@ -172,6 +197,7 @@ def test_wsl_report_asks_tmux_for_its_version_with_its_own_flag() -> None:
 
     scripts = [command[-1] for command in runner.commands]
     assert any("command -v tmux " in s and '"$p" -V ' in s for s in scripts)
+    assert any(".claude/skills/cli-tools/SKILL.md" in s for s in scripts)
     assert not any("command -v img-zoom " in s and "--version" in s for s in scripts)
 
 
