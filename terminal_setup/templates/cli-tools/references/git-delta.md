@@ -1,0 +1,25 @@
+# delta
+
+Show git diffs with syntax colour and line numbers. Use it to review a patch in a terminal.
+
+## Rules
+
+- **Run the binary as `delta`.** The package name is `git-delta`.
+- **Set `core.pager` to use it.** Git does not use delta without this setting.
+- **Prefer a local setting in a shared environment.** A global setting changes git for every user of that account.
+- **Do not parse delta output.** Use plain `git --no-pager diff` when a tool reads the diff.
+
+## Commands
+
+```bash
+git config --global core.pager delta
+git config --global interactive.diffFilter 'delta --color-only'
+git diff
+git diff --staged
+git show HEAD
+```
+
+## Output
+
+- The content is the git patch. Only the display changes.
+- `delta --side-by-side` and `delta --line-numbers` change the layout.

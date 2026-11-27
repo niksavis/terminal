@@ -39,6 +39,8 @@ packages = [ "terminal_setup" ]
 [tool.setuptools.package-data]
 terminal_setup = [
   "templates/*",
+  "templates/cli-tools/*.md",
+  "templates/cli-tools/references/*.md",
   "img_zoom_tool/pyproject.toml",
   "img_zoom_tool/src/img_zoom/*.py",
 ]

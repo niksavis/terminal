@@ -93,13 +93,27 @@ def test_ci_main_runs_the_whole_tests_folder(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(pre_push.subprocess, "run", fake_run)
 
     assert pre_push.main() == 0
-    assert calls == [["uv", "run", "pytest", "tests/"]]
+    assert calls == [
+        ["uv", "run", "python", ".scripts/bundle_cli_tools_skill.py", "--check"],
+        ["uv", "run", "pytest", "tests/"],
+    ]
+
+
+def test_a_failed_bundle_check_stops_the_push_before_pytest(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CI", "true")
+    monkeypatch.setattr(pre_push, "_bundle_check", lambda: 1)
+    monkeypatch.setattr(pre_push, "_pytest", lambda *_t: pytest.fail("pytest ran"))
+
+    assert pre_push.main() == 1
 
 
 def test_local_main_with_no_mapped_test_runs_no_pytest(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setattr(pre_push, "_bundle_check", lambda: 0)
     monkeypatch.setattr(pre_push, "changed_files", lambda: [Path("docs/releases.md")])
     monkeypatch.setattr(pre_push, "_test_texts", lambda: TESTS)
     monkeypatch.setattr(pre_push, "_pytest", lambda *_t: pytest.fail("pytest ran"))
@@ -112,6 +126,7 @@ def test_local_main_without_the_base_names_the_fetch(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setattr(pre_push, "_bundle_check", lambda: 0)
     monkeypatch.setattr(pre_push, "changed_files", lambda: None)
 
     assert pre_push.main() == 1

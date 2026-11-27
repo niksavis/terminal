@@ -13,10 +13,11 @@ Cross-platform scripts for this repository.
 
 The active local git hooks are the basicly catalog hooks (`.basicly/core/hooks/`), run by repository-local Lefthook 2.2.2 through [`lefthook.yml`](../lefthook.yml) and [`.basicly/lefthook.yml`](../.basicly/lefthook.yml) after `basicly hooks-build`. The scripts in `git-hooks/` are the repo's extended check suite; they run in the `quality-gates` CI workflow, which covers checks the basicly gates do not (pyright, bandit, markdownlint, cheat-sheet HTML), and can be run manually.
 
-| Script                                               | Purpose                                                |
-| ---------------------------------------------------- | ------------------------------------------------------ |
-| [`git-hooks/pre-commit.py`](git-hooks/pre-commit.py) | ruff, pyright, bandit, markdownlint, cheat-sheet check |
-| [`git-hooks/pre-push.py`](git-hooks/pre-push.py)     | pytest: changed tests only locally, whole suite in CI  |
+| Script                                                   | Purpose                                                |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| [`git-hooks/pre-commit.py`](git-hooks/pre-commit.py)     | ruff, pyright, bandit, markdownlint, cheat-sheet check |
+| [`git-hooks/pre-push.py`](git-hooks/pre-push.py)         | pytest: changed tests only locally, whole suite in CI  |
+| [`bundle_cli_tools_skill.py`](bundle_cli_tools_skill.py) | refresh or `--check` the bundled `cli-tools` skill     |
 
 See the root [README.md](../README.md) for installation and usage instructions.
 

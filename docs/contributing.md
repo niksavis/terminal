@@ -7,7 +7,7 @@ This page is for a person who changes this repository. To install the terminal s
 - **Terminal setup** — Python package in [`terminal_setup/`](../terminal_setup/) that detects the platform, checks prerequisites, installs tools, and deploys configs.
 - **Config templates** — [`wezterm.lua`](../terminal_setup/templates/wezterm.lua), [`.tmux.conf`](../terminal_setup/templates/tmux.conf), [`.zshrc`](../terminal_setup/templates/zshrc), [`starship.toml`](../terminal_setup/templates/starship.toml), [`micro-settings.json`](../terminal_setup/templates/micro-settings.json), and [`statusline.sh`](../terminal_setup/templates/statusline.sh) (Claude Code status line).
 - **Cheat sheet** — [Live HTML](https://niksavis.github.io/terminal/) and [`terminal-cheat-sheet.md`](../terminal-cheat-sheet.md) source with Linux commands, shell shortcuts, tmux controls, and WezTerm shortcuts.
-- **Agent skills** — when Claude Code is installed, setup writes the basicly `cli-tools` skill into `~/.claude/skills`. It carries one reference file for each of 25 tools, so an agent picks `rg`, `fd`, `jq` and the rest in any repository and names a fallback when a tool is missing. The same skill lives in [`.claude/skills/`](../.claude/skills/) for this repository.
+- **Agent skills** — when Claude Code is installed, setup writes the basicly `cli-tools` skill into `~/.claude/skills`. It carries one reference file for each of 22 tools, so an agent picks `rg`, `fd`, `jq` and the rest in any repository and names a fallback when a tool is missing. The same skill lives in [`.claude/skills/`](../.claude/skills/) for this repository.
 
 ## Contributor setup
 
@@ -18,10 +18,18 @@ git clone https://github.com/niksavis/terminal.git
 cd terminal
 uv sync
 npm install
-uvx --from https://github.com/niksavis/basicly/releases/download/v0.49.5/basicly-0.49.5-py3-none-any.whl basicly install
-uvx --from https://github.com/niksavis/basicly/releases/download/v0.49.5/basicly-0.49.5-py3-none-any.whl basicly verify --mode full
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.49.6/basicly-0.49.6-py3-none-any.whl basicly install
+uvx --from https://github.com/niksavis/basicly/releases/download/v0.49.6/basicly-0.49.6-py3-none-any.whl basicly verify --mode full
 uv run pytest tests/
 ```
+
+When `basicly install` moves the basicly pin, refresh the `cli-tools` skill that the setup package carries, and commit it with the install:
+
+```bash
+uv run python .scripts/bundle_cli_tools_skill.py
+```
+
+The pre-push hook runs `uv run python .scripts/bundle_cli_tools_skill.py --check`. It fails when the bundled files differ from the skill of the pinned basicly version, and names each file. On a local push without the pinned wheel in the uv cache, it prints one line and skips; CI always runs it.
 
 Run the setup flow after your contributor environment is ready:
 

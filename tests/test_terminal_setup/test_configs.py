@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import importlib.util
 import json
 import os
 import re
@@ -12,7 +13,7 @@ import time
 import tomllib
 from collections.abc import Callable
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import cast
+from typing import Any, cast
 
 import pytest
 
@@ -23,16 +24,17 @@ from terminal_setup.configs import (
     BACKUP_SUFFIX,
     CHEAT_SHEET_PATH,
     CLI_TOOLS_SKILL,
+    GENERATED_SKILL_MARKER,
     IMG_ZOOM_SOURCE,
     TEMPLATE_DIR,
     _append_guarded_block,
     _claude_skill_wsl_install_script,
-    _cli_tools_skills_script,
+    _cli_tools_wsl_script,
     _configure_git_bash_starship,
     _configure_pwsh_starship,
     _img_zoom_install_script,
-    _skills_user,
     _to_wsl_path,
+    cli_tools_bundle,
     configure_vscode_terminal,
     deploy_all,
     deploy_claude_cli_tools_skills,
@@ -1815,127 +1817,224 @@ def test_the_pinned_harness_carries_no_tool_skills() -> None:
     assert (_REPO / ".basicly" / "core" / "skills" / CLI_TOOLS_SKILL).is_dir()
 
 
-def _run_cli_tools_script(tmp_path: Path, tools: list[str], *, claude: bool) -> Path:
-    home = tmp_path / "home"
-    local_bin = home / ".local" / "bin"
-    local_bin.mkdir(parents=True)
-    if claude:
-        (home / ".claude").mkdir()
-    record = tmp_path / "argv.txt"
-    for name in ["uv", *tools]:
-        tool = local_bin / name
-        tool.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > "{record}"\n', encoding="utf-8")
-        tool.chmod(0o755)
-    empty = tmp_path / "empty"
-    empty.mkdir()
-    for core in ("mkdir", "cat"):
-        (empty / core).symlink_to(shutil.which(core) or f"/bin/{core}")
-    subprocess.run(
-        ["/bin/sh", "-c", _cli_tools_skills_script()],
-        env={"HOME": str(home), "PATH": str(empty)},
+_BUNDLE_SCRIPT = _REPO / ".scripts" / "bundle_cli_tools_skill.py"
+
+
+def _bundle_tree(root: Path) -> dict[str, str]:
+    return {
+        path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def _generated(text: str = "") -> str:
+    return f"---\nname: x\n---\n{GENERATED_SKILL_MARKER}\n{text}"
+
+
+def test_the_bundled_cli_tools_skill_ships_inside_the_package() -> None:
+    bundle = cli_tools_bundle()
+    pyproject = tomllib.loads((_REPO / "pyproject.toml").read_text(encoding="utf-8"))
+    globs = pyproject["tool"]["setuptools"]["package-data"]["terminal_setup"]
+    package = Path(configs_module.__file__).resolve().parent
+
+    files = [path.relative_to(package) for path in sorted(bundle.rglob("*")) if path.is_file()]
+
+    assert bundle.parent == package / "templates"
+    assert Path("templates/cli-tools/SKILL.md") in files
+    assert all(any(file.full_match(glob) for glob in globs) for file in files), files
+
+
+def test_the_bundled_cli_tools_references_equal_the_pinned_harness() -> None:
+    bundled = _bundle_tree(cli_tools_bundle() / "references")
+    pinned = _bundle_tree(_REPO / ".basicly" / "core" / "skills" / CLI_TOOLS_SKILL / "references")
+
+    assert bundled == pinned
+    assert GENERATED_SKILL_MARKER in (cli_tools_bundle() / "SKILL.md").read_text(encoding="utf-8")
+
+
+def _load_bundle_script() -> object:
+    spec = importlib.util.spec_from_file_location("bundle_cli_tools_skill", _BUNDLE_SCRIPT)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_the_bundle_check_names_each_differing_file() -> None:
+    script = cast("Any", _load_bundle_script())
+
+    found = script.differences(
+        {"SKILL.md": "a", "references/old.md": "x", "references/rg.md": "1"},
+        {"SKILL.md": "a", "references/new.md": "y", "references/rg.md": "2"},
+    )
+
+    assert found == [
+        "missing from the bundle: references/new.md",
+        "not in the pinned skill: references/old.md",
+        "differs from the pinned skill: references/rg.md",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("ci", "code", "expected"), [(False, 0, "skipped here"), (True, 1, "did not run")]
+)
+def test_the_bundle_check_skips_locally_and_fails_in_ci_without_the_wheel(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    ci: bool,
+    code: int,
+    expected: str,
+) -> None:
+    script = cast("Any", _load_bundle_script())
+    modes: list[bool] = []
+
+    def no_wheel(_spec: str, _home: Path, *, offline: bool) -> subprocess.CompletedProcess[str]:
+        modes.append(offline)
+        return subprocess.CompletedProcess([], 2, "", "error: not in the cache")
+
+    monkeypatch.setattr(script, "render", no_wheel)
+
+    assert script.check("spec", ci=ci) == code
+    assert modes == [not ci]
+    captured = capsys.readouterr()
+    assert expected in captured.out + captured.err
+
+
+def _run_cli_tools_wsl_script(home: Path) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["/bin/sh", "-c", _cli_tools_wsl_script(str(cli_tools_bundle()))],
+        env={"HOME": str(home), "PATH": os.environ.get("PATH", "")},
         capture_output=True,
         text=True,
         check=True,
     )
-    return record
 
 
 @_posix_only
-def test_cli_tools_script_passes_only_the_cli_tools_skill(tmp_path: Path) -> None:
-    record = _run_cli_tools_script(tmp_path, ["fdfind", "rg"], claude=True)
+def test_cli_tools_wsl_script_copies_the_bundle_and_skips_while_current(tmp_path: Path) -> None:
+    (tmp_path / ".claude").mkdir()
 
-    assert record.read_text(encoding="utf-8").splitlines() == [*_skills_user(), "cli-tools"]
+    _run_cli_tools_wsl_script(tmp_path)
+    second = _run_cli_tools_wsl_script(tmp_path)
+
+    skill = tmp_path / ".claude" / "skills" / CLI_TOOLS_SKILL
+    assert _bundle_tree(skill) == _bundle_tree(cli_tools_bundle())
+    recorded = tmp_path / ".local" / "share" / "terminal-setup" / "cli-tools-skill"
+    assert recorded.read_text(encoding="utf-8") == harness.basicly_spec() + "\n"
+    assert "skill is current" in second.stdout
 
 
 @_posix_only
-def test_cli_tools_script_skips_the_install_when_the_recorded_harness_is_current(
+def test_cli_tools_wsl_script_replaces_old_files_prunes_tool_skills_and_keeps_yours(
     tmp_path: Path,
 ) -> None:
-    record = _run_cli_tools_script(tmp_path, ["rg"], claude=True)
-    home = tmp_path / "home"
-    recorded = home / ".local" / "share" / "terminal-setup" / "cli-tools-skill"
-    assert recorded.read_text(encoding="utf-8") == harness.basicly_spec() + "\n"
-    record.unlink()
-    skill = home / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
-    skill.parent.mkdir(parents=True)
-    skill.write_text("skill", encoding="utf-8")
+    skills = tmp_path / ".claude" / "skills"
+    for name, text in [
+        ("cli-tools/SKILL.md", _generated()),
+        ("cli-tools/references/gone.md", "old"),
+        ("tool-rg/SKILL.md", _generated()),
+        ("tool-mine/SKILL.md", "mine"),
+    ]:
+        (skills / name).parent.mkdir(parents=True, exist_ok=True)
+        (skills / name).write_text(text, encoding="utf-8")
 
-    result = subprocess.run(
-        ["/bin/sh", "-c", _cli_tools_skills_script()],
-        env={"HOME": str(home), "PATH": str(tmp_path / "empty")},
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    _run_cli_tools_wsl_script(tmp_path)
 
-    assert not record.exists()
-    assert "skill is current" in result.stdout
+    assert _bundle_tree(skills / CLI_TOOLS_SKILL) == _bundle_tree(cli_tools_bundle())
+    assert sorted(path.name for path in skills.iterdir()) == ["cli-tools", "tool-mine"]
 
 
 @_posix_only
-def test_cli_tools_script_skips_without_claude_dir(tmp_path: Path) -> None:
-    assert not _run_cli_tools_script(tmp_path, ["rg"], claude=False).exists()
+def test_cli_tools_wsl_script_keeps_an_unmarked_cli_tools_skill(tmp_path: Path) -> None:
+    skill = tmp_path / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("mine", encoding="utf-8")
+
+    result = _run_cli_tools_wsl_script(tmp_path)
+
+    assert skill.read_text(encoding="utf-8") == "mine"
+    assert "is yours" in result.stdout
 
 
-def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
+@_posix_only
+def test_cli_tools_wsl_script_skips_without_claude_dir(tmp_path: Path) -> None:
+    result = _run_cli_tools_wsl_script(tmp_path)
+
+    assert "skipping the cli-tools skills" in result.stdout
+    assert not (tmp_path / ".claude").exists()
+
+
+def test_deploy_cli_tools_skills_native_copies_the_bundle_without_a_command(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    skills = _make_claude_home(tmp_path) / "skills"
+    (skills / "tool-rg").mkdir(parents=True)
+    (skills / "tool-rg" / "SKILL.md").write_text(_generated(), encoding="utf-8")
+    (skills / "tool-mine").mkdir()
+    (skills / "tool-mine" / "SKILL.md").write_text("mine", encoding="utf-8")
+    reporter = RecordingReporter()
+    runner = Runner(dry_run=False, reporter=reporter)
+    fake = _FakeRun()
+    monkeypatch.setattr(runner, "run", fake)
+    platform = make_platform(OperatingSystem.LINUX, tmp_path)
+
+    deploy_claude_cli_tools_skills(runner, platform)
+    deploy_claude_cli_tools_skills(runner, platform)
+
+    assert fake.commands == []
+    assert _bundle_tree(skills / CLI_TOOLS_SKILL) == _bundle_tree(cli_tools_bundle())
+    assert sorted(path.name for path in skills.iterdir()) == ["cli-tools", "tool-mine"]
+    recorded = tmp_path / ".local" / "share" / "terminal-setup" / "cli-tools-skill"
+    assert recorded.read_text(encoding="utf-8") == harness.basicly_spec() + "\n"
+    assert any("skill is current" in message for message in reporter.messages)
+
+
+def test_deploy_cli_tools_skills_native_keeps_an_unmarked_cli_tools_skill(tmp_path: Path) -> None:
+    skill = _make_claude_home(tmp_path) / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("mine", encoding="utf-8")
+    reporter = RecordingReporter()
+
+    deploy_claude_cli_tools_skills(
+        Runner(dry_run=False, reporter=reporter), make_platform(OperatingSystem.LINUX, tmp_path)
+    )
+
+    assert skill.read_text(encoding="utf-8") == "mine"
+    assert any("is yours" in message for message in reporter.messages)
+
+
+@pytest.mark.parametrize("unreachable", [{}, {"Ubuntu": "cannot reach"}])
+def test_deploy_cli_tools_skills_windows_copies_both_sides_without_uv(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, unreachable: dict[str, str]
+) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
-    monkeypatch.setenv("UV", "uv.exe")
+    monkeypatch.setattr("terminal_setup.configs._to_wsl_path", lambda *_a: "/mnt/c/bundle")
+    monkeypatch.setattr("terminal_setup.prerequisites._UNREACHABLE", unreachable)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "AppData" / "Local"))
     _make_claude_home(tmp_path)
     runner = Runner(dry_run=False, reporter=RecordingReporter())
     fake = _FakeRun()
     monkeypatch.setattr(runner, "run", fake)
-    monkeypatch.setattr(runner, "which", lambda command: command if command == "rg" else None)
-
-    monkeypatch.delenv("LOCALAPPDATA", raising=False)
-    platform = make_platform(OperatingSystem.WINDOWS, tmp_path)
-
-    deploy_claude_cli_tools_skills(runner, platform)
-
-    wsl = wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_skills_script()])
-    assert fake.commands == [wsl, ["uv.exe", *_skills_user(), "--home", str(tmp_path), "cli-tools"]]
-    skill = tmp_path / ".claude" / "skills" / CLI_TOOLS_SKILL / "SKILL.md"
-    skill.parent.mkdir(parents=True)
-    skill.write_text("skill", encoding="utf-8")
-    fake.commands.clear()
-
-    deploy_claude_cli_tools_skills(runner, platform)
-
-    assert fake.commands == [wsl]
-
-
-@pytest.mark.parametrize(("returncode", "failures"), [(0, []), (1, ["in WSL"])])
-def test_deploy_cli_tools_skills_runs_the_offline_script_when_github_is_unreachable_in_wsl(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, returncode: int, failures: list[str]
-) -> None:
-    monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
-    monkeypatch.setattr("terminal_setup.prerequisites._UNREACHABLE", {"Ubuntu": "cannot reach"})
-    reporter = RecordingReporter()
-    runner = Runner(dry_run=False, reporter=reporter)
-    commands: list[list[str]] = []
-
-    def fake(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        commands.append(command)
-        return subprocess.CompletedProcess(command, returncode, "", "")
-
-    monkeypatch.setattr(runner, "run", fake)
 
     deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
 
-    script = _cli_tools_skills_script(offline=True)
-    assert commands == [wsl_exec_command("Ubuntu", ["sh", "-c", script])]
-    assert "skipped, because GitHub is unreachable" in script
-    assert script.index("is current") < script.index("skipped, because")
-    assert [f.removeprefix("install the basicly cli-tools skills ") for f in runner.failures] == (
-        failures
-    )
+    wsl = wsl_exec_command("Ubuntu", ["sh", "-c", _cli_tools_wsl_script("/mnt/c/bundle")])
+    assert fake.commands == [wsl]
+    assert "uv" not in shlex.split(wsl[-1])
+    skill = tmp_path / ".claude" / "skills" / CLI_TOOLS_SKILL
+    assert _bundle_tree(skill) == _bundle_tree(cli_tools_bundle())
+    recorded = tmp_path / "AppData" / "Local" / "terminal-setup" / "cli-tools-skill"
+    assert recorded.read_text(encoding="utf-8") == harness.basicly_spec() + "\n"
+    assert runner.failures == []
 
 
 def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
+    monkeypatch.setattr("terminal_setup.configs._to_wsl_path", lambda *_a: "/mnt/c/bundle")
     reporter = RecordingReporter()
     runner = Runner(dry_run=False, reporter=reporter)
     fake = _FakeRun()

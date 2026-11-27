@@ -11,6 +11,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TESTS = Path("tests")
 BASE_REF = "origin/main"
 _PACKAGES = ("terminal_setup",)
+BUNDLE_CHECK = ".scripts/bundle_cli_tools_skill.py"
 
 
 def in_ci(environ: dict[str, str] | None = None) -> bool:
@@ -108,7 +109,17 @@ def _pytest(*targets: str) -> int:
     return result.returncode
 
 
+def _bundle_check() -> int:
+    print("==> cli-tools bundle check")
+    return subprocess.run(  # nosec
+        ["uv", "run", "python", BUNDLE_CHECK, "--check"], cwd=PROJECT_ROOT, check=False
+    ).returncode
+
+
 def main() -> int:
+    if _bundle_check() != 0:
+        print("pre-push failed: the cli-tools bundle check", file=sys.stderr)
+        return 1
     if in_ci():
         return _pytest()
     changed = changed_files()

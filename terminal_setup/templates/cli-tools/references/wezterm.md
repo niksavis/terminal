@@ -1,0 +1,26 @@
+# WezTerm
+
+Configure WezTerm tabs, panes, key bindings and the startup shell on Windows, WSL, Linux and macOS.
+
+## Rules
+
+- **Change the key bindings and their document together.** The two otherwise disagree.
+- **Keep the leader and split shortcuts of the project.** The user expects them.
+- **Use fonts with fallbacks that exist on a new system.** A missing font changes the layout.
+- **Put no user path or distribution alias in the config.** It breaks on another machine.
+- **Restart WezTerm and check startup after a change.** Some changes show only in a new process.
+
+## Commands
+
+```bash
+wezterm
+wezterm --version
+wezterm start --always-new-process
+wezterm ls-fonts
+wezterm cli list
+```
+
+## Output
+
+- `wezterm --version` shows that the binary is available.
+- A startup or runtime error usually comes from the Lua config.
