@@ -2,6 +2,22 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.6 - 2026-11-27
+
+Delta: v0.26.5..v0.26.6
+
+### Highlights
+
+- **For contributors: a basicly install refreshes the bundled `cli-tools` skill.** When a commit stages `.basicly/state/install.json`, the pre-commit hook writes the skill of the new basicly pin and stages it, so the bundle check in CI stays green with no manual step (term-9h5t1o).
+- **For contributors: the repository runs basicly v0.50.0.** The kit, the CI gate pins and the contributor docs move from v0.49.6 to v0.50.0, and the bundled `cli-tools` skill follows the new pin (term-p9q02t).
+- **For contributors: a basicly pin that removes a `cli-tools` file stops the commit with the next steps.** Before, the commit hook failed with a Python error. Now it names each removed file and the commands to refresh, stage and commit by hand (term-nn3yn8).
+
+### Commit delta (auto-generated)
+
+- chore(basicly): install the released kit (term-p9q02t) (9c83037)
+- fix(hooks): refuse a bundle refresh that removes files inside the commit hook (term-nn3yn8) (d325292)
+- build(hooks): refresh the bundled cli-tools skill when a commit stages the basicly pin (term-9h5t1o) (11fdced)
+
 ## v0.26.5 - 2026-11-27
 
 Delta: v0.26.4..v0.26.5

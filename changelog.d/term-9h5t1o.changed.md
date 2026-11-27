@@ -1,1 +1,0 @@
-- **For contributors: a basicly install refreshes the bundled `cli-tools` skill.** When a commit stages `.basicly/state/install.json`, the pre-commit hook writes the skill of the new basicly pin and stages it, so the bundle check in CI stays green with no manual step (term-9h5t1o).

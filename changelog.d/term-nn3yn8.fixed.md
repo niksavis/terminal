@@ -1,1 +1,0 @@
-- **For contributors: a basicly pin that removes a `cli-tools` file stops the commit with the next steps.** Before, the commit hook failed with a Python error. Now it names each removed file and the commands to refresh, stage and commit by hand (term-nn3yn8).
