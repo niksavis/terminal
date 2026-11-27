@@ -132,7 +132,7 @@ Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu. At the end of
 | Setup prints an `apt-get` command | Setup could not run `sudo` | Run that command in Ubuntu, then run the install again |
 | `python` opens the Microsoft Store | The Store app alias comes first on PATH | Turn off the `python.exe` and `python3.exe` App execution aliases in Settings > Apps > Advanced app settings |
 | A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](user-guide.md#managed-windows-machines) |
-| Setup prints `cannot reach github.com (timed out) ... so setup skips the GitHub release tools` | WSL cannot open a TLS connection to GitHub. When setup also prints `Windows reaches GitHub but WSL cannot open a connection`, the cause is usually WSL networking: NAT mode behind a VPN or a proxy | In Ubuntu, run `curl -sSIL https://github.com/niksavis/terminal/releases/latest/download/install.sh`. Run `wsl --status` and check `networkingMode` in `.wslconfig` in your Windows user folder. Set `HTTPS_PROXY` in Ubuntu when your network needs a proxy. Then run the install again |
+| Setup prints `cannot reach github.com (timed out) ... so setup skips the GitHub release tools` | WSL cannot open a connection to GitHub. When setup also prints `Windows reaches GitHub but WSL cannot open a connection`, the cause is usually a stale WSL network state in NAT mode, for example after a VPN change | Run `wsl --shutdown` in PowerShell, open Ubuntu again, then run the install again. To check, run `curl -sSIL https://github.com/niksavis/terminal/releases/latest/download/install.sh` in Ubuntu. If it happens again, see [WSL networking behind a VPN](#wsl-networking-behind-a-vpn) |
 
 The first two rows come from the Microsoft pages above.
 
@@ -158,3 +158,13 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 When the GitHub API limit stops a download, set the `GITHUB_TOKEN` environment variable and run the install again.
 
 Before the GitHub release tools, setup checks in 5 s or less that it can reach GitHub and the release download host. It uses the same proxy settings (`HTTPS_PROXY`, `NO_PROXY`) as the downloads. When the check fails, setup prints one message that names the host, and skips the release tools, herdr, starship and the `cli-tools` skill on that side. The other steps run as usual.
+
+### WSL networking behind a VPN
+
+Setup never changes `.wslconfig`. These are things to try, from the Microsoft pages [Accessing network applications with WSL](https://learn.microsoft.com/en-us/windows/wsl/networking), [Advanced settings configuration in WSL](https://learn.microsoft.com/en-us/windows/wsl/wsl-config) and [Troubleshooting WSL](https://learn.microsoft.com/en-us/windows/wsl/troubleshooting), read on 2026-11-27.
+
+- In Ubuntu, `wslinfo --networking-mode` prints the mode. The default is `nat`.
+- On Windows 11 22H2 or later, mirrored mode has better VPN compatibility. To try it, put `networkingMode=mirrored` under `[wsl2]` in `%UserProfile%\.wslconfig`, then run `wsl --shutdown`. This stops all distros.
+- Some VPN and security software does not work with mirrored mode. The Microsoft troubleshooting page names some versions of Bitdefender, OpenVPN and McAfee Safe Connect.
+- Cisco AnyConnect can change the routes so that NAT mode fails.
+- `autoProxy` (default on) gives WSL the Windows HTTP proxy. A PAC proxy reaches WSL only as the `WSL_PAC_URL` variable, so set `HTTPS_PROXY` in Ubuntu yourself.

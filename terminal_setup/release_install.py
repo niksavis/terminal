@@ -37,6 +37,7 @@ PREFETCH_WORKERS = 32
 PROBE_URLS = (
     "https://github.com/niksavis/terminal/releases/latest/download/install.sh",
     "https://api.github.com/",
+    "https://release-assets.githubusercontent.com/",
 )
 PROBE_TIMEOUT = 5
 LOOKUP_TIMEOUT = 20

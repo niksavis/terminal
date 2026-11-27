@@ -528,8 +528,10 @@ def _host_side_note(wsl_distro: str | None) -> str:
         return " Windows cannot reach GitHub either, so check the proxy or the VPN first."
     return (
         " Windows reaches GitHub but WSL cannot open a connection; WSL networking (NAT behind"
-        " a VPN or proxy) is the likely cause. Check networkingMode in .wslconfig, or set"
-        f" HTTPS_PROXY inside WSL. See {_NETWORK_DOC}"
+        " a VPN or proxy) is the likely cause. Run wsl --shutdown in PowerShell, open WSL"
+        " again, then rerun terminal update. If it happens again, wslinfo --networking-mode"
+        " in WSL shows the mode; try networkingMode=mirrored under [wsl2] in .wslconfig."
+        f" See {_NETWORK_DOC}"
     )
 
 

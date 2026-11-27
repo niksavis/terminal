@@ -431,7 +431,11 @@ def test_the_probe_goes_through_the_https_proxy_and_names_the_host(
         server.shutdown()
         server.server_close()
 
-    assert sorted(_Proxy.tunnels) == ["api.github.com:443", "github.com:443"]
+    assert sorted(_Proxy.tunnels) == [
+        "api.github.com:443",
+        "github.com:443",
+        "release-assets.githubusercontent.com:443",
+    ]
     assert reason.startswith("cannot reach ")
     assert "github.com (" in reason
     assert "api.github.com (" in reason
@@ -456,7 +460,7 @@ def test_the_probe_names_the_redirect_host_that_fails(monkeypatch: pytest.Monkey
 
     server = _serve(Redirect)
     base = f"http://127.0.0.1:{server.server_address[1]}"
-    monkeypatch.setattr(release_install, "PROBE_URLS", (f"{base}/download", f"{base}/download"))
+    monkeypatch.setattr(release_install, "PROBE_URLS", (f"{base}/download",) * 3)
     try:
         reason = release_install.unreachable_reason()
     finally:
