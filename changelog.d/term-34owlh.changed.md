@@ -1,1 +1,0 @@
-- **`--only report` shows the `cli-tools` skill.** The report prints one line for `~/.claude/skills/cli-tools/SKILL.md` on each side, so you can see whether setup wrote it (term-34owlh).

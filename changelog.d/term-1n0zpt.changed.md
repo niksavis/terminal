@@ -1,1 +1,0 @@
-- A local `git push` runs only the tests of the files that changed against `origin/main`: the changed test files, and the test files that use a changed module, script or file. The pre-push hook prints which tests it runs and why. CI still runs the whole suite on every pull request.

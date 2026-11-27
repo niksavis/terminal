@@ -2,6 +2,27 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.4 - 2026-11-27
+
+Delta: v0.26.3..v0.26.4
+
+### Highlights
+
+- **Setup installs the `cli-tools` skill without a download.** The setup package now carries the skill files of the pinned basicly version (v0.49.6), and setup copies them in WSL and on Windows. Before, each basicly pin change downloaded the basicly wheel from GitHub on each side, and setup skipped the skill when WSL could not reach GitHub (term-iwsmvo).
+- **`--only report` shows the `cli-tools` skill.** The report prints one line for `~/.claude/skills/cli-tools/SKILL.md` on each side, so you can see whether setup wrote it (term-34owlh).
+- **`install.ps1` no longer waits up to 100 s for GitHub before setup starts.** The check for a newer uv release now gives up after 5 s, names github.com in its warning, and the install goes on with the installed uv (term-3888n4).
+- **The WezTerm release lookup on Windows gives up after 5 s.** Before, setup waited up to 100 s when GitHub did not answer. The message now names github.com (term-egznkn).
+- **For contributors: a local `git push` runs only the tests of the changed files.** The pre-push hook prints which tests it runs and why. CI still runs the whole suite on every pull request (term-1n0zpt).
+
+### Commit delta (auto-generated)
+
+- feat(report): list the cli-tools skill on each side (term-34owlh) (d12f6c2)
+- fix(setup): bound the powershell latest release lookup by 5 s (term-egznkn) (9121414)
+- fix(install): bound the uv release lookup of the powershell bootstrap by 5 s (term-3888n4) (61668f8)
+- test(setup): keep the bundle test off the installed kit references (term-iwsmvo) (485b436)
+- feat(setup): bundle the basicly cli-tools skill in the setup package (term-iwsmvo) (f765a69)
+- build(hooks): run only the tests of changed files in the local pre-push (term-1n0zpt) (73b481d)
+
 ## v0.26.3 - 2026-11-27
 
 Delta: v0.26.2..v0.26.3
