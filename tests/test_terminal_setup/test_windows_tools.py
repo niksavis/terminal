@@ -370,6 +370,32 @@ def test_the_path_removal_writes_nothing_when_nothing_is_stale() -> None:
     assert runner.commands == []
 
 
+def test_ensure_windows_tools_skips_every_tool_with_one_warning_when_github_is_unreachable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[str] = []
+    monkeypatch.setattr(
+        windows_tools, "ensure_tool", lambda _r, _p, tool, **_k: seen.append(tool.command)
+    )
+    monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "")
+    monkeypatch.setattr(
+        release_install, "unreachable_reason", lambda *_probe: "cannot reach github.com"
+    )
+    monkeypatch.setattr(windows_tools, "replace_winget_wezterm", lambda *_a, **_k: None)
+    monkeypatch.setattr(windows_tools, "_add_to_user_path", lambda *_a: None)
+    runner = FakeRunner()
+
+    ensure_windows_tools(
+        cast(Runner, runner), make_platform(), update=False, policy=None, include_starship=False
+    )
+
+    assert seen == []
+    assert runner.failures == [f"install {tool.command} on Windows" for tool in WINDOWS_TOOLS]
+    warnings = [m for m in runner.reporter.messages if "cannot reach" in str(m)]
+    assert len(warnings) == 1
+    assert "WSL" not in str(warnings[0])
+
+
 @pytest.mark.parametrize("include_starship", [True, False])
 def test_ensure_windows_tools_covers_every_tool_and_starship_on_request(
     monkeypatch: pytest.MonkeyPatch, include_starship: bool
@@ -380,7 +406,7 @@ def test_ensure_windows_tools_covers_every_tool_and_starship_on_request(
         windows_tools, "ensure_tool", lambda _r, _p, tool, **_k: seen.append(tool.command)
     )
     monkeypatch.setattr(release_install, "latest_tag", lambda repo: looked_up.append(repo) or "")
-    monkeypatch.setattr(release_install, "unreachable_reason", lambda: "")
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda *_probe: "")
     monkeypatch.setattr(windows_tools, "replace_winget_wezterm", lambda *_a, **_k: None)
     monkeypatch.setattr(windows_tools, "_add_to_user_path", lambda *_a: None)
 

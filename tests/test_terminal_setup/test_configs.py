@@ -1905,21 +1905,31 @@ def test_deploy_cli_tools_skills_windows_runs_wsl_and_native(
     assert fake.commands == [wsl]
 
 
-def test_deploy_cli_tools_skills_skips_wsl_when_github_is_unreachable_there(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(("returncode", "failures"), [(0, []), (1, ["in WSL"])])
+def test_deploy_cli_tools_skills_runs_the_offline_script_when_github_is_unreachable_in_wsl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, returncode: int, failures: list[str]
 ) -> None:
     monkeypatch.setattr("terminal_setup.configs.is_running_in_wsl", lambda: False)
     monkeypatch.setattr("terminal_setup.prerequisites._UNREACHABLE", {"Ubuntu": "cannot reach"})
     reporter = RecordingReporter()
     runner = Runner(dry_run=False, reporter=reporter)
-    fake = _FakeRun()
+    commands: list[list[str]] = []
+
+    def fake(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(command, returncode, "", "")
+
     monkeypatch.setattr(runner, "run", fake)
 
     deploy_claude_cli_tools_skills(runner, make_platform(OperatingSystem.WINDOWS, tmp_path))
 
-    assert fake.commands == []
-    assert runner.failures == ["install the basicly cli-tools skills in WSL"]
-    assert any("GitHub is unreachable" in message for message in reporter.messages)
+    script = _cli_tools_skills_script(offline=True)
+    assert commands == [wsl_exec_command("Ubuntu", ["sh", "-c", script])]
+    assert "skipped, because GitHub is unreachable" in script
+    assert script.index("is current") < script.index("skipped, because")
+    assert [f.removeprefix("install the basicly cli-tools skills ") for f in runner.failures] == (
+        failures
+    )
 
 
 def test_deploy_cli_tools_skills_windows_skips_native_without_claude_dir(

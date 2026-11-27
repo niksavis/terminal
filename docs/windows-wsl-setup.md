@@ -157,7 +157,7 @@ A corporate firewall or proxy must allow these hosts. The list comes from the se
 
 When the GitHub API limit stops a download, set the `GITHUB_TOKEN` environment variable and run the install again.
 
-Before the GitHub release tools, setup checks in 5 s or less that it can reach GitHub and the release download host. It uses the same proxy settings (`HTTPS_PROXY`, `NO_PROXY`) as the downloads. When the check fails, setup prints one message that names the host, and skips the release tools, herdr, starship and the `cli-tools` skill on that side. The other steps run as usual.
+Before the GitHub release tools, setup checks that it can reach GitHub and the release download host. When the release lookups do not answer, the check gets at most 8 s. It uses the same proxy settings (`HTTPS_PROXY`, `NO_PROXY`) as the downloads. When the check fails, setup prints one message that names the host, and skips the release tools, herdr, starship and the `cli-tools` skill on that side. The other steps run as usual.
 
 ### WSL networking behind a VPN
 

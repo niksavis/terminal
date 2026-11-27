@@ -7,6 +7,7 @@ import json
 import sys
 import tarfile
 import threading
+import time
 import typing
 import urllib.error
 import zipfile
@@ -347,7 +348,7 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
         return "v1.2.0"
 
     monkeypatch.setattr(release_install, "latest_tag", latest)
-    monkeypatch.setattr(release_install, "unreachable_reason", lambda: "")
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda *_probe: "")
     monkeypatch.setattr(release_install, "current_version", lambda *_a: "1.2.0")
     jobs = [
         {"repo": "jqlang/jq", "binary": "jq", "update": False, "patterns": ["jq-linux-{arch}"]},
@@ -369,15 +370,18 @@ def test_batch_looks_up_each_tag_once_and_reports_every_tool_in_order(
     assert release_install._UNREACHED == {}
 
 
-def test_an_unreachable_github_skips_every_tool_with_one_message_and_no_lookup(
+def test_an_unreachable_github_skips_every_tool_with_one_message_and_no_retry(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def no_lookup(repo: str) -> str:
-        raise AssertionError(f"looked up {repo} after the probe failed")
+    looked_up: list[str] = []
+    reason = "cannot reach release-assets.githubusercontent.com (timed out) within 8 s"
 
-    reason = "cannot reach release-assets.githubusercontent.com (timed out)"
-    monkeypatch.setattr(release_install, "latest_tag", no_lookup)
-    monkeypatch.setattr(release_install, "unreachable_reason", lambda: reason)
+    def latest(repo: str) -> str:
+        looked_up.append(repo)
+        raise OSError("timed out")
+
+    monkeypatch.setattr(release_install, "latest_tag", latest)
+    monkeypatch.setattr(release_install, "unreachable_reason", lambda *_probe: reason)
     monkeypatch.setattr(release_install, "BIN_DIR", tmp_path)
     monkeypatch.setattr(release_install.shutil, "which", lambda _b: None)
     jobs = [
@@ -387,16 +391,77 @@ def test_an_unreachable_github_skips_every_tool_with_one_message_and_no_lookup(
     ]
 
     assert release_install.main(["--batch", json.dumps(jobs)]) == 0
+    assert sorted(looked_up) == ["astral-sh/uv", "jqlang/jq"]
+    looked_up.clear()
     assert release_install.main(["jqlang/jq", "jq", "1", "jq-linux-{arch}"]) == 1
+    assert looked_up == ["jqlang/jq"]
 
     captured = capsys.readouterr()
-    assert captured.out.splitlines() == [
-        f"offline\t\t{reason}",
+    lines = captured.out.splitlines()
+    assert lines[0].startswith(f"offline\t\t{reason}, so setup skips the GitHub release tools.")
+    assert "HTTPS_PROXY" in lines[0]
+    assert lines[1:] == [
         "unreached\tjq\tskipped, because GitHub is unreachable",
         "unreached\tuv\tskipped, because GitHub is unreachable",
         "absent\therdr\therdr is not installed",
     ]
     assert captured.err == f"jq: {reason}\n"
+
+
+def test_answered_lookups_do_not_wait_for_a_slow_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    release = threading.Event()
+    monkeypatch.setattr(release_install, "_probe_one", lambda _url: release.wait(5) and "")
+    monkeypatch.setattr(release_install, "latest_tag", lambda _repo: "v1.0.0")
+    started = time.monotonic()
+    try:
+        with release_install.prefetched(["jqlang/jq", "sharkdp/fd"]) as reason:
+            tags = dict(release_install._PREFETCHED)
+    finally:
+        release.set()
+
+    assert time.monotonic() - started < 2
+    assert reason == ""
+    assert tags == {"jqlang/jq": "v1.0.0", "sharkdp/fd": "v1.0.0"}
+
+
+def test_an_offline_batch_answers_presence_without_a_probe_or_lookup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def no_network(*_args: object) -> str:
+        raise AssertionError("an offline batch reached the network")
+
+    monkeypatch.setattr(release_install, "latest_tag", no_network)
+    monkeypatch.setattr(release_install, "unreachable_reason", no_network)
+    monkeypatch.setattr(release_install, "BIN_DIR", tmp_path)
+    monkeypatch.setattr(release_install.shutil, "which", lambda _b: None)
+    jobs = [
+        {"repo": "herdrdev/herdr", "binary": "herdr", "patterns": [], "present_only": True},
+        {"repo": "starship/starship", "binary": "starship", "patterns": [], "keep_system": True},
+    ]
+
+    assert release_install.main(["--batch", json.dumps(jobs), "--offline"]) == 0
+
+    assert capsys.readouterr().out.splitlines() == [
+        "absent\therdr\therdr is not installed",
+        "unreached\tstarship\tskipped, because GitHub is unreachable",
+    ]
+
+
+def test_the_probe_ends_at_its_deadline_and_names_the_silent_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    release = threading.Event()
+    monkeypatch.setattr(release_install, "_probe_one", lambda _url: release.wait(5) and "")
+    monkeypatch.setattr(release_install, "PROBE_DEADLINE", 0.2)
+    started = time.monotonic()
+    try:
+        reason = release_install.unreachable_reason()
+    finally:
+        release.set()
+
+    assert time.monotonic() - started < 2
+    assert reason.startswith("cannot reach github.com (no answer), api.github.com (no answer)")
+    assert reason.endswith("within 0.2 s")
 
 
 class _Proxy(BaseHTTPRequestHandler):
@@ -439,7 +504,6 @@ def test_the_probe_goes_through_the_https_proxy_and_names_the_host(
     assert reason.startswith("cannot reach ")
     assert "github.com (" in reason
     assert "api.github.com (" in reason
-    assert "HTTPS_PROXY" in reason
 
 
 def test_the_probe_names_the_redirect_host_that_fails(monkeypatch: pytest.MonkeyPatch) -> None:

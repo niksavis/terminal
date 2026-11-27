@@ -321,7 +321,14 @@ def ensure_windows_tools(
     target = platform.terminal_tools_dir
     runner.ensure_dir(target)
     repos = [] if runner.dry_run else [tool.repo for tool in tools]
-    with release_install.prefetched(repos):
+    with release_install.prefetched(repos) as reason:
+        if reason:
+            runner.failures.extend(f"install {tool.command} on Windows" for tool in tools)
+            runner.reporter.warn(
+                f"{reason}, so setup skips the Windows release tools. Check the proxy or the"
+                " VPN, then run terminal update again (continuing)"
+            )
+            tools = ()
         for tool in tools:
             attempt(
                 runner,

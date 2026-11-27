@@ -12,13 +12,14 @@ import subprocess  # nosec B404
 import sys
 import tarfile
 import tempfile
+import threading
+import time
 import typing
 import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
 from collections.abc import Iterator
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from html.parser import HTMLParser
 from pathlib import Path
@@ -33,14 +34,15 @@ VERSION = re.compile(r"\d+(?:\.\d+)+")
 REPO = re.compile(r"[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/[A-Za-z0-9._-]+")
 BIN_DIR = Path.home() / ".local" / "bin"
 STATE_DIR = Path.home() / ".local" / "share" / "terminal-setup" / "releases"
-PREFETCH_WORKERS = 32
 PROBE_URLS = (
     "https://github.com/niksavis/terminal/releases/latest/download/install.sh",
     "https://api.github.com/",
     "https://release-assets.githubusercontent.com/",
 )
 PROBE_TIMEOUT = 5
+PROBE_DEADLINE = 8
 LOOKUP_TIMEOUT = 20
+LOOKUP_DEADLINE = 45
 _PREFETCHED: dict[str, str] = {}
 _UNREACHED: dict[str, Exception] = {}
 _REDIRECTS = frozenset({301, 302, 303, 307, 308})
@@ -213,11 +215,37 @@ def latest_tag(repo: str) -> str:
     return urllib.parse.unquote(tag)
 
 
-def _prefetch_one(repo: str) -> tuple[str, str, Exception | None]:
+def _prefetch_one(repo: str) -> tuple[str, Exception | None]:
     try:
-        return repo, latest_tag(repo), None
+        return latest_tag(repo), None
     except (InstallError, OSError) as error:
-        return repo, "", error
+        return "", error
+
+
+class _Bounded:
+    def __init__(
+        self, call: typing.Callable[[str], typing.Any], items: typing.Iterable[str]
+    ) -> None:
+        self._call = call
+        self._lock = threading.Lock()
+        self._results: dict[str, typing.Any] = {}
+        self._threads = [
+            threading.Thread(target=self._work, args=(item,), daemon=True) for item in items
+        ]
+        for thread in self._threads:
+            thread.start()
+
+    def _work(self, item: str) -> None:
+        value = self._call(item)
+        with self._lock:
+            self._results[item] = value
+
+    def wait(self, seconds: float) -> dict[str, typing.Any]:
+        end = time.monotonic() + seconds
+        for thread in self._threads:
+            thread.join(max(0.0, end - time.monotonic()))
+        with self._lock:
+            return dict(self._results)
 
 
 class _Trail(urllib.request.HTTPRedirectHandler):
@@ -254,28 +282,43 @@ def _probe_one(url: str) -> str:
         return f"{urllib.parse.urlsplit(trail.url).hostname} ({reason})"
 
 
-def unreachable_reason() -> str:
-    with ThreadPoolExecutor(max_workers=len(PROBE_URLS)) as pool:
-        failed = [host for host in pool.map(_probe_one, PROBE_URLS) if host]
+def unreachable_reason(probe: _Bounded | None = None) -> str:
+    answers = (probe or _Bounded(_probe_one, PROBE_URLS)).wait(PROBE_DEADLINE)
+    failed = [
+        answers[url] if url in answers else f"{urllib.parse.urlsplit(url).hostname} (no answer)"
+        for url in PROBE_URLS
+    ]
+    failed = [host for host in failed if host]
     if not failed:
         return ""
+    return f"cannot reach {', '.join(failed)} within {PROBE_DEADLINE} s"
+
+
+def offline_message(reason: str) -> str:
     return (
-        f"cannot reach {', '.join(failed)} within {PROBE_TIMEOUT} s, so setup skips the "
-        "GitHub release tools. Likely causes: a proxy that needs HTTPS_PROXY and NO_PROXY, "
-        "a VPN, or the WSL networking mode. Check with: curl -sSIL "
-        f"{PROBE_URLS[0]} in the same shell. Run terminal update again when it works."
+        f"{reason}, so setup skips the GitHub release tools. Likely causes: a proxy that "
+        "needs HTTPS_PROXY and NO_PROXY, a VPN, or the WSL networking mode. Check with: "
+        f"curl -sSIL {PROBE_URLS[0]} in the same shell. Run terminal update again when it works."
     )
 
 
 @contextmanager
 def prefetched(repos: list[str]) -> Iterator[str]:
     unique = sorted(set(repos))
-    reason = unreachable_reason() if unique else ""
-    if reason:
-        _UNREACHED.update((repo, InstallError(reason)) for repo in unique)
-    elif unique:
-        with ThreadPoolExecutor(max_workers=min(PREFETCH_WORKERS, len(unique))) as pool:
-            for repo, tag, error in pool.map(_prefetch_one, unique):
+    reason = ""
+    if unique:
+        probe = _Bounded(_probe_one, PROBE_URLS)
+        lookups = _Bounded(_prefetch_one, unique)
+        done = lookups.wait(PROBE_DEADLINE)
+        answered = len(done) == len(unique) and all(tag for tag, _ in done.values())
+        reason = "" if answered else unreachable_reason(probe)
+        if reason:
+            _UNREACHED.update((repo, InstallError(reason)) for repo in unique)
+        else:
+            done = done if answered else lookups.wait(LOOKUP_DEADLINE)
+            for repo in unique:
+                late = InstallError(f"{repo}: GitHub sent no release answer in {LOOKUP_DEADLINE} s")
+                tag, error = done.get(repo, ("", late))
                 if tag:
                     _PREFETCHED[repo] = tag
                 elif error is not None:
@@ -444,7 +487,9 @@ UNREACHED = "unreached"
 OFFLINE = "offline"
 
 
-def run_batch(jobs: list[object]) -> list[str]:
+def run_batch(jobs: list[object], *, offline: bool = False) -> list[str]:
+    if offline:
+        return [_unreached_line(job) if isinstance(job, dict) else _batch_line(job) for job in jobs]
     repos = [
         str(job.get("repo", ""))
         for job in jobs
@@ -453,7 +498,7 @@ def run_batch(jobs: list[object]) -> list[str]:
     with prefetched([repo for repo in repos if REPO.fullmatch(repo)]) as reason:
         if not reason:
             return [_batch_line(job) for job in jobs]
-        return [f"{OFFLINE}\t\t{_one_line(reason)}"] + [
+        return [f"{OFFLINE}\t\t{_one_line(offline_message(reason))}"] + [
             _unreached_line(job) if isinstance(job, dict) else _batch_line(job) for job in jobs
         ]
 
@@ -466,14 +511,15 @@ def _unreached_line(job: dict[object, object]) -> str:
 
 
 def _batch_main(argv: list[str]) -> int:
+    offline = argv[2:] == ["--offline"]
     try:
-        jobs = json.loads(argv[1]) if len(argv) == 2 else None
+        jobs = json.loads(argv[1]) if len(argv) == 2 or offline else None
     except ValueError:
         jobs = None
     if not isinstance(jobs, list):
-        print("usage: release_install.py --batch JSON-LIST-OF-JOBS", file=sys.stderr)
+        print("usage: release_install.py --batch JSON-LIST-OF-JOBS [--offline]", file=sys.stderr)
         return 2
-    for line in run_batch(jobs):
+    for line in run_batch(jobs, offline=offline):
         print(line, flush=True)
     return 0
 

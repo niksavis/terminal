@@ -758,7 +758,7 @@ def _cli_tools_current_message() -> str:
     return f"the basicly {CLI_TOOLS_SKILL} skill is current (basicly {harness.basicly_ref()})"
 
 
-def _cli_tools_skills_script() -> str:
+def _cli_tools_skills_script(*, offline: bool = False) -> str:
     spec = shlex.quote(harness.basicly_spec())
     record = f'"$HOME/.local/share/terminal-setup/{_CLI_TOOLS_RECORD}"'
     skill = f'"$HOME/.claude/skills/{CLI_TOOLS_SKILL}/SKILL.md"'
@@ -767,6 +767,7 @@ def _cli_tools_skills_script() -> str:
         'skipping the cli-tools skills."; exit 0; }; '
         f'if [ -f {skill} ] && [ "$(cat {record} 2>/dev/null)" = {spec} ]; then '
         f"echo {shlex.quote(_cli_tools_current_message())}; exit 0; fi; "
+        + (f"echo {shlex.quote(SKIPPED_OFFLINE)} >&2; exit 1; " if offline else "")
         + _UV_RESOLVE_POSIX
         + '"$uv" '
         + " ".join(shlex.quote(part) for part in [*_skills_user(), CLI_TOOLS_SKILL])
@@ -800,19 +801,20 @@ def _deploy_cli_tools_skills_windows(runner: Runner, platform: PlatformInfo) -> 
 
 
 def deploy_claude_cli_tools_skills(runner: Runner, platform: PlatformInfo) -> None:
-    script = _cli_tools_skills_script()
     if not _is_windows_host(platform):
-        if github_unreachable(None):
-            raise RuntimeError(SKIPPED_OFFLINE)
+        script = _cli_tools_skills_script(offline=github_unreachable(None))
         runner.run(["sh", "-c", script], label=_CLI_TOOLS_LABEL)
         return
-    if github_unreachable(_wsl_distro(platform)):
+    distro = _wsl_distro(platform)
+    offline = github_unreachable(distro)
+    result = runner.run(
+        wsl_exec_command(distro, ["sh", "-c", _cli_tools_skills_script(offline=offline)]),
+        check=not offline,
+        label=_CLI_TOOLS_LABEL,
+    )
+    if offline and result.returncode != 0:
         runner.failures.append(f"{_CLI_TOOLS_LABEL} in WSL")
         runner.reporter.warn(f"{_CLI_TOOLS_LABEL} in WSL failed: {SKIPPED_OFFLINE} (continuing)")
-    else:
-        runner.run(
-            wsl_exec_command(_wsl_distro(platform), ["sh", "-c", script]), label=_CLI_TOOLS_LABEL
-        )
     _deploy_cli_tools_skills_windows(runner, platform)
 
 

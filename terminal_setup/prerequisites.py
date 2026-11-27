@@ -608,15 +608,11 @@ def _run_release_jobs(
     runner: Runner, jobs: list[dict[str, object]], *, wsl_distro: str | None, label: str
 ) -> list[tuple[str, str, str, str]]:
     key = wsl_distro or ""
-    if key in _UNREACHABLE and not runner.dry_run:
-        runner.reporter.info(f"{label}: {SKIPPED_OFFLINE}")
-        return [
-            (release_install.UNREACHED, str(job.get("binary", "")), SKIPPED_OFFLINE, "")
-            for job in jobs
-        ]
     source = Path(release_install.__file__).read_text(encoding="utf-8")
     interpreter = "python3" if wsl_distro and not is_running_in_wsl() else sys.executable
     command = [interpreter, "-I", "-c", source, "--batch", json.dumps(jobs)]
+    if key in _UNREACHABLE:
+        command.append("--offline")
     result = _run_in_wsl_or_host(runner, command, distro=wsl_distro, label=label)
     lines: list[tuple[str, str, str, str]] = []
     for line in (result.stdout or "").splitlines():
