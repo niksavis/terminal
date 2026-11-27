@@ -1,0 +1,1 @@
+- **The WezTerm release lookup on Windows gives up after 5 s.** Before, setup waited up to 100 s when GitHub did not answer. The message now names github.com (term-egznkn).

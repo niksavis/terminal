@@ -1799,6 +1799,8 @@ def test_update_replaces_a_user_profile_copy_after_a_version_check(tool: str, pr
     assert "is up to date'); exit 0" in scripts[0]
     assert ".terminal-setup-old" in scripts[0]
     assert scripts[0].index("--version") < scripts[0].index("Invoke-WebRequest")
+    assert scripts[0].index("$req.Timeout = 5000") < scripts[0].index("GetResponse()")
+    assert "github.com did not answer the wezterm/wezterm release lookup within 5 s" in scripts[0]
 
 
 @pytest.mark.parametrize("tool", ["wezterm"])

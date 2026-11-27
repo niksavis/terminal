@@ -2084,7 +2084,10 @@ def ensure_host_cli_extras(
 def _powershell_latest_release(repo: str) -> str:
     return (
         f"$req = [System.Net.WebRequest]::Create('https://github.com/{repo}/releases/latest'); "
-        "$req.Method = 'HEAD'; $resp = $req.GetResponse(); "
+        "$req.Method = 'HEAD'; $req.Timeout = 5000; "
+        "try { $resp = $req.GetResponse() } catch "
+        f"{{ throw 'github.com did not answer the {repo} release lookup within 5 s: ' "
+        "+ $_.Exception.Message }; "
         "$final = $resp.ResponseUri.AbsoluteUri; $resp.Close(); "
         "if ($final -notmatch '/releases/tag/') "
         f"{{ throw '{repo}: could not read the latest release from ' + $final }}; "
