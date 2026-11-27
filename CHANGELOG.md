@@ -2,6 +2,20 @@
 
 All notable user-facing changes are documented in this file by release tag.
 
+## v0.26.5 - 2026-11-27
+
+Delta: v0.26.4..v0.26.5
+
+### Highlights
+
+- **A failed img-zoom install names the package host.** When uv cannot reach the package index, setup now prints the URL that failed instead of only `exit code 2`, and each request gives up after 10 s and one retry. Before, uv tried each request 4 times (term-14k9h5).
+- **For contributors: the local git hooks are light.** A commit runs ruff and the file checks, and a push runs only the `cli-tools` bundle check. pyright, bandit and the whole test suite run in CI on every pull request (term-jvv2ij).
+
+### Commit delta (auto-generated)
+
+- fix(setup): bound the img-zoom install and name the package host that failed (term-14k9h5) (14b9587)
+- build(hooks): keep the local hooks light and run the heavy checks in ci (term-jvv2ij) (1896fcd)
+
 ## v0.26.4 - 2026-11-27
 
 Delta: v0.26.3..v0.26.4
