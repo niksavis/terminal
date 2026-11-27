@@ -28,11 +28,12 @@
         try {
             $request = [System.Net.WebRequest]::Create('https://github.com/astral-sh/uv/releases/latest')
             $request.Method = 'HEAD'
+            $request.Timeout = 5000
             $response = $request.GetResponse()
             if ($response.ResponseUri.AbsoluteUri -match '/tag/v?(\d+\.\d+\.\d+)') { $latest = $Matches[1] }
             $response.Close()
         } catch {
-            Write-Warning "The latest uv release could not be read; setup continues with uv $installed."
+            Write-Warning "github.com did not answer the uv release lookup within 5 s ($($_.Exception.Message)); setup continues with uv $installed."
         }
         if ($latest -and $latest -ne $installed) {
             try {

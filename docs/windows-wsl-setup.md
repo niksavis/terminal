@@ -132,6 +132,7 @@ Start WezTerm from the Start menu. It opens a zsh shell in Ubuntu. At the end of
 | Setup prints an `apt-get` command | Setup could not run `sudo` | Run that command in Ubuntu, then run the install again |
 | `python` opens the Microsoft Store | The Store app alias comes first on PATH | Turn off the `python.exe` and `python3.exe` App execution aliases in Settings > Apps > Advanced app settings |
 | A machine-wide tool is too old | Your organisation installed it | Ask IT, or use Software Center. See [Managed Windows machines](user-guide.md#managed-windows-machines) |
+| `install.ps1` prints `github.com did not answer the uv release lookup within 5 s` | Windows did not get an answer from GitHub in 5 s. A name lookup that hangs can add up to 15 s. The install goes on with the uv that is installed | Nothing, when the install finishes. Otherwise check the network or the proxy settings, then run the install again |
 | Setup prints `cannot reach github.com (timed out) ... so setup skips the GitHub release tools` | WSL cannot open a connection to GitHub. When setup also prints `Windows reaches GitHub but WSL cannot open a connection`, the cause is usually a stale WSL network state in NAT mode, for example after a VPN change | Run `wsl --shutdown` in PowerShell, open Ubuntu again, then run the install again. To check, run `curl -sSIL https://github.com/niksavis/terminal/releases/latest/download/install.sh` in Ubuntu. If it happens again, see [WSL networking behind a VPN](#wsl-networking-behind-a-vpn) |
 
 The first two rows come from the Microsoft pages above.

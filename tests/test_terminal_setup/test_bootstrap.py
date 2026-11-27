@@ -63,6 +63,8 @@ def test_powershell_bootstrap_installs_and_updates_uv_inline_before_uvx_runs() -
     assert "uv self update" not in text
     assert inline in first
     assert inline in update
+    assert update.index("$request.Timeout = 5000") < update.index("GetResponse()")
+    assert "github.com did not answer the uv release lookup within 5 s" in update
     assert "ExecutionPolicy" not in text
     assert "powershell -NoProfile" not in first
     assert "--update" not in text
