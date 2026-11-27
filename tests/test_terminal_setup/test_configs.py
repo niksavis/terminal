@@ -1906,6 +1906,30 @@ def test_the_bundle_check_skips_locally_and_fails_in_ci_without_the_wheel(
     assert expected in captured.out + captured.err
 
 
+def test_the_bundle_follows_a_staged_basicly_pin(monkeypatch: pytest.MonkeyPatch) -> None:
+    script = cast("Any", _load_bundle_script())
+    refreshed: list[str] = []
+    added: list[list[str]] = []
+
+    def fake_refresh(spec: str, _bundle: Path) -> int:
+        refreshed.append(spec)
+        return 0
+
+    def fake_run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        added.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    monkeypatch.setattr(script, "refresh", fake_refresh)
+    monkeypatch.setattr(script.subprocess, "run", fake_run)
+    bundle = script.BUNDLE
+
+    assert script.refresh_staged(["README.md"], "spec", bundle) == 0
+    assert (refreshed, added) == ([], [])
+    assert script.refresh_staged([".basicly/state/install.json"], "spec", bundle) == 0
+    assert refreshed == ["spec"]
+    assert added == [["git", "add", "-A", "--", "terminal_setup/templates/cli-tools"]]
+
+
 def _run_cli_tools_wsl_script(home: Path) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ["/bin/sh", "-c", _cli_tools_wsl_script(str(cli_tools_bundle()))],

@@ -1,6 +1,11 @@
 extends:
 - .basicly/lefthook.yml
 
+pre-commit:
+  commands:
+    cli-tools-bundle:
+      run: uv run python .scripts/bundle_cli_tools_skill.py --staged
+
 pre-push:
   commands:
     terminal-tests:

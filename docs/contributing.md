@@ -23,7 +23,7 @@ uvx --from https://github.com/niksavis/basicly/releases/download/v0.49.6/basicly
 uv run pytest tests/
 ```
 
-When `basicly install` moves the basicly pin, refresh the `cli-tools` skill that the setup package carries, and commit it with the install:
+When `basicly install` or `orch install` moves the basicly pin, the commit of the install refreshes the `cli-tools` skill that the setup package carries. The pre-commit hook `cli-tools-bundle` sees `.basicly/state/install.json` staged, writes the skill of the new pin to `terminal_setup/templates/cli-tools/` and stages it. When the refresh cannot run, the commit stops and names the command to run by hand:
 
 ```bash
 uv run python .scripts/bundle_cli_tools_skill.py

@@ -16,6 +16,7 @@ from terminal_setup import harness  # noqa: E402
 BUNDLE = ROOT / "terminal_setup" / "templates" / "cli-tools"
 SKILL = "cli-tools"
 REFRESH = "uv run python .scripts/bundle_cli_tools_skill.py"
+INSTALL_STATE = ".basicly/state/install.json"
 
 
 def in_ci(environ: dict[str, str] | None = None) -> bool:
@@ -108,13 +109,44 @@ def refresh(spec: str, bundle: Path = BUNDLE) -> int:
     return 0
 
 
+def _staged_paths() -> list[str]:
+    result = subprocess.run(  # nosec B603 B607
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.stdout.splitlines() if result.returncode == 0 else []
+
+
+def refresh_staged(staged: list[str], spec: str, bundle: Path = BUNDLE) -> int:
+    if INSTALL_STATE not in staged:
+        return 0
+    print(f"cli-tools bundle: {INSTALL_STATE} is staged, so the bundle follows the pin")
+    if refresh(spec, bundle) != 0:
+        print(
+            f"cli-tools bundle: the refresh failed; run {REFRESH}, then "
+            f"git add {bundle.relative_to(ROOT).as_posix()}",
+            file=sys.stderr,
+        )
+        return 1
+    added = subprocess.run(  # nosec B603 B607
+        ["git", "add", "-A", "--", bundle.relative_to(ROOT).as_posix()], cwd=ROOT, check=False
+    )
+    return added.returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="bundle_cli_tools_skill.py")
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--staged", action="store_true")
     args = parser.parse_args(argv)
     spec = harness.basicly_spec()
     if args.check:
         return check(spec, ci=in_ci())
+    if args.staged:
+        return refresh_staged(_staged_paths(), spec)
     return refresh(spec)
 
 
