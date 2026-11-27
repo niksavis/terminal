@@ -1,0 +1,1 @@
+- **A failed img-zoom install names the package host.** When uv cannot reach the package index, setup now prints the URL that failed instead of only `exit code 2`, and each request gives up after 10 s and one retry. Before, uv tried each request 4 times (term-14k9h5).

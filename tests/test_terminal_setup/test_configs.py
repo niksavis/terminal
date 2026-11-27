@@ -1306,10 +1306,12 @@ def _posix_only(test: object) -> object:
 class _FakeRun:
     def __init__(self, bin_dir: str = "") -> None:
         self.commands: list[list[str]] = []
+        self.envs: list[object] = []
         self.bin_dir = bin_dir
 
-    def __call__(self, command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+    def __call__(self, command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
         self.commands.append(command)
+        self.envs.append(kwargs.get("env"))
         stdout = self.bin_dir if command[1:] == ["tool", "dir", "--bin"] else ""
         return subprocess.CompletedProcess(command, 0, stdout, "")
 
@@ -1358,7 +1360,8 @@ def test_install_img_zoom_native_posix_runs_uv_tool_install(
     assert f"src={shlex.quote(IMG_ZOOM_SOURCE.as_posix())}; " in script
     assert 'cp -R "$src"/. ' in script
     assert 'dest="$HOME/.local/share/terminal-setup/img_zoom_tool"' in script
-    assert '"$uv" tool install "$dest" && ' in script
+    assert 'UV_HTTP_TIMEOUT=10 UV_HTTP_RETRIES=1 "$uv" tool install "$dest" 2>&1)"' in script
+    assert 'echo "img-zoom: uv tool install exited $code' in script
 
 
 def test_install_img_zoom_native_upgrades_on_update(
@@ -1391,7 +1394,7 @@ def test_install_img_zoom_wsl_installs_inside_wsl_from_the_mounted_package(
     assert command[:-1] == wsl_exec_command("Ubuntu", ["sh", "-c"])
     assert 'src="$(wslpath -u C:/src/terminal/terminal_setup/img_zoom_tool)"; ' in command[-1]
     assert command[-1].index('= "d1" ]') < command[-1].index("wslpath")
-    assert '"$uv" tool install "$dest" && ' in command[-1]
+    assert 'UV_HTTP_TIMEOUT=10 UV_HTTP_RETRIES=1 "$uv" tool install "$dest" 2>&1)"' in command[-1]
 
 
 @pytest.mark.parametrize("update", [False, True])
@@ -1419,6 +1422,8 @@ def test_install_img_zoom_native_windows_uses_the_uv_running_setup_and_adds_its_
         ["C:/Users/u/.local/bin/uv.exe", "tool", "install", *upgrade, str(stage)],
         ["C:/Users/u/.local/bin/uv.exe", "tool", "dir", "--bin"],
     ]
+    install_env = cast("dict[str, str]", fake.envs[0])
+    assert (install_env["UV_HTTP_TIMEOUT"], install_env["UV_HTTP_RETRIES"]) == ("10", "1")
     assert added == [Path("C:/Users/u/.local/bin")]
     staged = sorted(
         path.relative_to(stage).as_posix() for path in stage.rglob("*") if path.is_file()

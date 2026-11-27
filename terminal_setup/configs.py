@@ -616,6 +616,10 @@ def img_zoom_digest() -> str:
     return digest.hexdigest()
 
 
+_UV_INDEX_LIMITS = {"UV_HTTP_TIMEOUT": "10", "UV_HTTP_RETRIES": "1"}
+_UV_INDEX_BOUND = " ".join(f"{name}={value}" for name, value in _UV_INDEX_LIMITS.items())
+
+
 def _img_zoom_install_script(source: str, *, update: bool, digest: str) -> str:
     upgrade = " --upgrade" if update else ""
     return (
@@ -629,7 +633,11 @@ def _img_zoom_install_script(source: str, *, update: bool, digest: str) -> str:
         'rm -rf "$dest" && mkdir -p "$dest" && '
         'cp -R "$src"/. "$dest"/ && '
         'find "$dest" -name __pycache__ -type d -prune -exec rm -rf {} + || exit 1; '
-        f'"$uv" tool install{upgrade} "$dest" && printf "%s\\n" "{digest}" > "$stamp"'
+        f'out="$({_UV_INDEX_BOUND} "$uv" tool install{upgrade} "$dest" 2>&1)"; code=$?; '
+        'if [ "$code" -ne 0 ]; then printf "%s\\n" "$out" >&2; '
+        'line="$(printf "%s\\n" "$out" | grep -m 1 "Failed to fetch")"; '
+        'echo "img-zoom: uv tool install exited $code${line:+: $line}" >&2; exit "$code"; fi; '
+        f'printf "%s\\n" "{digest}" > "$stamp"'
     )
 
 
@@ -692,7 +700,9 @@ def install_img_zoom_native(
     uv = _windows_uv(runner, platform)
     _stage_img_zoom_source(runner, stage)
     upgrade = ["--upgrade"] if update else []
-    runner.run([uv, "tool", "install", *upgrade, str(stage)])
+    runner.run(
+        [uv, "tool", "install", *upgrade, str(stage)], env={**os.environ, **_UV_INDEX_LIMITS}
+    )
     runner.write_text(stamp, digest + "\n")
     bin_dir = runner.run([uv, "tool", "dir", "--bin"], dry_run_safe=True).stdout.strip()
     if bin_dir:
