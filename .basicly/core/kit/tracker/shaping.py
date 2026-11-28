@@ -101,6 +101,32 @@ def unfilled(text: str) -> bool:
     return bool(_PLACEHOLDER.search(_CODE_SPAN.sub("", text)))
 
 
+def placeholders(text: str) -> list[str]:
+    plain = _CODE_SPAN.sub("", text)
+    return [*_PLACEHOLDER.findall(plain), *_TRIGGER_PLACEHOLDER.findall(plain)]
+
+
+def _named(found: list[str]) -> str:
+    return ", ".join(repr(one) for one in dict.fromkeys(found))
+
+
+def placeholder_note(record: Mapping[str, object], missing: Sequence[str]) -> str:
+
+    notes = []
+    sources = (
+        ((TRIGGER_HEADING, CONTEXT_HEADING), DESCRIPTION_FIELD, "the description"),
+        ((ACCEPTANCE_HEADING,), ACCEPTANCE_FIELD, "the acceptance criteria"),
+    )
+    for headings, field, label in sources:
+        text = record.get(field)
+        found = placeholders(text) if isinstance(text, str) else []
+        if found and any(name in missing for name in headings):
+            notes.append(f"{label} reads {_named(found)} as an unfilled placeholder")
+    if not notes:
+        return ""
+    return "; ".join(notes) + "; put literal angle-bracket text in backticks or reword it"
+
+
 def states_something(text) -> bool:
     return (
         isinstance(text, str)

@@ -77,7 +77,9 @@ def check(text: str, record: str, repo: str, action: str, clock: Clock = utc_now
             f"the {kind} names no {'rule and its date' if kind == 'decision' else 'words'}"
         )
     when = _stamp(head, kind, lines)
-    _same("record", _value(lines, "Record:"), record)
+    head_lines = lines[: lines.index(ACTION)] if ACTION in lines else lines
+    if _value(head_lines, messages.PROJECT_RECORD) != record.strip():
+        _same("record", _value(lines, "Record:"), record)
     _same("target repository", _value(lines, "Target repository:"), repo)
     _same("exact action", _action(lines), action)
     if messages.UNTIL_LANDED in lines:

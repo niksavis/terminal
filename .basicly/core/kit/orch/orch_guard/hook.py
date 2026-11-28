@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
 ROLE = "orchestrator"
 WRITE_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
 BLOCK = 2
+HOOKS_PATH = re.compile(r"core\.hookspath", re.IGNORECASE)
+HOOKS_REFUSAL = (
+    "orchestrator hook guard: this command sets core.hooksPath, which turns the hooks off "
+    "or sends them elsewhere. Run the same command without the core.hooksPath setting; "
+    "a read-only git command needs no hook change."
+)
 
 
 def is_repository(folder: Path) -> bool:
@@ -36,9 +43,19 @@ def target(event: dict[str, object]) -> Path | None:
     return Path(str(raw)) if raw else None
 
 
+def hooks_refusal(event: dict[str, object]) -> str | None:
+    tool_input = event.get("tool_input")
+    command = tool_input.get("command") if isinstance(tool_input, dict) else None
+    if isinstance(command, str) and HOOKS_PATH.search(command):
+        return HOOKS_REFUSAL
+    return None
+
+
 def refusal(event: dict[str, object]) -> str | None:
     if event.get("agent_type") != ROLE or event.get("agent_id"):
         return None
+    if event.get("tool_name") == "Bash":
+        return hooks_refusal(event)
     if event.get("tool_name") not in WRITE_TOOLS:
         return None
     path, cwd = target(event), event.get("cwd")

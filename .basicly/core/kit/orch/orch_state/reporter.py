@@ -9,7 +9,7 @@ from pathlib import Path
 
 import runner
 
-from orch_state import commands, herdr, relay_guard, store
+from orch_state import commands, herdr, relay_guard, start_steps, store
 
 INPUT_MAX = 1_000_000
 BLOCKED_TTL_MS = 600_000
@@ -133,6 +133,8 @@ def write_state(event: dict[str, object], environ: dict[str, str], clock: store.
     else:
         named = None
     starting = event.get("hook_event_name") == "SessionStart"
+    if starting:
+        changes[start_steps.STARTED] = changes["state_at"]
     keeps_reserved = relay_guard.reserved(current)
     claims = relay_guard.reserved(named)
     if claims and starting and not keeps_reserved:
@@ -144,12 +146,25 @@ def write_state(event: dict[str, object], environ: dict[str, str], clock: store.
     store.save(root, session, changes, clock)
 
 
+def remind(event: dict[str, object], environ: dict[str, str]) -> None:
+    session, where = event.get("session_id"), event.get("cwd")
+    if event.get("hook_event_name") != "UserPromptSubmit" or not isinstance(session, str):
+        return
+    cwd = Path(where) if isinstance(where, str) and where else Path.cwd()
+    root = store.find(cwd, environ)
+    line = start_steps.prompt_line(root, session) if root is not None and session else None
+    if line:
+        print(line)
+
+
 def run(raw: str, environ: dict[str, str], clock: store.Clock = store.utc_now) -> None:
     event = json.loads(raw[:INPUT_MAX])
     if not isinstance(event, dict):
         return
     with contextlib.suppress(Exception):
         write_state(event, environ, clock)
+    with contextlib.suppress(Exception):
+        remind(event, environ)
     if environ.get("HERDR_ENV") != "1":
         return
     pane = herdr.pane_id(environ)

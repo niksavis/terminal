@@ -31,6 +31,10 @@ def _form(verb: str, text: str, command: str) -> _Form:
 def comment() -> argparse.ArgumentParser:
     parser = _form("comment", "queue a vault comment", "comment-vault")
     parser.example = "cli.py comment RECORD --vault URL --text TEXT"
+    parser.epilog = (
+        "The ledger form also works: cli.py comment DIRECTORY RECORD --text TEXT, "
+        "where DIRECTORY is the ledger directory"
+    )
     parser.add_argument("record", help="the record id")
     parser.add_argument("--text", required=True, help="the comment, redacted before it is queued")
     return parser

@@ -41,7 +41,8 @@ ROUTE = {
         "an item the person approves in the orchestrator window; relay it with orch approve"
     ),
     COUNCIL_DECIDES: (
-        "a test, gate or hook change; the orchestrator decides it with orch decide --council"
+        "a test, gate or hook change; the orchestrator decides it with orch decide --council, "
+        "or the person approves it for one use with orch approve --words"
     ),
     PERSON_WINDOW: (
         "an item that stays with the person in the worker's own window; "

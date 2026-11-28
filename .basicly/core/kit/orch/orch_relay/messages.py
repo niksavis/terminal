@@ -16,6 +16,7 @@ VALID_FOR_MINUTES = 60
 UNTIL_LANDED = "Good for this exact diff until it lands; any change to the diff voids it."
 REPORT_STATES = ("working", "done", "blocked", "needs-decision")
 RULE_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+PROJECT_RECORD = "Project record:"
 
 Scan = Callable[[str], str | None]
 
@@ -35,11 +36,13 @@ class Action:
     repo: str
     action: str
     risks: list[str] = field(default_factory=list)
+    project_record: str = ""
 
 
 def _action_lines(act: Action, parsed: list[fields.Risk]) -> list[str]:
     return [
         f"Record: {act.record}",
+        *([f"{PROJECT_RECORD} {act.project_record}"] if act.project_record else []),
         f"Item: {act.item}",
         f"Target repository: {act.repo}",
         "Exact action:",
@@ -102,8 +105,10 @@ class Writer:
             )
         if council:
             given["council"] = council
+        if act.project_record:
+            given["project-record"] = act.project_record
         fields.no_placeholder(given, "orch decide")
-        parsed = fields.risks(act.risks, act.action)
+        parsed = fields.risks(act.risks, act.action, "orch decide")
         now = stamp(self.clock)
         text = "\n".join([
             f"[decision {now}] Orchestrator decision on an ask-first item.",
@@ -129,9 +134,19 @@ class Writer:
             "words": words,
         }
         fields.require(given, "orch approve")
-        classes.require_class(act.item, classes.PERSON_APPROVES, "orch approve")
+        classes.require_class(
+            act.item, frozenset({classes.PERSON_APPROVES, classes.COUNCIL_DECIDES}), "orch approve"
+        )
+        once = classes.item_class(act.item) == classes.COUNCIL_DECIDES
+        if once and diff:
+            raise RefusedError(
+                f"orch approve refuses --diff for {act.item!r}: the person's approval of a "
+                "test, gate or hook change is good for one use; leave out --diff"
+            )
+        if act.project_record:
+            given["project-record"] = act.project_record
         fields.no_placeholder({k: v for k, v in given.items() if k != "words"}, "orch approve")
-        parsed = fields.risks(act.risks, act.action)
+        parsed = fields.risks(act.risks, act.action, "orch approve")
         now = stamp(self.clock)
         text = "\n".join([
             f"[approval {now}] The person's approval, relayed by the orchestrator.",
@@ -159,6 +174,13 @@ def order(to: str, record: str, goal: str, limits: str, proof: str) -> str:
         f"Limits: {limits}",
         f"Expected proof: {proof}",
     ])
+
+
+def order_step(to: str) -> str:
+    return (
+        f"printed, not sent: orch send delivers nothing. Send the order below to {to} "
+        "with SendMessage, or with your client's message tool."
+    )
 
 
 def send_step(record: str) -> str:

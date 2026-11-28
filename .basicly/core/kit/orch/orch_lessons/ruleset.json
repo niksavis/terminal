@@ -206,6 +206,70 @@
       "anchor": "verify the start command"
     },
     {
+      "id": "idle-notice-is-no-report",
+      "rule": "Check orch status before acting on an idle notice.",
+      "source": "Orchestrator finding 10, 2026-11-28 (basicly-d3hmlqh)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Run `orch status` before you act on one"
+    },
+    {
+      "id": "never-disable-hooks",
+      "rule": "Never disable or redirect hooks, even in a read-only command.",
+      "source": "Orchestrator finding 12, 2026-11-28 (basicly-xtq1ndq)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Never disable or redirect hooks, not even in a read-only command"
+    },
+    {
+      "id": "cleanup-checks-git-state",
+      "rule": "Check git status, unpushed commits and alternates users before a delete or gc.",
+      "source": "Orchestrator finding 15, 2026-11-28 (basicly-vw03z6i)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "record for each path its git status, its commits on no remote branch and every repository whose objects/info/alternates file names it"
+    },
+    {
+      "id": "explicit-tracker-folder",
+      "rule": "Run workspace tracker writes with an explicit working folder.",
+      "source": "Orchestrator finding 22, 2026-11-28 (basicly-s64vu7b)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Run every workspace tracker write with an explicit working folder or an absolute ledger path"
+    },
+    {
+      "id": "full-hash-proofs",
+      "rule": "Name a commit by its full hash in a proof command.",
+      "source": "Orchestrator finding 7, 2026-11-28 (basicly-qwaxbrq)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Name a commit by its full 40-character hash in every proof command"
+    },
+    {
+      "id": "start-through-adapter",
+      "rule": "Start a worker session only through the session adapter.",
+      "source": "Orchestrator finding 11, 2026-11-28 (basicly-aq3oty2)",
+      "place": "skill",
+      "file": ".basicly/core/skills/orchestration/skill.yaml",
+      "anchor": "Start a worker session only through the session adapter"
+    },
+    {
+      "id": "send-prints-only",
+      "rule": "orch send --order prints the order; the message tool delivers it.",
+      "source": "Orchestrator finding 3, 2026-11-28 (basicly-4fp1vv3)",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "which prints it and sends nothing"
+    },
+    {
+      "id": "brief-before-relays",
+      "rule": "Run orch brief before any relay; orch refuses relays until it ran.",
+      "source": "Orchestrator finding 1, 2026-11-28 (basicly-i64gkax)",
+      "place": "agent",
+      "file": ".basicly/core/agents/orchestrator/agent.yaml",
+      "anchor": "Until it ran in this session, orch decide, approve, send, report and start refuse."
+    },
+    {
       "id": "session-names",
       "rule": "A session and its tab share one name; a shared tab joins names.",
       "source": "ARCHITECTURE.md:201",

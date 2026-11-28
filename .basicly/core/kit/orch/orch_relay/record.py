@@ -12,6 +12,7 @@ RECORD_PREFIX = "orchestration-record:"
 LEDGER = Path(".basicly/ledger")
 TRACKER_CLI = Path(".basicly/core/kit/tracker/cli.py")
 ACTIVE = ("open", "in_progress")
+NO_RECORD = "holds no record"
 
 Runner = Callable[[list[str]], str]
 
@@ -32,6 +33,7 @@ class Tracker:
             )
         self.base = [sys.executable, str(cli)]
         self.ledger = str(repo / LEDGER)
+        self.repo = str(repo)
         self.runner = runner
 
     def active_records(self) -> list[dict[str, object]]:
@@ -57,7 +59,17 @@ class Tracker:
         return [note for note in found if isinstance(note, dict)]
 
     def comment(self, record: str, text: str) -> None:
-        self.runner([*self.base, "comment", self.ledger, record, text])
+        try:
+            self.runner([*self.base, "comment", self.ledger, record, text])
+        except RefusedError as refused:
+            if NO_RECORD not in str(refused):
+                raise
+            raise RefusedError(
+                f"{refused}; orch wrote to the ledger of the repository {self.repo}, "
+                f"and --record names a record of {self.ledger} only; without it orch uses "
+                "the orchestration record. Name a housed project's record with --project-record, "
+                "or run orch from the repository that holds the record"
+            ) from None
 
 
 def _title(record: dict[str, object]) -> str:

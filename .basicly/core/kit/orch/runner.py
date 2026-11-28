@@ -73,3 +73,15 @@ def quiet(argv: list[str], env: dict[str, str], timeout: float) -> None:
         check=False,
         env=env,
     )
+
+
+TIMED_OUT = 124
+
+
+def bounded(
+    argv: list[str], timeout: float, cwd: str | None = None, env: dict[str, str] | None = None
+) -> Done:
+    try:
+        return attempt(argv, timeout, cwd, env)
+    except subprocess.TimeoutExpired:
+        return Done(TIMED_OUT, "", f"{argv[0]} did not finish within {timeout:g} s")

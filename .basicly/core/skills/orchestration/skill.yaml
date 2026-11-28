@@ -57,10 +57,18 @@ instructions: |
   ## Sessions
 
   1. A session is missing only when it is absent from the live list and its project has no commit for two hours. If another session works in that folder, ask the person before you start a replacement.
-  2. Before you start a session, verify the start command of the installed client against its documentation, then check that the new name appears in the live list. If it does not, report the failed start and start no more sessions for that project.
+  2. Start a worker session only through the session adapter, with `orch start --role worker --dir DIR`, never with a plain client command such as `claude -n NAME`. Before you start one, verify the start command of the installed client against its documentation, then check that the new name appears in the live list. If it does not, report the failed start and start no more sessions for that project.
   3. A session and its window or tab share one name where the host allows naming. A tab with several sessions shows all their names, joined by ` + `.
   4. The start prompt holds the goal, the ordered record ids, the limits, the report protocol and the items that stay with the person.
   5. Silent session: after 60 minutes without a report, read its tracker and git log, then send a reminder. After 30 more minutes, record `silent since <time>` and tell the person. Go on with the other sessions.
+
+  ## Checks before you act
+
+  1. An idle notice is no report. Run `orch status` before you act on one, and treat a notice older than your last order to that session as no report.
+  2. Never disable or redirect hooks, not even in a read-only command: no `core.hooksPath` setting and no `--no-verify`. The orch guard hook refuses a command that sets `core.hooksPath`.
+  3. Before a proposal deletes a path or runs git gc on it, record for each path its git status, its commits on no remote branch and every repository whose objects/info/alternates file names it. Propose no delete or gc from folder sizes alone.
+  4. Run every workspace tracker write with an explicit working folder or an absolute ledger path. One call's working folder can become the default of later calls.
+  5. Name a commit by its full 40-character hash in every proof command. `gh run list --commit` with a short hash prints an empty list.
 
   ## Guiding a project session
 

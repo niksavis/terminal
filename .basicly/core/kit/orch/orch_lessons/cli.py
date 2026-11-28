@@ -6,12 +6,15 @@ import shlex
 import sys
 from pathlib import Path
 
+import runner
 from orch_automode import commands as automode
 from orch_pace import commands as pace
 from orch_relay import accept, brief, classes, delegate, install, messages, record, start
-from orch_state import commands, relay_guard, store
+from orch_state import commands, relay_guard, start_steps, store
 
 from orch_lessons import doctor, log
+
+START_TIMEOUT = 180
 
 
 def version() -> str:
@@ -69,7 +72,15 @@ def _relay_parsers(groups: argparse._SubParsersAction) -> None:
     for name in ("decide", "approve"):
         relay = groups.add_parser(name)
         relay.add_argument("--item", choices=sorted(classes.ITEMS), required=True)
-        relay.add_argument("--record")
+        relay.add_argument(
+            "--record",
+            help="a record of this workspace's ledger; default: the orchestration record",
+        )
+        relay.add_argument(
+            "--project-record",
+            default="",
+            help="the record of a housed project that the decision is about",
+        )
         relay.add_argument("--repo", required=True)
         relay.add_argument("--action", required=True)
         relay.add_argument("--risk", action="append", default=[])
@@ -93,7 +104,15 @@ def _relay_parsers(groups: argparse._SubParsersAction) -> None:
     launch = groups.add_parser("start")
     launch.add_argument("--vendor", choices=start.VENDORS, required=True)
     launch.add_argument("--name", required=True)
-    launch.add_argument("--role", default="orchestrator")
+    launch.add_argument(
+        "--role",
+        required=True,
+        help="worker starts a session through the session adapter; any other role is printed",
+    )
+    launch.add_argument(
+        "--dir", type=Path, help="the folder a worker works in; required for worker"
+    )
+    launch.add_argument("--prompt", help="the start prompt file the session adapter sends")
 
 
 def relay(args: argparse.Namespace, writer: messages.Writer) -> str:
@@ -103,6 +122,7 @@ def relay(args: argparse.Namespace, writer: messages.Writer) -> str:
         args.repo,
         args.action,
         args.risk,
+        args.project_record.strip(),
     )
     if args.group == "approve":
         return writer.approve(act, args.words, args.diff)
@@ -126,7 +146,9 @@ def _read(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> str |
         tracker = record.Tracker(log.repo_root(cwd))
         found = record.find(tracker)
         shown = brief.notes(tracker.notes(found))
-        return brief.render(found, shown, commands.session_lines(cwd, environ))
+        rendered = brief.render(found, shown, commands.session_lines(cwd, environ))
+        start_steps.mark(cwd, environ)
+        return rendered
     return None
 
 
@@ -140,8 +162,31 @@ def run_install(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) ->
 
 
 def run_send(args: argparse.Namespace, _cwd: Path, _environ: dict[str, str]) -> int:
-    print(messages.order(args.to, args.record, args.goal, args.limits, args.proof))
+    text = messages.order(args.to, args.record, args.goal, args.limits, args.proof)
+    print(messages.order_step(args.to))
+    print(text)
     return 0
+
+
+def run_start(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int:
+    repo = log.repo_root(cwd)
+    root = store.find(cwd, environ)
+    live = relay_guard.live_orchestrators(root) if root is not None else []
+    ask = start.Request(args.vendor, args.role, args.name, args.dir, args.prompt)
+    found = start.plan(ask, repo, root, live)
+    if not found.run:
+        print(found.note)
+        print(shlex.join(found.argv))
+        return 0
+    done = runner.bounded(found.argv, START_TIMEOUT)
+    if done.code == runner.TIMED_OUT and not done.out:
+        raise log.RefusedError(
+            f"the session adapter did not finish within {START_TIMEOUT} s: "
+            f"{shlex.join(found.argv)}; check the live list before you start it again"
+        )
+    sys.stdout.write(done.out)
+    sys.stderr.write(done.err)
+    return done.code
 
 
 def run_delegate(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int:
@@ -161,18 +206,20 @@ def run_delegate(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -
     return 0
 
 
-DIRECT = {"install": run_install, "send": run_send, "delegate": run_delegate}
+DIRECT = {
+    "install": run_install,
+    "send": run_send,
+    "delegate": run_delegate,
+    "start": run_start,
+}
 
 
 def run_relay(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int | None:
+    start_steps.gate(args.group, cwd, environ)
     if (direct := DIRECT.get(args.group)) is not None:
         return direct(args, cwd, environ)
     if (shown := _read(args, cwd, environ)) is not None:
         print(shown)
-        return 0
-    if args.group == "start":
-        repo = log.repo_root(cwd)
-        print(shlex.join(start.launch(args.vendor, args.role, args.name, repo)))
         return 0
     if args.group not in ("record", "decide", "approve", "report"):
         return None
