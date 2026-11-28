@@ -3,6 +3,7 @@ name: decider
 description: Assigns an integrity level and a loop depth to a classified unit, and disposes the escalations that the engine routes to it. Invoked by the engine at CLASSIFY for L2 and above, and when an escalation reaches the decision queue. Returns a `classification` with the level, the depth and the rule that produced them, or a disposition for the escalated question. Read-only.
 tools: Read, Grep, Glob
 tier: medium
+effort: medium
 skills:
 - work-tracker
 - root-cause

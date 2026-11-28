@@ -42,12 +42,13 @@ def default_managed(places: Sequence[str]) -> list[str]:
     return [f"{Path(place).parent.parent.as_posix()}/" for place in places]
 
 
-def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> str:
+def claim_body(raw: str, places: Sequence[str], managed: Sequence[str]) -> str:
     locate = _locate()
+    ledger = locate.quoted(raw)
     installed = [*managed, *INSTALLED_FILES]
     for agents in (".claude", ".agents"):
         installed += [f"{agents}/skills/{name}/" for name in INSTALLED_SKILLS]
-    flags = " ".join(f'--installed "{one}"' for one in installed)
+    flags = " ".join(f'--installed "{locate.quoted(one)}"' for one in installed)
     check = (
         f'"$@" commit-check "$tracker_source" "$tracker_message" --stdin '
         f'--ledger-label "{ledger}" --runner "$tracker_typed"'
@@ -80,7 +81,7 @@ def claim_body(ledger: str, places: Sequence[str], managed: Sequence[str]) -> st
         '    git diff --cached --name-only >"$tracker_index/paths" || exit 1',
         f'    {check} {flags} <"$tracker_index/paths"',
         "  )",
-        *locate.shell_lines(ledger, places),
+        *locate.shell_lines(raw, places),
         '  tracker_python=""',
         "  for tracker_try in python3 python; do",
         '    command -v "$tracker_try" >/dev/null 2>&1 || continue',

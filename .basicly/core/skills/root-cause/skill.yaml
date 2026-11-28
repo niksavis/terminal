@@ -8,6 +8,8 @@ description: "Finds the cause of a failure, a bug that came back or a flaky test
 covers:
   work_types: [bug]
   phases: [build]
+claude:
+  effort: high
 instructions: |
   # Root Cause
 

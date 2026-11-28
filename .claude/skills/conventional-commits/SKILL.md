@@ -13,7 +13,7 @@ Construct a one-line commit subject that passes the `commit-msg` and `tracker-co
 - **Use `basicly commit` by default.**
 - **Write the description in lowercase letters, digits, spaces and hyphens only.** The hook rejects every other character, also in proper nouns and acronyms.
 - **Put a version, a file name or a capitalised name in the body.** The hooks check only the subject line.
-- **Use the id of a record the ledger holds;** `work-tracker` files it and stages the ledger.
+- **Use the id of a record you claimed with `work-tracker`;** it files the record and stages the ledger.
 - **After a refusal, read the hook's output first.** It names the offending character or the missing record; fix that, not a guess.
 - **Read `git status --short` column 1 before you commit.** `git commit` takes the whole index, including a file staged by a refused attempt.
 

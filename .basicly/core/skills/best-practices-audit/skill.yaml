@@ -5,6 +5,8 @@ token_cost:
 name: best-practices-audit
 invocation: model
 description: "Audits skills, instructions, hooks, agents and permissions against the newest vendor docs. Use after a Claude Code release, or when asked if the harness still follows Anthropic guidance."
+claude:
+  effort: high
 instructions: |
   # Best-Practices Audit
 

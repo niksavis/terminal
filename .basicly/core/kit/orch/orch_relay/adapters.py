@@ -36,6 +36,17 @@ FORBIDDEN = (
     "--dangerously-bypass-approvals-and-sandbox",
 )
 RULE_FLAGS = ("--allow-tool=", "--deny-tool=", "--disallow-temp-dir")
+CAPABILITIES = ("names_session", "resumes_read_only", "read_only", "lane_edits")
+METHODS = ("argv", "reply", "resume_command")
+NEEDS = {
+    "read_only": ("run a read-only turn", "run it without --read-only"),
+    "lane_edits": ("edit in a lane", "run it with --read-only"),
+    "resumes_read_only": (
+        "resume a read-only session read-only",
+        "start a new one with --read-only",
+    ),
+}
+LOAD_ERRORS = (ImportError, AttributeError, TypeError, ValueError, OSError, RuntimeError)
 
 
 class UsageLimitError(RefusedError):
@@ -58,10 +69,20 @@ class Reply:
     session: str
 
 
-class Adapter(Protocol):
-    name: str
+@dataclass(frozen=True)
+class Capabilities:
     names_session: bool
     resumes_read_only: bool
+    read_only: bool
+    lane_edits: bool
+
+    def shown(self) -> str:
+        return " ".join(name for name in CAPABILITIES if getattr(self, name)) or "none"
+
+
+class Adapter(Protocol):
+    name: str
+    capabilities: Capabilities
 
     def argv(self, turn: Turn) -> list[str]: ...
 
@@ -76,8 +97,7 @@ def _model(turn: Turn, flag: str) -> list[str]:
 
 class Claude:
     name = "claude"
-    names_session = True
-    resumes_read_only = True
+    capabilities = Capabilities(True, True, True, True)
 
     def argv(self, turn: Turn) -> list[str]:
         session = ["--resume" if turn.resume else "--session-id", str(turn.session)]
@@ -101,8 +121,7 @@ class Claude:
 
 class Codex:
     name = "codex"
-    names_session = False
-    resumes_read_only = False
+    capabilities = Capabilities(False, False, True, True)
 
     def argv(self, turn: Turn) -> list[str]:
         model = _model(turn, "-m")
@@ -158,8 +177,7 @@ def rules(argv: list[str]) -> list[str]:
 
 class Copilot:
     name = "copilot"
-    names_session = True
-    resumes_read_only = True
+    capabilities = Capabilities(True, True, True, True)
 
     def argv(self, turn: Turn) -> list[str]:
         session = f"--resume={turn.session}" if turn.resume else f"--session-id={turn.session}"
@@ -178,29 +196,82 @@ class Copilot:
 BUILTIN: dict[str, Adapter] = {"claude": Claude(), "codex": Codex(), "copilot": Copilot()}
 
 
-def _plugins() -> dict[str, Adapter]:
-    found: dict[str, Adapter] = {}
+@dataclass(frozen=True)
+class Entry:
+    origin: str
+    adapter: Adapter | None = None
+    refused: str = ""
+
+
+def _origin(point: importlib.metadata.EntryPoint) -> str:
+    dist = getattr(point, "dist", None)
+    return f"plugin {dist.name}" if dist is not None else f"plugin {getattr(point, 'value', '?')}"
+
+
+def _made(point: importlib.metadata.EntryPoint) -> Adapter:
+    loaded = point.load()
+    made = loaded() if isinstance(loaded, type) else loaded
+    missing = [method for method in METHODS if not callable(getattr(made, method, None))]
+    if not isinstance(getattr(made, "capabilities", None), Capabilities):
+        missing.append("capabilities")
+    if missing:
+        raise TypeError(f"the adapter lacks {', '.join(missing)}")
+    return made
+
+
+def _plugins() -> dict[str, Entry]:
+    found: dict[str, Entry] = {}
     for point in importlib.metadata.entry_points(group=ENTRY_POINTS):
         if point.name in BUILTIN:
             continue
-        loaded = point.load()
-        found[point.name] = loaded() if isinstance(loaded, type) else loaded
+        origin = _origin(point)
+        try:
+            found[point.name] = Entry(origin, _made(point))
+        except LOAD_ERRORS as error:
+            found[point.name] = Entry(origin, refused=f"{type(error).__name__}: {error}")
     return found
 
 
+def entries() -> dict[str, Entry]:
+    return {**{name: Entry("built-in", made) for name, made in BUILTIN.items()}, **_plugins()}
+
+
 def registry() -> dict[str, Adapter]:
-    return {**BUILTIN, **_plugins()}
+    return {name: e.adapter for name, e in entries().items() if e.adapter is not None}
 
 
 def adapter(name: str) -> Adapter:
-    known = registry()
-    if name not in known:
+    known = entries()
+    found = known.get(name)
+    if found is None:
         listed = [n for n in ORDER if n in known] + sorted(set(known) - set(ORDER))
         raise RefusedError(
             f"orch delegate has no adapter for the coding agent {name!r}; use one of: "
             f"{', '.join(listed)}, or install a plugin in the entry point group {ENTRY_POINTS}"
         )
-    return known[name]
+    if found.adapter is None:
+        raise RefusedError(
+            f"orch delegate refuses the plugin {name!r} ({found.origin}) of the entry point "
+            f"group {ENTRY_POINTS}: {found.refused}; fix or uninstall that package"
+        )
+    return found.adapter
+
+
+def require(name: str, made: Adapter, capability: str) -> None:
+    if not getattr(made.capabilities, capability):
+        what, remedy = NEEDS[capability]
+        raise RefusedError(
+            f"orch delegate: {name} cannot {what}, because its adapter does not declare "
+            f"the capability {capability}; {remedy}"
+        )
+
+
+def listing() -> list[str]:
+    lines = []
+    for name, found in entries().items():
+        shown = found.adapter.capabilities.shown() if found.adapter else f"refused: {found.refused}"
+        lines.append(f"{name}  {found.origin}  {shown}")
+    return lines
 
 
 def usage_limit(vendor: str, done: runner.Done) -> UsageLimitError | None:

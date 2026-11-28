@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import importlib.util
 import json
 import sys
@@ -152,10 +153,33 @@ def renumbered(found: Sequence[Any], holders: Mapping[str, Sequence[str]]) -> li
     return shown
 
 
-def _template(want: Want, valid: Sequence[Mapping[str, object]]) -> dict[str, object]:
+TEMPLATE_CACHE = "template-cache.json"
+
+
+def _carried_template(clone: Any, prefix: str) -> Any:
+    digest = hashlib.sha256(prefix.encode("utf-8") + b"\0")
+    path = clone.folder / vault_clone.EVENTS_NAME
+    if path.is_file():
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1 << 20), b""):
+                digest.update(chunk)
+    key = digest.hexdigest()
+    cache = clone.folder / TEMPLATE_CACHE
+    try:
+        held = json.loads(cache.read_text(encoding="utf-8"))
+    except OSError, ValueError:
+        held = None
+    if isinstance(held, dict) and held.get("key") == key:
+        return held.get("template")
+    found = vault_template.carried(vault_clone.valid_events(clone), prefix)
+    vault_clone.durable(cache, json.dumps({"key": key, "template": found}, sort_keys=True))
+    return found
+
+
+def _template(want: Want, clone: Any) -> dict[str, object]:
 
     try:
-        held = vault_template.carried(valid, want.prefix)
+        held = _carried_template(clone, want.prefix)
         if held is None:
             held = templates.read(want.template_from) if want.template_from else {}
     except (templates.TemplateError, vault_template.VaultTemplateError) as exc:
@@ -222,7 +246,7 @@ def present(
         ids.validate_prefix(want.prefix)
         if _stale(clone, clock):
             _fetch(clone, clock, runner)
-        template = _template(want, vault_clone.valid_events(clone))
+        template = _template(want, clone)
         key = _key(clone, template)
         marker = view_folder(clone, want) / KEY_NAME
         if key and marker.is_file() and marker.read_text(encoding="utf-8") == key:

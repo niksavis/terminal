@@ -7,6 +7,8 @@ returns: Returns the counts line, each failure with its location and a supported
 posture: Read-only apart from running the tests.
 tools: [Read, Grep, Glob, Bash]
 tier: low
+claude:
+  effort: low
 slots:
   role:
     - text: |

@@ -3,6 +3,7 @@ name: curator
 description: Binds every claim that a release makes to the evidence for it, and refuses each claim that has none. Invoked by the engine at SHIP, once verify and validate are green. Returns a `release-record` in which each claim carries its evidence, and each unsupported claim is named and dropped. Read-only.
 tools: Read, Grep, Glob, Bash
 tier: medium
+effort: medium
 skills:
 - falsify-first
 ---

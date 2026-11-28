@@ -9,31 +9,30 @@ instructions: |
   # Harness Loop
 
   Ordinary work stays with one owner using the tracker, direct implementation and checks.
-  This skill does not require a loop or a new refinement pass. For user-requested observer
-  repair, work outside the controller and report any authorized hook bypasses honestly.
+  It needs no loop and no new refinement pass.
+  For user-requested observer repair, work outside the controller and report each authorized hook bypass as bypassed.
 
-  Read loop state only when starting, advancing or recovering work explicitly managed
-  by `basicly loop`:
+  Read loop state only to start, advance or recover work that `basicly loop` manages:
 
   ```sh
   basicly loop status <issue>
   ```
 
-  The tracker is authoritative. Continue the existing task and worktree; do not restart
-  completed steps or create another owner merely because the session changed.
+  The tracker is authoritative. Continue the existing task and worktree after a session
+  change, because restarted steps duplicate work.
 
   ## Boundaries
 
-  - For loop-managed work, commit code on its branch before advancing; the engine commits loop tracker state. Direct observer work commits its own tracker evidence.
-  - The build-to-verify transition performs landing and records verification. Do not record that gate early; it can skip the landing. Confirm landing from the `[merged]` output.
-  - Keep the base checkout read-only while another pass runs. Never clear another session's files to unblock landing.
-  - Reuse verification only when the engine establishes equivalent trusted inputs. Changed inputs or failed checks require the affected checks again.
-  - Observe a recorded pending process before launching another. A polling timeout does not prove it stopped.
+  - For loop-managed work, commit code on its branch before you advance. The engine commits loop tracker state; direct observer work commits its own tracker evidence.
+  - Do not record the verify gate early. The build-to-verify transition lands the branch, and an early gate skips the landing. Confirm the landing from the `[merged]` line.
+  - Keep the base checkout read-only while another pass runs. Never clear another session's files to unblock a landing: that destroys its work.
+  - Reuse verification only when the engine establishes equivalent trusted inputs. After changed inputs or a failed check, run the affected checks again.
+  - Check a recorded pending process before you launch another. A polling timeout does not prove that it stopped.
 
   ## Read only the procedure needed now
 
-  - When using loop transitions to start a leaf, classify/decompose, land, validate, ship or recover a refusal, read [operations](references/operations.md). It includes exact commands, phase inputs, ledger handling and escalation rules.
-  - Before deciding which checks to run or rerun, read [verification](references/verification.md).
-  - Before waiting on a long-running command or CI, read [bounded waiting](references/waiting.md).
-  - Before running parallel lanes, read the **Many lanes** section of operations. For lane limits and spending observations, also read [many-lanes](references/many-lanes.md).
-  - For ordinary implementation inside an existing lane, use the task facts and relevant implementation skills. Load the operational reference when a transition or failure requires it.
+  - To start a leaf, classify, decompose, land, validate, ship or recover a refusal through the loop, read [operations](references/operations.md).
+  - Before you choose which checks to run or rerun, read [verification](references/verification.md).
+  - Before you wait on a long command or CI, read [bounded waiting](references/waiting.md).
+  - Before you run parallel lanes, read **Many lanes** in operations and [many-lanes](references/many-lanes.md).
+  - For ordinary implementation inside a lane, use the task facts and the implementation skills.

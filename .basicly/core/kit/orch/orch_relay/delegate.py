@@ -24,7 +24,7 @@ READ_ONLY = "read-only"
 USAGE = (
     "orch delegate --vendor claude|codex|copilot --record RECORD --prompt TEXT "
     "[--read-only] [--model M | --tier T] [--billing subscription|console], "
-    "or orch delegate --resume SESSION --prompt TEXT"
+    "or orch delegate --resume SESSION --prompt TEXT, or orch delegate --list"
 )
 
 Exec = Callable[[list[str], Path, dict[str, str] | None], runner.Done]
@@ -46,7 +46,8 @@ def add_parser(groups: argparse._SubParsersAction) -> None:
     given.add_argument("--tier")
     given.add_argument("--read-only", action="store_true")
     given.add_argument("--billing", choices=console.BILLINGS)
-    given.add_argument("--prompt", required=True)
+    given.add_argument("--prompt")
+    given.add_argument("--list", action="store_true")
 
 
 @dataclass(frozen=True)
@@ -112,7 +113,7 @@ def _new(args: argparse.Namespace, repo: Path) -> Delegation:
         raise RefusedError(
             f"orch delegate --billing console runs only claude, not {args.vendor!r}; run: {USAGE}"
         )
-    session = str(uuid.uuid4()) if vendor.names_session else ""
+    session = str(uuid.uuid4()) if vendor.capabilities.names_session else ""
     lane = "" if args.read_only else lane_name(args.record, args.vendor)
     return Delegation(args.vendor, args.record, repo, lane, session, args.read_only, billing)
 
@@ -140,7 +141,15 @@ def _comment(found: Delegation, answer: str, scan: Scan, resume: bool) -> str:
     return f"[delegate {found.vendor} {turn}, session {found.session}, {where}] {body}"
 
 
+def listing(args: argparse.Namespace) -> list[str]:
+    if any(getattr(args, key, None) for key in ("vendor", "record", "resume", "prompt", "model")):
+        raise RefusedError("orch delegate --list takes no other option; run: orch delegate --list")
+    return adapters.listing()
+
+
 def _turn(args: argparse.Namespace, base: Path, repo: Path) -> tuple[Delegation, bool]:
+    if not args.prompt:
+        raise RefusedError(f"orch delegate needs --prompt TEXT; run: {USAGE}")
     if args.resume and (args.vendor or args.record or args.read_only or args.billing):
         raise RefusedError(
             f"orch delegate --resume takes the coding agent, record and mode it recorded; "
@@ -166,16 +175,14 @@ def _plan(args: argparse.Namespace, base: Path, found: Delegation) -> console.Pl
     return chosen
 
 
-def _refuse_read_only_resume(found: Delegation, vendor: adapters.Adapter) -> None:
-    if found.read_only and not getattr(vendor, "resumes_read_only", False):
-        raise RefusedError(
-            f"orch delegate --resume {found.session}: {found.vendor} cannot resume a read-only "
-            f"session read-only; start a new one with --read-only"
-        )
+def _needed(found: Delegation, resume: bool) -> str:
+    if found.read_only:
+        return "resumes_read_only" if resume else "read_only"
+    return "lane_edits"
 
 
 def _next(found: Delegation, vendor: adapters.Adapter) -> str:
-    if found.read_only and not getattr(vendor, "resumes_read_only", False):
+    if found.read_only and not vendor.capabilities.resumes_read_only:
         return f"next turn: {found.vendor} resumes no read-only session; start a new one"
     return f"next turn: orch delegate --resume {found.session} --prompt TEXT"
 
@@ -183,8 +190,7 @@ def _next(found: Delegation, vendor: adapters.Adapter) -> str:
 def run(args: argparse.Namespace, repo: Path, base: Path, ports: Ports) -> list[str]:
     found, resume = _turn(args, base, repo)
     vendor = adapters.adapter(found.vendor)
-    if resume:
-        _refuse_read_only_resume(found, vendor)
+    adapters.require(found.vendor, vendor, _needed(found, resume))
     plan = _plan(args, base, found)
     model = plan.model if plan else _model(args, base, found.vendor)
     found = replace(found, tier=plan.tier) if plan else found

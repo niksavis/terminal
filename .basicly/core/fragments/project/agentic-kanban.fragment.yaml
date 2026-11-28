@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 727
-  codex: 727
-  copilot: 727
+  claude: 657
+  codex: 657
+  copilot: 657
 id: agentic-kanban
 description: Agentic Kanban flow rules for delivered work, limits and delivery order.
 category: project
@@ -14,16 +14,16 @@ tags:
 status: active
 title: Agentic Kanban
 body: |
-  Agentic Kanban applies the Kanban method to software work done by AI agents. Agents can run many items in parallel, so the limits on work in progress are larger than for a human team. The principles are the same: value exists only when it is delivered.
+  Agentic Kanban is the Kanban method for software work by AI agents. Agents run many items in parallel, so the limits on work in progress are larger than for a human team. Value still exists only when it is delivered.
 
-  1. Done means delivered. An item is done when its change is on the main branch, pushed, and, for a product, released and available to its users. Written, committed, or waiting in a branch is work in progress. A change that is merged but not yet released waits for release; release at least once a day while such changes exist, or as the project's configuration says.
-  2. Stop starting, start finishing. Do not start a new item while you have an item that is built but not delivered, an item waiting for review, or a release that is half done. Finish that item first.
-  3. Limit work in progress. Each agent works under its own name, so its items can be counted. Each agent holds at most 2 items in progress and at most 1 built item waiting to be delivered. A repository holds at most 6 built items waiting to be delivered. When a limit is reached, help deliver the waiting items before you build more. The project may set other limits in its configuration.
-  4. Oldest first. An item is built and waiting from the moment it is marked ready: its checks passed and its owner recorded it as ready to deliver. Record that time. The item that has waited longest is delivered first. An item that has waited more than 2 hours goes before every newer item, unless the coordinator names a reason.
-  5. Pull, do not push. Take the next item only when your current item is delivered or is blocked by something outside your control. Take the item at the top of the ordered queue.
+  1. Done means delivered. An item is done when its change is on the main branch, pushed, and, for a product, released and available to its users. Written, committed or branch-only work is in progress. A merged change waits for release; release at least once a day while one waits, or as the project's configuration says.
+  2. Stop starting, start finishing. Finish a built but undelivered item, an item waiting for review or a half-done release before you start a new item.
+  3. Limit work in progress. Each agent works under its own name, so its items can be counted, and holds at most 2 items in progress and at most 1 built item waiting for delivery. A repository holds at most 6 built items waiting. At a limit, help deliver the waiting items before you build more. The project's configuration may set other limits.
+  4. Oldest first. An item waits from the moment its owner marks it ready after its checks pass; record that time. Deliver the item that has waited longest first. An item that has waited more than 2 hours goes before every newer item, unless the coordinator names a reason.
+  5. Pull, do not push. Take the next item, from the top of the ordered queue, only when your current item is delivered or blocked by something outside your control.
   6. Small batches. One work record, one branch, one delivery. Split an item that grows past one record before you deliver it.
-  7. Make the flow visible. Keep your current item, its state, and the time of the last change where every agent and the person in charge can see them. An item in progress that has not changed for 2 days goes back to the queue or is closed with a reason. A wait longer than 2 hours is stale and needs action.
-  8. Measure the flow. Track items delivered per day, lead time from start to delivery, and the age of the oldest waiting item. A rise in lead time or waiting age is a defect in the flow. Find its cause.
-  9. Stop the line. A failing check run on the main branch, a broken repository, or a failed release stops new deliveries in that repository until it is fixed. Every agent that can help, helps.
-  10. Help when blocked or idle. An idle agent helps an older item move: it reviews, answers questions, or fixes what blocks the delivery. It does not start new work.
-  11. Explicit policy. These rules, the limits, and the definition of done are written down where every agent reads them. A change to them needs the approval of the person in charge.
+  7. Make the flow visible. Show your current item, its state and the time of its last change to every agent and the person in charge. An item in progress that has not changed for 2 days goes back to the queue or is closed with a reason. A wait longer than 2 hours is stale and needs action.
+  8. Measure the flow. Track items delivered per day, lead time from start to delivery, and the age of the oldest waiting item. A rise in lead time or waiting age is a flow defect; find its cause.
+  9. Stop the line. A failing check on the main branch, a broken repository or a failed release stops new deliveries in that repository until it is fixed. Every agent that can help, helps.
+  10. Help when blocked or idle. An idle agent helps an older item move by reviewing, answering questions or fixing what blocks the delivery. It does not start new work.
+  11. Explicit policy. These rules, the limits and the definition of done are written where every agent reads them. A change to them needs the approval of the person in charge.

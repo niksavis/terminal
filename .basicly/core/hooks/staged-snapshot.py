@@ -187,6 +187,25 @@ def job_env(state: Snapshot, stage: str) -> dict[str, str]:
     return {key: value for key, value in state.env.items() if key not in dropped}
 
 
+def publish_actions(snapshot: Path, changes: bytes, dirty: set[bytes]) -> list[tuple[Path, bool]]:
+    fields = changes.split(b"\0")
+    actions: list[tuple[Path, bool]] = []
+    for status, name in zip(fields[0::2], fields[1::2], strict=False):
+        if not name or name in dirty:
+            continue
+        relative = Path(os.fsdecode(name))
+        if status == b"D":
+            actions.append((relative, False))
+            continue
+        if not (snapshot / relative).exists():
+            raise ValueError(
+                f"the hook snapshot lost {relative.as_posix()} without staging its deletion; "
+                "restage it or stage its removal, then rerun the commit"
+            )
+        actions.append((relative, True))
+    return actions
+
+
 def publish(state: Snapshot) -> None:
     root, snapshot, temporary_index = state.root, state.tree, state.index
     before, env, old = state.before, state.env, state.original_tree
@@ -196,8 +215,18 @@ def publish(state: Snapshot) -> None:
     new = git(snapshot, "write-tree", env=env).strip()
     if new == old:
         return
-    changed = git(root, "diff", "--name-only", "-z", os.fsdecode(old), os.fsdecode(new), env=env)
+    changed = git(
+        root,
+        "diff",
+        "--name-status",
+        "--no-renames",
+        "-z",
+        os.fsdecode(old),
+        os.fsdecode(new),
+        env=env,
+    )
     dirty = set(git(root, "diff", "--name-only", "-z").split(b"\0"))
+    actions = publish_actions(snapshot, changed, dirty)
     lock = index.with_name(index.name + ".lock")
     created = False
     try:
@@ -206,10 +235,11 @@ def publish(state: Snapshot) -> None:
             if digest(index) != before:
                 raise ValueError("Git index changed during hook validation; rerun the commit")
             handle.write(temporary_index.read_bytes())
-            for name in changed.split(b"\0"):
-                if not name or name in dirty:
+            for relative, present in actions:
+                if not present:
+                    (root / relative).unlink(missing_ok=True)
                     continue
-                relative = Path(os.fsdecode(name))
+                (root / relative).parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(snapshot / relative, root / relative)
         lock.chmod(index.stat().st_mode)
         lock.replace(index)

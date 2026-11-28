@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 48
-  codex: 48
-  copilot: 48
+  claude: 0
+  codex: 0
+  copilot: 0
 id: catalog-authoring
 description: Where and how to author catalog sources.
 category: project
@@ -12,7 +12,7 @@ phase: build
 applies_to: [all]
 tags:
 - catalog
-status: active
+status: deprecated
 title: Catalog Authoring
 body: |
   - Edit generated files through catalog sources using `catalog-authoring`. `basicly install` overwrites `.basicly/core/`; consumer overrides belong in `.basicly-local/`.

@@ -8,6 +8,7 @@ posture: Read-only.
 tier: high
 tools: [Read, Grep, Glob]
 claude:
+  effort: high
   skills: [falsify-first, interface-facts]
 slots:
   role:

@@ -6,7 +6,7 @@ Copy this brief once per lens. Fill each field. Leave nothing to the agent's jud
 You are a fresh reviewer. You see this artifact for the first time. Your lens is: LENS.
 
 Artifact: PATH OR DESCRIPTION
-Question: WHAT THE SWARM MUST ANSWER
+Question: THE QUESTION THE SWARM ANSWERS
 Rubric for this lens: THE CHECKS THAT DEFINE A PASS (from references/lenses.md or the caller)
 Read first: FILES OR URLS, AT MOST 6
 Out of scope: WHAT OTHER LENSES OWN

@@ -7,6 +7,8 @@ returns: Returns mocks of every state in the repository's own mock conventions, 
 posture: Read-only.
 tier: high
 tools: [Read, Grep, Glob, Bash]
+claude:
+  effort: high
 slots:
   role:
     - text: |
@@ -41,15 +43,50 @@ slots:
 
         ## Terminal
 
-        - Draw at the repository's body width; with none, at 80 columns and at the
-          narrowest width supported. Say what is cut first below it.
+        - Draw at the repository's body width; with none, at 80 columns by 24 lines
+          and at the narrowest width supported. Say what is cut first below it, and
+          end a cut label with `…`. Say that the surface redraws on a resize.
         - Count each mock line's display width with a script before you return,
           for example Python with `unicodedata.east_asian_width`: a `W` or `F`
           character takes two columns. An emoji or a CJK character can take two.
+          Count an `A` (ambiguous) character as one column unless the terminal is
+          known.
         - Put the most important fact at the left. A narrow terminal cuts the right.
-        - Give every action a key. Keep the host's keys: arrows, Enter, Esc, Tab, `q`,
-          `?`. Say where the focus is in each state.
-        - Say what a pipe and a screen reader receive, and what `NO_COLOR` shows.
+        - **Keyboard.** Give every action a key, and show the key next to its label.
+          Keep the host's keys: arrows, Enter, Esc, Tab and Shift-Tab, `q`, `?`.
+          Say what Ctrl-C does, because the frameworks disagree: Bubbles force-quits,
+          Textual copies, clig.dev exits. Give a recommended button a number key
+          and put the digit in its label. In the handily board pane, agents keep
+          1 to 5 and recommended buttons take 6 to 9, top to bottom
+          (handily-e83jxw). A digit typed into a text field never presses a button.
+        - **Focus.** Say where the focus is in each state. Mark it with a symbol such
+          as `>` or with reverse video, never with colour alone. Esc or Tab always
+          moves the focus out of a part (WCAG 2.2 SC 2.1.2, 2.4.7 and 1.4.1).
+        - **Scrolling.** Keep the selected row visible with one row of padding. Give
+          page keys and a position, such as `12/40` or a scrollbar. Never scroll the
+          view on a press: the press acts on what it hits and the view stays. A
+          "more" control adds rows and keeps the view (handily-7vcozj). When the
+          person scrolls up, stop following new output and show the key that resumes.
+        - **Mouse.** Treat the mouse as optional. Give every mouse action a keyboard
+          path, and make each hit target wide: the whole label and its padding. A
+          host can drop a press. Claude Code 2.1.332 dropped every press whose release
+          landed one cell away (0 of 21) and hit every clean press (69 of 69). A mod
+          cannot fix it, so never offer a press or release rule as the fix
+          (handily-kkzm06). Mouse capture takes over the terminal's
+          text selection: say which key gets it back (Shift in most terminals, Option
+          in iTerm2, Fn in Terminal.app) and how to turn capture off.
+        - **Colour.** Say what a pipe and a screen reader receive. Add no colour when
+          `NO_COLOR` is set and not empty, when the output is not a TTY or when
+          `TERM=dumb`; `FORCE_COLOR` forces it on. Themes remap the 16 ANSI
+          colours, so never count on one of them for contrast. Check text at 4.5:1
+          and control parts at 3:1 against the theme you name.
+        - **Discoverable shortcuts.** Show a footer with the keys of the focused part
+          and `?` for the full help. Add a command palette when the actions do not
+          fit in the footer. When the footer is too narrow, cut it with `…` and keep
+          `?`.
+        - Sources, checked 2026-11-27: xterm ctlseqs (patch 411), no-color.org,
+          force-color.org, WCAG 2.2, UAX #11 (proposed update, revision 46), clig.dev, Textual 8.2.8, Bubbles v2,
+          ratatui 0.30.2, the Claude Code fullscreen docs.
 
         ## Web
 
@@ -94,3 +131,7 @@ slots:
         4. **Open questions**: each with the answer you recommend and why.
         5. **Failure modes**: how the design can fail a person, for example a small
            width, a long name, colour blindness or a screen reader.
+
+        For a terminal surface, end with the terminal checklist: keyboard, focus,
+        scrolling, mouse, colour, shortcuts and width, each with pass or fail and
+        the state that shows it.

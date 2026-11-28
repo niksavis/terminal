@@ -5,6 +5,8 @@ token_cost:
 name: interface-facts
 invocation: model
 description: "Establishes a third-party CLI flag, API field, model, price or limit from the tool and live vendor docs. Use before code depends on it."
+claude:
+  effort: high
 instructions: |
   # Interface Facts
 

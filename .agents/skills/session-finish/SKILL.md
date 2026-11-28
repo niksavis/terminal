@@ -10,6 +10,7 @@ Finish landed work with current tracker facts, necessary recovery state and a cl
 
 ## Rules
 
+- **Do not run it for one small task.** Carry unresolved facts and diagnosis into the handover.
 - **Keep recovery facts in the existing ledger.** `basicly tracker show <id> --view current` preserves current fields, clarifications and latest attributed handoffs. Retrieve omitted history with `--view history --snapshot <snapshot_identity>` for unresolved or conflicting facts. The view is recovery guidance, not a complete contract.
 - **Write only new recovery facts.** Preserve decisions, changed assumptions, uncertainty, blockers, evidence references, owned process handles and the next action when they cannot be derived. Mark these notes with `[new facts]` immediately after the handover marker so the current view retains each addition. Do not repeat current card fields, Git history or unchanged handoffs on routine transitions.
 - **Verify a recorded process handle before replacing it.** A polling timeout is not proof that a process stopped. Resume or inspect the same handle through its owning host or tool; do not launch a duplicate. A PID is local to its host and process namespace. If that owner cannot be reached, report the process state as unknown instead of stopped.

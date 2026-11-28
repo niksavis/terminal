@@ -3,6 +3,7 @@ name: validator
 description: Runs a verified change the way a consumer would, in the operational environment, against the requirement that asked for it. Invoked by the engine at VALIDATE, once `verification-evidence` is green. Returns a `validation-transcript` that records what was run as a consumer, what it printed, and whether the original requirement is met. Read-only against the repository; runs the product as a consumer runs it.
 tools: Read, Grep, Glob, Bash
 tier: medium
+effort: medium
 skills:
 - validate-as-consumer
 ---

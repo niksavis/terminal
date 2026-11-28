@@ -13,7 +13,7 @@ post-merge:
         BASICLY_HOOK_SPECS: '[{"id": "tracker-fold", "script": ".basicly/core/hooks/tracker-fold.py",
           "stage": "post-merge", "pass_filenames": false, "always_run": true, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 post-commit:
@@ -29,7 +29,7 @@ post-commit:
         BASICLY_HOOK_SPECS: '[{"id": "orch-commit-note", "script": ".basicly/core/hooks/orch-commit-note.py",
           "stage": "post-commit", "pass_filenames": false, "always_run": true, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 basicly-claude-pretooluse:
@@ -67,10 +67,13 @@ basicly-claude-pretooluse:
           [], "matcher": "Bash"}, {"id": "discard-guard", "script": ".basicly/core/hooks/discard-guard.py",
           "stage": "pretooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "Bash"}, {"id":
+          "local-test-guard", "script": ".basicly/core/hooks/local-test-guard.py",
+          "stage": "pretooluse", "pass_filenames": false, "always_run": false, "files":
+          "", "manager": "claude", "technologies": [], "matcher": "Bash"}, {"id":
           "headroom-guard", "script": ".basicly/core/hooks/headroom-guard.py", "stage":
           "pretooluse", "pass_filenames": false, "always_run": false, "files": "",
           "manager": "claude", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-codex-pretooluse:
   commands:
@@ -85,7 +88,7 @@ basicly-codex-pretooluse:
         BASICLY_HOOK_SPECS: '[{"id": "protect-generated-codex", "script": ".basicly/core/hooks/protect-generated.py",
           "stage": "pretooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "codex", "technologies": [], "matcher": "apply_patch"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-codex-sessionstart:
   commands:
@@ -100,7 +103,7 @@ basicly-codex-sessionstart:
         BASICLY_HOOK_SPECS: '[{"id": "session-start-codex", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "codex", "technologies": [], "matcher": "*"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 pre-commit:
   commands:
@@ -113,7 +116,7 @@ pre-commit:
         PYTHONUTF8: '1'
         PYTHONIOENCODING: utf-8
         BASICLY_HOOK_SPECS: '[{"id": "markdownlint", "script": ".basicly/core/hooks/markdownlint.py",
-          "stage": "pre-commit", "pass_filenames": false, "always_run": false, "files":
+          "stage": "pre-commit", "pass_filenames": true, "always_run": false, "files":
           "\\.md$", "manager": "git", "technologies": ["node"], "matcher": ""}, {"id":
           "identity-guard", "script": ".basicly/core/hooks/identity-guard.py", "stage":
           "pre-commit", "pass_filenames": false, "always_run": true, "files": "",
@@ -139,14 +142,15 @@ pre-commit:
           "\\.(py|pyi|js|jsx|mjs|cjs|ts|tsx|mts|cts|java|kt|kts|cs|c|cc|cpp|cxx|h|hpp|go|rs|swift|scala|php|m|mm|css|scss|sass|less|html|htm|xhtml|vue|svelte|cshtml|razor|sh|bash|zsh|ksh|ps1|psm1|psd1|sql|vb|vbs)$",
           "manager": "git", "technologies": [], "matcher": ""}, {"id": "kit-boundary",
           "script": ".basicly/core/hooks/kit-boundary.py", "stage": "pre-commit",
+          "pass_filenames": true, "always_run": false, "files": "^\\.basicly/core/kit/.*\\.py$",
+          "manager": "git", "technologies": [], "matcher": ""}, {"id": "git-env-check",
+          "script": ".basicly/core/hooks/git-env-check.py", "stage": "pre-commit",
+          "pass_filenames": true, "always_run": false, "files": "(^|/)(test_[^/]*|[^/]*_test|conftest)\\.py$",
+          "manager": "git", "technologies": [], "matcher": ""}, {"id": "protect-generated-commit",
+          "script": ".basicly/core/hooks/protect-generated-commit.py", "stage": "pre-commit",
           "pass_filenames": false, "always_run": true, "files": "", "manager": "git",
-          "technologies": [], "matcher": ""}, {"id": "git-env-check", "script": ".basicly/core/hooks/git-env-check.py",
-          "stage": "pre-commit", "pass_filenames": true, "always_run": false, "files":
-          "(^|/)(test_[^/]*|[^/]*_test|conftest)\\.py$", "manager": "git", "technologies":
-          [], "matcher": ""}, {"id": "protect-generated-commit", "script": ".basicly/core/hooks/protect-generated-commit.py",
-          "stage": "pre-commit", "pass_filenames": false, "always_run": true, "files":
-          "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+          "technologies": [], "matcher": ""}]'
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 commit-msg:
@@ -168,7 +172,7 @@ commit-msg:
           ".basicly/core/hooks/tracker-claim.py", "stage": "commit-msg", "pass_filenames":
           true, "always_run": false, "files": "", "manager": "git", "technologies":
           [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 pre-push:
@@ -184,7 +188,7 @@ pre-push:
         BASICLY_HOOK_SPECS: '[{"id": "pre-push-script", "script": ".basicly/core/hooks/pre-push.py",
           "stage": "pre-push", "pass_filenames": false, "always_run": true, "files":
           "", "manager": "git", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
   follow: true
 basicly-claude-posttooluse:
@@ -200,7 +204,7 @@ basicly-claude-posttooluse:
         BASICLY_HOOK_SPECS: '[{"id": "tool-usage", "script": ".basicly/core/hooks/tool-usage.py",
           "stage": "posttooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "Bash|Skill"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-copilot-posttooluse:
   commands:
@@ -215,7 +219,7 @@ basicly-copilot-posttooluse:
         BASICLY_HOOK_SPECS: '[{"id": "tool-usage-copilot", "script": ".basicly/core/hooks/tool-usage.py",
           "stage": "posttooluse", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "copilot", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-claude-sessionstart:
   commands:
@@ -230,7 +234,7 @@ basicly-claude-sessionstart:
         BASICLY_HOOK_SPECS: '[{"id": "session-start", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "claude", "technologies": [], "matcher": "*"}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'
 basicly-copilot-sessionstart:
   commands:
@@ -245,5 +249,5 @@ basicly-copilot-sessionstart:
         BASICLY_HOOK_SPECS: '[{"id": "session-start-copilot", "script": ".basicly/core/hooks/session-start.py",
           "stage": "sessionstart", "pass_filenames": false, "always_run": false, "files":
           "", "manager": "copilot", "technologies": [], "matcher": ""}]'
-        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.50.0/basicly-0.50.0-py3-none-any.whl",
+        BASICLY_FOLD_COMMAND: '["uvx", "--from", "https://github.com/niksavis/basicly/releases/download/v0.51.0/basicly-0.51.0-py3-none-any.whl",
           "basicly", "tracker", "fold"]'

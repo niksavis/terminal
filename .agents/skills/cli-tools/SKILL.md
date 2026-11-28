@@ -44,4 +44,5 @@ To give every repo on this machine this skill and its references, run `basicly s
 
 ## Rules
 
+- **Use arrays or inline lists, not `for x in $LIST`.** zsh does not split an unquoted variable; check the processed count. A hook refuses the unsplit form.
 - **Never start an interactive tool.** `fzf`, `lazygit`, `tmux` and `wezterm` wait for a person; use only the forms their references mark as safe.

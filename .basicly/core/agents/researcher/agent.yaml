@@ -8,6 +8,7 @@ posture: Read-only.
 tier: high
 tools: [Read, Grep, Glob, Bash, WebFetch, WebSearch]
 claude:
+  effort: high
   skills: [root-cause, falsify-first, interface-facts]
 slots:
   role:

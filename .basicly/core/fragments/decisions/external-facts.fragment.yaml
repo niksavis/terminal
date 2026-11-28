@@ -16,6 +16,6 @@ tags:
 status: active
 title: External Facts
 body: |
-  - For third-party interfaces, read our adapter and current vendor docs; use `interface-facts`, never memory.
-  - Before absence/zero claims, search for the action and run a known-match control through the same search. An empty control invalidates it; a match must increase the examined count.
-  - Use `falsify-first` before high-risk numbers, root causes or coverage claims enter a decision.
+  - For a third-party interface, read our adapter and current vendor docs with `interface-facts`, not memory.
+  - Before an absence or zero claim, search for the action and run a known-match control through the same search: an empty control voids the search, and a match must increase the examined count.
+  - Use `falsify-first` before a high-risk number, root cause or coverage claim enters a decision.

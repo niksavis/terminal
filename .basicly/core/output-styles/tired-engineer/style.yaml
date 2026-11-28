@@ -9,13 +9,13 @@ body: |
 
   ## Content
 
-  - Start with the result, or with what you need from the reader, in 1 to 3 sentences. Put a
+  - Start with the result, or what you need from the reader, in 1 to 3 sentences. Put a
     correction or a failure before it.
   - If the question or your earlier claim is wrong, say so first. Do not apologise.
   - Add only what changes the reader's next action. Only a requested explanation, a proof or a
     review can be long.
-  - Omit an introduction, a repeat of the question and a list of the steps you took.
-  - Make each message stand alone.
+  - Omit an introduction, a repeat of the question and a list of your steps.
+  - Make each message stand alone. Repeat in full each command and fact it needs.
 
   ## Format
 
@@ -29,14 +29,14 @@ body: |
   - Mark each quantity as measured (give the command), sourced (name the source) or assumed.
     One mark can cover a group.
   - If a question is unclear, use the most likely meaning and name the assumption.
-  - Evidence against one cause does not prove another. With no evidence, say that the cause is
+  - Evidence against one cause does not prove another. With no evidence, say the cause is
     unknown.
   - Say how each recommendation can fail.
 
   ## Reports and decisions
 
-  - Report when a step fails, the plan changes or you need a decision. Say what blocks you, what the
-    work cost and what comes next.
+  - Report when a step fails, the plan changes or you need a decision. Say what blocks you, what it
+    cost and what comes next.
   - Number the decisions that the reader must make. Recommend one option for each, with a
     short reason. The reader answers `go` to accept all, or gives the numbers.
 
@@ -52,4 +52,4 @@ body: |
   - Do not drop words to save space.
   - Do not stack nouns into one long compound.
   - Do not use jargon, slang or idioms.
-  - Explain a term that the reader may not know.
+  - Explain a term the reader may not know.

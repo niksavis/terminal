@@ -16,10 +16,10 @@ instructions: |
 
   ## Steps
 
-  1. **Frame.** Name the artifact, the question and 3 to 6 lenses that do not overlap, with rubrics from [lenses](references/lenses.md). In teardown mode the question is "what is wrong with this artifact?" and the lenses are the preset for its type. When the user names fewer than 3 lenses, add the closest lenses to reach 3 and say which. For one claim, propose `falsify-first`, run by a fresh agent that did not make the claim; run the swarm when the user still asks for it.
-  2. **Brief.** Fill [the brief](assets/brief.md) once per lens: its rubric, a reading list of at most 6 items, a word cap of 400 unless the user sets one. Pass the artifact, never your own conclusion.
-  3. **Launch.** Start all agents in one message so they run in parallel, with the agent that [lenses](references/lenses.md) names for each lens. A named agent runs on the tier of its definition. For a general-purpose agent, always pass `model`: the `alias` that `python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier medium` prints, or the one for `high` when the lens needs more judgement. For a start without an explicit model, follow the model selection order in `tier-injection`. Never start a reviewer on `maximum`. Use lower effort for a mechanical lens.
-  4. **Collect.** Save each reply as `DIR/LENS.md`. Wait for each agent's completion notice; never write a reply for an agent that has not returned. An agent that fails or stops without a reply has not returned.
+  1. **Frame.** Name the artifact, the question and 3 to 6 lenses that do not overlap, with rubrics from [lenses](references/lenses.md). In teardown mode the question is "what is wrong with this artifact?" and the lenses are the preset for its type. When the user names fewer than 3, add the closest lenses and say which. For one claim, propose `falsify-first` by a fresh agent that did not make the claim; run the swarm if the user still asks.
+  2. **Brief.** Fill [the brief](assets/brief.md) once per lens: its rubric, a reading list of at most 6 items, a word cap of 400 unless the user sets one. Pass the artifact, not your conclusion, so each agent judges it blind.
+  3. **Launch.** Start all agents in one message so they run in parallel, with the agent that [lenses](references/lenses.md) names for each lens. A named agent runs on the tier of its definition. For a general-purpose agent, pass `model`, because the tier hook denies that call without it: the `alias` that `python3 .basicly/core/kit/tier/tier_resolver.py --host claude --tier medium` prints, or the one for `high` when the lens needs more judgement. For a start without an explicit model, follow the model selection order in `tier-injection`. Do not start a reviewer on `maximum`, because that tier advises or orchestrates and is not a worker. Use lower effort for a mechanical lens.
+  4. **Collect.** Save each reply as `DIR/LENS.md`. Wait for each agent's completion notice. An agent that fails or stops without a reply has not returned, and its reply stays unwritten.
   5. **Check.** Run:
 
      ```sh
@@ -27,8 +27,8 @@ instructions: |
      ```
 
      Exit 1 names each lens that is not run or malformed. Rerun that lens once with the same brief into the same `DIR`, then run the check again. If it still fails, report it as not run.
-  6. **Verify.** Give each important finding to one more fresh agent. It confirms or refutes the finding with evidence, and runs `falsify-first` when the finding rests on a number, a root cause or an absence claim. Drop a refuted finding; mark a confirmed one verified, and any other one unverified. An absence finding stays unverified until the fresh agent's positive control, a known match run through the same search, passes.
-  7. **Report.** Before the check, write the question as the first line of `DIR/question.txt`; the diagram shows it. Give the user the script table, the script's mermaid block when it prints one, the verified important findings and numbered decisions with one recommendation each. Copy the mermaid block from the script output as printed, and put it only in this final report, never in an agent brief. Mark every finding that Verify did not verify as unverified, and every finding the script marks UNCITED as uncited. Name the agent that verified each claim.
+  6. **Verify.** Give each important finding to one more fresh agent. It confirms or refutes it with evidence, with `falsify-first` for a number, a root cause or an absence claim. Drop a refuted finding; mark a confirmed one verified and any other unverified. An absence finding stays unverified until a positive control, a known match through the same search, passes.
+  7. **Report.** Before the check, write the question as the first line of `DIR/question.txt`; the diagram shows it. Give the user the script table, its mermaid block if it prints one, the verified important findings and numbered decisions with one recommendation each. Copy the mermaid block as the script prints it, into this report only, because in a brief it would steer the agents. Mark every finding that Verify did not verify as unverified, and every finding the script marks UNCITED as uncited. Name the agent that verified each claim.
 
   ## Teardown mode: answer and fix
 
@@ -37,9 +37,9 @@ instructions: |
 
   ## Rules
 
-  - Each agent is fresh: it sees the artifact, its brief and its reading list, never another agent's reply.
-  - A missing report is "not run", never a pass.
-  - The author of the artifact never verifies or refutes a finding. When the user wants to verify findings themselves, name this rule, still run the fresh agent, and list the user's answers beside it.
+  - Each agent is fresh: it sees the artifact, its brief and its reading list, not another agent's reply, so the review stays blind.
+  - A missing report is "not run", not a pass.
+  - The author of the artifact does not verify or refute a finding, because the author is not blind. When the user wants to verify findings, name this rule, still run the fresh agent, and list the user's answers beside it.
   - An important finding is fixed, contested or escalated. Decline one only when the user says so, marked "declined by the user", and name the rule the user overrode.
   - Ask the user before more than 8 agents at once.
 

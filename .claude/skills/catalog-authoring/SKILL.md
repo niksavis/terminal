@@ -16,6 +16,7 @@ Write catalog sources in YAML and project them to the files that coding agents l
 3. Run `basicly catalog lint`.
 4. Build and check the projection: `basicly build` then `basicly check` for a fragment, `basicly skills-build` then
    `basicly skills-check` for a skill, `basicly styles-build` then `basicly styles-check` for an output style.
+   After an agent, hook or permission source, run `basicly agents-check`, `basicly hooks-check` or `basicly permissions-check`.
 5. Run `basicly catalog verify` before a catalog commit.
 6. Read each projected file back where the agent reads it, as [projection](references/projection.md) shows.
 

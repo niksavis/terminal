@@ -8,6 +8,7 @@ posture: Read-only.
 tier: medium
 tools: [Read, Grep, Glob, Bash]
 claude:
+  effort: medium
   skills: [falsify-first]
 slots:
   role:

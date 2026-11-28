@@ -38,6 +38,7 @@ A vendor recommendation is not an interface requirement.
 | A workflow with side effects sets `disable-model-invocation: true`, so only a person starts it. | claude-code-skills |
 | The skill listing fits the budget. Claude Code counts characters, at 1% of the context window by default (`skillListingBudgetFraction`). | claude-code-skills |
 | At least three evaluations exist before the body grows. | skills-best-practices |
+| Each rule gives at most one short reason. The body does not over-explain a rule. | skills-best-practices |
 
 ## Instruction files
 

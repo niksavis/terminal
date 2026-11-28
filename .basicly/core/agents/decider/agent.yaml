@@ -8,6 +8,7 @@ posture: Read-only.
 tier: medium
 tools: [Read, Grep, Glob]
 claude:
+  effort: medium
   skills: [work-tracker, root-cause]
 slots:
   role:

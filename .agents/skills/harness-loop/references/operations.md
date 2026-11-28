@@ -14,37 +14,31 @@
 - Ship and retro
 - Resume
 
-Read this reference only for explicitly loop-managed work. Direct owner work and
-user-requested observer repair do not require these transitions.
+Read this reference only for loop-managed work. Direct owner work and observer repair need no transitions.
 
-The loop can drive one tracked issue or explicitly selected parallel lanes.
-By default the current owner supplies the work and phase inputs. The engine records
-state and runs transition checks; it does not dispatch a replacement phase owner.
-Explicit `--execution worker` selects headless workers when that execution is wanted.
+The loop drives one tracked issue or selected parallel lanes. The current owner supplies the work and the phase inputs;
+the engine records state and runs the transition checks. `--execution worker` selects headless workers.
 The same commands work under Claude, Codex and Copilot.
 
 Other skills own the mechanics of each phase: `work-tracker` (records), `worktree-isolation`
 (worktrees), `decompose-plan` (child plans), `repair-in-place` (rework), `validate-as-consumer`
 (validate), `conventional-commits` (commit messages).
 
-For a deferred skill in a worker context manifest, read its declared path and digest
-with `basicly skill-read <path> --sha256 <digest>` before following it. A changed or
-unavailable entry requires a refreshed manifest; do not guess its contents.
+For a deferred skill in a worker context manifest, read it with `basicly skill-read <path> --sha256 <digest>`.
+A changed or missing entry needs a refreshed manifest, because a guessed skill is wrong.
 
 ## Rules
 
-- **Read the state first with `basicly loop status <issue>`.** The tracker ledger is the only state, so any agent can resume.
-- **Commit your work on the harness branch before you advance.** The loop never commits the agent's work.
-- **Never stage or commit tracker state yourself for loop work.** The engine makes every tracker commit.
-- **Never record the verify gate by hand during build.** Only the build-to-verify `loop advance` merges the branch.
-- **Treat the user task request as authorization for its scope.** Do not request an L-level grant or mandatory token budget.
-- **Keep required gates and genuine safety approvals enabled.** A task request does not authorize unrelated destructive actions.
+- **Read the state first with `basicly loop status <issue>`.** The ledger is the only state, so any agent can resume.
+- **Commit your work on the harness branch before you advance.** The loop does not commit the agent's work.
+- **Do not stage or commit tracker state for loop work.** The engine makes every tracker commit.
+- **Do not record the verify gate by hand during build.** Only the build-to-verify `loop advance` merges the branch.
 - **Treat the base checkout as read-only while a pass runs.** Your uncommitted files fail the lanes' landings.
-- **Never clear another session's files to unblock a landing.** Hold the branch until that session commits.
-- **Confirm a landing from the `[merged]` line, not from the exit code.** Every checkpoint stop exits non-zero.
-- **Never signal a supervisor or its lanes.** Use `--max-passes` or `loop stop`, so no lane dies mid-write.
-- **When a required fact is missing, do not guess.** Write `.basicly/usage/needs-input.json` and stop.
-- **Handle a protected-destination refusal through task-scoped execution review.** Follow `worktree-isolation` for the retry. Existing authorization for the upgrade or landing still applies; keep the loop checkpoints in force.
+- **Never clear another session's files to unblock a landing.** It destroys that session's work; hold the branch until it commits.
+- **Confirm a landing from the `[merged]` line.** Every checkpoint stop exits non-zero.
+- **Never signal a supervisor or its lanes.** A killed lane dies mid-write; use `--max-passes` or `loop stop`.
+- **Stop on a missing required fact.** Write `.basicly/usage/needs-input.json`, because a guess becomes the record.
+- **Retry a protected-destination refusal through task-scoped execution review.** `worktree-isolation` gives the retry; the loop checkpoints stay in force.
 
 ## Drive one issue
 
@@ -68,18 +62,13 @@ Other flags on both: `--runner <agent>` (`manual` gives a handoff), `--autonomy`
 
 ## Task authorization and safety
 
-The user task request authorizes classification, decomposition and completion within that task's scope.
-Phase transitions need no second approval, grant or mandatory token budget.
-Do not create a synthetic grant to make an authorized task run.
-
-Required readiness, verification, consumer and integration gates still apply.
-Internal risk classification selects those checks automatically; the user does not choose a permission level.
-Ask only for missing facts, an action outside the task, or a genuine safety decision that lacks approval.
-Keep host permission restrictions and destructive-action confirmations in force.
-
-If the user explicitly sets a spending limit, honor it and report observed usage.
-Without such a limit, keep cost telemetry without inventing a budget or asking for one.
-Historical grants and checkpoints remain readable; do not rewrite tracker events to resume old work.
+The user's task request authorizes classification, decomposition and completion within its scope.
+Phase transitions need no second approval, grant or token budget. Do not create a synthetic grant to make an authorized task run.
+The required gates still apply, and risk classification picks them.
+A task request does not authorize an unrelated destructive action; destructive-action confirmations and host permission limits stay in force.
+Ask only for a missing fact, an action outside the task or a safety decision without approval.
+Honor a spending limit only when the user sets one, and report observed usage.
+Do not rewrite tracker events to resume old work, because the ledger is append-only.
 
 ## Phases
 
@@ -119,12 +108,11 @@ Every later phase reads `## Scope`. Write each entry as one backticked glob on i
 A bare path, or a path with a note after it, parses to no glob.
 `basicly policy dor <id>` warns when `## Scope` parses to zero globs.
 
-### Add fragments, never edit shared files
+### Add fragments instead of editing shared files
 
-Two lanes that edit one shared file collide at the merge.
-A file named with the issue id cannot collide.
+Two lanes that edit one shared file collide at the merge. A file named with the issue id cannot collide.
 
-| Change | Write | Never edit |
+| Change | Write | Instead of editing |
 | --- | --- | --- |
 | user-facing change | `changelog.d/<issue-id>.<category>.md`, body only, no `###` heading | `CHANGELOG.md` |
 | new verify check | a `[[verify.checks]]` entry in `basicly.d/<issue-id>.toml` | `[[verify.checks]]` in `basicly.toml` |
@@ -132,8 +120,7 @@ A file named with the issue id cannot collide.
 
 The category is one of `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`.
 `basicly release` assembles the changelog fragments.
-A ratchet fragment is a delta, never a new total.
-Two lanes that each record a total both write the same number, and the merged tree then fails the gate.
+Write a ratchet fragment as a delta, because two lanes that each write a total fail the gate after the merge.
 
 For a path that every lane appends to by convention, add it to `[worktree] append_only_paths`.
 The engine then serializes the lanes that touch it, and `loop preflight` warns with `contend:`.
@@ -217,8 +204,8 @@ The engine commits tracker state at three points:
 2. At landing, `loop advance` puts the `.basicly/ledger/**` changes in one `chore(tracker)` commit, then merges.
 3. At ship, it commits the closing state.
 
-Never commit the ledger on a harness branch. Phase results and answers also write the ledger.
-Commit the ledger between those steps and the next landing.
+Do not commit the ledger on a harness branch, because the engine commits it at landing.
+Phase results and answers also write the ledger; commit it before the next landing.
 
 The landing checks that the base checkout is clean, and it counts untracked files.
 Other dirt outside the ledger blocks the landing. Check the base before every landing:
@@ -235,33 +222,15 @@ Push cadence:
 
 ## Bounded specialist work
 
-Give each specialist one task. Its brief names relevant instructions, requirements,
-acceptance criteria, source locations and a completion condition. Preview the recorded
-task facts and valid durable artifacts with:
+Delegate only by the always-on Harness Loop rule: independent work, context pressure, independent review or a specialist capability.
+Give each specialist one task and a brief with its instructions, acceptance criteria, sources and done condition.
+`basicly brief <issue>` previews it. Start a fresh context for unrelated work and pass the brief, not the parent conversation.
+Resume a saved context only for the same task, because another task's conversation misleads it. Give each writer its own worktree.
+The owner reviews and integrates the commits on a linear branch and keeps the specialist's branch.
 
-```sh
-basicly brief <issue>
-```
-
-Start a fresh context for unrelated work. Pass the brief and required facts instead of
-the parent conversation. Resume a saved context only for the same task; do not replay
-another task's conversation. Each writer uses its own worktree.
-Keep review and integration with the main orchestrator. Integrate reviewed commits on
-a linear branch and preserve the specialist's source branch.
-
-Queue completed implementation before assigning optional work. The supervisor records
-completion and queue admission when a runner returns successfully. It waits for the
-active batch before serial landing. Previously committed lanes land before optional
-decisions, new lanes or another dispatch batch. Required gates still apply.
-
-Record integration completion or a concrete wait reason. The engine appends UTC progress
-facts as `[harness-policy] integration` comments. For delegation outside the engine,
-record actual implementation completion and integration start times on the task too.
-Read the record without reconstructing a conversation:
-
-```sh
-basicly tracker show <issue>
-```
+Land committed lanes before new dispatch, because waiting work ages; the required gates still apply. The engine records completion and integration
+as `[harness-policy] integration` comments; outside the engine, record them on the task yourself.
+Read them with `basicly tracker show <issue>`.
 
 ## Many lanes
 

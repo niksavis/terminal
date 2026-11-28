@@ -145,6 +145,9 @@ def run_send(args: argparse.Namespace, _cwd: Path, _environ: dict[str, str]) -> 
 
 
 def run_delegate(args: argparse.Namespace, cwd: Path, environ: dict[str, str]) -> int:
+    if args.list:
+        print("\n".join(delegate.listing(args)))
+        return 0
     found = store.find(cwd, environ)
     if found is None:
         raise log.RefusedError(commands.NO_STORE.format(cwd=cwd))

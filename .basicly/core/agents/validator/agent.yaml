@@ -8,6 +8,7 @@ posture: Read-only against the repository; runs the product as a consumer runs i
 tier: medium
 tools: [Read, Grep, Glob, Bash]
 claude:
+  effort: medium
   skills: [validate-as-consumer]
 slots:
   role:

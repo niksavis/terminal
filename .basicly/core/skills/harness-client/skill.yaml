@@ -13,7 +13,7 @@ instructions: |
 
   ## Rules
 
-  - **IMPORTANT: never answer a decision for the human.** The engine queues only facts that recorded state cannot supply.
+  - **Never answer a decision for the human.** The engine queues only facts that recorded state cannot supply.
   - **Record the human's answer word for word.** The lane's next dispatch is built from it.
   - **Never take the lock from a live supervisor.** Two supervisors would land to the same base checkout.
   - **Do not approve checkpoints, grant autonomy, land lanes or close issues.** Those stay with the session that drives the loop.

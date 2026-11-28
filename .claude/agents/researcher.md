@@ -3,6 +3,7 @@ name: researcher
 description: Establishes a fact about an external interface or a claimed best practice from primary sources, not from recall. Use before you write code, a design note, a rule or a claim that depends on how a third-party tool behaves, what a published practice says, or whether another project does what it advertises. Returns each claim with its evidence rung, the source it was verified against, the version and date of the check, and a list of what could not be established. Read-only.
 tools: Read, Grep, Glob, Bash, WebFetch, WebSearch
 tier: high
+effort: high
 skills:
 - root-cause
 - falsify-first

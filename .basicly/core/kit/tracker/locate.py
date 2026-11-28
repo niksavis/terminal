@@ -81,6 +81,10 @@ def install_command(version: str | None) -> str:
     return f"uv tool install --force '{source}'"
 
 
+def quoted(text: str) -> str:
+    return "".join("\\" + char if char in '"$`\\' else char for char in text)
+
+
 def _message(ledger: str, places: Sequence[str], install: str) -> str:
 
     shown = ", ".join(places) or "no file"
@@ -95,14 +99,18 @@ def missing(root: Path, ledger: str, places: Sequence[str]) -> str:
 
 def shell_lines(ledger: str, places: Sequence[str]) -> list[str]:
 
-    tests = [f'[ -f "{relative}" ]; then tracker_file="{relative}"' for relative in places]
+    tests = [
+        f'[ -f "{quoted(relative)}" ]; then tracker_file="{quoted(relative)}"'
+        for relative in places
+    ]
     chain = [f"  if {tests[0]}", *(f"  elif {test}" for test in tests[1:]), "  fi"] if tests else []
     pinned = _pin().INSTALL_SOURCE.format(version="$tracker_pin")
+    shown = _message(quoted(ledger), [quoted(p) for p in places], "$tracker_install")
     return [
         '  tracker_file=""',
         *chain,
-        f'  tracker_pin="$(cat "{ledger}/{_pin().PIN_FILE}" 2>/dev/null)"',
+        f'  tracker_pin="$(cat "{quoted(ledger)}/{_pin().PIN_FILE}" 2>/dev/null)"',
         f'  tracker_install="uv tool install --force {LATEST_SOURCE}"',
         f'  [ -z "$tracker_pin" ] || tracker_install="uv tool install --force {pinned}"',
-        f'  tracker_missing="tracker-claim: {_message(ledger, places, "$tracker_install")}"',
+        f'  tracker_missing="tracker-claim: {shown}"',
     ]

@@ -49,3 +49,4 @@ uv run python .scripts/check_render_overflow.py <page.html>
 ```
 
 - Shoot every viewport width the layout claims.
+- Inspect each screenshot against each acceptance criterion, with real data.

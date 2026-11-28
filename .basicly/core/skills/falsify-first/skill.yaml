@@ -8,6 +8,8 @@ description: "Tries to break a claim, invariant or measurement with a concrete c
 covers:
   work_types: [feature, epic]
   phases: [decompose]
+claude:
+  effort: high
 instructions: |
   # Falsify First
 

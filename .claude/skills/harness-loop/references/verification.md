@@ -16,4 +16,5 @@ short rule; this reference holds the cases.
 - Reserve full verification for CI; do not run the full suite locally on routine edits or integration.
 - After the last edit, review the diff and run the affected repository checks.
 - Read the output and the pass/fail summary, not only the exit code.
-- Keep all required gates enabled. A bypassed check is reported as bypassed, never as passing.
+- Keep all required gates enabled. Report a bypassed check as bypassed, not as passing.
+- CI does not read tracker records, because the tracker is agent memory and a work list, not the product. Mark a check that reads records `local_only = true`; CI runs `basicly verify --mode full --ci`, and `basicly check` names a workflow line that reads records.

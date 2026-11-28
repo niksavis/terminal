@@ -1,26 +1,17 @@
 # Bounded waiting
 
-Read this before waiting for a long-running command or CI. Prefer the host's bounded
-execution or continuation call so an unfinished command does not cause repeated model
-turns just to print unchanged status.
+Read this before you wait for a long command or CI. Use the host's bounded wait, because each
+extra model turn that prints an unchanged status costs a full round trip.
 
 ## Keep one command
 
-- Start a command or CI watcher once. Retain the execution handle it actually returns.
-- When the command fits the allowed wait, wait for completion in that call. Otherwise,
-  continue reading the same handle with a bounded wait. An empty read is not completion.
-- Keep the wait below higher-priority responsiveness and update limits. Do not extend
-  those limits through repository guidance.
-- Report the actual exit status. A live handle without an exit status means still
-  running; missing both is unresolved. Zero means success, and a nonzero result or
-  cancellation must remain visible. Save useful failure output.
-- Cancel only the owned command through the host's cancellation API or supported signal.
-  Confirm termination; losing a connection is not proof that the process stopped.
-- Return a bounded status excerpt when it changes rather than the complete unchanged log.
-
-A CLI watcher can poll its service without involving the model on every poll. That is
-different from repeatedly returning to the model to ask whether the watcher finished.
-Keep the existing watcher rather than creating another one for each observation.
+- Start a command or CI watcher once and keep the handle it returns.
+- Wait for completion in that call when it fits; otherwise read the same handle again with a bounded wait. An empty read is not completion.
+- Keep each wait inside the host's responsiveness limits.
+- Report the real exit status. A live handle with no status is still running, and no handle and no status is unresolved. Show a nonzero result or a cancellation, and save useful failure output.
+- Cancel only your own command, through the host's cancellation call, and confirm that it ended. A cancel request or a lost connection does not prove that the process stopped.
+- Return a short excerpt when the status changes, not the unchanged log.
+- Keep one watcher. A CLI watcher polls its service without a model turn per poll.
 
 ## Hosts exposing the Codex session tools
 
@@ -48,7 +39,5 @@ if (result.exit_code !== undefined) store("wait_session_id", null);
 text(result);
 ```
 
-The cleared handle prevents another wait after observed completion. Other hosts need
-their equivalent wait and cancellation APIs; do not copy these names into a shell.
-Bounded waiting does not provide automatic wake-up from an idle model session. Native
-completion notifications require a supported host integration and a live wake-up test.
+The cleared handle stops a second wait after completion. These names are host calls, not shell commands.
+A bounded wait does not wake an idle session; a completion notice needs host support and a live wake-up test.

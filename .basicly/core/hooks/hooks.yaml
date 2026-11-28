@@ -32,9 +32,9 @@ hooks:
     stage: sessionstart
     manager: codex
     matcher: '*'
-  # Repo-wide run through .markdownlint-cli2.yaml (globs + generated-file ignores)
-  # instead of staged filenames, so explicit paths cannot bypass the config's ignore
-  # list. Launched through a script that resolves node itself rather than `npx
+  # Staged files only, with --no-globs so the config globs are not appended; the
+  # root ignores of .markdownlint-cli2.yaml still apply, because markdownlint-cli2
+  # appends them as negated globs before it enumerates files. Launched through a script that resolves node itself rather than `npx
   # --no-install markdownlint-cli2` (basicly-jr0l.14): a hook shell has no profile, so
   # with nvm off PATH WSL interop resolved npx to the Windows nodejs, which cannot
   # express the worktree's UNC path. The launcher never invokes npx and fails in one
@@ -48,7 +48,7 @@ hooks:
     script: markdownlint.py
     stage: pre-commit
     files: \.md$
-    pass_filenames: false
+    pass_filenames: true
     technologies: [node]
   - id: identity-guard
     description: "Block commits made with an unconfigured or auto-derived git identity."
@@ -129,8 +129,8 @@ hooks:
     description: "Fail when a kit module reaches back into basicly (basicly-vkh0.16)."
     script: kit-boundary.py
     stage: pre-commit
-    always_run: true
-    pass_filenames: false
+    files: ^\.basicly/core/kit/.*\.py$
+    pass_filenames: true
   - id: git-env-check
     description: "Refuse an added test line that runs git with the inherited GIT_ variables (basicly-qpr2xmr.3.26)."
     script: git-env-check.py
@@ -227,6 +227,12 @@ hooks:
   - id: discard-guard
     description: "Refuse a shell command that discards uncommitted work unless it names a fresh approval (basicly-qpr2xmr.3.24)."
     script: discard-guard.py
+    stage: pretooluse
+    manager: claude
+    matcher: Bash
+  - id: local-test-guard
+    description: "Refuse a local test set: pytest with no file, a folder or several unchanged files, npm test with no file, basicly verify --mode full and basicly consumer-proof (basicly-1513mc2)."
+    script: local-test-guard.py
     stage: pretooluse
     manager: claude
     matcher: Bash

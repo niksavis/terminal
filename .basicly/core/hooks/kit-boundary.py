@@ -295,6 +295,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=f"kit tree to scan (default: {KIT_ROOT.as_posix()} under the repo root)",
     )
+    parser.add_argument("paths", nargs="*", type=Path)
     args = parser.parse_args(argv)
 
     repo_root = project_root()
@@ -303,7 +304,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"kit-boundary: no kit tree at {kit_root}; nothing to gate.")
         return 0
 
-    findings = scan(kit_root, repo_root, committed_modules(repo_root, kit_root))
+    only = committed_modules(repo_root, kit_root)
+    if args.paths:
+        given = {(repo_root / path).resolve() for path in args.paths}
+        only = given if only is None else only & given
+    findings = scan(kit_root, repo_root, only)
     if not findings:
         return 0
 

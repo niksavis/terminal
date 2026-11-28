@@ -3,6 +3,7 @@ name: auditor
 description: Audits a diff or a component for security weaknesses at trust boundaries. Use before you ship a change that touches input handling, credentials, subprocess calls or network calls. Returns severity-rated findings with path:line evidence and the stated coverage boundary. Read-only.
 tools: Read, Grep, Glob
 tier: high
+effort: high
 skills:
 - falsify-first
 - interface-facts

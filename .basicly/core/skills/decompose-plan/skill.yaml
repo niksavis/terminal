@@ -7,6 +7,8 @@ invocation: model
 description: "Splits an epic or feature into child tasks a build can check: EARS criteria, scope, dependencies and a demonstration command. Use to split work into tasks, or when the plan gate refuses a child."
 covers:
   phases: [decompose]
+claude:
+  effort: high
 instructions: |
   # Decompose a plan the gate accepts
 

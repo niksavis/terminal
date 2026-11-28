@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from orch_lessons.log import Clock, RefusedError, check_text, utc_now
 
-from orch_relay import classes, fields
+from orch_relay import classes, fields, local_sets
 
 if TYPE_CHECKING:
     from orch_relay.record import Tracker
@@ -87,6 +87,8 @@ class Writer:
             "if-proof-fails": if_proof_fails,
         }
         fields.require(given, "orch decide")
+        local_sets.refuse(act.action, "--action")
+        local_sets.refuse(proof, "--proof")
         if not RULE_DATE.fullmatch(rule_date.strip()):
             raise RefusedError("orch decide refuses --rule-date: write it as YYYY-MM-DD")
         classes.require_class(

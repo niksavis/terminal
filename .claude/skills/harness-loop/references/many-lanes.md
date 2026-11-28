@@ -4,11 +4,9 @@ Reference for `basicly loop preflight` and `basicly loop supervise`.
 
 ## Task scope and optional spending limits
 
-The user task request authorizes its lanes and their normal phase transitions.
-No L-level grant or token ceiling is required before a pass starts.
-Keep required verification, scope checks and destructive-action protections enabled.
-
-Only record a token limit when the user explicitly sets one:
+The task request authorizes its lanes and their phase transitions; a pass needs no grant or token ceiling.
+Required verification, scope checks and destructive-action protections stay enabled.
+Record a token limit only when the user sets one:
 
 ```sh
 basicly policy budget <epic> --tokens N
@@ -21,9 +19,8 @@ basicly policy budget <epic>
 basicly policy budget <epic> --clear
 ```
 
-Do not invent a user budget from a forecast. Report observed usage separately from estimates.
-A running dispatch can spend more before its next admission check, so report the enforcement boundary.
-Historical grants remain readable; do not rewrite them to resume a task.
+Report observed usage apart from the forecast, and do not turn a forecast into a budget.
+A running dispatch can spend past the limit before its next admission check, so name that boundary.
 
 ## What `preflight` reports
 

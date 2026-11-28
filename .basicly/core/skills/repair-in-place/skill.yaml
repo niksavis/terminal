@@ -7,6 +7,8 @@ invocation: model
 description: "Fixes a named defect in the lane's own worktree from its findings, with no new plan. Use at REPAIR after verify or validate failed."
 covers:
   phases: [repair]
+claude:
+  effort: high
 instructions: |
   # Repair in place
 

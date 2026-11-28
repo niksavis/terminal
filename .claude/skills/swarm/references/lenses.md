@@ -17,7 +17,7 @@ A lens is one point of view with its own rubric. Pick lenses that do not overlap
 | feasibility | general-purpose | Each step is sized, ordered and has a done state the work can reach. |
 | recovery | general-purpose | Each risky step has an undo. A failure leaves a state that can be resumed. |
 
-Pick 3 to 6 lenses. More lenses cost more and rarely find more. The `reviewer` agent accepts only the correctness and security lenses. When a named agent does not exist on this host, use a general-purpose agent with the rubric.
+More lenses cost more and rarely find more. The `reviewer` agent accepts only the correctness and security lenses. When a named agent does not exist on this host, use a general-purpose agent with the rubric.
 
 ## Teardown presets
 

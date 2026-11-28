@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../schemas/fragment.schema.json
 schema_version: 1
 token_cost:
-  claude: 49
-  codex: 49
-  copilot: 49
+  claude: 22
+  codex: 22
+  copilot: 22
 id: session-completion
 description: How to end a session, including the retro after a mistake.
 category: project
@@ -15,4 +15,4 @@ tags:
 status: active
 title: Session Completion
 body: |
-  - Use `session-finish` only when a session or long run ends, not for one small task. Fix refusal causes within approved scope; carry unresolved facts and diagnosis into the handover.
+  - Use `session-finish` only when a session or long run ends.

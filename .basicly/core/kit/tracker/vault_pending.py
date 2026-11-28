@@ -75,20 +75,31 @@ def projection(published: Any, pending: Any, want: Any) -> tuple:
     return combined, held, unshared
 
 
+def _digest(paths: tuple[Path, ...], template: Any) -> str:
+    digest = hashlib.sha256(json.dumps(template, sort_keys=True).encode("utf-8"))
+    for path in paths:
+        digest.update(b"\0" + path.name.encode("utf-8") + b"\0")
+        if path.is_file():
+            with path.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1 << 20), b""):
+                    digest.update(chunk)
+    return digest.hexdigest()
+
+
 def present(clone: Any, want: Any, *, clock: Callable[[], float]) -> Path:
     base = vault_view.present(clone, want, clock=clock)
-    published = vault_view.vault_clone.valid_events(clone)
-    pending = vault_queue.pending(clone.folder / vault_queue.QUEUE_NAME)
-    combined, held, unshared = projection(published, pending, want)
     template = vault_view.templates.read(base)
-    payload = json.dumps([published, pending, template], sort_keys=True, ensure_ascii=False)
-    key = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    queue = clone.folder / vault_queue.QUEUE_NAME
+    key = _digest((clone.folder / vault_view.vault_clone.EVENTS_NAME, queue), template)
     folder = clone.folder / ("pending.all" if want.all_projects else "pending-" + want.prefix)
     vault_view.vault_clone.private(folder)
     with events.LedgerLock(folder):
         marker = folder / KEY_NAME
         if marker.is_file() and marker.read_text(encoding="utf-8") == key:
             return folder
+        published = vault_view.vault_clone.valid_events(clone)
+        pending = vault_queue.pending(queue)
+        combined, held, unshared = projection(published, pending, want)
         shown = vault_view.renumbered(vault_view.carried(combined, want), held)
         lines = "".join(events.to_json(event) + "\n" for event in shown)
         vault_view.snapshot.snapshot_path(folder).unlink(missing_ok=True)
